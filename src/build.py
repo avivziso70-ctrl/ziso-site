@@ -9,7 +9,7 @@ TODAY = datetime.date.today().isoformat()
 import urllib.parse
 WA_VISIT = "https://wa.me/%s?text=%s" % (WA, urllib.parse.quote("שלום, אשמח לקבוע פגישת ייעוץ ועיצוב באולם"))
 ADDR_Q = "%D7%A2%D7%95%D7%A6%D7%9E%D7%94%205%20%D7%98%D7%99%D7%A8%D7%AA%20%D7%9B%D7%A8%D7%9E%D7%9C"
-TODO_HOURS = '<span class="todo">ממתין לשעות</span>'
+HOURS_HTML = 'א׳–ה׳ 08:00–18:00<br>ו׳ 08:00–13:30<br>שבת סגור'
 
 SIZE_RE = re.compile(r"(\d+(?:\.\d+)?×\d+)")
 def ltr_sizes(s): return SIZE_RE.sub(r'<span class="ltr">\1</span>', s)
@@ -19,8 +19,9 @@ def strip_tags(s): return re.sub(r"<[^>]+>", "", s)
 BUSINESS = {
   "@context": "https://schema.org", "@type": "HomeAndConstructionBusiness", "@id": SITE + "#business",
   "name": "זיסו קרמיקה", "legalName": LEGAL, "alternateName": ["Ziso Ceramics", "ZISO CERAMICS LTD"], "taxID": COMPANY_ID,
-  "slogan": "תרגיש בבית לעצב את הבית", "url": SITE, "telephone": "+972-50-477-0040", "email": EMAIL,
-  "address": {"@type": "PostalAddress", "streetAddress": "עוצמה 5", "addressLocality": "טירת כרמל", "addressRegion": "חיפה", "addressCountry": "IL"},
+  "slogan": "תרגיש בבית לעצב את הבית", "url": SITE, "foundingDate": "1985",
+  "openingHoursSpecification": [{"@type": "OpeningHoursSpecification", "dayOfWeek": ["Sunday","Monday","Tuesday","Wednesday","Thursday"], "opens": "08:00", "closes": "18:00"}, {"@type": "OpeningHoursSpecification", "dayOfWeek": "Friday", "opens": "08:00", "closes": "13:30"}], "telephone": "+972-50-477-0040", "email": EMAIL,
+  "address": {"@type": "PostalAddress", "streetAddress": "עוצמה 5", "addressLocality": "טירת כרמל", "postalCode": "3903005", "addressRegion": "חיפה", "addressCountry": "IL"},
   "areaServed": [{"@type": "City", "name": a} for a in AREAS],
   "sameAs": ["https://www.instagram.com/ziso_ceramics/", "https://www.facebook.com/zisoceramics"],
   "makesOffer": {"@type": "Offer", "price": "0", "priceCurrency": "ILS", "itemOffered": {"@type": "Service", "name": "פגישת ייעוץ ועיצוב פנים באולם", "description": "פגישה חינם עם מעצבת פנים מוסמכת לבחירת ריצוף, חיפוי ואמבטיה"}},
@@ -170,7 +171,7 @@ def build():
 <blockquote>אצלנו אתם לא מספר הזמנה. אתם המשפחה שאנחנו עוזרים לה לבנות בית.</blockquote>
 <div><p class="eyebrow">עסק משפחתי</p><h2>זיסו קרמיקה</h2>
 <p>עסק משפחתי מטירת כרמל, שמלווה משפחות, קבלנים ואדריכלים מחיפה, הקריות וכל אזור הכרמל בבחירת ריצוף, חיפוי ואמבטיה. אילת ושיר הן מעצבות פנים עם דיפלומה, והייעוץ והעיצוב באולם הם בחינם. את מה שבאולם בחרנו בעצמנו, ואנחנו שם גם אחרי הקנייה כשצריך עוד קרטון, החלפה או עצה.</p>
-<p><span class="todo">כמה שנים העסק פועל?</span></p>
+<p class="since">מאז 1985 · 4.3 בגוגל על 85 ביקורות</p>
 <div class="names"><span>משה</span><span>אילת</span><span>שיר</span><span>אביב</span></div></div>
 <div class="portraits" aria-label="משפחת זיסו"><figure><img src="img/family-1.jpg" alt="משה זיסו" loading="lazy" width="693" height="653"><figcaption>משה זיסו</figcaption></figure><figure><img src="img/family-2.jpg" alt="אילת זיסו" loading="lazy" width="312" height="369"><figcaption>אילת זיסו<small>מעצבת פנים</small></figcaption></figure><figure><img src="img/family-3.jpg" alt="שיר זיסו" loading="lazy" width="720" height="720"><figcaption>שיר זיסו<small>מעצבת פנים</small></figcaption></figure><figure><img src="img/family-4.jpg" alt="אביב זיסו" loading="lazy" width="609" height="533"><figcaption>אביב זיסו</figcaption></figure></div>
 </div></section>
@@ -201,7 +202,7 @@ def build():
 <a class="btn ghost" href="https://www.google.com/maps/search/?api=1&query={addr}" target="_blank" rel="noopener">Google Maps</a></div></div>
 </div></section>
 </main>
-'''.format(wa=WA_VISIT, phone=PHONE, phone_intl=PHONE_INTL, email=EMAIL, hours=TODO_HOURS, video=video, strip=''.join('<span>%s</span>' % c['name'] for c in CATS), tiles=tiles_html(),
+'''.format(wa=WA_VISIT, phone=PHONE, phone_intl=PHONE_INTL, email=EMAIL, hours=HOURS_HTML, video=video, strip=''.join('<span>%s</span>' % c['name'] for c in CATS), tiles=tiles_html(),
            calc=CALC, portal=PORTAL, faq=faq_html(HOME_FAQ), areas="".join("<li>%s</li>" % a for a in AREAS), addr=ADDR_Q) + FOOTER
   h, b = write("index.html", "זיסו קרמיקה | ריצוף, גרניט פורצלן ואמבטיה בטירת כרמל ליד חיפה",
     "אולם תצוגה לגרניט פורצלן, כלים סניטריים, ארונות אמבטיה, מקלחונים לפי מידה, ברזים, בריקים ופרקט בטירת כרמל, דקות מחיפה והקריות. עסק משפחתי עם ליווי לאורך כל השיפוץ.",
@@ -264,8 +265,7 @@ def build():
 <h1>עסק משפחתי מטירת כרמל</h1><p>זיסו קרמיקה היא חנות ואולם תצוגה לריצוף, חיפוי ואמבטיה, שמנוהלת על ידי משפחת זיסו: משה, אילת, שיר ואביב. אילת ושיר הן מעצבות פנים מוסמכות, והפגישה איתן באולם בחינם.</p></div></div></div>
 <main><section><div class="wrap article"><article class="prose">
 <h2>מי אנחנו</h2>
-<p>עסק משפחתי שמנוהל על ידי משה ואילת, עם ניסיון של שנים ומוניטין מבוסס. ליווינו משפחות רבות בתהליך השיפוץ, ואנחנו עובדים יחד באולם ברחוב עוצמה 5 בטירת כרמל, עם לקוחות, קבלנים ואדריכלים מחיפה, הקריות וכל אזור הכרמל: ריצוף, חיפוי, כלים סניטריים, ארונות אמבטיה, מקלחונים וברזים.</p>
-<p><span class="todo">כמה שנים העסק פועל ומה ההיסטוריה שלו? (ממתין לאביב)</span></p>
+<p>עסק משפחתי שמנוהל על ידי משה ואילת מאז 1985, ארבעים שנה של ריצוף וחיפוי באזור הכרמל, עם מוניטין מבוסס (4.3 כוכבים בגוגל על 85 ביקורות). ליווינו משפחות רבות בתהליך השיפוץ, ואנחנו עובדים יחד באולם ברחוב עוצמה 5 בטירת כרמל, עם לקוחות, קבלנים ואדריכלים מחיפה, הקריות וכל אזור הכרמל: ריצוף, חיפוי, כלים סניטריים, ארונות אמבטיה, מקלחונים וברזים.</p>
 <div class="portraits" aria-label="משפחת זיסו"><figure><img src="img/family-1.jpg" alt="משה זיסו" loading="lazy" width="693" height="653"><figcaption>משה זיסו</figcaption></figure><figure><img src="img/family-2.jpg" alt="אילת זיסו" loading="lazy" width="312" height="369"><figcaption>אילת זיסו<small>מעצבת פנים</small></figcaption></figure><figure><img src="img/family-3.jpg" alt="שיר זיסו" loading="lazy" width="720" height="720"><figcaption>שיר זיסו<small>מעצבת פנים</small></figcaption></figure><figure><img src="img/family-4.jpg" alt="אביב זיסו" loading="lazy" width="609" height="533"><figcaption>אביב זיסו</figcaption></figure></div>
 <h2>ייעוץ ועיצוב בחינם</h2>
 <p>אילת זיסו ושיר זיסו הן מעצבות פנים עם דיפלומה. בפגישה באולם הן עוברות איתכם על התוכנית או על תמונות החדר, מתאימות ריצוף, חיפוי, כלים וברזים לסגנון ולתקציב, ומחשבות את הכמויות. הפגישה והייעוץ בחינם, בלי התחייבות.</p>
@@ -299,7 +299,7 @@ def build():
 <div class="actions"><a class="btn brass" href="https://waze.com/ul?q={addr}&navigate=yes" target="_blank" rel="noopener">ניווט בוויז</a>
 <a class="btn ghost" href="https://www.google.com/maps/search/?api=1&query={addr}" target="_blank" rel="noopener">Google Maps</a></div></div>
 </div></section></main>
-'''.format(wa=WA, phone=PHONE, phone_intl=PHONE_INTL, email=EMAIL, hours=TODO_HOURS, legal=LEGAL, cid=COMPANY_ID, addr=ADDR_Q) + FOOTER
+'''.format(wa=WA, phone=PHONE, phone_intl=PHONE_INTL, email=EMAIL, hours=HOURS_HTML, legal=LEGAL, cid=COMPANY_ID, addr=ADDR_Q) + FOOTER
   write("contact.html", "צור קשר | זיסו קרמיקה, עוצמה 5 טירת כרמל", "וואטסאפ וטלפון 050-4770040, אימייל info@zisoceramics.com, כתובת עוצמה 5 טירת כרמל. ניווט בוויז ושעות פתיחה.", contact, [crumbs_schema("צור קשר", "contact"), {"@context": "https://schema.org", "@type": "ContactPage", "about": {"@id": SITE + "#business"}}])
 
   # Intake form page (Apps Script iframe) + thank-you page
