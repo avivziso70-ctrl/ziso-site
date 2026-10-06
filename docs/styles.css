@@ -199,6 +199,9 @@ footer .legal{display:grid;gap:4px}
 .crumbs a{color:var(--wall-mute)} .crumbs li+li::before{content:"‹";margin-inline-end:8px}
 .hero.inner{grid-template-columns:1.3fr .7fr;padding-block:56px 48px}
 .hero.inner .sw{aspect-ratio:4/3;max-width:100%;border:3px solid #15181a}
+.sw.photo{position:relative;overflow:hidden;background:#15181a}
+.sw.photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.sw.photo small{position:absolute;z-index:1}
 @media (max-width:820px){.hero.inner{grid-template-columns:1fr}}
 .article{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:56px;align-items:start}
 .prose h2{font-size:clamp(1.6rem,3.4vw,2.1rem);margin:44px 0 12px}

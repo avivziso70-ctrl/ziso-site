@@ -35,6 +35,8 @@ def faq_schema(items):
     {"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": strip_tags(a)}} for q, a in items]}
 
 GALLERY_DIR = os.path.join(HERE, "img", "gallery")
+CAT_PHOTOS = {"porcelain": "2026-06-16-beige-bathroom.jpg", "sanitary": "2026-06-24-picket-tiles.jpg", "vanities": "2026-06-24-vanity-white.jpg",
+              "showers": "2026-05-28-shower-graphite.jpg", "faucets": "2026-05-28-black-tub.jpg", "bricks": "2026-06-24-blue-tub.jpg", "parquet": "2026-07-15-parquet-fishbone.jpg"}
 def gallery_items():
   """Photos dropped in src/img/gallery/ (jpg/jpeg/png/webp), newest name first; captions from src/gallery.txt as 'file|caption'."""
   caps = {}
@@ -247,11 +249,13 @@ def build():
 <div><ol class="crumbs"><li><a href="./">זיסו קרמיקה</a></li><li aria-current="page">{name}</li></ol>
 <h1>{h1}</h1><p>{lede}</p>
 <div class="actions"><a class="btn brass" href="{wa}" target="_blank" rel="noopener">לפגישת ייעוץ חינם</a><a class="btn ghost" href="calculator.html">מחשבון כמויות</a></div></div>
-<div class="sw {sw}" role="img" aria-label="{name}">{sz}</div>
+{visual}
 </div></div>
 <main><section><div class="wrap article"><article class="prose">{parts}</article>{side}</div></section>
 <section><div class="wrap"><p class="eyebrow">עוד באולם</p><ul class="areas">{others}</ul></div></section></main>
-'''.format(name=c["name"], h1=c["h1"], lede=c["lede"], wa=WA_VISIT, sw=c["sw"], sz=sz, parts=ltr_sizes("\n".join(parts)), side=sidebar(c["name"]), others=others) + FOOTER
+'''.format(name=c["name"], h1=c["h1"], lede=c["lede"], wa=WA_VISIT, visual=(
+      '<div class="sw photo" role="img" aria-label="%s"><img src="img/gallery/%s" alt="" width="1200" height="900">%s</div>' % (c["name"], CAT_PHOTOS[c["slug"]], sz)
+      if c["slug"] in CAT_PHOTOS and os.path.exists(os.path.join(GALLERY_DIR, CAT_PHOTOS[c["slug"]])) else '<div class="sw %s" role="img" aria-label="%s">%s</div>' % (c["sw"], c["name"], sz)), parts=ltr_sizes("\n".join(parts)), side=sidebar(c["name"]), others=others) + FOOTER
     write(c["slug"] + ".html", c["title"], c["desc"], body, [{"@context": "https://schema.org", "@type": "WebPage", "name": c["title"], "about": {"@id": SITE + "#business"}}, crumbs_schema(c["name"], c["slug"]), faq_schema(c["faq"])], body_attrs=' data-item="%s"' % c["name"])
 
   # Calculator page
