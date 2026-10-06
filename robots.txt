@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 Disallow: /toda
-Sitemap: https://zisoceramics.com/sitemap.xml
+Sitemap: https://www.zisoceramics.com/sitemap.xml
