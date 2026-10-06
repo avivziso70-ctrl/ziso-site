@@ -172,7 +172,7 @@ def build():
 <p>עסק משפחתי מטירת כרמל, שמלווה משפחות, קבלנים ואדריכלים מחיפה, הקריות וכל אזור הכרמל בבחירת ריצוף, חיפוי ואמבטיה. אילת ושיר הן מעצבות פנים עם דיפלומה, והייעוץ והעיצוב באולם הם בחינם. את מה שבאולם בחרנו בעצמנו, ואנחנו שם גם אחרי הקנייה כשצריך עוד קרטון, החלפה או עצה.</p>
 <p><span class="todo">כמה שנים העסק פועל?</span></p>
 <div class="names"><span>משה</span><span>אילת</span><span>שיר</span><span>אביב</span></div></div>
-<div class="portraits" aria-label="משפחת זיסו"><img src="img/family-1.jpg" alt="" loading="lazy" width="693" height="653"><img src="img/family-2.jpg" alt="" loading="lazy" width="312" height="369"><img src="img/family-3.jpg" alt="" loading="lazy" width="720" height="720"><img src="img/family-4.jpg" alt="" loading="lazy" width="609" height="533"></div>
+<div class="portraits" aria-label="משפחת זיסו"><figure><img src="img/family-1.jpg" alt="משה זיסו" loading="lazy" width="693" height="653"><figcaption>משה זיסו</figcaption></figure><figure><img src="img/family-2.jpg" alt="אילת זיסו" loading="lazy" width="312" height="369"><figcaption>אילת זיסו<small>מעצבת פנים</small></figcaption></figure><figure><img src="img/family-3.jpg" alt="שיר זיסו" loading="lazy" width="720" height="720"><figcaption>שיר זיסו<small>מעצבת פנים</small></figcaption></figure><figure><img src="img/family-4.jpg" alt="אביב זיסו" loading="lazy" width="609" height="533"><figcaption>אביב זיסו</figcaption></figure></div>
 </div></section>
 <section id="client"><div class="wrap">
 <div class="head" data-reveal><div><p class="eyebrow">אזור לקוחות</p><h2>כבר קניתם אצלנו? הכל כאן</h2></div></div>
@@ -266,7 +266,7 @@ def build():
 <h2>מי אנחנו</h2>
 <p>עסק משפחתי שמנוהל על ידי משה ואילת, עם ניסיון של שנים ומוניטין מבוסס. ליווינו משפחות רבות בתהליך השיפוץ, ואנחנו עובדים יחד באולם ברחוב עוצמה 5 בטירת כרמל, עם לקוחות, קבלנים ואדריכלים מחיפה, הקריות וכל אזור הכרמל: ריצוף, חיפוי, כלים סניטריים, ארונות אמבטיה, מקלחונים וברזים.</p>
 <p><span class="todo">כמה שנים העסק פועל ומה ההיסטוריה שלו? (ממתין לאביב)</span></p>
-<div class="portraits" aria-label="משפחת זיסו"><img src="img/family-1.jpg" alt="" loading="lazy" width="693" height="653"><img src="img/family-2.jpg" alt="" loading="lazy" width="312" height="369"><img src="img/family-3.jpg" alt="" loading="lazy" width="720" height="720"><img src="img/family-4.jpg" alt="" loading="lazy" width="609" height="533"></div>
+<div class="portraits" aria-label="משפחת זיסו"><figure><img src="img/family-1.jpg" alt="משה זיסו" loading="lazy" width="693" height="653"><figcaption>משה זיסו</figcaption></figure><figure><img src="img/family-2.jpg" alt="אילת זיסו" loading="lazy" width="312" height="369"><figcaption>אילת זיסו<small>מעצבת פנים</small></figcaption></figure><figure><img src="img/family-3.jpg" alt="שיר זיסו" loading="lazy" width="720" height="720"><figcaption>שיר זיסו<small>מעצבת פנים</small></figcaption></figure><figure><img src="img/family-4.jpg" alt="אביב זיסו" loading="lazy" width="609" height="533"><figcaption>אביב זיסו</figcaption></figure></div>
 <h2>ייעוץ ועיצוב בחינם</h2>
 <p>אילת זיסו ושיר זיסו הן מעצבות פנים עם דיפלומה. בפגישה באולם הן עוברות איתכם על התוכנית או על תמונות החדר, מתאימות ריצוף, חיפוי, כלים וברזים לסגנון ולתקציב, ומחשבות את הכמויות. הפגישה והייעוץ בחינם, בלי התחייבות.</p>
 <h2>איך אנחנו עובדים</h2>
