@@ -327,6 +327,7 @@ def build():
     "".join("  <url><loc>%s%s</loc><lastmod>%s</lastmod></url>\n" % (SITE, u, TODAY) for u in urls))
   open(os.path.join(DIST, "robots.txt"), "w").write("User-agent: *\nAllow: /\nDisallow: /toda\nSitemap: %ssitemap.xml\n" % SITE)
   open(os.path.join(DIST, "CNAME"), "w").write("www.zisoceramics.com\n")
+  open(os.path.join(DIST, "googlee191b4da733a4939.html"), "w").write("google-site-verification: googlee191b4da733a4939.html")  # Search Console
 
 if __name__ == "__main__":
   build(); print(sorted(os.listdir(DIST)))
