@@ -62,7 +62,7 @@ def head(title, desc, canon, schemas):
 <meta name="description" content="{d}">
 <link rel="canonical" href="{c}">
 <meta property="og:type" content="website"><meta property="og:site_name" content="זיסו קרמיקה">
-<meta property="og:title" content="{t}"><meta property="og:description" content="{d}"><meta property="og:url" content="{c}"><meta property="og:locale" content="he_IL">
+<meta property="og:title" content="{t}"><meta property="og:description" content="{d}"><meta property="og:url" content="{c}"><meta property="og:locale" content="he_IL"><meta property="og:image" content="https://zisoceramics.com/img/logo.jpg"><meta property="og:image:width" content="1440"><meta property="og:image:height" content="1440"><link rel="apple-touch-icon" href="img/logo.jpg">
 <meta name="theme-color" content="#25292c">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2325292c'/%3E%3Cpath d='M9 9h14L9 23h14' stroke='%2394733d' stroke-width='2.5' fill='none'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -129,7 +129,7 @@ def sidebar(name):
 def build():
   if os.path.exists(DIST): shutil.rmtree(DIST)
   os.makedirs(DIST)
-  shutil.copy(os.path.join(HERE, "styles.css"), DIST); shutil.copy(os.path.join(HERE, "site.js"), DIST)
+  shutil.copy(os.path.join(HERE, "styles.css"), DIST); shutil.copy(os.path.join(HERE, "site.js"), DIST); shutil.copytree(os.path.join(HERE, "img"), os.path.join(DIST, "img"))
 
   # Home
   video = '<video class="herovid" autoplay muted loop playsinline poster="" src="%s"></video>' % HERO_VIDEO if HERO_VIDEO else ''
@@ -172,6 +172,7 @@ def build():
 <p>עסק משפחתי מטירת כרמל, שמלווה משפחות, קבלנים ואדריכלים מחיפה, הקריות וכל אזור הכרמל בבחירת ריצוף, חיפוי ואמבטיה. אילת ושיר הן מעצבות פנים עם דיפלומה, והייעוץ והעיצוב באולם הם בחינם. את מה שבאולם בחרנו בעצמנו, ואנחנו שם גם אחרי הקנייה כשצריך עוד קרטון, החלפה או עצה.</p>
 <p><span class="todo">כמה שנים העסק פועל?</span></p>
 <div class="names"><span>משה</span><span>אילת</span><span>שיר</span><span>אביב</span></div></div>
+<div class="portraits" aria-label="משפחת זיסו"><img src="img/family-1.jpg" alt="" loading="lazy" width="693" height="653"><img src="img/family-2.jpg" alt="" loading="lazy" width="312" height="369"><img src="img/family-3.jpg" alt="" loading="lazy" width="720" height="720"><img src="img/family-4.jpg" alt="" loading="lazy" width="609" height="533"></div>
 </div></section>
 <section id="client"><div class="wrap">
 <div class="head" data-reveal><div><p class="eyebrow">אזור לקוחות</p><h2>כבר קניתם אצלנו? הכל כאן</h2></div></div>
@@ -265,6 +266,7 @@ def build():
 <h2>מי אנחנו</h2>
 <p>עסק משפחתי שמנוהל על ידי משה ואילת, עם ניסיון של שנים ומוניטין מבוסס. ליווינו משפחות רבות בתהליך השיפוץ, ואנחנו עובדים יחד באולם ברחוב עוצמה 5 בטירת כרמל, עם לקוחות, קבלנים ואדריכלים מחיפה, הקריות וכל אזור הכרמל: ריצוף, חיפוי, כלים סניטריים, ארונות אמבטיה, מקלחונים וברזים.</p>
 <p><span class="todo">כמה שנים העסק פועל ומה ההיסטוריה שלו? (ממתין לאביב)</span></p>
+<div class="portraits" aria-label="משפחת זיסו"><img src="img/family-1.jpg" alt="" loading="lazy" width="693" height="653"><img src="img/family-2.jpg" alt="" loading="lazy" width="312" height="369"><img src="img/family-3.jpg" alt="" loading="lazy" width="720" height="720"><img src="img/family-4.jpg" alt="" loading="lazy" width="609" height="533"></div>
 <h2>ייעוץ ועיצוב בחינם</h2>
 <p>אילת זיסו ושיר זיסו הן מעצבות פנים עם דיפלומה. בפגישה באולם הן עוברות איתכם על התוכנית או על תמונות החדר, מתאימות ריצוף, חיפוי, כלים וברזים לסגנון ולתקציב, ומחשבות את הכמויות. הפגישה והייעוץ בחינם, בלי התחייבות.</p>
 <h2>איך אנחנו עובדים</h2>
