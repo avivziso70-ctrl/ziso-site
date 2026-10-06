@@ -62,7 +62,7 @@ def head(title, desc, canon, schemas):
 <meta name="description" content="{d}">
 <link rel="canonical" href="{c}">
 <meta property="og:type" content="website"><meta property="og:site_name" content="זיסו קרמיקה">
-<meta property="og:title" content="{t}"><meta property="og:description" content="{d}"><meta property="og:url" content="{c}"><meta property="og:locale" content="he_IL"><meta property="og:image" content="https://zisoceramics.com/img/logo.jpg"><meta property="og:image:width" content="1440"><meta property="og:image:height" content="1440"><link rel="apple-touch-icon" href="img/logo.jpg">
+<meta property="og:title" content="{t}"><meta property="og:description" content="{d}"><meta property="og:url" content="{c}"><meta property="og:locale" content="he_IL"><meta property="og:image" content="https://www.zisoceramics.com/img/logo.jpg"><meta property="og:image:width" content="1440"><meta property="og:image:height" content="1440"><link rel="apple-touch-icon" href="img/logo.jpg">
 <meta name="theme-color" content="#25292c">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2325292c'/%3E%3Cpath d='M9 9h14L9 23h14' stroke='%2394733d' stroke-width='2.5' fill='none'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -326,7 +326,7 @@ def build():
   open(os.path.join(DIST, "sitemap.xml"), "w").write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n%s</urlset>\n' %
     "".join("  <url><loc>%s%s</loc><lastmod>%s</lastmod></url>\n" % (SITE, u, TODAY) for u in urls))
   open(os.path.join(DIST, "robots.txt"), "w").write("User-agent: *\nAllow: /\nDisallow: /toda\nSitemap: %ssitemap.xml\n" % SITE)
-  open(os.path.join(DIST, "CNAME"), "w").write("zisoceramics.com\n")
+  open(os.path.join(DIST, "CNAME"), "w").write("www.zisoceramics.com\n")
 
 if __name__ == "__main__":
   build(); print(sorted(os.listdir(DIST)))

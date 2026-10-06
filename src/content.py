@@ -1,5 +1,5 @@
 # Site content. Hebrew copy lives here; build.py turns it into pages.
-SITE = "https://zisoceramics.com/"
+SITE = "https://www.zisoceramics.com/"
 PHONE = "050-4770040"
 PHONE_INTL = "+972504770040"
 WA = "972504770040"
