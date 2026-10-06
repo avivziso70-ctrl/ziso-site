@@ -104,8 +104,13 @@ def tiles_html():
   out = []
   for c in CATS:
     sz = '<small>%s</small>' % c["sizes"] if c["sizes"] else ""
-    out.append('<article class="tile%s"><div class="sw %s">%s</div><div class="tx"><h3><a href="%s.html">%s</a></h3><p>%s</p></div></article>'
-               % (" wide" if c.get("wide") else "", c["sw"], sz, c["slug"], c["name"], c["card"]))
+    ph = CAT_PHOTOS.get(c["slug"])
+    if ph and os.path.exists(os.path.join(GALLERY_DIR, ph)):
+      sw = '<div class="sw photo"><img src="img/gallery/%s" alt="%s" loading="lazy" width="1200" height="900">%s</div>' % (ph, c["name"], sz)
+    else:
+      sw = '<div class="sw %s">%s</div>' % (c["sw"], sz)
+    out.append('<article class="tile%s">%s<div class="tx"><h3><a href="%s.html">%s</a></h3><p>%s</p></div></article>'
+               % (" wide" if c.get("wide") else "", sw, c["slug"], c["name"], c["card"]))
   return '<div class="tiles">%s</div>' % "".join(out)
 
 def faq_html(items):

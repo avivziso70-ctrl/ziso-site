@@ -193,6 +193,8 @@ footer .legal{display:grid;gap:4px}
 .tile h3 a{text-decoration:none}
 .tile h3 a::after{content:"";position:absolute;inset:0}
 .tile:hover .sw{filter:brightness(1.04)}
+.tile .sw.photo img{transition:transform .9s ease}
+.tile:hover .sw.photo img{transform:scale(1.04)}
 
 /* inner pages */
 .crumbs{font-size:.88rem;color:var(--wall-mute);display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px;padding:0;list-style:none}
