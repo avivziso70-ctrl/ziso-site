@@ -34,6 +34,21 @@ def faq_schema(items):
   return {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [
     {"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": strip_tags(a)}} for q, a in items]}
 
+GALLERY_DIR = os.path.join(HERE, "img", "gallery")
+def gallery_items():
+  """Photos dropped in src/img/gallery/ (jpg/jpeg/png/webp), newest name first; captions from src/gallery.txt as 'file|caption'."""
+  caps = {}
+  cp = os.path.join(HERE, "gallery.txt")
+  if os.path.exists(cp):
+    for line in open(cp, encoding="utf-8"):
+      if "|" in line: f, c = line.split("|", 1); caps[f.strip()] = c.strip()
+  files = sorted([f for f in os.listdir(GALLERY_DIR) if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))], reverse=True) if os.path.isdir(GALLERY_DIR) else []
+  return [(f, caps.get(f, "")) for f in files]
+GALLERY = gallery_items()
+def gallery_html(items, lazy=True):
+  return '<div class="gallery">' + "".join('<figure><img src="img/gallery/%s" alt="%s"%s>%s</figure>' % (
+    f, html.escape(c or "עבודה של זיסו קרמיקה"), ' loading="lazy"' if lazy else "", ('<figcaption>%s</figcaption>' % html.escape(c)) if c else "") for f, c in items) + '</div>'
+
 def crumbs_schema(name, slug):
   return {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
     {"@type": "ListItem", "position": 1, "name": "זיסו קרמיקה", "item": SITE},
@@ -42,6 +57,7 @@ def crumbs_schema(name, slug):
 def header(active=""):
   links = [("./#products", "מוצרים", "products"), ("calculator.html", "מחשבון כמויות", "calculator"), ("tik-lakoach.html", "תיק לקוח", "tik"),
            ("about.html", "עלינו", "about"), ("contact.html", "צור קשר", "contact"), ("./#client", "אזור לקוחות", "")]
+  if GALLERY: links.insert(1, ("gallery.html", "עבודות", "gallery"))
   nav = "".join('<a href="%s"%s>%s</a>' % (h, ' aria-current="page"' if k and k == active else "", t) for h, t, k in links)
   return '''<header class="top"><div class="wrap">
 <a class="mark" href="./" aria-label="זיסו קרמיקה, לדף הבית"><b>ZISO</b><span>קרמיקה</span></a>
@@ -175,7 +191,7 @@ def build():
 <div class="names"><span>משה</span><span>אילת</span><span>שיר</span><span>אביב</span></div></div>
 <div class="portraits" aria-label="משפחת זיסו"><figure><img src="img/family-1.jpg" alt="משה זיסו" loading="lazy" width="693" height="653"><figcaption>משה זיסו</figcaption></figure><figure><img src="img/family-2.jpg" alt="אילת זיסו" loading="lazy" width="312" height="369"><figcaption>אילת זיסו<small>מעצבת פנים</small></figcaption></figure><figure><img src="img/family-3.jpg" alt="שיר זיסו" loading="lazy" width="720" height="720"><figcaption>שיר זיסו<small>מעצבת פנים</small></figcaption></figure><figure><img src="img/family-4.jpg" alt="אביב זיסו" loading="lazy" width="609" height="533"><figcaption>אביב זיסו</figcaption></figure></div>
 </div></section>
-<section id="client"><div class="wrap">
+{gallery}<section id="client"><div class="wrap">
 <div class="head" data-reveal><div><p class="eyebrow">אזור לקוחות</p><h2>כבר קניתם אצלנו? הכל כאן</h2></div></div>
 <div class="client" data-reveal>
 <div class="panel"><h3>מעקב הזמנה</h3><p>נכנסים עם מספר הנייד ומספר ההזמנה, ורואים:</p>
@@ -202,7 +218,7 @@ def build():
 <a class="btn ghost" href="https://www.google.com/maps/search/?api=1&query={addr}" target="_blank" rel="noopener">Google Maps</a></div></div>
 </div></section>
 </main>
-'''.format(wa=WA_VISIT, phone=PHONE, phone_intl=PHONE_INTL, email=EMAIL, hours=HOURS_HTML, video=video, strip=''.join('<span>%s</span>' % c['name'] for c in CATS), tiles=tiles_html(),
+'''.format(wa=WA_VISIT, phone=PHONE, phone_intl=PHONE_INTL, email=EMAIL, hours=HOURS_HTML, video=video, gallery=('<section id="works"><div class="wrap"><div class="head" data-reveal><div><p class="eyebrow">מהאולם ומהלקוחות</p><h2>עבודות אחרונות</h2></div><a class="btn ghost" href="gallery.html">לכל העבודות</a></div>' + gallery_html(GALLERY[:6]) + '</div></section>') if GALLERY else '', strip=''.join('<span>%s</span>' % c['name'] for c in CATS), tiles=tiles_html(),
            calc=CALC, portal=PORTAL, faq=faq_html(HOME_FAQ), areas="".join("<li>%s</li>" % a for a in AREAS), addr=ADDR_Q) + FOOTER
   h, b = write("index.html", "זיסו קרמיקה | ריצוף, גרניט פורצלן ואמבטיה בטירת כרמל ליד חיפה",
     "אולם תצוגה לגרניט פורצלן, כלים סניטריים, ארונות אמבטיה, מקלחונים לפי מידה, ברזים, בריקים ופרקט בטירת כרמל, דקות מחיפה והקריות. עסק משפחתי עם ליווי לאורך כל השיפוץ.",
@@ -322,7 +338,16 @@ def build():
   write("toda.html", "תודה | זיסו קרמיקה", "קיבלנו את הפרטים, נחזור אליכם לתיאום ביקור באולם.", toda, [], body_attrs=' data-lead="1"')
 
   # SEO files
-  urls = ["", "about.html", "contact.html", "calculator.html", "tik-lakoach.html"] + [c["slug"] + ".html" for c in CATS]
+  if GALLERY:
+    gal = header("gallery") + '''
+<div class="wall"><div class="wrap hero inner" style="grid-template-columns:1fr">
+<div><ol class="crumbs"><li><a href="./">זיסו קרמיקה</a></li><li aria-current="page">עבודות</li></ol>
+<h1>עבודות אחרונות</h1><p>ריצוף, חיפוי ואמבטיות שנבחרו אצלנו באולם בטירת כרמל, אצל לקוחות מחיפה, הקריות והכרמל. עוד בעמוד האינסטגרם שלנו.</p></div></div></div>
+<main><section><div class="wrap">''' + gallery_html(GALLERY, lazy=True) + '''
+<p style="margin-top:32px"><a class="btn" href="%s">לפגישת ייעוץ ועיצוב חינם</a> <a class="btn ghost" href="https://www.instagram.com/ziso_ceramics/" target="_blank" rel="noopener">Instagram</a></p>
+</div></section></main>''' % WA_VISIT + FOOTER
+    write("gallery.html", "עבודות אחרונות | זיסו קרמיקה", "תמונות של ריצוף, חיפוי ואמבטיות מלקוחות זיסו קרמיקה בטירת כרמל, חיפה והקריות.", gal, [crumbs_schema("עבודות", "gallery")])
+  urls = ["", "about.html", "contact.html", "calculator.html", "tik-lakoach.html"] + (["gallery.html"] if GALLERY else []) + [c["slug"] + ".html" for c in CATS]
   open(os.path.join(DIST, "sitemap.xml"), "w").write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n%s</urlset>\n' %
     "".join("  <url><loc>%s%s</loc><lastmod>%s</lastmod></url>\n" % (SITE, u, TODAY) for u in urls))
   open(os.path.join(DIST, "robots.txt"), "w").write("User-agent: *\nAllow: /\nDisallow: /toda\nSitemap: %ssitemap.xml\n" % SITE)
