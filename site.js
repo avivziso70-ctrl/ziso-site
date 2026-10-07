@@ -119,3 +119,35 @@
     addEventListener('scroll',function(){var r=c.getBoundingClientRect();if(r.bottom<0)return;ty=.35+(-r.top/r.height)*.6;kick()},{passive:true})}
   var rt;addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(build,200)});build();
 })();
+
+// ===== films: clips play only while on screen, never under reduced motion; click opens the lightbox =====
+(function(){
+  var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var hero=document.querySelector('video[data-hero]');
+  if(hero){if(reduce){hero.removeAttribute('autoplay');hero.pause();hero.classList.add('off')}
+    else{hero.addEventListener('canplay',function(){hero.classList.add('ready')},{once:true});var p=hero.play&&hero.play();if(p&&p.catch)p.catch(function(){})}}
+  var vids=document.querySelectorAll('video[data-auto]');
+  if(vids.length&&!reduce&&'IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){var v=e.target;
+      if(e.isIntersecting){if(v.preload==='none')v.preload='auto';var p=v.play();if(p&&p.catch)p.catch(function(){})}else v.pause()})},{rootMargin:'120px 0px',threshold:.15});
+    vids.forEach(function(v){io.observe(v)});
+  }
+  var dlg=document.getElementById('light');if(!dlg||!dlg.showModal)return;
+  var body=dlg.querySelector('.lightbody');
+  function open(src){body.innerHTML='';var el;
+    if(/\.mp4$/i.test(src)){el=document.createElement('video');el.src=src;el.controls=true;el.autoplay=true;el.loop=true;el.muted=true;el.playsInline=true}
+    else{el=document.createElement('img');el.src=src;el.alt=''}
+    body.appendChild(el);dlg.showModal();window.dataLayer&&window.dataLayer.push({event:'view_media',media_url:src})}
+  function close(){dlg.close();body.innerHTML=''}
+  document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-light]');if(b){e.preventDefault();open(b.getAttribute('data-light'))}});
+  dlg.querySelector('.x').addEventListener('click',close);
+  dlg.addEventListener('click',function(e){if(e.target===dlg)close()});
+  dlg.addEventListener('close',function(){body.innerHTML=''});
+  // drag-to-scroll on the reel for mouse users
+  var reel=document.querySelector('.reel');
+  if(reel&&matchMedia('(hover:hover)').matches){var down=false,sx=0,sl=0,moved=false;
+    reel.addEventListener('pointerdown',function(e){down=true;moved=false;sx=e.clientX;sl=reel.scrollLeft});
+    reel.addEventListener('pointermove',function(e){if(!down)return;var dx=e.clientX-sx;if(Math.abs(dx)>4)moved=true;reel.scrollLeft=sl-dx});
+    ['pointerup','pointerleave'].forEach(function(t){reel.addEventListener(t,function(){down=false})});
+    reel.addEventListener('click',function(e){if(moved){e.stopPropagation();e.preventDefault()}},true)}
+})();
