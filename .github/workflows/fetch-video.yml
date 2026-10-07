@@ -22,8 +22,8 @@ jobs:
             out="src/img/video/$name.mp4"
             if [ -s "$out" ]; then echo "keep $out"; continue; fi
             echo "fetch $name"; curl -sS -f -L -o raw.mp4 "$url"
-            ffmpeg -v error -y -i raw.mp4 -an -vf "scale=$width:-2:flags=lanczos,fps=24" -c:v libx264 -preset slow -crf 27 -pix_fmt yuv420p -profile:v high -movflags +faststart "$out"
-            ffmpeg -v error -y -ss 0.1 -i "$out" -frames:v 1 -q:v 4 "src/img/video/$name.jpg"
+            ffmpeg -nostdin -v error -y -i raw.mp4 -an -vf "scale=$width:-2:flags=lanczos,fps=24" -c:v libx264 -preset slow -crf 27 -pix_fmt yuv420p -profile:v high -movflags +faststart "$out"
+            ffmpeg -nostdin -v error -y -ss 0.1 -i "$out" -frames:v 1 -q:v 4 "src/img/video/$name.jpg"
             ls -la "$out" "src/img/video/$name.jpg"
           done
           rm -f raw.mp4
