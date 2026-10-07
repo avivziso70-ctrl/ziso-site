@@ -68,15 +68,15 @@ def video_tag(name, cls="", label="", preload="none"):
   return '<video class="%s" muted loop playsinline preload="%s" poster="img/video/%s.jpg" data-auto aria-label="%s"><source src="img/video/%s.mp4" type="video/mp4"></video>' % (cls, preload, name, html.escape(label), name)
 def reel_html():
   if not VIDEOS: return ""
-  cards = "".join('<figure class="vcard" data-reveal style="--d:%.2fs"><button class="vopen" type="button" data-light="img/video/%s.mp4" aria-label="הגדלה">%s</button><figcaption>%s</figcaption></figure>' % (i*.08, n, video_tag(n, "clip", c), html.escape(c)) for i, (n, c) in enumerate(VIDEOS))
+  cards = "".join('<figure class="vcard" data-reveal style="--d:%.2fs"><button class="vopen" type="button" data-light="img/video/%s.mp4" aria-label="%s, הגדלה">%s</button><figcaption aria-hidden="true">%s</figcaption></figure>' % (i*.08, n, html.escape(c), video_tag(n, "clip", c), html.escape(c)) for i, (n, c) in enumerate(VIDEOS))
   return ('<section id="films" class="dark"><div class="wrap">'
     '<div class="head" data-reveal><div><p class="eyebrow">מהפרויקטים שלנו</p><h2>סרטים קצרים מבתים שעיצבנו יחד</h2>'
     '<p class="lede">כל סרט נולד מתמונה אמיתית של עבודה שלנו: האולם בטירת כרמל, חדרי רחצה, פרקטים וגינות של לקוחות.</p></div><a class="btn ghost" href="gallery.html">לכל העבודות</a></div>'
     '</div><div class="reel" tabindex="0" aria-label="סרטים קצרים, גלילה לצדדים">%s</div></section>') % cards
 def gallery_html(items, lazy=True, videos=()):
-  vids = "".join('<figure class="isvideo"><button class="vopen" type="button" data-light="img/video/%s.mp4" aria-label="הגדלה">%s<span class="badge">סרט</span></button><figcaption>%s</figcaption></figure>' % (n, video_tag(n, "", c), html.escape(c)) for n, c in videos)
-  return '<div class="gallery">' + vids + "".join('<figure><button class="vopen" type="button" data-light="img/gallery/%s" aria-label="הגדלה"><img src="img/gallery/%s" alt="%s"%s></button>%s</figure>' % (
-    f, f, html.escape(c or "עבודה של זיסו קרמיקה"), ' loading="lazy"' if lazy else "", ('<figcaption>%s</figcaption>' % html.escape(c)) if c else "") for f, c in items) + '</div>'
+  vids = "".join('<figure class="isvideo"><button class="vopen" type="button" data-light="img/video/%s.mp4" aria-label="סרט: %s, הגדלה">%s<span class="badge" aria-hidden="true">סרט</span></button><figcaption>%s</figcaption></figure>' % (n, html.escape(c), video_tag(n, "", c), html.escape(c)) for n, c in videos)
+  return '<div class="gallery">' + vids + "".join('<figure><button class="vopen" type="button" data-light="img/gallery/%s" aria-label="%s, הגדלה"><img src="img/gallery/%s" alt="%s"%s></button>%s</figure>' % (
+    f, html.escape(c or "עבודה של זיסו קרמיקה"), f, html.escape(c or "עבודה של זיסו קרמיקה"), ' loading="lazy"' if lazy else "", ('<figcaption>%s</figcaption>' % html.escape(c)) if c else "") for f, c in items) + '</div>'
 
 def crumbs_schema(name, slug):
   return {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
@@ -88,8 +88,9 @@ def header(active=""):
            ("about.html", "עלינו", "about"), ("contact.html", "צור קשר", "contact"), ("./#client", "אזור לקוחות", "")]
   if GALLERY: links.insert(1, ("gallery.html", "עבודות", "gallery"))
   nav = "".join('<a href="%s"%s>%s</a>' % (h, ' aria-current="page"' if k and k == active else "", t) for h, t, k in links)
-  return '''<header class="top"><div class="wrap">
-<a class="mark" href="./" aria-label="זיסו קרמיקה, לדף הבית"><b>ZISO</b><span>קרמיקה</span></a>
+  return '''<a class="skip" href="#main">דילוג לתוכן הראשי</a>
+<header class="top"><div class="wrap">
+<a class="mark" href="./" title="לדף הבית"><b>ZISO</b><span>קרמיקה</span></a>
 <nav class="nav" aria-label="ניווט ראשי">%s<a class="cta" href="./#visit">ביקור באולם</a></nav>
 </div></header>''' % nav
 
@@ -98,9 +99,23 @@ FOOTER = '''<footer><div class="wrap">
 <span>%s · <span class="ltr">ZISO CERAMICS LTD</span> · ח.פ. <span class="ltr">%s</span> · עוצמה 5, טירת כרמל</span>
 <span><span class="ltr">%s</span> · <span class="ltr">%s</span></span></div>
 <nav class="social" aria-label="מוצרים ורשתות">%s<a href="https://www.instagram.com/ziso_ceramics/" target="_blank" rel="noopener">Instagram</a><a href="https://www.facebook.com/zisoceramics" target="_blank" rel="noopener">Facebook</a></nav>
+<nav class="legal-links" aria-label="מידע משפטי"><a href="accessibility.html">הצהרת נגישות</a><a href="privacy.html">מדיניות פרטיות ועוגיות</a><a href="terms.html">תנאי שימוש</a><button type="button" class="linkbtn" data-cookie-settings>הגדרות עוגיות</button></nav>
 </div></footer>
+<aside class="floating" aria-label="כלים צפים">
+<button class="a11y-btn" type="button" aria-expanded="false" aria-controls="a11y" aria-label="תפריט נגישות"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="currentColor"><circle cx="12" cy="4" r="2"/><path d="M19 8.5c-2.3.5-4.6.8-7 .8s-4.7-.3-7-.8l-.4 1.9c1.7.4 3.4.6 5.1.7v2.2L7.4 21l1.8.6L12 15.8l2.8 5.8 1.8-.6-2.3-7.7v-2.2c1.7-.1 3.4-.3 5.1-.7L19 8.5z"/></svg></button>
+<div class="a11y" id="a11y" hidden role="dialog" aria-label="הגדרות נגישות">
+<div class="a11y-head"><strong>נגישות</strong><button class="x" type="button" aria-label="סגירת תפריט נגישות">×</button></div>
+<div class="a11y-grid">
+<button type="button" data-a11y="font-up">הגדלת טקסט</button><button type="button" data-a11y="font-down">הקטנת טקסט</button>
+<button type="button" data-a11y="contrast" aria-pressed="false">ניגודיות גבוהה</button><button type="button" data-a11y="links" aria-pressed="false">הדגשת קישורים</button>
+<button type="button" data-a11y="readable" aria-pressed="false">גופן קריא</button><button type="button" data-a11y="motion" aria-pressed="false">עצירת תנועה</button>
+<button type="button" data-a11y="reset" class="wide">איפוס</button>
+</div>
+<a href="accessibility.html">הצהרת הנגישות של האתר</a></div>
+</aside>
+<div class="cookie" id="cookie" hidden role="region" aria-label="הודעת עוגיות"><p>האתר משתמש בעוגיות של מדידה כדי להבין איך משתמשים בו ולשפר אותו. אפשר להסכים או לדחות; האתר עובד גם בלי. <a href="privacy.html">למדיניות הפרטיות</a></p><div class="actions"><button class="btn brass" type="button" data-consent="yes">מסכים/ה</button><button class="btn line" type="button" data-consent="no">לא תודה</button></div></div>
 <a class="wa" href="https://wa.me/%s" target="_blank" rel="noopener" aria-label="שליחת הודעה בוואטסאפ">וואטסאפ</a>
-<dialog class="light" id="light"><button class="x" type="button" aria-label="סגירה">×</button><div class="lightbody"></div></dialog>''' % (
+<dialog class="light" id="light" aria-label="תצוגה מוגדלת"><button class="x" type="button" aria-label="סגירה">×</button><div class="lightbody"></div></dialog>''' % (
   LEGAL, COMPANY_ID, PHONE, EMAIL, "".join('<a href="%s.html">%s</a>' % (c["slug"], c["name"]) for c in CATS[:4]), WA)
 
 def head(title, desc, canon, schemas):
@@ -112,11 +127,89 @@ def head(title, desc, canon, schemas):
 <meta property="og:title" content="{t}"><meta property="og:description" content="{d}"><meta property="og:url" content="{c}"><meta property="og:locale" content="he_IL"><meta property="og:image" content="https://www.zisoceramics.com/img/logo.jpg"><meta property="og:image:width" content="1440"><meta property="og:image:height" content="1440"><link rel="apple-touch-icon" href="img/logo.jpg">
 <meta name="theme-color" content="#25292c">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2325292c'/%3E%3Cpath d='M9 9h14L9 23h14' stroke='%2394733d' stroke-width='2.5' fill='none'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700&family=Bellefair&display=swap">
+<link rel="preload" href="fonts/assistant-400-hebrew.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="fonts/bellefair-400-hebrew.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="fonts.css">
 <link rel="stylesheet" href="styles.css">
 <script src="site.js" defer></script>
 {ld}'''.format(t=html.escape(title), d=html.escape(desc), c=canon, ld=ld)
+
+
+# Legal pages required or expected in Israel: accessibility statement (תקנות שוויון זכויות לאנשים עם מוגבלות, התאמות נגישות לשירות, תקן 5568 / WCAG 2.0 AA),
+# privacy policy incl. cookies (חוק הגנת הפרטיות ותיקון 13), terms of use. Written in content; edit here.
+A11Y_DATE = "7 באוקטובר 2026"
+LEGAL_PAGES = [
+  ("accessibility.html", "הצהרת נגישות", "הצהרת הנגישות של אתר זיסו קרמיקה: רמת הנגישות, ההתאמות שבוצעו, פרטי רכז הנגישות ודרכי פנייה.", "הצהרת נגישות",
+   "אנחנו רואים בנגישות חלק מהשירות, באולם ובאתר. העמוד מפרט מה נעשה באתר, איך משתמשים בכלי הנגישות ולמי פונים אם משהו לא עובד.", '''
+<h2>מחויבות לנגישות</h2>
+<p>זיסו קרמיקה בע"מ פועלת כדי שהאתר והשירות יהיו נגישים לאנשים עם מוגבלות, בהתאם לחוק שוויון זכויות לאנשים עם מוגבלות, התשנ"ח-1998, ולתקנות שוויון זכויות לאנשים עם מוגבלות (התאמות נגישות לשירות), התשע"ג-2013.</p>
+<h2>רמת הנגישות באתר</h2>
+<p>האתר נבנה כך שיעמוד בדרישות התקן הישראלי ת"י 5568 "קווים מנחים לנגישות תכנים באינטרנט" ברמה AA, המבוסס על הנחיות WCAG 2.0 של ארגון W3C, ונבדק גם מול הנחיות WCAG 2.1 ברמה AA. הבדיקה נעשתה בדפדפני Chrome, Safari ו-Firefox עדכניים, במחשב ובטלפון, ובכלי בדיקה אוטומטיים, ועודכנה לאחרונה ב-%s.</p>
+<h2>מה נעשה באתר</h2>
+<ul>
+<li>האתר כולו בעברית, בכיוון ימין לשמאל, עם מבנה כותרות הגיוני ואזורי ניווט מסומנים (ראשי, ניווט, תוכן, כותרת תחתונה). בראש כל עמוד קישור "דילוג לתוכן הראשי".</li>
+<li>ניווט מלא במקלדת: כל הקישורים, הכפתורים, המחשבון, הגלריה והחלונות הקופצים נגישים ב-Tab וב-Enter, עם סימון פוקוס ברור. חלון ההגדלה נסגר ב-Esc.</li>
+<li>ניגודיות צבעים של 4.5:1 לפחות לטקסט, גם במצב כהה של המכשיר. מצב "ניגודיות גבוהה" זמין בתפריט הנגישות.</li>
+<li>לכל התמונות טקסט חלופי; לסרטונים הקצרים (שאין בהם קול) כיתוב מתאר. הסרטונים מתנגנים בלי קול, ואפשר לעצור כל תנועה באתר בלחיצה אחת בכפתור "עצירת הסרט" או "עצירת תנועה". משתמשים שהגדירו במכשיר "הפחתת תנועה" מקבלים את האתר בלי אנימציות באופן אוטומטי.</li>
+<li>הטקסט ניתן להגדלה עד 200%% בלי אובדן תוכן, והאתר מותאם לכל רוחב מסך.</li>
+<li>שדות הטופס והמחשבון מסומנים בתוויות ברורות, ושגיאות מוצגות בטקסט.</li>
+<li>תפריט נגישות (הכפתור העגול בתחתית המסך) מאפשר: הגדלת והקטנת טקסט, ניגודיות גבוהה, הדגשת קישורים, גופן קריא ועצירת תנועה. ההעדפות נשמרות במכשיר שלכם בלבד.</li>
+</ul>
+<h2>מה עדיין לא מושלם</h2>
+<p>טופס "תיק לקוח" מוטמע מתוך מערכת Google, ואנחנו עובדים על בדיקת הנגישות המלאה שלו. אם נתקלתם בקושי במילוי הטופס, אפשר לשלוח את אותם פרטים בוואטסאפ או בטלפון ונפתח את התיק בשבילכם.</p>
+<h2>נגישות אולם התצוגה</h2>
+<p>אולם התצוגה נמצא ברחוב עוצמה 5, טירת כרמל. לפרטים על חניה, גישה וסידורי נגישות במקום, וכדי שנכין את הביקור מראש, מוזמנים לפנות לרכז הנגישות. פגישת הייעוץ באולם מתואמת מראש וניתנת בקצב ובאופן שנוחים לכם.</p>
+<h2>רכז נגישות ודרכי פנייה</h2>
+<p>רכז הנגישות של זיסו קרמיקה: <strong>אביב זיסו</strong>. טלפון וואטסאפ <a class="ltr" href="tel:%s">%s</a>, אימייל <a class="ltr" href="mailto:%s">%s</a>, כתובת למשלוח דואר: עוצמה 5, טירת כרמל.</p>
+<p>אם נתקלתם בבעיית נגישות באתר או בשירות, נשמח לדעת. נשתדל להשיב בתוך 7 ימי עסקים ולתקן בהקדם. אפשר לפנות גם לנציבות שוויון זכויות לאנשים עם מוגבלות במשרד המשפטים.</p>
+<p class="small">ההצהרה עודכנה לאחרונה ב-%s.</p>
+''' % (A11Y_DATE, PHONE_INTL, PHONE, EMAIL, EMAIL, A11Y_DATE)),
+
+  ("privacy.html", "מדיניות פרטיות ועוגיות", "איזה מידע אתר זיסו קרמיקה אוסף, למה, מי מקבל אותו, אילו עוגיות יש באתר ומה הזכויות שלכם לפי חוק הגנת הפרטיות.", "מדיניות פרטיות ועוגיות",
+   "בקצרה: האתר עצמו לא אוסף עליכם מידע אישי בלי שתמסרו אותו. כאן מפורט מה נשמר כשאתם פונים אלינו, ומה הזכויות שלכם.", '''
+<h2>מי אנחנו</h2>
+<p>בעלת האתר <span class="ltr">www.zisoceramics.com</span> היא זיסו קרמיקה בע"מ, ח.פ. <span class="ltr">%s</span>, עוצמה 5, טירת כרמל, טלפון <span class="ltr">%s</span>, אימייל <span class="ltr">%s</span> ("אנחנו"). המדיניות מנוסחת בלשון זכר מטעמי נוחות ופונה לכולם.</p>
+<h2>איזה מידע נאסף ולמה</h2>
+<ul>
+<li><b>גלישה באתר.</b> האתר סטטי ומאוחסן בשירות GitHub Pages. כמו בכל אתר, שרת האחסון מקבל את כתובת ה-IP וסוג הדפדפן לצורך אספקת העמודים ואבטחה; אנחנו לא מקבלים ולא שומרים נתונים אלה. הגופנים באתר מאוחסנים אצלנו, ולא נשלחת בקשה לשירותי גופנים חיצוניים.</li>
+<li><b>פנייה בוואטסאפ, בטלפון או במייל.</b> כשאתם פונים אלינו, אנחנו שומרים את הפרטים שמסרתם (שם, טלפון, תוכן הפנייה) כדי לענות, לתאם ביקור באולם ולהכין הצעת מחיר. השיחה בוואטסאפ כפופה גם למדיניות הפרטיות של WhatsApp (Meta).</li>
+<li><b>טופס "תיק לקוח".</b> הפרטים שאתם ממלאים (שם, טלפון, אימייל, פרטי הפרויקט, תמונות ותוכניות אם צירפתם) נשמרים במערכות Google Workspace שלנו ובמערכת ניהול הלקוחות שלנו, ומשמשים להכנת הפגישה, להצעת מחיר ולניהול ההזמנה. מסירת המידע תלויה ברצונכם; בלי שם וטלפון לא נוכל לחזור אליכם.</li>
+<li><b>אזור הלקוחות.</b> הכניסה נעשית עם מספר הטלפון ומספר הלקוח או ההזמנה, ומציגה רק את הנתונים של אותה הזמנה ממערכת הניהול שלנו. לא נשמר מידע נוסף מעבר לרישום הגישה.</li>
+<li><b>דיוור שיווקי.</b> לא נשלח אליכם הודעות פרסומת בלי הסכמה מפורשת, בהתאם לסעיף 30א לחוק התקשורת (בזק ושידורים). בכל הודעה כזו תהיה דרך פשוטה להסרה.</li>
+</ul>
+<h2>מי מקבל את המידע</h2>
+<p>המידע נשמר אצלנו ואצל ספקי השירות שמפעילים את המערכות שלנו: Google (Workspace, Drive), Meta (WhatsApp), ספקית תוכנת ניהול העסק, וחברת הסליקה כשמבצעים תשלום. חלק מספקים אלה שומרים מידע מחוץ לישראל, במדינות עם רמת הגנה מוכרת. אנחנו לא מוכרים ולא מעבירים מידע לצדדים שלישיים לצורכי שיווק. נמסור מידע אם נידרש לכך לפי דין או כדי לממש זכויות משפטיות.</p>
+<h2>כמה זמן שומרים</h2>
+<p>פניות שלא הבשילו לעסקה נשמרות עד שנתיים. מסמכי עסקה (הזמנות, חשבוניות, קבלות) נשמרים לפי חובות הדיווח והנהלת החשבונות (שבע שנים לפחות).</p>
+<h2>הזכויות שלכם</h2>
+<p>לפי חוק הגנת הפרטיות, התשמ"א-1981, יש לכם זכות לעיין במידע שנשמר עליכם, לבקש לתקן אותו או למחוק אותו, ולהתנגד לדיוור. פונים לכתובת <span class="ltr">%s</span> או בטלפון, ונטפל בבקשה בתוך 30 יום. אם לדעתכם זכותכם לפרטיות נפגעה, אפשר לפנות גם לרשות להגנת הפרטיות.</p>
+<h2>אבטחת מידע</h2>
+<p>האתר מוגש בחיבור מוצפן (HTTPS). המערכות שלנו מוגנות בסיסמאות ובאימות דו-שלבי, והגישה למידע ניתנת רק למי שצריך אותו לעבודתו. אין אבטחה מושלמת, ואנחנו משתדלים לפעול לפי הנהוג בתחום.</p>
+<h2>עוגיות ומדידה</h2>
+<p>האתר שומר בדפדפן שלכם רק הגדרות שבחרתם בעצמכם (למשל העדפות הנגישות ותשובתכם להודעת העוגיות), בשימוש ב-localStorage; הן לא נשלחות אלינו. כלי מדידה (Google Analytics / Google Tag Manager, פיקסל של Meta) יופעלו רק אחרי שתאשרו זאת בהודעה שתוצג בתחתית העמוד, ואפשר לשנות את הבחירה בכל רגע בלחיצה על "הגדרות עוגיות" בתחתית כל עמוד. בלי הסכמה לא מופעלת שום מדידה. ניתן גם לחסום עוגיות בהגדרות הדפדפן.</p>
+<h2>קישורים חיצוניים</h2>
+<p>האתר מקשר לשירותים כמו Waze, Google Maps, Instagram ו-Facebook. השימוש בהם כפוף למדיניות הפרטיות שלהם.</p>
+<h2>עדכונים</h2>
+<p>נעדכן את המדיניות כשיהיה צורך, ותאריך העדכון יופיע כאן. עודכן לאחרונה ב-%s.</p>
+''' % (COMPANY_ID, PHONE, EMAIL, EMAIL, A11Y_DATE)),
+
+  ("terms.html", "תנאי שימוש", "תנאי השימוש באתר זיסו קרמיקה: תוכן המידע, מחשבון הכמויות, זכויות יוצרים ודין חל.", "תנאי שימוש",
+   "האתר נועד להציג את האולם ואת המוצרים ולעזור לכם להתכונן לביקור. כמה דברים שכדאי לדעת.", '''
+<h2>כללי</h2>
+<p>האתר מופעל על ידי זיסו קרמיקה בע"מ (ח.פ. <span class="ltr">%s</span>). השימוש באתר מהווה הסכמה לתנאים אלה. התנאים מנוסחים בלשון זכר מטעמי נוחות ופונים לכולם.</p>
+<h2>מידע על מוצרים ומחירים</h2>
+<p>המידע באתר הוא מידע כללי לצורך התרשמות והכנה לביקור, ואינו הצעה מחייבת. המבחר, הזמינות, הגוונים והמחירים נקבעים באולם ובהצעת המחיר שתקבלו בכתב. גוון אריח על מסך עשוי להיות שונה מהמוצר האמיתי. עסקאות כפופות לחוק הגנת הצרכן, התשמ"א-1981, ולתנאי ההזמנה שייחתמו באולם.</p>
+<h2>מחשבון הכמויות</h2>
+<p>המחשבון נותן הערכה בלבד לפי המידות שהזנתם ואחוזי פחת מקובלים. הכמות הסופית נקבעת עם הרצף ולפי המידות בפועל, ואיננו אחראים להפרשים הנובעים משימוש במחשבון.</p>
+<h2>קניין רוחני</h2>
+<p>התמונות, הסרטונים, הטקסטים והעיצוב באתר שייכים לזיסו קרמיקה או לבעלי זכויות שאישרו את השימוש. תמונות של פרויקטים פורסמו בהסכמת הלקוחות. אין להעתיק או להשתמש בתכנים בלי אישור בכתב.</p>
+<h2>אחריות</h2>
+<p>אנחנו משתדלים שהמידע באתר יהיה מדויק ועדכני, אך ייתכנו טעויות. האתר ניתן כפי שהוא, ולא נישא באחריות לנזק עקיף שנגרם מהסתמכות על המידע באתר או מתקלה בזמינותו. אין באמור כדי לגרוע מזכויות שאינן ניתנות להתניה לפי דין.</p>
+<h2>פרטיות ונגישות</h2>
+<p>ראו את <a href="privacy.html">מדיניות הפרטיות והעוגיות</a> ואת <a href="accessibility.html">הצהרת הנגישות</a>.</p>
+<h2>דין וסמכות שיפוט</h2>
+<p>על תנאים אלה חל הדין הישראלי, וסמכות השיפוט נתונה לבתי המשפט המוסמכים במחוז חיפה. עודכן לאחרונה ב-%s.</p>
+''' % (COMPANY_ID, A11Y_DATE)),
+]
 
 GTM_ID = ""  # fill when Aviv opens the GTM account (GTM-XXXXXXX); until then tracking stays dormant
 
@@ -124,6 +217,8 @@ def write(name, title, desc, body, schemas, canon=None, body_attrs=""):
   canon = canon or SITE + ("" if name == "index.html" else name)
   h = head(title, desc, canon, schemas)
   noindex = '<meta name="robots" content="noindex">\n' if name in ("toda.html", "404.html") else ""
+  body = body.replace('<div class="wall', '<div role="region" aria-label="פתיח" class="wall', 1).replace('<main>', '<main id="main">', 1)
+  if '<main' not in body: body = body.replace('<footer>', '<main id="main"></main>\n<footer>', 1)
   full = '<!doctype html>\n<html lang="he" dir="rtl">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n<script>window.ZISO_GTM_ID=%s</script>\n%s%s</head>\n<body%s>\n%s\n</body>\n</html>\n' % (json.dumps(GTM_ID), noindex, h, body_attrs, body)
   open(os.path.join(DIST, name), "w").write(full)
   return h, body
@@ -181,7 +276,7 @@ def sidebar(name):
 def build():
   if os.path.exists(DIST): shutil.rmtree(DIST)
   os.makedirs(DIST)
-  shutil.copy(os.path.join(HERE, "styles.css"), DIST); shutil.copy(os.path.join(HERE, "site.js"), DIST); shutil.copytree(os.path.join(HERE, "img"), os.path.join(DIST, "img"))
+  shutil.copy(os.path.join(HERE, "styles.css"), DIST); shutil.copy(os.path.join(HERE, "site.js"), DIST); shutil.copy(os.path.join(HERE, "fonts.css"), DIST); shutil.copytree(os.path.join(HERE, "fonts"), os.path.join(DIST, "fonts")); shutil.copytree(os.path.join(HERE, "img"), os.path.join(DIST, "img"))
 
   # Home
   video = ('<video class="herovid" autoplay muted loop playsinline preload="auto" poster="img/video/hero.jpg" data-hero aria-hidden="true"><source src="%s" type="video/mp4"></video>' % HERO_CLIP) if HERO_CLIP else ''
@@ -197,7 +292,7 @@ def build():
 <div><dt>טלפון וואטסאפ</dt><dd class="ltr">{phone}</dd></div>
 <div><dt>שעות פתיחה</dt><dd>{hours}</dd></div></dl>
 </div>
-</div><div class="scrollcue" aria-hidden="true"></div></div>
+</div><div class="scrollcue" aria-hidden="true"></div><button class="pause" type="button" data-pause aria-pressed="false" hidden>עצירת הסרט</button></div>
 <div class="strip" aria-hidden="true"><div class="track">{strip}{strip}</div></div>
 <main>
 {reel}<section id="products"><div class="wrap">
@@ -365,7 +460,7 @@ def build():
 <h1>פתיחת תיק לפרויקט חדש</h1><p>כמה פרטים על הבית והפרויקט, ואנחנו מגיעים לפגישה באולם כשכבר הכנו בשבילכם הצעות. לוקח שתי דקות.</p></div></div></div>
 <main><section><div class="wrap">
 <iframe id="intake" data-src="{intake}" title="טופס תיק לקוח" style="width:100%;min-height:1400px;border:0;background:var(--surface)" loading="lazy" allow="camera"></iframe>
-<div id="intake-missing" class="panel" hidden><h3>הטופס נפתח בקרוב</h3><p>בינתיים אפשר לכתוב לנו בוואטסאפ ונפתח לכם תיק יחד.</p><a class="btn brass" href="https://wa.me/{wa}" target="_blank" rel="noopener">לוואטסאפ</a></div>
+<div id="intake-missing" class="panel" hidden><h2>הטופס נפתח בקרוב</h2><p>בינתיים אפשר לכתוב לנו בוואטסאפ ונפתח לכם תיק יחד.</p><a class="btn brass" href="https://wa.me/{wa}" target="_blank" rel="noopener">לוואטסאפ</a></div>
 </div></section></main>
 '''.format(intake=INTAKE_URL, wa=WA) + FOOTER
   write("tik-lakoach.html", "פתיחת תיק לקוח | זיסו קרמיקה", "ממלאים כמה פרטים על הפרויקט ומגיעים לאולם בטירת כרמל כשההצעות כבר מוכנות.", intake, [crumbs_schema("תיק לקוח", "tik-lakoach")])
@@ -387,7 +482,14 @@ def build():
 <p style="margin-top:32px"><a class="btn" href="%s">לפגישת ייעוץ ועיצוב חינם</a> <a class="btn ghost" href="https://www.instagram.com/ziso_ceramics/" target="_blank" rel="noopener">Instagram</a></p>
 </div></section></main>''' % WA_VISIT + FOOTER
     write("gallery.html", "עבודות אחרונות | זיסו קרמיקה", "תמונות של ריצוף, חיפוי ואמבטיות מלקוחות זיסו קרמיקה בטירת כרמל, חיפה והקריות.", gal, [crumbs_schema("עבודות", "gallery")])
-  urls = ["", "about.html", "contact.html", "calculator.html", "tik-lakoach.html"] + (["gallery.html"] if GALLERY else []) + [c["slug"] + ".html" for c in CATS]
+  for name, title, desc, h1, lede, body in LEGAL_PAGES:
+    write(name, title + " | זיסו קרמיקה", desc, header() + '''
+<div class="wall"><div class="wrap hero inner" style="grid-template-columns:1fr">
+<div><ol class="crumbs"><li><a href="./">זיסו קרמיקה</a></li><li aria-current="page">%s</li></ol>
+<h1>%s</h1><p>%s</p></div></div></div>
+<main id="main"><section><div class="wrap article"><article class="prose legal">%s</article>%s</div></section></main>
+''' % (title, h1, lede, body, sidebar("כל המוצרים")) + FOOTER, [crumbs_schema(title, name[:-5])])
+  urls = ["", "about.html", "contact.html", "calculator.html", "tik-lakoach.html", "accessibility.html", "privacy.html", "terms.html"] + (["gallery.html"] if GALLERY else []) + [c["slug"] + ".html" for c in CATS]
   open(os.path.join(DIST, "sitemap.xml"), "w").write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n%s</urlset>\n' %
     "".join("  <url><loc>%s%s</loc><lastmod>%s</lastmod></url>\n" % (SITE, u, TODAY) for u in urls))
   open(os.path.join(DIST, "robots.txt"), "w").write("User-agent: *\nAllow: /\nDisallow: /toda\nSitemap: %ssitemap.xml\n" % SITE)
