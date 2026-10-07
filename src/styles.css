@@ -79,7 +79,7 @@ section+section{border-top:1px solid var(--grout)}
 .tile.wide{grid-column:span 2}
 .tile.wide .sw{aspect-ratio:8/3}
 @media (max-width:900px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:520px){.tiles{grid-template-columns:1fr}.tile.wide{grid-column:auto}.tile.wide .sw{aspect-ratio:4/3}}
+@media (max-width:520px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.tile.wide{grid-column:span 2}.tile.wide .sw{aspect-ratio:2/1}.tile .tx{padding:12px 12px 14px;gap:4px}.tile h3{font-size:1.12rem}.tile p{font-size:.84rem;line-height:1.45}.tile a.more{font-size:.84rem}.sw small{font-size:.62rem;bottom:8px;inset-inline-start:8px;padding:2px 5px}}
 
 /* swatches: drawn surfaces until real photos arrive */
 .s-porcelain{background:
@@ -325,13 +325,14 @@ footer .legal{display:grid;gap:4px}
 }
 
 /* ===== films: short clips generated from the real project photos ===== */
-section.dark{background:var(--wall);color:var(--wall-ink);border-top:0;padding-block:72px 64px;overflow:hidden}
+section.dark{background:var(--wall);color:var(--wall-ink);border-top:0;padding-block:64px 40px;overflow:hidden}
+@media (max-width:760px){section.dark{padding-block:48px 28px}section.dark .head{margin-bottom:18px}}
 section.dark .lede{color:var(--wall-mute)}
 section.dark .eyebrow,.wall .eyebrow{color:#cfae74}
 section.dark .head{margin-bottom:28px}
-.reel{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px max(20px,calc((100vw - var(--max))/2 + 20px)) 18px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.reel{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px max(20px,calc((100vw - var(--max))/2 + 20px)) 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .reel::-webkit-scrollbar{display:none}
-.vcard{margin:0;flex:0 0 clamp(220px,24vw,300px);scroll-snap-align:start;position:relative}
+.vcard{margin:0;flex:0 0 clamp(200px,24vw,300px);scroll-snap-align:start;position:relative}
 .vcard .vopen,.gallery .vopen{display:block;width:100%;padding:0;border:0;background:#15181a;cursor:zoom-in;position:relative;overflow:hidden;color:inherit;font:inherit;text-align:inherit}
 .vcard .vopen{aspect-ratio:9/16;border:1px solid rgba(255,255,255,.08);box-shadow:0 24px 50px rgba(0,0,0,.45);transition:transform .5s cubic-bezier(.2,.8,.2,1),box-shadow .5s ease}
 .vcard:hover .vopen{transform:translateY(-6px);box-shadow:0 34px 60px rgba(0,0,0,.55)}

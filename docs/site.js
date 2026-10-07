@@ -80,7 +80,11 @@
     return part.replace(/(<em>[^<]*<\/em>|[^\s<>]+)/g,function(w){return '<span class="w"><span style="--i:'+(i++)+'">'+w+'</span></span>'})}).join('')}
   // reveal on scroll
   var io='IntersectionObserver' in window?new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{rootMargin:'0px 0px -10% 0px'}):null;
-  document.querySelectorAll('[data-reveal],.tiles,.steps,.family').forEach(function(el){if(io&&!reduce)io.observe(el);else el.classList.add('in')});
+  var revealEls=document.querySelectorAll('[data-reveal],.tiles,.steps,.family');
+  revealEls.forEach(function(el){if(io&&!reduce)io.observe(el);else el.classList.add('in')});
+  // safety net: nothing stays invisible if the observer is late or missing
+  function sweep(){var h=innerHeight;revealEls.forEach(function(el){if(el.classList.contains('in'))return;var r=el.getBoundingClientRect();if(r.top<h*1.05&&r.bottom>0)el.classList.add('in')})}
+  var st;addEventListener('scroll',function(){clearTimeout(st);st=setTimeout(sweep,80)},{passive:true});addEventListener('load',sweep);setTimeout(sweep,1200);
   document.querySelectorAll('.tiles .tile,.steps li').forEach(function(el,i){el.style.setProperty('--i',i%8)});
   // category slab tilt
   var slab=document.querySelector('.hero.inner .sw');
