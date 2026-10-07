@@ -47,9 +47,36 @@ def gallery_items():
   files = sorted([f for f in os.listdir(GALLERY_DIR) if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))], reverse=True) if os.path.isdir(GALLERY_DIR) else []
   return [(f, caps.get(f, "")) for f in files]
 GALLERY = gallery_items()
-def gallery_html(items, lazy=True):
-  return '<div class="gallery">' + "".join('<figure><img src="img/gallery/%s" alt="%s"%s>%s</figure>' % (
-    f, html.escape(c or "עבודה של זיסו קרמיקה"), ' loading="lazy"' if lazy else "", ('<figcaption>%s</figcaption>' % html.escape(c)) if c else "") for f, c in items) + '</div>'
+
+# Short films generated from the real project photos (fetched/compressed by .github/workflows/fetch-video.yml into src/img/video/).
+VIDEO_DIR = os.path.join(HERE, "img", "video")
+VIDEOS = [  # name (src/img/video/<name>.mp4 + .jpg poster), caption
+  ("showroom-shir", "באולם התצוגה בטירת כרמל: בוחרים חומרים עם שיר"),
+  ("travertine-copper", "חדר רחצה בחיפוי טרוורטין עם כיורי נחושת"),
+  ("parquet-fishbone", "פרקט פישבון מול הים, מושב הבונים"),
+  ("blue-vanity", "ארון אמבטיה כחול בייצור אישי, נוה ים"),
+  ("blue-tub", "אמבטיה עם אריחי מטרו בתכלת"),
+  ("black-tub", "ברזים שחורים וריצוף מעוטר"),
+  ("garden-path", "אריחים דקורטיביים בשביל הגינה"),
+]
+def has_video(name): return os.path.exists(os.path.join(VIDEO_DIR, name + ".mp4"))
+VIDEOS = [v for v in VIDEOS if has_video(v[0])]
+HERO_CLIP = "img/video/hero.mp4" if has_video("hero") else HERO_VIDEO
+CAT_VIDEOS = {"porcelain": "travertine-copper", "vanities": "blue-vanity", "faucets": "black-tub", "bricks": "blue-tub", "parquet": "parquet-fishbone"}
+def video_tag(name, cls="", label="", preload="none"):
+  """Muted looping clip with a poster; site.js plays it only while on screen (and never under reduced motion)."""
+  return '<video class="%s" muted loop playsinline preload="%s" poster="img/video/%s.jpg" data-auto aria-label="%s"><source src="img/video/%s.mp4" type="video/mp4"></video>' % (cls, preload, name, html.escape(label), name)
+def reel_html():
+  if not VIDEOS: return ""
+  cards = "".join('<figure class="vcard" data-reveal style="--d:%.2fs"><button class="vopen" type="button" data-light="img/video/%s.mp4" aria-label="הגדלה">%s</button><figcaption>%s</figcaption></figure>' % (i*.08, n, video_tag(n, "clip", c), html.escape(c)) for i, (n, c) in enumerate(VIDEOS))
+  return ('<section id="films" class="dark"><div class="wrap">'
+    '<div class="head" data-reveal><div><p class="eyebrow">מהפרויקטים שלנו</p><h2>סרטים קצרים מבתים שעיצבנו יחד</h2>'
+    '<p class="lede">כל סרט נולד מתמונה אמיתית של עבודה שלנו: האולם בטירת כרמל, חדרי רחצה, פרקטים וגינות של לקוחות.</p></div><a class="btn ghost" href="gallery.html">לכל העבודות</a></div>'
+    '</div><div class="reel" tabindex="0" aria-label="סרטים קצרים, גלילה לצדדים">%s</div></section>') % cards
+def gallery_html(items, lazy=True, videos=()):
+  vids = "".join('<figure class="isvideo"><button class="vopen" type="button" data-light="img/video/%s.mp4" aria-label="הגדלה">%s<span class="badge">סרט</span></button><figcaption>%s</figcaption></figure>' % (n, video_tag(n, "", c), html.escape(c)) for n, c in videos)
+  return '<div class="gallery">' + vids + "".join('<figure><button class="vopen" type="button" data-light="img/gallery/%s" aria-label="הגדלה"><img src="img/gallery/%s" alt="%s"%s></button>%s</figure>' % (
+    f, f, html.escape(c or "עבודה של זיסו קרמיקה"), ' loading="lazy"' if lazy else "", ('<figcaption>%s</figcaption>' % html.escape(c)) if c else "") for f, c in items) + '</div>'
 
 def crumbs_schema(name, slug):
   return {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
@@ -72,7 +99,8 @@ FOOTER = '''<footer><div class="wrap">
 <span><span class="ltr">%s</span> · <span class="ltr">%s</span></span></div>
 <nav class="social" aria-label="מוצרים ורשתות">%s<a href="https://www.instagram.com/ziso_ceramics/" target="_blank" rel="noopener">Instagram</a><a href="https://www.facebook.com/zisoceramics" target="_blank" rel="noopener">Facebook</a></nav>
 </div></footer>
-<a class="wa" href="https://wa.me/%s" target="_blank" rel="noopener" aria-label="שליחת הודעה בוואטסאפ">וואטסאפ</a>''' % (
+<a class="wa" href="https://wa.me/%s" target="_blank" rel="noopener" aria-label="שליחת הודעה בוואטסאפ">וואטסאפ</a>
+<dialog class="light" id="light"><button class="x" type="button" aria-label="סגירה">×</button><div class="lightbody"></div></dialog>''' % (
   LEGAL, COMPANY_ID, PHONE, EMAIL, "".join('<a href="%s.html">%s</a>' % (c["slug"], c["name"]) for c in CATS[:4]), WA)
 
 def head(title, desc, canon, schemas):
@@ -156,7 +184,7 @@ def build():
   shutil.copy(os.path.join(HERE, "styles.css"), DIST); shutil.copy(os.path.join(HERE, "site.js"), DIST); shutil.copytree(os.path.join(HERE, "img"), os.path.join(DIST, "img"))
 
   # Home
-  video = '<video class="herovid" autoplay muted loop playsinline poster="" src="%s"></video>' % HERO_VIDEO if HERO_VIDEO else ''
+  video = ('<video class="herovid" autoplay muted loop playsinline preload="auto" poster="img/video/hero.jpg" data-hero aria-hidden="true"><source src="%s" type="video/mp4"></video>' % HERO_CLIP) if HERO_CLIP else ''
   home = header() + '''
 <div class="wall live" id="top"><canvas class="tilewall" aria-hidden="true"></canvas>{video}<div class="wrap hero home live">
 <div>
@@ -172,7 +200,7 @@ def build():
 </div><div class="scrollcue" aria-hidden="true"></div></div>
 <div class="strip" aria-hidden="true"><div class="track">{strip}{strip}</div></div>
 <main>
-<section id="products"><div class="wrap">
+{reel}<section id="products"><div class="wrap">
 <div class="head" data-reveal><div><p class="eyebrow">באולם</p><h2>כל מה שהשיפוץ צריך, תחת קורת גג אחת</h2>
 <p class="lede">מהרצפה בסלון ועד הברז במקלחת. הרבה מהדגמים מוצגים באולם בגודל מלא, כדי שתראו איך אריח נראה על קיר אמיתי ולא רק בקטלוג.</p></div></div>
 {tiles}
@@ -225,7 +253,7 @@ def build():
 <a class="btn ghost" href="https://www.google.com/maps/search/?api=1&query={addr}" target="_blank" rel="noopener">Google Maps</a></div></div>
 </div></section>
 </main>
-'''.format(wa=WA_VISIT, phone=PHONE, phone_intl=PHONE_INTL, email=EMAIL, hours=HOURS_HTML, video=video, gallery=('<section id="works"><div class="wrap"><div class="head" data-reveal><div><p class="eyebrow">מהאולם ומהלקוחות</p><h2>עבודות אחרונות</h2></div><a class="btn ghost" href="gallery.html">לכל העבודות</a></div>' + gallery_html(GALLERY[:6]) + '</div></section>') if GALLERY else '', strip=''.join('<span>%s</span>' % c['name'] for c in CATS), tiles=tiles_html(),
+'''.format(wa=WA_VISIT, phone=PHONE, phone_intl=PHONE_INTL, email=EMAIL, hours=HOURS_HTML, video=video, reel=reel_html(), gallery=('<section id="works"><div class="wrap"><div class="head" data-reveal><div><p class="eyebrow">מהאולם ומהלקוחות</p><h2>עבודות אחרונות</h2></div><a class="btn ghost" href="gallery.html">לכל העבודות</a></div>' + gallery_html(GALLERY[:6]) + '</div></section>') if GALLERY else '', strip=''.join('<span>%s</span>' % c['name'] for c in CATS), tiles=tiles_html(),
            calc=CALC, portal=PORTAL, faq=faq_html(HOME_FAQ), areas="".join("<li>%s</li>" % a for a in AREAS), addr=ADDR_Q) + FOOTER
   h, b = write("index.html", "זיסו קרמיקה | ריצוף, גרניט פורצלן ואמבטיה בטירת כרמל ליד חיפה",
     "אולם תצוגה לגרניט פורצלן, כלים סניטריים, ארונות אמבטיה, מקלחונים לפי מידה, ברזים, בריקים ופרקט בטירת כרמל, דקות מחיפה והקריות. עסק משפחתי עם ליווי לאורך כל השיפוץ.",
@@ -249,6 +277,8 @@ def build():
     parts.append("<h2>שאלות נפוצות על %s</h2>" % c["name"]); parts.append(faq_html(c["faq"]))
     others = "".join('<li><a href="%s.html">%s</a></li>' % (o["slug"], o["name"]) for o in CATS if o is not c)
     sz = '<small>%s</small>' % c["sizes"] if c["sizes"] else ""
+    vname = CAT_VIDEOS.get(c["slug"])
+    cat_video = ('<div class="sw photo video" role="img" aria-label="%s">%s%s</div>' % (c["name"], video_tag(vname, "", c["name"], "metadata"), sz)) if vname and has_video(vname) else None
     body = header() + '''
 <div class="wall"><div class="wrap hero inner">
 <div><ol class="crumbs"><li><a href="./">זיסו קרמיקה</a></li><li aria-current="page">{name}</li></ol>
@@ -258,7 +288,7 @@ def build():
 </div></div>
 <main><section><div class="wrap article"><article class="prose">{parts}</article>{side}</div></section>
 <section><div class="wrap"><p class="eyebrow">עוד באולם</p><ul class="areas">{others}</ul></div></section></main>
-'''.format(name=c["name"], h1=c["h1"], lede=c["lede"], wa=WA_VISIT, visual=(
+'''.format(name=c["name"], h1=c["h1"], lede=c["lede"], wa=WA_VISIT, visual=cat_video or (
       '<div class="sw photo" role="img" aria-label="%s"><img src="img/gallery/%s" alt="" width="1200" height="900">%s</div>' % (c["name"], CAT_PHOTOS[c["slug"]], sz)
       if c["slug"] in CAT_PHOTOS and os.path.exists(os.path.join(GALLERY_DIR, CAT_PHOTOS[c["slug"]])) else '<div class="sw %s" role="img" aria-label="%s">%s</div>' % (c["sw"], c["name"], sz)), parts=ltr_sizes("\n".join(parts)), side=sidebar(c["name"]), others=others) + FOOTER
     write(c["slug"] + ".html", c["title"], c["desc"], body, [{"@context": "https://schema.org", "@type": "WebPage", "name": c["title"], "about": {"@id": SITE + "#business"}}, crumbs_schema(c["name"], c["slug"]), faq_schema(c["faq"])], body_attrs=' data-item="%s"' % c["name"])
@@ -284,10 +314,11 @@ def build():
 <p>ייתכן שהקישור ישן, מהאתר הקודם. הכל נמצא בדף הבית.</p><div class="actions"><a class="btn brass" href="/">לדף הבית</a></div></div></div></div>''' + FOOTER, [])
 
   # About + Contact pages (Meta verification wants them as separate pages)
+  about_video = ('<div class="sw photo video tall" role="img" aria-label="שיר באולם התצוגה">%s</div>' % video_tag("showroom-shir", "", "שיר באולם התצוגה", "metadata")) if has_video("showroom-shir") else ""
   about = header("about") + '''
-<div class="wall"><div class="wrap hero inner" style="grid-template-columns:1fr">
+<div class="wall"><div class="wrap hero inner about">
 <div><ol class="crumbs"><li><a href="./">זיסו קרמיקה</a></li><li aria-current="page">עלינו</li></ol>
-<h1>עסק משפחתי מטירת כרמל</h1><p>זיסו קרמיקה היא חנות ואולם תצוגה לריצוף, חיפוי ואמבטיה, שמנוהלת על ידי משפחת זיסו: משה, אילת, שיר ואביב. אילת ושיר הן מעצבות פנים מוסמכות, והפגישה איתן באולם בחינם.</p></div></div></div>
+<h1>עסק משפחתי מטירת כרמל</h1><p>זיסו קרמיקה היא חנות ואולם תצוגה לריצוף, חיפוי ואמבטיה, שמנוהלת על ידי משפחת זיסו: משה, אילת, שיר ואביב. אילת ושיר הן מעצבות פנים מוסמכות, והפגישה איתן באולם בחינם.</p></div>%s</div></div>
 <main><section><div class="wrap article"><article class="prose">
 <h2>מי אנחנו</h2>
 <p>עסק משפחתי שמנוהל על ידי משה ואילת מאז 1985, ארבעים שנה של ריצוף וחיפוי באזור הכרמל, עם מוניטין מבוסס (4.3 כוכבים בגוגל על 85 ביקורות). ליווינו משפחות רבות בתהליך השיפוץ, ואנחנו עובדים יחד באולם ברחוב עוצמה 5 בטירת כרמל, עם לקוחות, קבלנים ואדריכלים מחיפה, הקריות וכל אזור הכרמל: ריצוף, חיפוי, כלים סניטריים, ארונות אמבטיה, מקלחונים וברזים.</p>
@@ -302,7 +333,7 @@ def build():
 <tr><th>כתובת</th><td>עוצמה 5, טירת כרמל</td></tr><tr><th>טלפון</th><td class="ltr">%s</td></tr>
 <tr><th>אימייל</th><td class="ltr">%s</td></tr></tbody></table></div>
 </article>%s</div></section></main>
-''' % (LEGAL, COMPANY_ID, PHONE, EMAIL, sidebar("כל המוצרים")) + FOOTER
+''' % (about_video, LEGAL, COMPANY_ID, PHONE, EMAIL, sidebar("כל המוצרים")) + FOOTER
   write("about.html", "עלינו | זיסו קרמיקה, עסק משפחתי בטירת כרמל", "זיסו קרמיקה בע\"מ: אולם תצוגה משפחתי לריצוף, חיפוי ואמבטיה בעוצמה 5, טירת כרמל. מי אנחנו, איך עובדים איתנו ופרטי העסק.", about, [crumbs_schema("עלינו", "about"), {"@context": "https://schema.org", "@type": "AboutPage", "about": {"@id": SITE + "#business"}}])
 
   contact = header("contact") + '''
@@ -352,7 +383,7 @@ def build():
 <div class="wall"><div class="wrap hero inner" style="grid-template-columns:1fr">
 <div><ol class="crumbs"><li><a href="./">זיסו קרמיקה</a></li><li aria-current="page">עבודות</li></ol>
 <h1>עבודות אחרונות</h1><p>ריצוף, חיפוי ואמבטיות שנבחרו אצלנו באולם בטירת כרמל, אצל לקוחות מחיפה, הקריות והכרמל. עוד בעמוד האינסטגרם שלנו.</p></div></div></div>
-<main><section><div class="wrap">''' + gallery_html(GALLERY, lazy=True) + '''
+<main><section><div class="wrap">''' + gallery_html(GALLERY, lazy=True, videos=VIDEOS) + '''
 <p style="margin-top:32px"><a class="btn" href="%s">לפגישת ייעוץ ועיצוב חינם</a> <a class="btn ghost" href="https://www.instagram.com/ziso_ceramics/" target="_blank" rel="noopener">Instagram</a></p>
 </div></section></main>''' % WA_VISIT + FOOTER
     write("gallery.html", "עבודות אחרונות | זיסו קרמיקה", "תמונות של ריצוף, חיפוי ואמבטיות מלקוחות זיסו קרמיקה בטירת כרמל, חיפה והקריות.", gal, [crumbs_schema("עבודות", "gallery")])
