@@ -47,7 +47,7 @@
   var GTM_ID=window.ZISO_GTM_ID||''; // e.g. GTM-XXXXXXX, set in build.py
   window.dataLayer=window.dataLayer||[];
   function push(ev,extra){var o=Object.assign({event:ev},extra||{});window.dataLayer.push(o)}
-  if(GTM_ID){var s=document.createElement('script');s.async=true;s.src='https://www.googletagmanager.com/gtm.js?id='+GTM_ID;document.head.appendChild(s);push('gtm.js',{'gtm.start':Date.now()})}
+  // GTM itself is loaded by the consent block below, only after the visitor agrees.
   document.addEventListener('click',function(e){
     var a=e.target.closest&&e.target.closest('a[href]');if(!a)return;var h=a.getAttribute('href')||'';
     if(/wa\.me|api\.whatsapp\.com/.test(h))push('whatsapp_click',{link_url:h});
@@ -150,4 +150,45 @@
     reel.addEventListener('pointermove',function(e){if(!down)return;var dx=e.clientX-sx;if(Math.abs(dx)>4)moved=true;reel.scrollLeft=sl-dx});
     ['pointerup','pointerleave'].forEach(function(t){reel.addEventListener(t,function(){down=false})});
     reel.addEventListener('click',function(e){if(moved){e.stopPropagation();e.preventDefault()}},true)}
+})();
+
+// ===== accessibility menu, motion stop, consent-gated measurement =====
+(function(){
+  var root=document.documentElement,KEY='ziso_a11y';
+  var st={};try{st=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}}
+  var hero=document.querySelector('video[data-hero]'),clips=document.querySelectorAll('video[data-auto]');
+  function setMotion(on){root.classList.toggle('a11y-motion',!!on);
+    [hero].concat([].slice.call(clips)).forEach(function(v){if(!v)return;if(on){v.pause();v.dataset.stopped='1'}else{delete v.dataset.stopped;if(v===hero){var p=v.play();if(p&&p.catch)p.catch(function(){})}}});
+    var pb=document.querySelector('[data-pause]');if(pb)pb.setAttribute('aria-pressed',on?'true':'false')}
+  function apply(){
+    root.style.fontSize=st.font?(100+st.font*12.5)+'%':'';
+    root.classList.toggle('a11y-contrast',!!st.contrast);root.classList.toggle('a11y-links',!!st.links);root.classList.toggle('a11y-readable',!!st.readable);
+    setMotion(!!st.motion);
+    document.querySelectorAll('[data-a11y]').forEach(function(b){var k=b.getAttribute('data-a11y');if(b.hasAttribute('aria-pressed'))b.setAttribute('aria-pressed',st[k]?'true':'false')})}
+  apply();
+  // in-view autoplay must respect a stopped state
+  clips.forEach(function(v){v.addEventListener('play',function(){if(v.dataset.stopped)v.pause()})});
+  var btn=document.querySelector('.a11y-btn'),panel=document.getElementById('a11y');
+  if(btn&&panel){
+    function toggle(open){panel.hidden=!open;btn.setAttribute('aria-expanded',open?'true':'false');if(open)panel.querySelector('button[data-a11y]').focus();else btn.focus()}
+    btn.addEventListener('click',function(){toggle(panel.hidden)});
+    panel.querySelector('.x').addEventListener('click',function(){toggle(false)});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!panel.hidden)toggle(false)});
+    panel.addEventListener('click',function(e){var b=e.target.closest('[data-a11y]');if(!b)return;var k=b.getAttribute('data-a11y');
+      if(k==='font-up')st.font=Math.min(4,(st.font||0)+1);else if(k==='font-down')st.font=Math.max(-1,(st.font||0)-1);
+      else if(k==='reset')st={};else st[k]=!st[k];save();apply()})}
+  var pb=document.querySelector('[data-pause]');
+  if(pb&&hero){pb.hidden=false;pb.addEventListener('click',function(){st.motion=!st.motion;save();apply()})}
+  // consent: measurement tools load only after an explicit yes
+  var CK='ziso_consent',box=document.getElementById('cookie'),gtm=window.ZISO_GTM_ID||'';
+  function consent(){try{return localStorage.getItem(CK)}catch(e){return null}}
+  function loadGtm(){if(!gtm||window.__gtm)return;window.__gtm=1;window.dataLayer=window.dataLayer||[];window.dataLayer.push({'gtm.start':Date.now(),event:'gtm.js'});
+    var s=document.createElement('script');s.async=true;s.src='https://www.googletagmanager.com/gtm.js?id='+gtm;document.head.appendChild(s)}
+  if(box){
+    if(gtm&&!consent())box.hidden=false;
+    if(consent()==='yes')loadGtm();
+    box.addEventListener('click',function(e){var b=e.target.closest('[data-consent]');if(!b)return;var v=b.getAttribute('data-consent');try{localStorage.setItem(CK,v)}catch(err){}box.hidden=true;if(v==='yes')loadGtm()});
+    document.querySelectorAll('[data-cookie-settings]').forEach(function(b){b.addEventListener('click',function(){try{localStorage.removeItem(CK)}catch(e){}box.hidden=false;box.querySelector('button').focus()})});
+  }
 })();
