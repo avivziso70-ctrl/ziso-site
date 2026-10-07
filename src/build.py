@@ -35,7 +35,7 @@ def faq_schema(items):
     {"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": strip_tags(a)}} for q, a in items]}
 
 GALLERY_DIR = os.path.join(HERE, "img", "gallery")
-CAT_PHOTOS = {"porcelain": "2026-06-16-beige-bathroom.jpg", "sanitary": "2026-06-24-picket-tiles.jpg", "vanities": "2026-06-24-vanity-white.jpg",
+CAT_PHOTOS = {"porcelain": "2026-04-20-travertine-copper.jpg", "sanitary": "2026-06-24-picket-tiles.jpg", "vanities": "2026-09-01-blue-vanity-neve-yam.jpg",
               "showers": "2026-05-28-shower-graphite.jpg", "faucets": "2026-05-28-black-tub.jpg", "bricks": "2026-06-24-blue-tub.jpg", "parquet": "2026-07-15-parquet-fishbone.jpg"}
 def gallery_items():
   """Photos dropped in src/img/gallery/ (jpg/jpeg/png/webp), newest name first; captions from src/gallery.txt as 'file|caption'."""
