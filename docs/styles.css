@@ -208,6 +208,7 @@ footer .legal{display:grid;gap:4px}
 .article{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:56px;align-items:start}
 .prose h2{font-size:clamp(1.6rem,3.4vw,2.1rem);margin:44px 0 12px}
 .prose h2:first-child{margin-top:0}
+.prose h3{font-family:inherit;font-size:1.15rem;font-weight:600;margin:28px 0 8px}
 .prose p,.prose li{max-width:65ch;color:var(--graphite)}
 .prose ul{padding-inline-start:22px}
 .prose table{border-collapse:collapse;width:100%;font-size:.95rem;font-variant-numeric:tabular-nums}
