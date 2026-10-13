@@ -99,7 +99,7 @@ FOOTER = '''<footer><div class="wrap">
 <span>%s · <span class="ltr">ZISO CERAMICS LTD</span> · ח.פ. <span class="ltr">%s</span> · עוצמה 5, טירת כרמל</span>
 <span><span class="ltr">%s</span> · <span class="ltr">%s</span></span></div>
 <nav class="social" aria-label="מוצרים ורשתות">%s<a href="https://www.instagram.com/ziso_ceramics/" target="_blank" rel="noopener">Instagram</a><a href="https://www.facebook.com/zisoceramics" target="_blank" rel="noopener">Facebook</a></nav>
-<nav class="legal-links" aria-label="מידע משפטי"><a href="accessibility.html">הצהרת נגישות</a><a href="privacy.html">מדיניות פרטיות ועוגיות</a><a href="terms.html">תנאי שימוש</a><button type="button" class="linkbtn" data-cookie-settings>הגדרות עוגיות</button></nav>
+<nav class="legal-links" aria-label="מידע משפטי"><a href="accessibility.html">הצהרת נגישות</a><a href="privacy.html">מדיניות פרטיות ועוגיות</a><a href="terms.html">תנאי שימוש</a><a href="data-deletion.html">מחיקת מידע</a><button type="button" class="linkbtn" data-cookie-settings>הגדרות עוגיות</button></nav>
 </div></footer>
 <aside class="floating" aria-label="כלים צפים">
 <button class="a11y-btn" type="button" aria-expanded="false" aria-controls="a11y" aria-label="תפריט נגישות"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="currentColor"><circle cx="12" cy="4" r="2"/><path d="M19 8.5c-2.3.5-4.6.8-7 .8s-4.7-.3-7-.8l-.4 1.9c1.7.4 3.4.6 5.1.7v2.2L7.4 21l1.8.6L12 15.8l2.8 5.8 1.8-.6-2.3-7.7v-2.2c1.7-.1 3.4-.3 5.1-.7L19 8.5z"/></svg></button>
@@ -137,6 +137,7 @@ def head(title, desc, canon, schemas):
 # Legal pages required or expected in Israel: accessibility statement (תקנות שוויון זכויות לאנשים עם מוגבלות, התאמות נגישות לשירות, תקן 5568 / WCAG 2.0 AA),
 # privacy policy incl. cookies (חוק הגנת הפרטיות ותיקון 13), terms of use. Written in content; edit here.
 A11Y_DATE = "7 באוקטובר 2026"
+PRIVACY_DATE = "13 באוקטובר 2026"
 LEGAL_PAGES = [
   ("accessibility.html", "הצהרת נגישות", "הצהרת הנגישות של אתר זיסו קרמיקה: רמת הנגישות, ההתאמות שבוצעו, פרטי רכז הנגישות ודרכי פנייה.", "הצהרת נגישות",
    "אנחנו רואים בנגישות חלק מהשירות, באולם ובאתר. העמוד מפרט מה נעשה באתר, איך משתמשים בכלי הנגישות ולמי פונים אם משהו לא עובד.", '''
@@ -188,9 +189,48 @@ LEGAL_PAGES = [
 <p>האתר שומר בדפדפן שלכם רק הגדרות שבחרתם בעצמכם (למשל העדפות הנגישות ותשובתכם להודעת העוגיות), בשימוש ב-localStorage; הן לא נשלחות אלינו. כלי מדידה (Google Analytics / Google Tag Manager, פיקסל של Meta) יופעלו רק אחרי שתאשרו זאת בהודעה שתוצג בתחתית העמוד, ואפשר לשנות את הבחירה בכל רגע בלחיצה על "הגדרות עוגיות" בתחתית כל עמוד. בלי הסכמה לא מופעלת שום מדידה. ניתן גם לחסום עוגיות בהגדרות הדפדפן.</p>
 <h2>קישורים חיצוניים</h2>
 <p>האתר מקשר לשירותים כמו Waze, Google Maps, Instagram ו-Facebook. השימוש בהם כפוף למדיניות הפרטיות שלהם.</p>
+<h2>וואטסאפ עסקי</h2>
+<p>אנחנו מקבלים פניות גם דרך WhatsApp Business Platform של Meta. ההודעות שאתם שולחים למספר העסקי שלנו ותשובותינו, מספר הטלפון ושם הפרופיל שלכם, ופרטי ההזמנה שמסרתם, נשמרים בחשבונות העסקיים של זיסו קרמיקה (Google Workspace / Google Drive) ובמערכת ניהול העסק שלנו, עם גישה לצוות העסק בלבד. המידע משמש למענה, להצעות מחיר ולטיפול בהזמנות; איננו מוכרים אותו ואיננו משתמשים בו לפרסום. כלי בינה מלאכותית שפועלים עבורנו עשויים לסכם שיחות לצוות; המידע לא משמש לאימון מודלים של צד שלישי. למחיקת המידע ראו <a href="data-deletion.html">הוראות מחיקת מידע</a>.</p>
 <h2>עדכונים</h2>
 <p>נעדכן את המדיניות כשיהיה צורך, ותאריך העדכון יופיע כאן. עודכן לאחרונה ב-%s.</p>
-''' % (COMPANY_ID, PHONE, EMAIL, EMAIL, A11Y_DATE)),
+<section class="en" lang="en" dir="ltr">
+<h2>Privacy Policy (English summary, WhatsApp)</h2>
+<p>This section describes how ZISO CERAMICS LTD (company no. %s), Otzma 5, Tirat Carmel, Israel ("Ziso Ceramics", "we") handles information when customers contact us on WhatsApp and when we use our WhatsApp Business integration (Meta app "Ziso Ceramics"). Last updated: October 13, 2026.</p>
+<h3>What we collect</h3>
+<p>Messages you send to our WhatsApp business number and our replies, your phone number and WhatsApp profile name, and order details you share with us (for example product choices, quantities and delivery address).</p>
+<h3>Why we use it</h3>
+<p>To answer your questions, prepare quotes, process and track your orders, provide customer service, and improve our service internally. We do not use your data for advertising profiles and we do not sell it.</p>
+<h3>Where it is stored</h3>
+<p>Messages are received through the WhatsApp Business Platform (Meta) and stored in Ziso Ceramics' own business accounts (Google Workspace / Google Drive and our business software), accessible only to Ziso Ceramics staff. AI tools operated on our behalf may summarize conversations for staff; this data is not used to train third-party models.</p>
+<h3>Sharing</h3>
+<p>We share information only with service providers that run our systems for us (Meta/WhatsApp, Google, our hosting provider, our ERP), or when required by law.</p>
+<h3>Retention</h3>
+<p>We keep conversation records for as long as needed to serve you and to meet legal and accounting obligations, and then delete them.</p>
+<h3>Your rights and deletion</h3>
+<p>You may ask to see, correct or delete your information at any time. See our <a href="data-deletion.html">data deletion instructions</a> or write to <a href="mailto:%s">%s</a>, WhatsApp <a href="tel:%s">%s</a>.</p>
+</section>
+''' % (COMPANY_ID, PHONE, EMAIL, EMAIL, PRIVACY_DATE, COMPANY_ID, EMAIL, EMAIL, PHONE_INTL, PHONE_INTL)),
+
+  ("data-deletion.html", "מחיקת מידע", "איך מבקשים מזיסו קרמיקה למחוק את המידע שנשמר עליכם, כולל שיחות וואטסאפ. User data deletion instructions for Ziso Ceramics.", "מחיקת מידע",
+   "אפשר לבקש בכל עת שנמחק את המידע שנשמר עליכם. כך עושים זאת, בעברית ובאנגלית.", '''
+<h2>איך מבקשים מחיקה</h2>
+<ol>
+<li>שלחו "מחקו את המידע שלי" במייל ל-<a class="ltr" href="mailto:%s">%s</a> או בוואטסאפ ל-<a class="ltr" href="tel:%s">%s</a>.</li>
+<li>ציינו את מספר הטלפון שממנו פניתם אלינו.</li>
+<li>נמחק את הרשומות (שיחות וואטסאפ, מספר טלפון ושם) בתוך 30 יום ונאשר בתשובה. מסמכים שחובה לשמור לפי חוק (כמו חשבוניות) יישמרו רק לתקופה הנדרשת.</li>
+</ol>
+<p>זיסו קרמיקה בע"מ, ח.פ. <span class="ltr">%s</span>, עוצמה 5, טירת כרמל. עוד על המידע שאנחנו שומרים: <a href="privacy.html">מדיניות הפרטיות</a>.</p>
+<section class="en" lang="en" dir="ltr">
+<h2>User Data Deletion Instructions</h2>
+<p>To delete the information Ziso Ceramics holds about you (WhatsApp conversation records, phone number and name):</p>
+<ol>
+<li>Email <a href="mailto:%s">%s</a> with the subject "Delete my data", or send "Delete my data" to our WhatsApp <a href="tel:%s">%s</a>.</li>
+<li>Include the phone number you used to contact us.</li>
+<li>We will delete your records within 30 days and confirm by reply. Records we must keep by law (such as invoices) are kept only for the legally required period.</li>
+</ol>
+<p>ZISO CERAMICS LTD (company no. %s), Otzma 5, Tirat Carmel, Israel. See also our <a href="privacy.html">privacy policy</a>.</p>
+</section>
+''' % (EMAIL, EMAIL, PHONE_INTL, PHONE, COMPANY_ID, EMAIL, EMAIL, PHONE_INTL, PHONE_INTL, COMPANY_ID)),
 
   ("terms.html", "תנאי שימוש", "תנאי השימוש באתר זיסו קרמיקה: תוכן המידע, מחשבון הכמויות, זכויות יוצרים ודין חל.", "תנאי שימוש",
    "האתר נועד להציג את האולם ואת המוצרים ולעזור לכם להתכונן לביקור. כמה דברים שכדאי לדעת.", '''
@@ -489,7 +529,7 @@ def build():
 <h1>%s</h1><p>%s</p></div></div></div>
 <main id="main"><section><div class="wrap article"><article class="prose legal">%s</article>%s</div></section></main>
 ''' % (title, h1, lede, body, sidebar("כל המוצרים")) + FOOTER, [crumbs_schema(title, name[:-5])])
-  urls = ["", "about.html", "contact.html", "calculator.html", "tik-lakoach.html", "accessibility.html", "privacy.html", "terms.html"] + (["gallery.html"] if GALLERY else []) + [c["slug"] + ".html" for c in CATS]
+  urls = ["", "about.html", "contact.html", "calculator.html", "tik-lakoach.html", "accessibility.html", "privacy.html", "terms.html", "data-deletion.html"] + (["gallery.html"] if GALLERY else []) + [c["slug"] + ".html" for c in CATS]
   open(os.path.join(DIST, "sitemap.xml"), "w").write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n%s</urlset>\n' %
     "".join("  <url><loc>%s%s</loc><lastmod>%s</lastmod></url>\n" % (SITE, u, TODAY) for u in urls))
   open(os.path.join(DIST, "robots.txt"), "w").write("User-agent: *\nAllow: /\nDisallow: /toda\nSitemap: %ssitemap.xml\n" % SITE)
