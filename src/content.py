@@ -10,7 +10,7 @@ HERO_VIDEO = ""  # URL of a short muted showroom clip (mp4, <6MB) to play behind
 LEGAL = 'זיסו קרמיקה בע"מ'
 COMPANY_ID = "517079661"
 AREAS = ["טירת כרמל", "חיפה", "נשר", "הקריות", "עתלית", "חוף הכרמל", "זכרון יעקב", "יקנעם"]
-YOUTUBE = ""  # YouTube channel URL (e.g. https://www.youtube.com/@ziso_ceramics); empty = not shown
+YOUTUBE = "https://www.youtube.com/@zisoceramics"  # YouTube channel URL (e.g. https://www.youtube.com/@ziso_ceramics); empty = not shown
 TIKTOK = "https://www.tiktok.com/@ziso_ceramics"  # TikTok profile URL once the handle is renamed (e.g. https://www.tiktok.com/@ziso_ceramics); empty = not shown
 REVIEW_URL = "https://g.page/r/CewpRPPNS-JNEAE/review"  # Google "write a review" link (brand-growth/review-link.txt); empty = no review button
 
