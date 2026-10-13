@@ -23,7 +23,7 @@ BUSINESS = {
   "openingHoursSpecification": [{"@type": "OpeningHoursSpecification", "dayOfWeek": ["Sunday","Monday","Tuesday","Wednesday","Thursday"], "opens": "08:00", "closes": "18:00"}, {"@type": "OpeningHoursSpecification", "dayOfWeek": "Friday", "opens": "08:00", "closes": "13:30"}], "telephone": "+972-50-477-0040", "email": EMAIL,
   "address": {"@type": "PostalAddress", "streetAddress": "עוצמה 5", "addressLocality": "טירת כרמל", "postalCode": "3903005", "addressRegion": "חיפה", "addressCountry": "IL"},
   "areaServed": [{"@type": "City", "name": a} for a in AREAS],
-  "sameAs": ["https://www.instagram.com/ziso_ceramics/", "https://www.facebook.com/zisoceramics"] + ([TIKTOK] if TIKTOK else []),
+  "sameAs": ["https://www.instagram.com/ziso_ceramics/", "https://www.facebook.com/zisoceramics"] + ([TIKTOK] if TIKTOK else []) + ([YOUTUBE] if YOUTUBE else []),
   "makesOffer": {"@type": "Offer", "price": "0", "priceCurrency": "ILS", "itemOffered": {"@type": "Service", "name": "פגישת ייעוץ ועיצוב פנים באולם", "description": "פגישה חינם עם מעצבת פנים מוסמכת לבחירת ריצוף, חיפוי ואמבטיה"}},
   "employee": [{"@type": "Person", "name": "אילת זיסו", "jobTitle": "מעצבת פנים"}, {"@type": "Person", "name": "שיר זיסו", "jobTitle": "מעצבת פנים"}],
   "hasOfferCatalog": {"@type": "OfferCatalog", "name": "מוצרים באולם",
@@ -181,7 +181,7 @@ FOOTER = '''<footer><div class="wrap">
 <div class="legal"><strong style="color:var(--wall-ink)">זיסו קרמיקה</strong>
 <span>%s · <span class="ltr">ZISO CERAMICS LTD</span> · ח.פ. <span class="ltr">%s</span> · עוצמה 5, טירת כרמל</span>
 <span><span class="ltr">%s</span> · <span class="ltr">%s</span></span></div>
-<nav class="social" aria-label="מוצרים ורשתות">%s<a href="https://www.instagram.com/ziso_ceramics/" target="_blank" rel="noopener">Instagram</a><a href="https://www.facebook.com/zisoceramics" target="_blank" rel="noopener">Facebook</a>%s</nav>%s
+<nav class="social" aria-label="מוצרים ורשתות">%s<a href="https://www.instagram.com/ziso_ceramics/" target="_blank" rel="noopener">Instagram</a><a href="https://www.facebook.com/zisoceramics" target="_blank" rel="noopener">Facebook</a>%s%s</nav>%s
 <nav class="legal-links" aria-label="מידע משפטי"><a href="accessibility.html">הצהרת נגישות</a><a href="privacy.html">מדיניות פרטיות ועוגיות</a><a href="terms.html">תנאי שימוש</a><a href="data-deletion.html">מחיקת מידע</a><button type="button" class="linkbtn" data-cookie-settings>הגדרות עוגיות</button></nav>
 </div></footer>
 <aside class="floating" aria-label="כלים צפים">
@@ -201,6 +201,7 @@ FOOTER = '''<footer><div class="wrap">
 <dialog class="light" id="light" aria-label="תצוגה מוגדלת"><button class="x" type="button" aria-label="סגירה">×</button><div class="lightbody"></div></dialog>''' % (
   LEGAL, COMPANY_ID, PHONE, EMAIL, "".join('<a href="%s.html">%s</a>' % (c["slug"], c["name"]) for c in CATS[:4]),
   ('<a href="%s" target="_blank" rel="noopener">TikTok</a>' % TIKTOK) if TIKTOK else "",
+  ('<a href="%s" target="_blank" rel="noopener">YouTube</a>' % YOUTUBE) if YOUTUBE else "",
   (('\n<nav class="areas-nav" aria-label="אזורי שירות"><span>אזורי שירות:</span>%s</nav>' % "".join('<a href="%s.html">%s</a>' % (a["slug"], a["city"]) for a in AREA_PAGES)) if AREA_PAGES else "") +
   (('\n<nav class="areas-nav" aria-label="מדריכים"><span>מדריכים:</span>%s</nav>' % "".join('<a href="%s.html">%s</a>' % (g["slug"], g["short"]) for g in GUIDE_PAGES)) if GUIDE_PAGES else ""), WA)
 
@@ -589,7 +590,7 @@ def build():
 <div class="actions"><a class="btn brass" href="https://waze.com/ul?q={addr}&navigate=yes" target="_blank" rel="noopener">ניווט בוויז</a>
 <a class="btn ghost" href="https://www.google.com/maps/search/?api=1&query={addr}" target="_blank" rel="noopener">Google Maps</a></div></div>
 </div></section></main>
-'''.format(wa=WA, phone=PHONE, phone_intl=PHONE_INTL, email=EMAIL, hours=HOURS_HTML, legal=LEGAL, cid=COMPANY_ID, addr=ADDR_Q, tiktok=('<div><dt>טיקטוק</dt><dd><a href="%s" target="_blank" rel="noopener" class="ltr">%s</a></dd></div>' % (TIKTOK, TIKTOK.rstrip('/').rsplit('/', 1)[-1])) if TIKTOK else '') + FOOTER
+'''.format(wa=WA, phone=PHONE, phone_intl=PHONE_INTL, email=EMAIL, hours=HOURS_HTML, legal=LEGAL, cid=COMPANY_ID, addr=ADDR_Q, tiktok=('<div><dt>טיקטוק</dt><dd><a href="%s" target="_blank" rel="noopener" class="ltr">%s</a></dd></div>' % (TIKTOK, TIKTOK.rstrip('/').rsplit('/', 1)[-1])) if TIKTOK else '') + (('<div><dt>יוטיוב</dt><dd><a href="%s" target="_blank" rel="noopener" class="ltr">%s</a></dd></div>' % (YOUTUBE, YOUTUBE.rstrip('/').rsplit('/', 1)[-1])) if YOUTUBE else '') + FOOTER
   write("contact.html", "צור קשר | זיסו קרמיקה, עוצמה 5 טירת כרמל", "וואטסאפ וטלפון 050-4770040, אימייל info@zisoceramics.com, כתובת עוצמה 5 טירת כרמל. ניווט בוויז ושעות פתיחה.", contact, [crumbs_schema("צור קשר", "contact"), {"@context": "https://schema.org", "@type": "ContactPage", "about": {"@id": SITE + "#business"}}])
 
   # Intake form page (Apps Script iframe) + thank-you page
