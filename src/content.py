@@ -11,7 +11,7 @@ LEGAL = 'זיסו קרמיקה בע"מ'
 COMPANY_ID = "517079661"
 AREAS = ["טירת כרמל", "חיפה", "נשר", "הקריות", "עתלית", "חוף הכרמל", "זכרון יעקב", "יקנעם"]
 TIKTOK = ""  # TikTok profile URL once the handle is renamed (e.g. https://www.tiktok.com/@ziso_ceramics); empty = not shown
-REVIEW_URL = ""  # Google "write a review" link (brand-growth/review-link.txt); empty = no review button
+REVIEW_URL = "https://g.page/r/CewpRPPNS-JNEBM/review"  # Google "write a review" link (brand-growth/review-link.txt); empty = no review button
 
 CATS = [
   dict(slug="porcelain", name="גרניט פורצלן", sw="s-porcelain", sizes="60×120 · 120×120 · 80×160", wide=True,
