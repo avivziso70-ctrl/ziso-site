@@ -425,3 +425,20 @@ html.a11y-motion .scrollcue{display:none}
 .prose .en h2{margin-top:0}
 .prose .en h3{font-size:1.15rem;margin:26px 0 8px}
 .prose .en ol,.prose .en ul{padding-inline-start:22px}
+
+/* area + guide pages (content from src/pages/*.md), footer service-area nav, review ask */
+.areas-nav{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:14px;font-size:.9rem}
+.areas-nav span{color:var(--wall-mute)}
+.areas-nav a{color:var(--wall-ink);text-decoration:none;border-bottom:1px solid rgba(255,255,255,.18)}
+.areas-nav a:hover{border-color:var(--brass)}
+.drive{display:inline-block;margin-inline-start:6px;color:var(--brass);font-weight:600}
+.toc{background:var(--surface);border:1px solid var(--grout);padding:16px 20px;margin:0 0 28px}
+.toc p{margin:0 0 6px;font-weight:600;color:var(--stone);font-size:.85rem;letter-spacing:.06em}
+.toc ol{margin:0;padding-inline-start:20px;columns:2;column-gap:28px}
+.toc li{break-inside:avoid;margin:4px 0}
+.toc a{color:var(--graphite);text-decoration:none;border-bottom:1px solid var(--brass)}
+@media (max-width:600px){.toc ol{columns:1}}
+.prose .gallery{margin:20px 0 32px}
+.prose .actions{display:flex;flex-wrap:wrap;gap:10px;margin:24px 0}
+.panel.review{margin-top:36px;background:var(--surface);border:1px solid var(--grout);padding:24px}
+.panel.review h2{margin-top:0;font-size:1.4rem}

@@ -23,7 +23,7 @@ BUSINESS = {
   "openingHoursSpecification": [{"@type": "OpeningHoursSpecification", "dayOfWeek": ["Sunday","Monday","Tuesday","Wednesday","Thursday"], "opens": "08:00", "closes": "18:00"}, {"@type": "OpeningHoursSpecification", "dayOfWeek": "Friday", "opens": "08:00", "closes": "13:30"}], "telephone": "+972-50-477-0040", "email": EMAIL,
   "address": {"@type": "PostalAddress", "streetAddress": "עוצמה 5", "addressLocality": "טירת כרמל", "postalCode": "3903005", "addressRegion": "חיפה", "addressCountry": "IL"},
   "areaServed": [{"@type": "City", "name": a} for a in AREAS],
-  "sameAs": ["https://www.instagram.com/ziso_ceramics/", "https://www.facebook.com/zisoceramics"],
+  "sameAs": ["https://www.instagram.com/ziso_ceramics/", "https://www.facebook.com/zisoceramics"] + ([TIKTOK] if TIKTOK else []),
   "makesOffer": {"@type": "Offer", "price": "0", "priceCurrency": "ILS", "itemOffered": {"@type": "Service", "name": "פגישת ייעוץ ועיצוב פנים באולם", "description": "פגישה חינם עם מעצבת פנים מוסמכת לבחירת ריצוף, חיפוי ואמבטיה"}},
   "employee": [{"@type": "Person", "name": "אילת זיסו", "jobTitle": "מעצבת פנים"}, {"@type": "Person", "name": "שיר זיסו", "jobTitle": "מעצבת פנים"}],
   "hasOfferCatalog": {"@type": "OfferCatalog", "name": "מוצרים באולם",
@@ -94,11 +94,94 @@ def header(active=""):
 <nav class="nav" aria-label="ניווט ראשי">%s<a class="cta" href="./#visit">ביקור באולם</a></nav>
 </div></header>''' % nav
 
+# ---- Content pages written as markdown by the brand-growth thread (src/pages/areas/*.md, src/pages/guides/*.md).
+# Source of truth: /mnt/project-files/brand-growth/site-content/{areas,guides}/<slug>.md, copied here before a build.
+# Format: a front-matter block between two "---" lines (key: value), then markdown. Supported markdown: "## " h2,
+# "### " h3, "- " bullets, "1. " numbered, "> " note, blank-line paragraphs, **bold**, [text](url).
+# A "## שאלות נפוצות" section whose questions are "### " headings becomes an accordion plus FAQPage schema.
+PAGES_DIR = os.path.join(HERE, "pages")
+INLINE_RE = [(re.compile(r"\*\*(.+?)\*\*"), r"<b>\1</b>"), (re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)"), r'<a href="\2">\1</a>')]
+def md_inline(t):
+  t = html.escape(t, quote=False)
+  for rx, out in INLINE_RE: t = rx.sub(out, t)
+  return ltr_sizes(t)
+def slugify(t): return re.sub(r"[^\w֐-׿]+", "-", t).strip("-")[:60]
+def md_html(text):
+  """Markdown subset -> HTML. Returns (html, headings[(id, text)], faq[(q, a_html)])."""
+  out, heads, faq, in_faq, cur_q, cur_a = [], [], [], False, None, []
+  lst = None
+  def close_list():
+    nonlocal lst
+    if lst: out.append("</%s>" % lst); lst = None
+  def flush_q():
+    nonlocal cur_q, cur_a
+    if cur_q: faq.append((cur_q, " ".join(cur_a))); cur_q, cur_a = None, []
+  para = []
+  def flush_para():
+    nonlocal para
+    if para:
+      t = md_inline(" ".join(para))
+      if in_faq and cur_q: cur_a.append(t)
+      else: out.append("<p>%s</p>" % t)
+      para = []
+  for raw in text.splitlines():
+    line = raw.rstrip()
+    if line.startswith("## "):
+      flush_para(); close_list(); flush_q()
+      t = line[3:].strip(); hid = slugify(t); in_faq = t.replace("?", "").strip() in ("שאלות נפוצות", "שאלות ותשובות")
+      heads.append((hid, t)); out.append('<h2 id="%s">%s</h2>' % (hid, md_inline(t)))
+    elif line.startswith("### "):
+      flush_para(); close_list()
+      t = line[4:].strip()
+      if in_faq: flush_q(); cur_q = t
+      else: out.append("<h3>%s</h3>" % md_inline(t))
+    elif re.match(r"^(-|\*)\s+", line) or re.match(r"^\d+[.)]\s+", line):
+      flush_para()
+      kind = "ol" if line[0].isdigit() else "ul"
+      if lst != kind: close_list(); lst = kind; out.append("<%s>" % kind)
+      item = re.sub(r"^(-|\*|\d+[.)])\s+", "", line)
+      if in_faq and cur_q: cur_a.append(md_inline(item))
+      else: out.append("<li>%s</li>" % md_inline(item))
+    elif line.startswith("> "):
+      flush_para(); close_list(); out.append('<p class="note">%s</p>' % md_inline(line[2:]))
+    elif not line.strip():
+      flush_para(); close_list()
+    else:
+      para.append(line.strip())
+  flush_para(); close_list(); flush_q()
+  if in_faq and faq:  # drop the FAQ heading itself from the body; it is rendered as an accordion after the article
+    idx = max(i for i, h in enumerate(out) if h.startswith('<h2 id="%s"' % heads[-1][0]))
+    out = out[:idx]; heads = heads[:-1]
+  return "\n".join(out), heads, faq
+def load_pages(kind):
+  d = os.path.join(PAGES_DIR, kind)
+  if not os.path.isdir(d): return []
+  pages = []
+  for fn in sorted(os.listdir(d)):
+    if not fn.endswith(".md"): continue
+    raw = open(os.path.join(d, fn), encoding="utf-8").read()
+    m = re.match(r"^---\s*\n(.*?)\n---\s*\n(.*)$", raw, re.S)
+    if not m: raise SystemExit("pages/%s/%s: missing front matter" % (kind, fn))
+    meta = {}
+    for ln in m.group(1).splitlines():
+      if ":" in ln: k, v = ln.split(":", 1); meta[k.strip()] = v.strip()
+    body, heads, faq = md_html(m.group(2))
+    meta.update(slug=("area-" if kind == "areas" else "guide-") + fn[:-3], body=body, heads=heads, faq=faq)
+    meta.setdefault("short", meta.get("h1", meta.get("title", fn)))
+    meta["photos"] = [x.strip() for x in meta.get("photos", "").split(",") if x.strip()]
+    for k in ("title", "description", "h1", "lede"):
+      if k not in meta: raise SystemExit("pages/%s/%s: front matter needs %s" % (kind, fn, k))
+    if kind == "areas" and "city" not in meta: raise SystemExit("pages/areas/%s: front matter needs city" % fn)
+    pages.append(meta)
+  return pages
+AREA_PAGES = load_pages("areas")
+GUIDE_PAGES = load_pages("guides")
+
 FOOTER = '''<footer><div class="wrap">
 <div class="legal"><strong style="color:var(--wall-ink)">זיסו קרמיקה</strong>
 <span>%s · <span class="ltr">ZISO CERAMICS LTD</span> · ח.פ. <span class="ltr">%s</span> · עוצמה 5, טירת כרמל</span>
 <span><span class="ltr">%s</span> · <span class="ltr">%s</span></span></div>
-<nav class="social" aria-label="מוצרים ורשתות">%s<a href="https://www.instagram.com/ziso_ceramics/" target="_blank" rel="noopener">Instagram</a><a href="https://www.facebook.com/zisoceramics" target="_blank" rel="noopener">Facebook</a></nav>
+<nav class="social" aria-label="מוצרים ורשתות">%s<a href="https://www.instagram.com/ziso_ceramics/" target="_blank" rel="noopener">Instagram</a><a href="https://www.facebook.com/zisoceramics" target="_blank" rel="noopener">Facebook</a>%s</nav>%s
 <nav class="legal-links" aria-label="מידע משפטי"><a href="accessibility.html">הצהרת נגישות</a><a href="privacy.html">מדיניות פרטיות ועוגיות</a><a href="terms.html">תנאי שימוש</a><a href="data-deletion.html">מחיקת מידע</a><button type="button" class="linkbtn" data-cookie-settings>הגדרות עוגיות</button></nav>
 </div></footer>
 <aside class="floating" aria-label="כלים צפים">
@@ -116,7 +199,10 @@ FOOTER = '''<footer><div class="wrap">
 <div class="cookie" id="cookie" hidden role="region" aria-label="הודעת עוגיות"><p>האתר משתמש בעוגיות של מדידה כדי להבין איך משתמשים בו ולשפר אותו. אפשר להסכים או לדחות; האתר עובד גם בלי. <a href="privacy.html">למדיניות הפרטיות</a></p><div class="actions"><button class="btn brass" type="button" data-consent="yes">מסכים/ה</button><button class="btn line" type="button" data-consent="no">לא תודה</button></div></div>
 <a class="wa" href="https://wa.me/%s" target="_blank" rel="noopener" aria-label="שליחת הודעה בוואטסאפ">וואטסאפ</a>
 <dialog class="light" id="light" aria-label="תצוגה מוגדלת"><button class="x" type="button" aria-label="סגירה">×</button><div class="lightbody"></div></dialog>''' % (
-  LEGAL, COMPANY_ID, PHONE, EMAIL, "".join('<a href="%s.html">%s</a>' % (c["slug"], c["name"]) for c in CATS[:4]), WA)
+  LEGAL, COMPANY_ID, PHONE, EMAIL, "".join('<a href="%s.html">%s</a>' % (c["slug"], c["name"]) for c in CATS[:4]),
+  ('<a href="%s" target="_blank" rel="noopener">TikTok</a>' % TIKTOK) if TIKTOK else "",
+  (('\n<nav class="areas-nav" aria-label="אזורי שירות"><span>אזורי שירות:</span>%s</nav>' % "".join('<a href="%s.html">%s</a>' % (a["slug"], a["city"]) for a in AREA_PAGES)) if AREA_PAGES else "") +
+  (('\n<nav class="areas-nav" aria-label="מדריכים"><span>מדריכים:</span>%s</nav>' % "".join('<a href="%s.html">%s</a>' % (g["slug"], g["short"]) for g in GUIDE_PAGES)) if GUIDE_PAGES else ""), WA)
 
 def head(title, desc, canon, schemas):
   ld = "".join('<script type="application/ld+json">%s</script>\n' % json.dumps(s, ensure_ascii=False) for s in schemas)
@@ -306,6 +392,12 @@ CALC = '''<div class="calc">
   <p class="note">חישוב משוער. לפני הזמנה נעבור איתכם על הכמות לפי התוכנית, ומומלץ להשאיר קרטון אחד לתיקונים.</p>
 </div></div>'''
 
+def review_html(mode):
+  """'write us a Google review' ask; empty until REVIEW_URL (brand-growth/review-link.txt) is set."""
+  if not REVIEW_URL: return ""
+  if mode == "inline":
+    return '<p>אם נהניתם מהשירות, ביקורת קצרה בגוגל עוזרת לנו מאוד.</p><p><a class="btn line" href="%s" target="_blank" rel="noopener" data-campaign="review">כתבו לנו ביקורת בגוגל</a></p>' % REVIEW_URL
+  return '<div class="panel review"><h2>לקוחות ותיקים?</h2><p>ביקורת קצרה בגוגל, גם של משפט אחד, עוזרת למשפחה הבאה למצוא אותנו.</p><a class="btn brass" href="%s" target="_blank" rel="noopener" data-campaign="review">כתבו לנו ביקורת בגוגל</a></div>' % REVIEW_URL
 def sidebar(name):
   return '''<aside class="side">
 <div class="panel"><h3>פגישת ייעוץ ועיצוב, בחינם</h3><p>%s מוצגים באולם בטירת כרמל, ומעצבת פנים מוסמכת עוזרת לכם לבחור.</p>
@@ -474,7 +566,8 @@ def build():
 <tr><th>כתובת</th><td>עוצמה 5, טירת כרמל</td></tr><tr><th>טלפון</th><td class="ltr">%s</td></tr>
 <tr><th>אימייל</th><td class="ltr">%s</td></tr></tbody></table></div>
 </article>%s</div></section></main>
-''' % (about_video, LEGAL, COMPANY_ID, PHONE, EMAIL, sidebar("כל המוצרים")) + FOOTER
+''' % (about_video, LEGAL, COMPANY_ID, PHONE, EMAIL, sidebar("כל המוצרים"))
+  about = about.replace("</article>", review_html("panel") + "</article>", 1) + FOOTER
   write("about.html", "עלינו | זיסו קרמיקה, עסק משפחתי בטירת כרמל", "זיסו קרמיקה בע\"מ: אולם תצוגה משפחתי לריצוף, חיפוי ואמבטיה בעוצמה 5, טירת כרמל. מי אנחנו, איך עובדים איתנו ופרטי העסק.", about, [crumbs_schema("עלינו", "about"), {"@context": "https://schema.org", "@type": "AboutPage", "about": {"@id": SITE + "#business"}}])
 
   contact = header("contact") + '''
@@ -489,14 +582,14 @@ def build():
 <div><dt>כתובת</dt><dd>עוצמה 5, טירת כרמל</dd></div>
 <div><dt>שעות פתיחה</dt><dd>{hours}</dd></div>
 <div><dt>אינסטגרם</dt><dd><a href="https://www.instagram.com/ziso_ceramics/" target="_blank" rel="noopener" class="ltr">@ziso_ceramics</a></dd></div>
-<div><dt>פייסבוק</dt><dd><a href="https://www.facebook.com/zisoceramics" target="_blank" rel="noopener" class="ltr">zisoceramics</a></dd></div>
+<div><dt>פייסבוק</dt><dd><a href="https://www.facebook.com/zisoceramics" target="_blank" rel="noopener" class="ltr">zisoceramics</a></dd></div>{tiktok}
 </dl>
 <p class="lede">{legal} · ח.פ. <span class="ltr">{cid}</span></p></div>
 <div class="mapcard"><div><p class="eyebrow">ניווט</p><div class="addr">עוצמה 5<br>טירת כרמל</div></div>
 <div class="actions"><a class="btn brass" href="https://waze.com/ul?q={addr}&navigate=yes" target="_blank" rel="noopener">ניווט בוויז</a>
 <a class="btn ghost" href="https://www.google.com/maps/search/?api=1&query={addr}" target="_blank" rel="noopener">Google Maps</a></div></div>
 </div></section></main>
-'''.format(wa=WA, phone=PHONE, phone_intl=PHONE_INTL, email=EMAIL, hours=HOURS_HTML, legal=LEGAL, cid=COMPANY_ID, addr=ADDR_Q) + FOOTER
+'''.format(wa=WA, phone=PHONE, phone_intl=PHONE_INTL, email=EMAIL, hours=HOURS_HTML, legal=LEGAL, cid=COMPANY_ID, addr=ADDR_Q, tiktok=('<div><dt>טיקטוק</dt><dd><a href="%s" target="_blank" rel="noopener" class="ltr">%s</a></dd></div>' % (TIKTOK, TIKTOK.rstrip('/').rsplit('/', 1)[-1])) if TIKTOK else '') + FOOTER
   write("contact.html", "צור קשר | זיסו קרמיקה, עוצמה 5 טירת כרמל", "וואטסאפ וטלפון 050-4770040, אימייל info@zisoceramics.com, כתובת עוצמה 5 טירת כרמל. ניווט בוויז ושעות פתיחה.", contact, [crumbs_schema("צור קשר", "contact"), {"@context": "https://schema.org", "@type": "ContactPage", "about": {"@id": SITE + "#business"}}])
 
   # Intake form page (Apps Script iframe) + thank-you page
@@ -513,9 +606,10 @@ def build():
 
   toda = header() + '''
 <div class="wall"><div class="wrap hero inner" style="grid-template-columns:1fr">
-<div><h1>תודה, קיבלנו</h1><p>התיק שלכם אצלנו. נחזור אליכם בוואטסאפ או בטלפון לתיאום ביקור באולם.</p>
+<div><h1>תודה, קיבלנו</h1><p>התיק שלכם אצלנו. נחזור אליכם בוואטסאפ או בטלפון לתיאום ביקור באולם.</p>%s
 <div class="actions"><a class="btn brass" href="./">לדף הבית</a><a class="btn ghost" href="calculator.html">בינתיים: מחשבון כמויות</a></div></div></div></div>
 ''' + FOOTER
+  toda = toda.replace("</p>%s", "</p>" + review_html("inline"), 1)
   write("toda.html", "תודה | זיסו קרמיקה", "קיבלנו את הפרטים, נחזור אליכם לתיאום ביקור באולם.", toda, [], body_attrs=' data-lead="1"')
 
   # SEO files
@@ -528,6 +622,43 @@ def build():
 <p style="margin-top:32px"><a class="btn" href="%s">לפגישת ייעוץ ועיצוב חינם</a> <a class="btn ghost" href="https://www.instagram.com/ziso_ceramics/" target="_blank" rel="noopener">Instagram</a></p>
 </div></section></main>''' % WA_VISIT + FOOTER
     write("gallery.html", "עבודות אחרונות | זיסו קרמיקה", "תמונות של ריצוף, חיפוי ואמבטיות מלקוחות זיסו קרמיקה בטירת כרמל, חיפה והקריות.", gal, [crumbs_schema("עבודות", "gallery")])
+  # Google review ask (about page + thank-you page) once REVIEW_URL is set
+  for a in AREA_PAGES:
+    photos = [(f, c) for f, c in GALLERY if f in a["photos"]]
+    fig = ('<h2>עבודות שלנו באזור</h2>' + gallery_html(photos, lazy=True)) if photos else ""
+    drive = (' <span class="drive">%s</span>' % html.escape(a["drive"])) if a.get("drive") else ""
+    body = header() + '''
+<div class="wall"><div class="wrap hero inner" style="grid-template-columns:1fr">
+<div><ol class="crumbs"><li><a href="./">זיסו קרמיקה</a></li><li aria-current="page">%s</li></ol>
+<h1>%s</h1><p>%s%s</p></div></div></div>
+<main id="main"><section><div class="wrap article"><article class="prose">%s%s
+<h2 id="visit">איך מגיעים מ%s</h2>
+<p>אולם התצוגה: עוצמה 5, טירת כרמל (אזור התעשייה). %s</p>
+<p class="actions"><a class="btn brass" href="%s" target="_blank" rel="noopener">לפגישת ייעוץ ועיצוב חינם</a> <a class="btn line" href="https://waze.com/ul?q=%s&amp;navigate=yes" target="_blank" rel="noopener">ניווט בוויז</a> <a class="btn line" href="https://www.google.com/maps/search/?api=1&amp;query=%s" target="_blank" rel="noopener">Google Maps</a></p>
+%s</article>%s</div></section></main>
+''' % (a["city"], a["h1"], a["lede"], drive, a["body"], fig, a["city"], HOURS_HTML.replace("<br>", " · "), WA_VISIT, ADDR_Q, ADDR_Q,
+       ('<h2>שאלות נפוצות</h2>' + faq_html(a["faq"])) if a["faq"] else "", sidebar("כל המוצרים"))
+    biz = dict(BUSINESS); biz["areaServed"] = {"@type": "City", "name": a["city"]}; biz.pop("@id", None)
+    write(a["slug"] + ".html", a["title"], a["description"], body,
+          [{"@context": "https://schema.org", "@type": "WebPage", "name": a["title"], "about": {"@id": SITE + "#business"}}, biz, crumbs_schema(a["city"], a["slug"])] + ([faq_schema(a["faq"])] if a["faq"] else []))
+  for g in GUIDE_PAGES:
+    cat = next((c for c in CATS if c["slug"] == g.get("category")), None)
+    toc = ('<nav class="toc" aria-label="תוכן העניינים"><p>בעמוד הזה</p><ol>%s</ol></nav>' % "".join('<li><a href="#%s">%s</a></li>' % (i, html.escape(t)) for i, t in g["heads"])) if len(g["heads"]) >= 3 else ""
+    photos = [(f, c) for f, c in GALLERY if f in g["photos"]]
+    fig = gallery_html(photos, lazy=True) if photos else ""
+    camp = g.get("campaign", g["slug"])
+    cta = '<p class="actions"><a class="btn brass" href="%s" target="_blank" rel="noopener" data-campaign="%s">לפגישת ייעוץ ועיצוב חינם</a>%s</p>' % (
+      WA_VISIT, html.escape(camp), (' <a class="btn line" href="%s.html">ל%s באולם</a>' % (cat["slug"], cat["name"])) if cat else "")
+    body = header() + '''
+<div class="wall"><div class="wrap hero inner" style="grid-template-columns:1fr">
+<div><ol class="crumbs"><li><a href="./">זיסו קרמיקה</a></li><li aria-current="page">מדריך</li></ol>
+<h1>%s</h1><p>%s</p></div></div></div>
+<main id="main"><section><div class="wrap article"><article class="prose guide">%s%s%s%s%s</article>%s</div></section></main>
+''' % (g["h1"], g["lede"], toc, g["body"], fig, ('<h2>שאלות נפוצות</h2>' + faq_html(g["faq"])) if g["faq"] else "", cta, sidebar(cat["name"] if cat else "כל המוצרים"))
+    art = {"@context": "https://schema.org", "@type": "Article", "headline": g["h1"], "description": g["description"], "inLanguage": "he",
+           "author": {"@type": "Organization", "name": "זיסו קרמיקה", "url": SITE}, "publisher": {"@id": SITE + "#business"},
+           "mainEntityOfPage": SITE + g["slug"] + ".html", "datePublished": g.get("date", TODAY), "dateModified": g.get("updated", g.get("date", TODAY))}
+    write(g["slug"] + ".html", g["title"], g["description"], body, [art, crumbs_schema(g["h1"], g["slug"])] + ([faq_schema(g["faq"])] if g["faq"] else []))
   for name, title, desc, h1, lede, body in LEGAL_PAGES:
     write(name, title + " | זיסו קרמיקה", desc, header() + '''
 <div class="wall"><div class="wrap hero inner" style="grid-template-columns:1fr">
@@ -535,7 +666,7 @@ def build():
 <h1>%s</h1><p>%s</p></div></div></div>
 <main id="main"><section><div class="wrap article"><article class="prose legal">%s</article>%s</div></section></main>
 ''' % (title, h1, lede, body, sidebar("כל המוצרים")) + FOOTER, [crumbs_schema(title, name[:-5])])
-  urls = ["", "about.html", "contact.html", "calculator.html", "tik-lakoach.html", "accessibility.html", "privacy.html", "terms.html", "data-deletion.html"] + (["gallery.html"] if GALLERY else []) + [c["slug"] + ".html" for c in CATS]
+  urls = ["", "about.html", "contact.html", "calculator.html", "tik-lakoach.html", "accessibility.html", "privacy.html", "terms.html", "data-deletion.html"] + [a["slug"] + ".html" for a in AREA_PAGES] + [g["slug"] + ".html" for g in GUIDE_PAGES] + (["gallery.html"] if GALLERY else []) + [c["slug"] + ".html" for c in CATS]
   open(os.path.join(DIST, "sitemap.xml"), "w").write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n%s</urlset>\n' %
     "".join("  <url><loc>%s%s</loc><lastmod>%s</lastmod></url>\n" % (SITE, u, TODAY) for u in urls))
   open(os.path.join(DIST, "robots.txt"), "w").write("User-agent: *\nAllow: /\nDisallow: /toda\nSitemap: %ssitemap.xml\n" % SITE)
