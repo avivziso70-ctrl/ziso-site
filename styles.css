@@ -419,3 +419,9 @@ html.a11y-motion .scrollcue{display:none}
 [hidden]{display:none !important}
 .pause{inset-inline-end:auto;inset-inline-start:18px}
 @media (max-width:760px){.pause{bottom:auto;top:14px}}
+
+/* English block inside legal pages (WhatsApp / Meta review) */
+.prose .en{direction:ltr;text-align:left;margin-top:48px;padding-top:28px;border-top:1px solid var(--grout);font-family:var(--body)}
+.prose .en h2{margin-top:0}
+.prose .en h3{font-size:1.15rem;margin:26px 0 8px}
+.prose .en ol,.prose .en ul{padding-inline-start:22px}
