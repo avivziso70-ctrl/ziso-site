@@ -321,8 +321,8 @@ def build():
   # Files published verbatim, unlinked and outside the sitemap (sources of truth in /mnt/project-files):
   #   wa-connect.html     <- whatsapp/connect.html (WhatsApp Embedded Signup, noindex)
   #   social-connect.html <- whatsapp/social-connect.html (Instagram/Facebook comment auto-reply onboarding, noindex)
-  #   checklist.pdf       <- social-media/lead-magnets/checklist-7-decisions.pdf (lead magnet the auto-DM links to)
-  for f in ("wa-connect.html", "social-connect.html", "checklist.pdf"): shutil.copy(os.path.join(HERE, f), DIST)
+  #   checklist.pdf/.png  <- social-media/lead-magnets/checklist-7-decisions.pdf/.png (lead magnet the auto-DM links to, and its DM image)
+  for f in ("wa-connect.html", "social-connect.html", "checklist.pdf", "checklist.png"): shutil.copy(os.path.join(HERE, f), DIST)
 
   # Home
   video = ('<video class="herovid" autoplay muted loop playsinline preload="auto" poster="img/video/hero.jpg" data-hero aria-hidden="true"><source src="%s" type="video/mp4"></video>' % HERO_CLIP) if HERO_CLIP else ''
