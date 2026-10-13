@@ -338,7 +338,7 @@ LEGAL_PAGES = [
 ]
 
 GTM_ID = ""  # optional GTM container (GTM-XXXXXXX); GA4 below is loaded directly and does not need it
-GA_ID = ""  # GA4 measurement id (G-XXXXXXXXXX) of the "Ziso Ceramics" property; empty = tracking dormant, no cookie banner
+GA_ID = "G-M02XKGDM7H"  # GA4 measurement id (G-XXXXXXXXXX) of the "Ziso Ceramics" property; empty = tracking dormant, no cookie banner
 
 def write(name, title, desc, body, schemas, canon=None, body_attrs=""):
   canon = canon or SITE + ("" if name == "index.html" else name)
