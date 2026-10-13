@@ -56,7 +56,8 @@
   // GTM itself is loaded by the consent block below, only after the visitor agrees.
   document.addEventListener('click',function(e){
     var a=e.target.closest&&e.target.closest('a[href]');if(!a)return;var h=a.getAttribute('href')||'';
-    if(/wa\.me|api\.whatsapp\.com/.test(h))push('whatsapp_click',{link_url:h,link_text:(a.textContent||'').trim().slice(0,60)});
+    if(/wa\.me|api\.whatsapp\.com/.test(h))push('whatsapp_click',{link_url:h,link_text:(a.textContent||'').trim().slice(0,60),campaign:a.getAttribute('data-campaign')||''});
+    else if(a.getAttribute('data-campaign')==='review')push('review_click',{link_url:h});
     else if(/^tel:/.test(h))push('phone_click',{link_url:h});
     else if(/waze\.com|google\.com\/maps|maps\.app\.goo\.gl/.test(h))push('directions_click',{link_url:h});
   },true);
