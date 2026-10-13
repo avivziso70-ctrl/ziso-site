@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>חיבור אינסטגרם ופייסבוק | זיסו קרמיקה</title>
+<style>
+  :root { --bg:#f6f3ee; --ink:#1d1b18; --muted:#6b645a; --brass:#a8834a; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width:520px; margin:0 auto; padding:48px 16px; }
+  h1 { font-family: Georgia, "Times New Roman", serif; font-weight:400; font-size:28px; margin:0 0 12px; }
+  p { color:var(--muted); }
+  button { background:var(--ink); color:#fff; border:0; border-radius:6px; padding:14px 22px; font-size:16px; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:default; }
+  #status { margin-top:20px; white-space:pre-wrap; }
+  .ok { color:#2f6b3a; } .err { color:#9b2c2c; }
+</style>
+</head>
+<body>
+<main>
+  <h1>חיבור אינסטגרם ופייסבוק</h1>
+  <p>הדף הזה מחבר את עמוד הפייסבוק ואת חשבון האינסטגרם של זיסו קרמיקה למענה האוטומטי לתגובות. התחברו עם החשבון שמנהל את העמוד, ואשרו את העמוד ואת חשבון האינסטגרם כשתתבקשו.</p>
+  <button id="go" disabled>התחברות עם פייסבוק</button>
+  <div id="status"></div>
+</main>
+<script>
+  const APP_ID = '1742263687036823';
+  const CONFIG_ID = ''; // Facebook Login for Business configuration id, when set it replaces SCOPE
+  const SCOPE = 'pages_show_list,pages_read_engagement,pages_manage_metadata,pages_manage_engagement,pages_messaging,instagram_basic,instagram_manage_comments,instagram_manage_messages,business_management';
+  const ONBOARD = 'https://ppnjosyraosrdephsksu.supabase.co/functions/v1/social-onboard';
+  const btn = document.getElementById('go'), out = document.getElementById('status');
+  const say = (t, cls) => { out.textContent = t; out.className = cls || ''; };
+  window.fbAsyncInit = () => { FB.init({ appId: APP_ID, version: 'v23.0', xfbml: false }); btn.disabled = false; };
+  btn.onclick = () => {
+    const opts = CONFIG_ID ? { config_id: CONFIG_ID } : { scope: SCOPE, return_scopes: true };
+    FB.login(async (r) => {
+      if (!r.authResponse) return say('ההתחברות בוטלה.', 'err');
+      say('מחבר...');
+      try {
+        const res = await fetch(ONBOARD, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ access_token: r.authResponse.accessToken }) });
+        const j = await res.json();
+        if (j.ok) say('מחובר: ' + j.page + (j.instagram ? ' ואינסטגרם @' + j.instagram : ' (לא נמצא חשבון אינסטגרם מקושר)'), 'ok');
+        else say('שגיאה: ' + (j.error || res.status), 'err');
+      } catch (e) { say('שגיאה: ' + e.message, 'err'); }
+    }, opts);
+  };
+</script>
+<script async defer crossorigin="anonymous" src="https://connect.facebook.net/he_IL/sdk.js"></script>
+</body>
+</html>
