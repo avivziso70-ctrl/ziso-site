@@ -42,15 +42,21 @@
   f.addEventListener('input',run);f.addEventListener('submit',function(e){e.preventDefault();run()});run();
 })();
 
-// Tracking (dormant until IDs are filled): GTM container holds GA4 + Meta Pixel "Ziso Web".
+// Tracking (dormant until IDs are filled): GA4 via gtag.js, loaded by the consent block only after the visitor agrees.
+// Every event goes to dataLayer (for an optional GTM container) and, when GA4 is loaded, to gtag as a GA4 event.
 (function(){
   var GTM_ID=window.ZISO_GTM_ID||''; // e.g. GTM-XXXXXXX, set in build.py
   window.dataLayer=window.dataLayer||[];
-  function push(ev,extra){var o=Object.assign({event:ev},extra||{});window.dataLayer.push(o)}
+  function push(ev,extra){var o=Object.assign({event:ev},extra||{});window.dataLayer.push(o);if(window.__ga&&typeof window.gtag==='function')window.gtag('event',ev,extra||{})}
+  window.zisoTrack=push;
+  // Remember the campaign the visitor arrived with (utm_* from the social posts) for this tab, so GA4 still gets it
+  // when consent is given on a later page. Session storage only, nothing leaves the browser without consent.
+  try{var q=new URLSearchParams(location.search),c={};['source','medium','campaign','content','term','id'].forEach(function(k){var v=q.get('utm_'+k);if(v)c[k]=v});
+    if(Object.keys(c).length){c.landing=location.pathname;c.ref=document.referrer||'';sessionStorage.setItem('ziso_utm',JSON.stringify(c))}}catch(e){}
   // GTM itself is loaded by the consent block below, only after the visitor agrees.
   document.addEventListener('click',function(e){
     var a=e.target.closest&&e.target.closest('a[href]');if(!a)return;var h=a.getAttribute('href')||'';
-    if(/wa\.me|api\.whatsapp\.com/.test(h))push('whatsapp_click',{link_url:h});
+    if(/wa\.me|api\.whatsapp\.com/.test(h))push('whatsapp_click',{link_url:h,link_text:(a.textContent||'').trim().slice(0,60)});
     else if(/^tel:/.test(h))push('phone_click',{link_url:h});
     else if(/waze\.com|google\.com\/maps|maps\.app\.goo\.gl/.test(h))push('directions_click',{link_url:h});
   },true);
@@ -185,14 +191,24 @@
   var pb=document.querySelector('[data-pause]');
   if(pb&&hero){pb.hidden=false;pb.addEventListener('click',function(){st.motion=!st.motion;save();apply()})}
   // consent: measurement tools load only after an explicit yes
-  var CK='ziso_consent',box=document.getElementById('cookie'),gtm=window.ZISO_GTM_ID||'';
+  var CK='ziso_consent',box=document.getElementById('cookie'),gtm=window.ZISO_GTM_ID||'',ga=window.ZISO_GA_ID||'';
   function consent(){try{return localStorage.getItem(CK)}catch(e){return null}}
   function loadGtm(){if(!gtm||window.__gtm)return;window.__gtm=1;window.dataLayer=window.dataLayer||[];window.dataLayer.push({'gtm.start':Date.now(),event:'gtm.js'});
     var s=document.createElement('script');s.async=true;s.src='https://www.googletagmanager.com/gtm.js?id='+gtm;document.head.appendChild(s)}
+  // GA4 (gtag.js) with Consent Mode v2: nothing is loaded until the visitor agrees; once loaded, analytics storage is granted.
+  function loadGa(){if(!ga||window.__ga)return;window.__ga=1;window.dataLayer=window.dataLayer||[];
+    window.gtag=window.gtag||function(){window.dataLayer.push(arguments)};
+    gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'granted'});
+    gtag('js',new Date());
+    var cfg={anonymize_ip:true};
+    try{var u=JSON.parse(sessionStorage.getItem('ziso_utm')||'null');if(u){if(u.source)cfg.campaign_source=u.source;if(u.medium)cfg.campaign_medium=u.medium;if(u.campaign)cfg.campaign_name=u.campaign;if(u.content)cfg.campaign_content=u.content;if(u.term)cfg.campaign_term=u.term;if(u.id)cfg.campaign_id=u.id}}catch(e){}
+    gtag('config',ga,cfg);
+    var s=document.createElement('script');s.async=true;s.src='https://www.googletagmanager.com/gtag/js?id='+ga;document.head.appendChild(s)}
+  function loadAll(){loadGa();loadGtm()}
   if(box){
-    if(gtm&&!consent())box.hidden=false;
-    if(consent()==='yes')loadGtm();
-    box.addEventListener('click',function(e){var b=e.target.closest('[data-consent]');if(!b)return;var v=b.getAttribute('data-consent');try{localStorage.setItem(CK,v)}catch(err){}box.hidden=true;if(v==='yes')loadGtm()});
+    if((ga||gtm)&&!consent())box.hidden=false;
+    if(consent()==='yes')loadAll();
+    box.addEventListener('click',function(e){var b=e.target.closest('[data-consent]');if(!b)return;var v=b.getAttribute('data-consent');try{localStorage.setItem(CK,v)}catch(err){}box.hidden=true;if(v==='yes')loadAll()});
     document.querySelectorAll('[data-cookie-settings]').forEach(function(b){b.addEventListener('click',function(){try{localStorage.removeItem(CK)}catch(e){}box.hidden=false;box.querySelector('button').focus()})});
   }
 })();
