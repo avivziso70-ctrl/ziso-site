@@ -317,6 +317,7 @@ def build():
   if os.path.exists(DIST): shutil.rmtree(DIST)
   os.makedirs(DIST)
   shutil.copy(os.path.join(HERE, "styles.css"), DIST); shutil.copy(os.path.join(HERE, "site.js"), DIST); shutil.copy(os.path.join(HERE, "fonts.css"), DIST); shutil.copytree(os.path.join(HERE, "fonts"), os.path.join(DIST, "fonts")); shutil.copytree(os.path.join(HERE, "img"), os.path.join(DIST, "img"))
+  shutil.copy(os.path.join(HERE, "wa-connect.html"), DIST)  # WhatsApp Embedded Signup page, published verbatim (noindex, unlinked, not in the sitemap); source of truth: /mnt/project-files/whatsapp/connect.html
 
   # Home
   video = ('<video class="herovid" autoplay muted loop playsinline preload="auto" poster="img/video/hero.jpg" data-hero aria-hidden="true"><source src="%s" type="video/mp4"></video>' % HERO_CLIP) if HERO_CLIP else ''
