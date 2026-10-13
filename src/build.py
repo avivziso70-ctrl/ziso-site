@@ -632,11 +632,11 @@ def build():
 <div><ol class="crumbs"><li><a href="./">זיסו קרמיקה</a></li><li aria-current="page">%s</li></ol>
 <h1>%s</h1><p>%s%s</p></div></div></div>
 <main id="main"><section><div class="wrap article"><article class="prose">%s%s
-<h2 id="visit">איך מגיעים מ%s</h2>
+<h2 id="visit">%s</h2>
 <p>אולם התצוגה: עוצמה 5, טירת כרמל (אזור התעשייה). %s</p>
 <p class="actions"><a class="btn brass" href="%s" target="_blank" rel="noopener">לפגישת ייעוץ ועיצוב חינם</a> <a class="btn line" href="https://waze.com/ul?q=%s&amp;navigate=yes" target="_blank" rel="noopener">ניווט בוויז</a> <a class="btn line" href="https://www.google.com/maps/search/?api=1&amp;query=%s" target="_blank" rel="noopener">Google Maps</a></p>
 %s</article>%s</div></section></main>
-''' % (a["city"], a["h1"], a["lede"], drive, a["body"], fig, a["city"], HOURS_HTML.replace("<br>", " · "), WA_VISIT, ADDR_Q, ADDR_Q,
+''' % (a["city"], a["h1"], a["lede"], drive, a["body"], fig, ("איך מגיעים אלינו" if a["city"] == "טירת כרמל" else "איך מגיעים מ" + a["city"]), HOURS_HTML.replace("<br>", " · "), WA_VISIT, ADDR_Q, ADDR_Q,
        ('<h2>שאלות נפוצות</h2>' + faq_html(a["faq"])) if a["faq"] else "", sidebar("כל המוצרים"))
     biz = dict(BUSINESS); biz["areaServed"] = {"@type": "City", "name": a["city"]}; biz.pop("@id", None)
     write(a["slug"] + ".html", a["title"], a["description"], body,
