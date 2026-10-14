@@ -4,6 +4,9 @@ PHONE = "050-4770040"
 PHONE_INTL = "+972504770040"
 WA = "972504770040"
 EMAIL = "info@zisoceramics.com"
+# Order-tracking portal is hidden from the site until the ERP integration is solid (Aviv, 14.10.2026).
+# Set PORTAL_ON = True to bring back the nav link, the home panel, the FAQ answer and the privacy clause.
+PORTAL_ON = False
 PORTAL = "https://script.google.com/macros/s/AKfycbymgAcl8G130iqF7HCzGWalwu9RM0AWPv11FQQazA2SLMTTFHC6KO6BIIhevgcwA5zI/exec"
 INTAKE_URL = ""  # Apps Script /exec of "Ziso CRM Intake" (thread תיק לקוח); empty = form page shows WhatsApp fallback
 HERO_VIDEO = ""  # URL of a short muted showroom clip (mp4, <6MB) to play behind the hero; empty = live tile wall only
@@ -119,5 +122,7 @@ HOME_FAQ = [
   ("פגישת הייעוץ באמת בחינם?", "כן. אילת ושיר, מעצבות פנים מוסמכות, יושבות איתכם באולם על התוכנית ועוזרות לבחור, בלי עלות ובלי התחייבות. כדאי לתאם מראש בוואטסאפ."),
   ("אפשר להגיע עם אדריכל או קבלן?", "בהחלט. הרבה מהלקוחות שלנו מגיעים עם המעצב או הרצף, ואנחנו עובדים איתם ישירות על הכמויות והמידות."),
   ("כמה אריחים צריך להזמין?", "מחשבים את השטח ומוסיפים 10% עד 15% פחת. <a href=\"calculator.html\">מחשבון הכמויות</a> עושה את זה בשבילכם, כולל מספר קרטונים."),
-  ("איך עוקבים אחרי הזמנה?", "באזור הלקוחות באתר נכנסים עם מספר הנייד ומספר ההזמנה, ורואים את סטטוס כל פריט, יתרה לתשלום וחשבוניות."),
+
 ]
+PORTAL_FAQ = ("איך עוקבים אחרי הזמנה?", "באזור הלקוחות באתר נכנסים עם מספר הנייד ומספר ההזמנה, ורואים את סטטוס כל פריט, יתרה לתשלום וחשבוניות.")
+if PORTAL_ON: HOME_FAQ.append(PORTAL_FAQ)

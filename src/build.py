@@ -83,9 +83,35 @@ def crumbs_schema(name, slug):
     {"@type": "ListItem", "position": 1, "name": "זיסו קרמיקה", "item": SITE},
     {"@type": "ListItem", "position": 2, "name": name, "item": SITE + slug + ".html"}]}
 
+# Order-tracking portal is hidden while PORTAL_ON is False (content.py); the new-project panel stays.
+STEP4 = ('<li><h3>עוקבים עד המסירה</h3><p>באזור הלקוחות רואים בכל רגע מה הוזמן, מה מוכן ומה כבר סופק.</p></li>' if PORTAL_ON else
+         '<li><h3>מלווים עד המסירה</h3><p>מעדכנים אתכם בוואטסאפ על מועדי האספקה, ומתאמים איתכם את המסירה.</p></li>')
+ABOUT_AFTER = ('מעקב הזמנה באזור הלקוחות באתר, ושירות גם אחרי הקנייה: קרטון נוסף, החלפה או עצה.' if PORTAL_ON else
+               'עדכונים בוואטסאפ על מועדי האספקה, ושירות גם אחרי הקנייה: קרטון נוסף, החלפה או עצה.')
+def client_section():
+  newp = """<div class="panel"><h3>פתיחת תיק לפרויקט חדש</h3><p>מתכננים שיפוץ? ממלאים כמה פרטים על הבית והפרויקט, ומגיעים לאולם כשאנחנו כבר מוכנים בשבילכם.</p>
+<ul><li>סוג הפרויקט ושלב העבודה</li><li>אילו חדרים ומה מעניין אתכם</li><li>אפשר לצרף תוכניות ותמונות</li></ul>
+<a class="btn line" href="tik-lakoach.html">למילוי הטופס</a></div>"""
+  if not PORTAL_ON:
+    return """<section id="client"><div class="wrap">
+<div class="head" data-reveal><div><p class="eyebrow">תיק לקוח</p><h2>מתכננים שיפוץ? נתחיל מוכנים</h2></div></div>
+<div class="client one" data-reveal>
+%s
+</div></div></section>
+""" % newp
+  return """<section id="client"><div class="wrap">
+<div class="head" data-reveal><div><p class="eyebrow">אזור לקוחות</p><h2>כבר קניתם אצלנו? הכל כאן</h2></div></div>
+<div class="client" data-reveal>
+<div class="panel"><h3>מעקב הזמנה</h3><p>נכנסים עם מספר הנייד ומספר ההזמנה, ורואים:</p>
+<ul><li>סטטוס כל פריט בהזמנה</li><li>יתרה לתשלום</li><li>חשבוניות וקבלות</li></ul>
+<a class="btn ink" href="%s" target="_blank" rel="noopener">כניסה לאזור האישי</a></div>
+%s
+</div></div></section>
+""" % (PORTAL, newp)
+
 def header(active=""):
   links = [("./#products", "מוצרים", "products"), ("calculator.html", "מחשבון כמויות", "calculator"), ("tik-lakoach.html", "תיק לקוח", "tik"),
-           ("about.html", "עלינו", "about"), ("contact.html", "צור קשר", "contact"), ("./#client", "אזור לקוחות", "")]
+           ("about.html", "עלינו", "about"), ("contact.html", "צור קשר", "contact")] + ([("./#client", "אזור לקוחות", "")] if PORTAL_ON else [])
   if GALLERY: links.insert(1, ("gallery.html", "עבודות", "gallery"))
   nav = "".join('<a href="%s"%s>%s</a>' % (h, ' aria-current="page"' if k and k == active else "", t) for h, t, k in links)
   return '''<a class="skip" href="#main">דילוג לתוכן הראשי</a>
@@ -445,7 +471,7 @@ def build():
 <li><h3>מגיעים לאולם</h3><p>מביאים תוכנית או תמונות של החדר. אפשר גם עם האדריכל או הקבלן.</p></li>
 <li><h3>פגישת עיצוב חינם</h3><p>אילת ושיר, מעצבות פנים מוסמכות, מתאימות איתכם אריחים, כלים וברזים לסגנון ולתקציב, ומחשבות כמויות.</p></li>
 <li><h3>מקבלים הצעה מסודרת</h3><p>הצעת מחיר אחת לכל הפרויקט, עם מועדי אספקה לכל פריט.</p></li>
-<li><h3>עוקבים עד המסירה</h3><p>באזור הלקוחות רואים בכל רגע מה הוזמן, מה מוכן ומה כבר סופק.</p></li>
+{step4}
 </ol></div></section>
 <section id="calculator"><div class="wrap">
 <div class="head" data-reveal><div><p class="eyebrow">מחשבון כמויות</p><h2>כמה אריחים צריך להזמין?</h2>
@@ -460,17 +486,7 @@ def build():
 <div class="names"><span>משה</span><span>אילת</span><span>שיר</span><span>אביב</span></div></div>
 <div class="portraits" aria-label="משפחת זיסו"><figure><img src="img/family-1.jpg" alt="משה זיסו" loading="lazy" width="693" height="653"><figcaption>משה זיסו</figcaption></figure><figure><img src="img/family-2.jpg" alt="אילת זיסו" loading="lazy" width="312" height="369"><figcaption>אילת זיסו<small>מעצבת פנים</small></figcaption></figure><figure><img src="img/family-3.jpg" alt="שיר זיסו" loading="lazy" width="720" height="720"><figcaption>שיר זיסו<small>מעצבת פנים</small></figcaption></figure><figure><img src="img/family-4.jpg" alt="אביב זיסו" loading="lazy" width="609" height="533"><figcaption>אביב זיסו</figcaption></figure></div>
 </div></section>
-{gallery}<section id="client"><div class="wrap">
-<div class="head" data-reveal><div><p class="eyebrow">אזור לקוחות</p><h2>כבר קניתם אצלנו? הכל כאן</h2></div></div>
-<div class="client" data-reveal>
-<div class="panel"><h3>מעקב הזמנה</h3><p>נכנסים עם מספר הנייד ומספר ההזמנה, ורואים:</p>
-<ul><li>סטטוס כל פריט בהזמנה</li><li>יתרה לתשלום</li><li>חשבוניות וקבלות</li></ul>
-<a class="btn ink" href="{portal}" target="_blank" rel="noopener">כניסה לאזור האישי</a></div>
-<div class="panel"><h3>פתיחת תיק לפרויקט חדש</h3><p>מתכננים שיפוץ? ממלאים כמה פרטים על הבית והפרויקט, ומגיעים לאולם כשאנחנו כבר מוכנים בשבילכם.</p>
-<ul><li>סוג הפרויקט ושלב העבודה</li><li>אילו חדרים ומה מעניין אתכם</li><li>אפשר לצרף תוכניות ותמונות</li></ul>
-<a class="btn line" href="tik-lakoach.html">למילוי הטופס</a></div>
-</div></div></section>
-<section id="faq"><div class="wrap">
+{gallery}{client}<section id="faq"><div class="wrap">
 <div class="head" data-reveal><div><p class="eyebrow">שאלות נפוצות</p><h2>מה שואלים אותנו הכי הרבה</h2></div></div>
 {faq}
 </div></section>
@@ -488,7 +504,7 @@ def build():
 </div></section>
 </main>
 '''.format(wa=WA_VISIT, phone=PHONE, phone_intl=PHONE_INTL, email=EMAIL, hours=HOURS_HTML, video=video, reel=reel_html(), gallery=('<section id="works"><div class="wrap"><div class="head" data-reveal><div><p class="eyebrow">מהאולם ומהלקוחות</p><h2>עבודות אחרונות</h2></div><a class="btn ghost" href="gallery.html">לכל העבודות</a></div>' + gallery_html(GALLERY[:6]) + '</div></section>') if GALLERY else '', strip=''.join('<span>%s</span>' % c['name'] for c in CATS), tiles=tiles_html(),
-           calc=CALC, portal=PORTAL, faq=faq_html(HOME_FAQ), areas="".join("<li>%s</li>" % a for a in AREAS), addr=ADDR_Q) + FOOTER
+           calc=CALC, step4=STEP4, client=client_section(), faq=faq_html(HOME_FAQ), areas="".join("<li>%s</li>" % a for a in AREAS), addr=ADDR_Q) + FOOTER
   h, b = write("index.html", "זיסו קרמיקה | ריצוף, גרניט פורצלן ואמבטיה בטירת כרמל ליד חיפה",
     "אולם תצוגה לגרניט פורצלן, כלים סניטריים, ארונות אמבטיה, מקלחונים לפי מידה, ברזים, בריקים ופרקט בטירת כרמל, דקות מחיפה והקריות. עסק משפחתי עם ליווי לאורך כל השיפוץ.",
     home, [BUSINESS, faq_schema(HOME_FAQ)])
@@ -561,14 +577,14 @@ def build():
 <h2>ייעוץ ועיצוב בחינם</h2>
 <p>אילת זיסו ושיר זיסו הן מעצבות פנים עם דיפלומה. בפגישה באולם הן עוברות איתכם על התוכנית או על תמונות החדר, מתאימות ריצוף, חיפוי, כלים וברזים לסגנון ולתקציב, ומחשבות את הכמויות. הפגישה והייעוץ בחינם, בלי התחייבות.</p>
 <h2>איך אנחנו עובדים</h2>
-<ul><li>בוחרים באולם, על לוחות בגודל מלא ולא רק בקטלוג.</li><li>הצעת מחיר אחת לכל הפרויקט, עם מועד אספקה לכל פריט.</li><li>מעקב הזמנה באזור הלקוחות באתר, ושירות גם אחרי הקנייה: קרטון נוסף, החלפה או עצה.</li></ul>
+<ul><li>בוחרים באולם, על לוחות בגודל מלא ולא רק בקטלוג.</li><li>הצעת מחיר אחת לכל הפרויקט, עם מועד אספקה לכל פריט.</li><li>%s</li></ul>
 <h2>פרטי העסק</h2>
 <div class="tbl"><table><tbody>
 <tr><th>שם העסק</th><td>%s</td></tr><tr><th>ח.פ.</th><td class="ltr">%s</td></tr>
 <tr><th>כתובת</th><td>עוצמה 5, טירת כרמל</td></tr><tr><th>טלפון</th><td class="ltr">%s</td></tr>
 <tr><th>אימייל</th><td class="ltr">%s</td></tr></tbody></table></div>
 </article>%s</div></section></main>
-''' % (about_video, LEGAL, COMPANY_ID, PHONE, EMAIL, sidebar("כל המוצרים"))
+''' % (about_video, ABOUT_AFTER, LEGAL, COMPANY_ID, PHONE, EMAIL, sidebar("כל המוצרים"))
   about = about.replace("</article>", review_html("panel") + "</article>", 1) + FOOTER
   write("about.html", "עלינו | זיסו קרמיקה, עסק משפחתי בטירת כרמל", "זיסו קרמיקה בע\"מ: אולם תצוגה משפחתי לריצוף, חיפוי ואמבטיה בעוצמה 5, טירת כרמל. מי אנחנו, איך עובדים איתנו ופרטי העסק.", about, [crumbs_schema("עלינו", "about"), {"@context": "https://schema.org", "@type": "AboutPage", "about": {"@id": SITE + "#business"}}])
 
@@ -663,6 +679,7 @@ def build():
            "mainEntityOfPage": SITE + g["slug"] + ".html", **({"abstract": re.sub(r"[*\[\]]", "", g["answer"])} if g.get("answer") else {}), "datePublished": g.get("date", TODAY), "dateModified": g.get("updated", g.get("date", TODAY))}
     write(g["slug"] + ".html", g["title"], g["description"], body, [art, crumbs_schema(g["h1"], g["slug"])] + ([faq_schema(g["faq"])] if g["faq"] else []))
   for name, title, desc, h1, lede, body in LEGAL_PAGES:
+    if not PORTAL_ON: body = re.sub(r'<li><b>אזור הלקוחות\.</b>.*?</li>\n?', '', body)
     write(name, title + " | זיסו קרמיקה", desc, header() + '''
 <div class="wall"><div class="wrap hero inner" style="grid-template-columns:1fr">
 <div><ol class="crumbs"><li><a href="./">זיסו קרמיקה</a></li><li aria-current="page">%s</li></ol>
