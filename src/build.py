@@ -367,8 +367,9 @@ LEGAL_PAGES = [
 GTM_ID = ""  # optional GTM container (GTM-XXXXXXX); GA4 below is loaded directly and does not need it
 # Google Ads (paid-ads thread): AW-XXXXXXXXX plus one "AW-ID/label" per site event. Empty = dormant, nothing is loaded.
 # Loaded with the same cookie consent as GA4. Primary conversions: whatsapp_click, phone_click, generate_lead; secondary: directions_click.
-GADS_ID = ""
-GADS_LABELS = {"whatsapp_click": "", "phone_click": "", "generate_lead": "", "directions_click": ""}
+GADS_ID = "AW-399978850"
+GADS_LABELS = {"whatsapp_click": "AW-399978850/7QD4CJSiypwdEOLi3L4B", "phone_click": "AW-399978850/CY6cCJeiypwdEOLi3L4B",
+               "generate_lead": "AW-399978850/7QCDCP65wJwdEOLi3L4B", "directions_click": ""}  # empty label = no conversion sent
 GA_ID = "G-M02XKGDM7H"  # GA4 measurement id (G-XXXXXXXXXX) of the "Ziso Ceramics" property; empty = tracking dormant, no cookie banner
 
 def gads_js():
