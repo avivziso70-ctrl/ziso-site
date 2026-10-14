@@ -42,12 +42,16 @@
   f.addEventListener('input',run);f.addEventListener('submit',function(e){e.preventDefault();run()});run();
 })();
 
-// Tracking (dormant until IDs are filled): GA4 via gtag.js, loaded by the consent block only after the visitor agrees.
+// Tracking: GA4 via gtag.js, loaded by the consent block only after the visitor agrees; earlier events are queued (see push).
 // Every event goes to dataLayer (for an optional GTM container) and, when GA4 is loaded, to gtag as a GA4 event.
 (function(){
   var GTM_ID=window.ZISO_GTM_ID||''; // e.g. GTM-XXXXXXX, set in build.py
   window.dataLayer=window.dataLayer||[];
-  function push(ev,extra){var o=Object.assign({event:ev},extra||{});window.dataLayer.push(o);if(window.__ga&&typeof window.gtag==='function')window.gtag('event',ev,extra||{})}
+  // Events that fire before GA4 is loaded (page-load events, or a click before the visitor agreed to cookies) wait in
+  // __gaQ and are sent by loadGa() right after config, so none is lost when consent arrives later on the same page.
+  window.__gaQ=window.__gaQ||[];
+  function push(ev,extra){var o=Object.assign({event:ev},extra||{});window.dataLayer.push(o);
+    if(window.__ga&&typeof window.gtag==='function')window.gtag('event',ev,extra||{});else window.__gaQ.push([ev,extra||{}])}
   window.zisoTrack=push;
   // Remember the campaign the visitor arrived with (utm_* from the social posts) for this tab, so GA4 still gets it
   // when consent is given on a later page. Session storage only, nothing leaves the browser without consent.
@@ -204,6 +208,7 @@
     var cfg={anonymize_ip:true};
     try{var u=JSON.parse(sessionStorage.getItem('ziso_utm')||'null');if(u){if(u.source)cfg.campaign_source=u.source;if(u.medium)cfg.campaign_medium=u.medium;if(u.campaign)cfg.campaign_name=u.campaign;if(u.content)cfg.campaign_content=u.content;if(u.term)cfg.campaign_term=u.term;if(u.id)cfg.campaign_id=u.id}}catch(e){}
     gtag('config',ga,cfg);
+    var q=window.__gaQ||[];window.__gaQ=[];q.forEach(function(e){gtag('event',e[0],e[1])});
     var s=document.createElement('script');s.async=true;s.src='https://www.googletagmanager.com/gtag/js?id='+ga;document.head.appendChild(s)}
   function loadAll(){loadGa();loadGtm()}
   if(box){
