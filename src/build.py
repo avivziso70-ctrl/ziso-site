@@ -365,7 +365,16 @@ LEGAL_PAGES = [
 ]
 
 GTM_ID = ""  # optional GTM container (GTM-XXXXXXX); GA4 below is loaded directly and does not need it
+# Google Ads (paid-ads thread): AW-XXXXXXXXX plus one "AW-ID/label" per site event. Empty = dormant, nothing is loaded.
+# Loaded with the same cookie consent as GA4. Primary conversions: whatsapp_click, phone_click, generate_lead; secondary: directions_click.
+GADS_ID = ""
+GADS_LABELS = {"whatsapp_click": "", "phone_click": "", "generate_lead": "", "directions_click": ""}
 GA_ID = "G-M02XKGDM7H"  # GA4 measurement id (G-XXXXXXXXXX) of the "Ziso Ceramics" property; empty = tracking dormant, no cookie banner
+
+def gads_js():
+  if not GADS_ID: return ""
+  labels = {k: v for k, v in GADS_LABELS.items() if v}
+  return ";window.ZISO_GADS_ID=%s;window.ZISO_GADS_LABELS=%s" % (json.dumps(GADS_ID), json.dumps(labels))
 
 def write(name, title, desc, body, schemas, canon=None, body_attrs=""):
   canon = canon or SITE + ("" if name == "index.html" else name)
@@ -373,7 +382,7 @@ def write(name, title, desc, body, schemas, canon=None, body_attrs=""):
   noindex = '<meta name="robots" content="noindex">\n' if name in ("toda.html", "404.html") else ""
   body = body.replace('<div class="wall', '<div role="region" aria-label="פתיח" class="wall', 1).replace('<main>', '<main id="main">', 1)
   if '<main' not in body: body = body.replace('<footer>', '<main id="main"></main>\n<footer>', 1)
-  full = '<!doctype html>\n<html lang="he" dir="rtl">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n<script>window.ZISO_GTM_ID=%s;window.ZISO_GA_ID=%s</script>\n%s%s</head>\n<body%s>\n%s\n</body>\n</html>\n' % (json.dumps(GTM_ID), json.dumps(GA_ID), noindex, h, body_attrs, body)
+  full = '<!doctype html>\n<html lang="he" dir="rtl">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n<script>window.ZISO_GTM_ID=%s;window.ZISO_GA_ID=%s%s</script>\n%s%s</head>\n<body%s>\n%s\n</body>\n</html>\n' % (json.dumps(GTM_ID), json.dumps(GA_ID), gads_js(), noindex, h, body_attrs, body)
   open(os.path.join(DIST, name), "w").write(full)
   return h, body
 
