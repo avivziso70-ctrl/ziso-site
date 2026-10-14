@@ -545,7 +545,8 @@ def build():
   # 404
   write("404.html", "העמוד לא נמצא | זיסו קרמיקה", "העמוד לא נמצא.", header() + '''
 <div class="wall"><div class="wrap hero inner" style="grid-template-columns:1fr"><div><h1>העמוד לא נמצא</h1>
-<p>ייתכן שהקישור ישן, מהאתר הקודם. הכל נמצא בדף הבית.</p><div class="actions"><a class="btn brass" href="/">לדף הבית</a></div></div></div></div>''' + FOOTER, [])
+<p>ייתכן שהקישור ישן, מהאתר הקודם. הכל נמצא בדף הבית.</p><div class="actions"><a class="btn brass" href="/">לדף הבית</a></div></div></div></div>
+<script>(function(){try{var p=decodeURIComponent(location.pathname).toLowerCase(),m=[[/service-page|booking|ייעוץ|פגיש|appointment|contact|צור-קשר|contact-us/,"contact.html"],[/about|our-story|אודות|עלינו|story|team/,"about.html"],[/gallery|project|portfolio|גלריה|עבודות|photos/,"gallery.html"],[/porcelain|tile|אריח|ריצוף|גרניט/,"porcelain.html"],[/vanit|ארון/,"vanities.html"],[/shower|מקלחון/,"showers.html"],[/faucet|ברז/,"faucets.html"],[/parquet|פרקט/,"parquet.html"],[/brick|בריק/,"bricks.html"],[/sanitary|toilet|אסל|כלים/,"sanitary.html"],[/blog|post|news|מאמר/,"index.html"]];for(var i=0;i<m.length;i++)if(m[i][0].test(p)){location.replace("/"+m[i][1]+"?from=old");return}}catch(e){}})()</script>''' + FOOTER, [])
 
   # About + Contact pages (Meta verification wants them as separate pages)
   about_video = ('<div class="sw photo video tall" role="img" aria-label="שיר באולם התצוגה">%s</div>' % video_tag("showroom-shir", "", "שיר באולם התצוגה", "metadata")) if has_video("showroom-shir") else ""
@@ -645,6 +646,7 @@ def build():
   for g in GUIDE_PAGES:
     cat = next((c for c in CATS if c["slug"] == g.get("category")), None)
     toc = ('<nav class="toc" aria-label="תוכן העניינים"><p>בעמוד הזה</p><ol>%s</ol></nav>' % "".join('<li><a href="#%s">%s</a></li>' % (i, html.escape(t)) for i, t in g["heads"])) if len(g["heads"]) >= 3 else ""
+    answer = ('<p class="answer"><strong>בקצרה:</strong> %s</p>' % md_inline(g["answer"])) if g.get("answer") else ""
     photos = [(f, c) for f, c in GALLERY if f in g["photos"]]
     fig = gallery_html(photos, lazy=True) if photos else ""
     camp = g.get("campaign", g["slug"])
@@ -654,11 +656,11 @@ def build():
 <div class="wall"><div class="wrap hero inner" style="grid-template-columns:1fr">
 <div><ol class="crumbs"><li><a href="./">זיסו קרמיקה</a></li><li aria-current="page">מדריך</li></ol>
 <h1>%s</h1><p>%s</p></div></div></div>
-<main id="main"><section><div class="wrap article"><article class="prose guide">%s%s%s%s%s</article>%s</div></section></main>
-''' % (g["h1"], g["lede"], toc, g["body"], fig, ('<h2>שאלות נפוצות</h2>' + faq_html(g["faq"])) if g["faq"] else "", cta, sidebar(cat["name"] if cat else "כל המוצרים"))
+<main id="main"><section><div class="wrap article"><article class="prose guide">%s%s%s%s%s%s</article>%s</div></section></main>
+''' % (g["h1"], g["lede"], answer, toc, g["body"], fig, ('<h2>שאלות נפוצות</h2>' + faq_html(g["faq"])) if g["faq"] else "", cta, sidebar(cat["name"] if cat else "כל המוצרים"))
     art = {"@context": "https://schema.org", "@type": "Article", "headline": g["h1"], "description": g["description"], "inLanguage": "he",
            "author": {"@type": "Organization", "name": "זיסו קרמיקה", "url": SITE}, "publisher": {"@id": SITE + "#business"},
-           "mainEntityOfPage": SITE + g["slug"] + ".html", "datePublished": g.get("date", TODAY), "dateModified": g.get("updated", g.get("date", TODAY))}
+           "mainEntityOfPage": SITE + g["slug"] + ".html", **({"abstract": re.sub(r"[*\[\]]", "", g["answer"])} if g.get("answer") else {}), "datePublished": g.get("date", TODAY), "dateModified": g.get("updated", g.get("date", TODAY))}
     write(g["slug"] + ".html", g["title"], g["description"], body, [art, crumbs_schema(g["h1"], g["slug"])] + ([faq_schema(g["faq"])] if g["faq"] else []))
   for name, title, desc, h1, lede, body in LEGAL_PAGES:
     write(name, title + " | זיסו קרמיקה", desc, header() + '''
