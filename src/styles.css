@@ -145,6 +145,7 @@ section+section{border-top:1px solid var(--grout)}
 
 /* customer area */
 .client{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.client.one{grid-template-columns:minmax(0,640px)}
 .panel{background:var(--surface);border:1px solid var(--grout);padding:28px;display:grid;gap:12px;align-content:start;min-width:0}
 .panel h3{font-size:1.6rem}
 .panel p{margin:0;color:var(--stone)}
