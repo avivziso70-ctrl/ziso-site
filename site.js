@@ -50,13 +50,25 @@
   // Events that fire before GA4 is loaded (page-load events, or a click before the visitor agreed to cookies) wait in
   // __gaQ and are sent by loadGa() right after config, so none is lost when consent arrives later on the same page.
   window.__gaQ=window.__gaQ||[];
+  // window.__gaSend (set by loadGa) sends one event to GA4 and, when a Google Ads label exists for it, a conversion.
   function push(ev,extra){var o=Object.assign({event:ev},extra||{});window.dataLayer.push(o);
-    if(window.__ga&&typeof window.gtag==='function')window.gtag('event',ev,extra||{});else window.__gaQ.push([ev,extra||{}])}
+    if(window.__ga&&typeof window.__gaSend==='function')window.__gaSend(ev,extra||{});else window.__gaQ.push([ev,extra||{}])}
   window.zisoTrack=push;
   // Remember the campaign the visitor arrived with (utm_* from the social posts) for this tab, so GA4 still gets it
   // when consent is given on a later page. Session storage only, nothing leaves the browser without consent.
+  // Google Ads click ids (gclid/gbraid/wbraid) are kept the same way.
+  var AK=['gclid','gbraid','wbraid'];
   try{var q=new URLSearchParams(location.search),c={};['source','medium','campaign','content','term','id'].forEach(function(k){var v=q.get('utm_'+k);if(v)c[k]=v});
+    AK.forEach(function(k){var v=q.get(k);if(v)c[k]=v});
     if(Object.keys(c).length){c.landing=location.pathname;c.ref=document.referrer||'';sessionStorage.setItem('ziso_utm',JSON.stringify(c))}}catch(e){}
+  // Attribution params for the intake form: this page's utm_*/click ids, else the ones stored for this tab.
+  function attr(){var out={},q=new URLSearchParams(location.search);q.forEach(function(v,k){if(/^utm_/.test(k)||AK.indexOf(k)>-1)out[k]=v});
+    if(!Object.keys(out).length){try{var u=JSON.parse(sessionStorage.getItem('ziso_utm')||'null');if(u){Object.keys(u).forEach(function(k){if(k==='landing'||k==='ref')return;out[AK.indexOf(k)>-1?k:'utm_'+k]=u[k]})}}catch(e){}}
+    return out}
+  function withAttr(url){var a=attr(),keep=[];Object.keys(a).forEach(function(k){if(!new RegExp('[?&]'+k+'=').test(url))keep.push(encodeURIComponent(k)+'='+encodeURIComponent(a[k]))});
+    if(!keep.length)return url;var h='',i=url.indexOf('#');if(i>-1){h=url.slice(i);url=url.slice(0,i)}return url+(url.indexOf('?')>-1?'&':'?')+keep.join('&')+h}
+  // Links to the intake page carry the campaign along, so the form records where the lead came from.
+  document.querySelectorAll('a[href*="tik-lakoach"]').forEach(function(a){a.setAttribute('href',withAttr(a.getAttribute('href')))});
   // GTM itself is loaded by the consent block below, only after the visitor agrees.
   document.addEventListener('click',function(e){
     var a=e.target.closest&&e.target.closest('a[href]');if(!a)return;var h=a.getAttribute('href')||'';
@@ -70,11 +82,10 @@
   // Lead from the embedded intake form (Apps Script iframe) or the thank-you page.
   window.addEventListener('message',function(e){if(e.data&&e.data.type==='ziso_lead')push('generate_lead',{lead_id:e.data.id||'',existing:!!e.data.existing,method:'form'})});
   if(document.body&&document.body.getAttribute('data-lead'))push('generate_lead',{method:new URLSearchParams(location.search).get('src')||'toda'});
-  // Intake iframe: forward utm_* from this page's URL (the iframe cannot read it).
+  // Intake iframe: forward utm_* and click ids (the iframe cannot read this page's URL).
   var f=document.getElementById('intake');
-  if(f){var src=f.getAttribute('data-src')||'';var q=new URLSearchParams(location.search),keep=[];
-    q.forEach(function(v,k){if(/^utm_/.test(k))keep.push(encodeURIComponent(k)+'='+encodeURIComponent(v))});
-    if(src){f.src=src+(src.indexOf('?')>-1?'&':'?')+keep.join('&')}else{f.hidden=true;var n=document.getElementById('intake-missing');if(n)n.hidden=false}}
+  if(f){var src=f.getAttribute('data-src')||'';
+    if(src){f.src=withAttr(src)}else{f.hidden=true;var n=document.getElementById('intake-missing');if(n)n.hidden=false}}
 })();
 
 // ===== motion layer =====
@@ -196,23 +207,27 @@
   var pb=document.querySelector('[data-pause]');
   if(pb&&hero){pb.hidden=false;pb.addEventListener('click',function(){st.motion=!st.motion;save();apply()})}
   // consent: measurement tools load only after an explicit yes
-  var CK='ziso_consent',box=document.getElementById('cookie'),gtm=window.ZISO_GTM_ID||'',ga=window.ZISO_GA_ID||'';
+  var CK='ziso_consent',box=document.getElementById('cookie'),gtm=window.ZISO_GTM_ID||'',ga=window.ZISO_GA_ID||'',gads=window.ZISO_GADS_ID||'',gl=window.ZISO_GADS_LABELS||{};
   function consent(){try{return localStorage.getItem(CK)}catch(e){return null}}
   function loadGtm(){if(!gtm||window.__gtm)return;window.__gtm=1;window.dataLayer=window.dataLayer||[];window.dataLayer.push({'gtm.start':Date.now(),event:'gtm.js'});
     var s=document.createElement('script');s.async=true;s.src='https://www.googletagmanager.com/gtm.js?id='+gtm;document.head.appendChild(s)}
   // GA4 (gtag.js) with Consent Mode v2: nothing is loaded until the visitor agrees; once loaded, analytics storage is granted.
-  function loadGa(){if(!ga||window.__ga)return;window.__ga=1;window.dataLayer=window.dataLayer||[];
+  // Google Ads (when GADS_ID is set in build.py) rides on the same gtag.js and the same consent; ad storage stays denied,
+  // so conversions use Google's cookieless pings plus the click id passed on the URL.
+  function loadGa(){if(!(ga||gads)||window.__ga)return;window.__ga=1;window.dataLayer=window.dataLayer||[];
     window.gtag=window.gtag||function(){window.dataLayer.push(arguments)};
     gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'granted'});
     gtag('js',new Date());
     var cfg={anonymize_ip:true};
     try{var u=JSON.parse(sessionStorage.getItem('ziso_utm')||'null');if(u){if(u.source)cfg.campaign_source=u.source;if(u.medium)cfg.campaign_medium=u.medium;if(u.campaign)cfg.campaign_name=u.campaign;if(u.content)cfg.campaign_content=u.content;if(u.term)cfg.campaign_term=u.term;if(u.id)cfg.campaign_id=u.id}}catch(e){}
-    gtag('config',ga,cfg);
-    var q=window.__gaQ||[];window.__gaQ=[];q.forEach(function(e){gtag('event',e[0],e[1])});
-    var s=document.createElement('script');s.async=true;s.src='https://www.googletagmanager.com/gtag/js?id='+ga;document.head.appendChild(s)}
+    if(ga)gtag('config',ga,cfg);
+    if(gads){gtag('set',{url_passthrough:true});gtag('config',gads)}
+    window.__gaSend=function(ev,x){if(ga)gtag('event',ev,x);if(gads&&gl[ev])gtag('event','conversion',{send_to:gl[ev]})};
+    var q=window.__gaQ||[];window.__gaQ=[];q.forEach(function(e){window.__gaSend(e[0],e[1])});
+    var s=document.createElement('script');s.async=true;s.src='https://www.googletagmanager.com/gtag/js?id='+(ga||gads);document.head.appendChild(s)}
   function loadAll(){loadGa();loadGtm()}
   if(box){
-    if((ga||gtm)&&!consent())box.hidden=false;
+    if((ga||gtm||gads)&&!consent())box.hidden=false;
     if(consent()==='yes')loadAll();
     box.addEventListener('click',function(e){var b=e.target.closest('[data-consent]');if(!b)return;var v=b.getAttribute('data-consent');try{localStorage.setItem(CK,v)}catch(err){}box.hidden=true;if(v==='yes')loadAll()});
     document.querySelectorAll('[data-cookie-settings]').forEach(function(b){b.addEventListener('click',function(){try{localStorage.removeItem(CK)}catch(e){}box.hidden=false;box.querySelector('button').focus()})});
