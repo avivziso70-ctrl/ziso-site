@@ -433,6 +433,7 @@ html.a11y-motion .scrollcue{display:none}
 .areas-nav a{color:var(--wall-ink);text-decoration:none;border-bottom:1px solid rgba(255,255,255,.18)}
 .areas-nav a:hover{border-color:var(--brass)}
 .drive{display:inline-block;margin-inline-start:6px;color:var(--brass);font-weight:600}
+.prose .answer{background:var(--surface);border-inline-start:3px solid var(--brass);padding:14px 18px;margin:0 0 24px;max-width:none}
 .toc{background:var(--surface);border:1px solid var(--grout);padding:16px 20px;margin:0 0 28px}
 .toc p{margin:0 0 6px;font-weight:600;color:var(--stone);font-size:.85rem;letter-spacing:.06em}
 .toc ol{margin:0;padding-inline-start:20px;columns:2;column-gap:28px}
