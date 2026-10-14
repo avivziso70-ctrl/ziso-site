@@ -369,7 +369,7 @@ GTM_ID = ""  # optional GTM container (GTM-XXXXXXX); GA4 below is loaded directl
 # Loaded with the same cookie consent as GA4. Primary conversions: whatsapp_click, phone_click, generate_lead; secondary: directions_click.
 GADS_ID = "AW-399978850"
 GADS_LABELS = {"whatsapp_click": "AW-399978850/7QD4CJSiypwdEOLi3L4B", "phone_click": "AW-399978850/CY6cCJeiypwdEOLi3L4B",
-               "generate_lead": "AW-399978850/7QCDCP65wJwdEOLi3L4B", "directions_click": ""}  # empty label = no conversion sent
+               "generate_lead": "AW-399978850/7QCDCP65wJwdEOLi3L4B", "directions_click": "AW-399978850/B1w8CIjOhZ0dEOLi3L4B"}  # empty label = no conversion sent
 GA_ID = "G-M02XKGDM7H"  # GA4 measurement id (G-XXXXXXXXXX) of the "Ziso Ceramics" property; empty = tracking dormant, no cookie banner
 
 def gads_js():
