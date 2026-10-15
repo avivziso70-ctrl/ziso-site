@@ -48,16 +48,16 @@
   var GTM_ID=window.ZISO_GTM_ID||''; // e.g. GTM-XXXXXXX, set in build.py
   window.dataLayer=window.dataLayer||[];
   // Events that fire before GA4 is loaded (page-load events, or a click before the visitor agreed to cookies) wait in
-  // __gaQ and are sent by loadGa() right after config, so none is lost when consent arrives later on the same page.
+  // __gaQ and are sent by loadAll() once the trackers are set up, so none is lost when consent arrives later on the page.
   window.__gaQ=window.__gaQ||[];
-  // window.__gaSend (set by loadGa) sends one event to GA4 and, when a Google Ads label exists for it, a conversion.
+  // window.__zSend (set by loadAll) hands one event to every loaded tracker: GA4 + Google Ads (__gaSend) and Meta (__fbSend).
   function push(ev,extra){var o=Object.assign({event:ev},extra||{});window.dataLayer.push(o);
-    if(window.__ga&&typeof window.__gaSend==='function')window.__gaSend(ev,extra||{});else window.__gaQ.push([ev,extra||{}])}
+    if(typeof window.__zSend==='function')window.__zSend(ev,extra||{});else window.__gaQ.push([ev,extra||{}])}
   window.zisoTrack=push;
   // Remember the campaign the visitor arrived with (utm_* from the social posts) for this tab, so GA4 still gets it
   // when consent is given on a later page. Session storage only, nothing leaves the browser without consent.
-  // Google Ads click ids (gclid/gbraid/wbraid) are kept the same way.
-  var AK=['gclid','gbraid','wbraid'];
+  // Ad click ids (Google gclid/gbraid/wbraid, Meta fbclid) are kept the same way.
+  var AK=['gclid','gbraid','wbraid','fbclid'];
   try{var q=new URLSearchParams(location.search),c={};['source','medium','campaign','content','term','id'].forEach(function(k){var v=q.get('utm_'+k);if(v)c[k]=v});
     AK.forEach(function(k){var v=q.get(k);if(v)c[k]=v});
     if(Object.keys(c).length){c.landing=location.pathname;c.ref=document.referrer||'';sessionStorage.setItem('ziso_utm',JSON.stringify(c))}}catch(e){}
@@ -207,7 +207,7 @@
   var pb=document.querySelector('[data-pause]');
   if(pb&&hero){pb.hidden=false;pb.addEventListener('click',function(){st.motion=!st.motion;save();apply()})}
   // consent: measurement tools load only after an explicit yes
-  var CK='ziso_consent',box=document.getElementById('cookie'),gtm=window.ZISO_GTM_ID||'',ga=window.ZISO_GA_ID||'',gads=window.ZISO_GADS_ID||'',gl=window.ZISO_GADS_LABELS||{};
+  var CK='ziso_consent',box=document.getElementById('cookie'),gtm=window.ZISO_GTM_ID||'',ga=window.ZISO_GA_ID||'',gads=window.ZISO_GADS_ID||'',meta=window.ZISO_META_ID||'',gl=window.ZISO_GADS_LABELS||{};
   function consent(){try{return localStorage.getItem(CK)}catch(e){return null}}
   function loadGtm(){if(!gtm||window.__gtm)return;window.__gtm=1;window.dataLayer=window.dataLayer||[];window.dataLayer.push({'gtm.start':Date.now(),event:'gtm.js'});
     var s=document.createElement('script');s.async=true;s.src='https://www.googletagmanager.com/gtm.js?id='+gtm;document.head.appendChild(s)}
@@ -223,11 +223,24 @@
     if(ga)gtag('config',ga,cfg);
     if(gads){gtag('set',{url_passthrough:true});gtag('config',gads)}
     window.__gaSend=function(ev,x){if(ga)gtag('event',ev,x);if(gads&&gl[ev])gtag('event','conversion',{send_to:gl[ev]})};
-    var q=window.__gaQ||[];window.__gaQ=[];q.forEach(function(e){window.__gaSend(e[0],e[1])});
     var s=document.createElement('script');s.async=true;s.src='https://www.googletagmanager.com/gtag/js?id='+(ga||gads);document.head.appendChild(s)}
-  function loadAll(){loadGa();loadGtm()}
+  // Meta pixel: same consent; PageView plus Contact (WhatsApp/phone) and Lead (form/thank-you). No advanced matching.
+  function loadMeta(){if(!meta||window.__fb)return;window.__fb=1;
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;
+      s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    // Consent may come on a later page than the ad click: rebuild Meta's click cookie from the fbclid kept for this tab.
+    try{var u=JSON.parse(sessionStorage.getItem('ziso_utm')||'null');if(u&&u.fbclid&&!/(^|; )_fbc=/.test(document.cookie)&&!/[?&]fbclid=/.test(location.search))
+      document.cookie='_fbc=fb.1.'+Date.now()+'.'+u.fbclid+';path=/;max-age=7776000;SameSite=Lax'}catch(e){}
+    fbq('init',meta);fbq('track','PageView');
+    var M={whatsapp_click:'Contact',phone_click:'Contact',generate_lead:'Lead'};
+    window.__fbSend=function(ev){if(M[ev])fbq('track',M[ev])}}
+  function loadAll(){loadGa();loadMeta();loadGtm();
+    if(window.__zSend||!(window.__gaSend||window.__fbSend))return;
+    window.__zSend=function(ev,x){if(window.__gaSend)window.__gaSend(ev,x);if(window.__fbSend)window.__fbSend(ev,x)};
+    var q=window.__gaQ||[];window.__gaQ=[];q.forEach(function(e){window.__zSend(e[0],e[1])})}
   if(box){
-    if((ga||gtm||gads)&&!consent())box.hidden=false;
+    if((ga||gtm||gads||meta)&&!consent())box.hidden=false;
     if(consent()==='yes')loadAll();
     box.addEventListener('click',function(e){var b=e.target.closest('[data-consent]');if(!b)return;var v=b.getAttribute('data-consent');try{localStorage.setItem(CK,v)}catch(err){}box.hidden=true;if(v==='yes')loadAll()});
     document.querySelectorAll('[data-cookie-settings]').forEach(function(b){b.addEventListener('click',function(){try{localStorage.removeItem(CK)}catch(e){}box.hidden=false;box.querySelector('button').focus()})});
