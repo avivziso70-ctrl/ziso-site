@@ -367,15 +367,18 @@ LEGAL_PAGES = [
 GTM_ID = ""  # optional GTM container (GTM-XXXXXXX); GA4 below is loaded directly and does not need it
 # Google Ads (paid-ads thread): AW-XXXXXXXXX plus one "AW-ID/label" per site event. Empty = dormant, nothing is loaded.
 # Loaded with the same cookie consent as GA4. Primary conversions: whatsapp_click, phone_click, generate_lead; secondary: directions_click.
+# Meta pixel ("Wix Pixel" in the business portfolio), approved by Aviv 15.10.2026. Same cookie consent; empty = dormant.
+META_PIXEL_ID = "774998039816486"
 GADS_ID = "AW-399978850"
 GADS_LABELS = {"whatsapp_click": "AW-399978850/7QD4CJSiypwdEOLi3L4B", "phone_click": "AW-399978850/CY6cCJeiypwdEOLi3L4B",
                "generate_lead": "AW-399978850/7QCDCP65wJwdEOLi3L4B", "directions_click": "AW-399978850/B1w8CIjOhZ0dEOLi3L4B"}  # empty label = no conversion sent
 GA_ID = "G-M02XKGDM7H"  # GA4 measurement id (G-XXXXXXXXXX) of the "Ziso Ceramics" property; empty = tracking dormant, no cookie banner
 
 def gads_js():
-  if not GADS_ID: return ""
+  meta = (";window.ZISO_META_ID=%s" % json.dumps(META_PIXEL_ID)) if META_PIXEL_ID else ""
+  if not GADS_ID: return meta
   labels = {k: v for k, v in GADS_LABELS.items() if v}
-  return ";window.ZISO_GADS_ID=%s;window.ZISO_GADS_LABELS=%s" % (json.dumps(GADS_ID), json.dumps(labels))
+  return ";window.ZISO_GADS_ID=%s;window.ZISO_GADS_LABELS=%s%s" % (json.dumps(GADS_ID), json.dumps(labels), meta)
 
 def write(name, title, desc, body, schemas, canon=None, body_attrs=""):
   canon = canon or SITE + ("" if name == "index.html" else name)
