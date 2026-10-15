@@ -69,6 +69,18 @@
     if(!keep.length)return url;var h='',i=url.indexOf('#');if(i>-1){h=url.slice(i);url=url.slice(0,i)}return url+(url.indexOf('?')>-1?'&':'?')+keep.join('&')+h}
   // Links to the intake page carry the campaign along, so the form records where the lead came from.
   document.querySelectorAll('a[href*="tik-lakoach"]').forEach(function(a){a.setAttribute('href',withAttr(a.getAttribute('href')))});
+  // Ad source code on the WhatsApp text: (G1) Google ads, (M1) Meta ads, so the team can match chats to campaigns.
+  // Reads only this tab's URL/stored params; sets no cookie and sends nothing, so it runs without the consent gate.
+  (function(){var a=attr(),s=(a.utm_source||'').toLowerCase(),m=(a.utm_medium||'').toLowerCase(),code='';
+    if(a.gclid||a.gbraid||a.wbraid||s==='google')code='G1';
+    else if(a.fbclid||s==='meta'||((s==='facebook'||s==='instagram')&&m==='paid'))code='M1';
+    if(!code)return;
+    document.querySelectorAll('a[href*="wa.me"],a[href*="api.whatsapp.com"]').forEach(function(l){
+      var h=l.getAttribute('href')||'',i=h.indexOf('?'),base=i>-1?h.slice(0,i):h,q=new URLSearchParams(i>-1?h.slice(i+1):''),
+        t=q.get('text')||'שלום, אשמח לקבוע פגישת ייעוץ ועיצוב באולם';
+      if(/\((G1|M1)\)$/.test(t))return;q.set('text',t+' ('+code+')');
+      var out=[];q.forEach(function(v,k){out.push(encodeURIComponent(k)+'='+encodeURIComponent(v))});
+      l.setAttribute('href',base+'?'+out.join('&'))})})();
   // GTM itself is loaded by the consent block below, only after the visitor agrees.
   document.addEventListener('click',function(e){
     var a=e.target.closest&&e.target.closest('a[href]');if(!a)return;var h=a.getAttribute('href')||'';
