@@ -446,3 +446,5 @@ html.a11y-motion .scrollcue{display:none}
 .prose .actions{display:flex;flex-wrap:wrap;gap:10px;margin:24px 0}
 .panel.review{margin-top:36px;background:var(--surface);border:1px solid var(--grout);padding:24px}
 .panel.review h2{margin-top:0;font-size:1.4rem}
+.outlabel{font:600 .9rem var(--body);color:var(--brass-text);margin:0}
+.more-h{font-size:1.5rem;margin:0 0 14px}
