@@ -70,7 +70,7 @@ def reel_html():
   if not VIDEOS: return ""
   cards = "".join('<figure class="vcard" data-reveal style="--d:%.2fs"><button class="vopen" type="button" data-light="img/video/%s.mp4" aria-label="%s, הגדלה">%s</button><figcaption aria-hidden="true">%s</figcaption></figure>' % (i*.08, n, html.escape(c), video_tag(n, "clip", c), html.escape(c)) for i, (n, c) in enumerate(VIDEOS))
   return ('<section id="films" class="dark"><div class="wrap">'
-    '<div class="head" data-reveal><div><p class="eyebrow">מהפרויקטים שלנו</p><h2>סרטים קצרים מבתים שעיצבנו יחד</h2>'
+    '<div class="head" data-reveal><div><h2>סרטים קצרים מבתים שעיצבנו יחד</h2>'
     '<p class="lede">כל סרט נולד מתמונה אמיתית של עבודה שלנו: האולם בטירת כרמל, חדרי רחצה, פרקטים וגינות של לקוחות.</p></div><a class="btn ghost" href="gallery.html">לכל העבודות</a></div>'
     '</div><div class="reel" tabindex="0" aria-label="סרטים קצרים, גלילה לצדדים">%s</div></section>') % cards
 def gallery_html(items, lazy=True, videos=()):
@@ -94,13 +94,13 @@ def client_section():
 <a class="btn line" href="tik-lakoach.html">למילוי הטופס</a></div>"""
   if not PORTAL_ON:
     return """<section id="client"><div class="wrap">
-<div class="head" data-reveal><div><p class="eyebrow">תיק לקוח</p><h2>מתכננים שיפוץ? נתחיל מוכנים</h2></div></div>
+<div class="head" data-reveal><div><h2>מתכננים שיפוץ? נתחיל מוכנים</h2></div></div>
 <div class="client one" data-reveal>
 %s
 </div></div></section>
 """ % newp
   return """<section id="client"><div class="wrap">
-<div class="head" data-reveal><div><p class="eyebrow">אזור לקוחות</p><h2>כבר קניתם אצלנו? הכל כאן</h2></div></div>
+<div class="head" data-reveal><div><h2>כבר קניתם אצלנו? הכל כאן</h2></div></div>
 <div class="client" data-reveal>
 <div class="panel"><h3>מעקב הזמנה</h3><p>נכנסים עם מספר הנייד ומספר ההזמנה, ורואים:</p>
 <ul><li>סטטוס כל פריט בהזמנה</li><li>יתרה לתשלום</li><li>חשבוניות וקבלות</li></ul>
@@ -425,7 +425,7 @@ CALC = '''<div class="calc">
   </div>
 </form>
 <div class="out" aria-live="polite">
-  <p class="eyebrow" style="margin:0">להזמין</p>
+  <p class="outlabel">להזמין</p>
   <div class="big"><span id="o-m2">0</span> <small>מ"ר</small></div>
   <dl><div><dt>שטח נטו</dt><dd id="o-net">0</dd></div><div><dt>פחת</dt><dd id="o-waste">10%</dd></div>
   <div><dt>מספר אריחים</dt><dd id="o-tiles">0</dd></div><div><dt>קרטונים</dt><dd id="o-boxes">0</dd></div></dl>
@@ -461,9 +461,8 @@ def build():
   home = header() + '''
 <div class="wall live" id="top"><canvas class="tilewall" aria-hidden="true"></canvas>{video}<div class="wrap hero home live">
 <div>
-<p class="eyebrow">אולם תצוגה לריצוף ואמבטיה · טירת כרמל</p>
 <h1>תרגיש בבית<br>לעצב את <em>הבית</em></h1>
-<p>גרניט פורצלן, כלים סניטריים, ארונות אמבטיה, מקלחונים וברזים, עם מעצבות פנים מוסמכות שעוזרות לכם לבחור. פגישת ייעוץ ועיצוב באולם בחינם, דקות מחיפה.</p>
+<p>אולם תצוגה לריצוף ואמבטיה בטירת כרמל: גרניט פורצלן, כלים סניטריים, ארונות אמבטיה, מקלחונים וברזים, עם מעצבות פנים מוסמכות שעוזרות לכם לבחור. פגישת ייעוץ ועיצוב באולם בחינם, דקות מחיפה.</p>
 <div class="actions"><a class="btn brass" href="{wa}" target="_blank" rel="noopener">לפגישת ייעוץ חינם בוואטסאפ</a><a class="btn ghost" href="#products">מה יש באולם</a></div>
 <dl class="facts onwall">
 <div><dt>כתובת</dt><dd>עוצמה 5, טירת כרמל</dd></div>
@@ -474,12 +473,12 @@ def build():
 <div class="strip" aria-hidden="true"><div class="track">{strip}{strip}</div></div>
 <main>
 {reel}<section id="products"><div class="wrap">
-<div class="head" data-reveal><div><p class="eyebrow">באולם</p><h2>כל מה שהשיפוץ צריך, תחת קורת גג אחת</h2>
+<div class="head" data-reveal><div><h2>כל מה שהשיפוץ צריך, תחת קורת גג אחת</h2>
 <p class="lede">מהרצפה בסלון ועד הברז במקלחת. הרבה מהדגמים מוצגים באולם בגודל מלא, כדי שתראו איך אריח נראה על קיר אמיתי ולא רק בקטלוג.</p></div></div>
 {tiles}
 </div></section>
 <section id="how"><div class="wrap">
-<div class="head" data-reveal><div><p class="eyebrow">איך זה עובד</p><h2>מהביקור הראשון עד ההתקנה</h2></div></div>
+<div class="head" data-reveal><div><h2>מהביקור הראשון עד ההתקנה</h2></div></div>
 <ol class="steps">
 <li><h3>מגיעים לאולם</h3><p>מביאים תוכנית או תמונות של החדר. אפשר גם עם האדריכל או הקבלן.</p></li>
 <li><h3>פגישת עיצוב חינם</h3><p>אילת ושיר, מעצבות פנים מוסמכות, מתאימות איתכם אריחים, כלים וברזים לסגנון ולתקציב, ומחשבות כמויות.</p></li>
@@ -487,36 +486,36 @@ def build():
 {step4}
 </ol></div></section>
 <section id="calculator"><div class="wrap">
-<div class="head" data-reveal><div><p class="eyebrow">מחשבון כמויות</p><h2>כמה אריחים צריך להזמין?</h2>
+<div class="head" data-reveal><div><h2>כמה אריחים צריך להזמין?</h2>
 <p class="lede">מזינים את מידות החדר וגודל האריח, ומקבלים מ"ר להזמנה, מספר אריחים וקרטונים, כולל פחת.</p></div></div>
 <div data-reveal>{calc}</div>
 </div></section>
 <section id="family"><div class="wrap family">
 <blockquote>אצלנו אתם לא מספר הזמנה. אתם המשפחה שאנחנו עוזרים לה לבנות בית.</blockquote>
-<div><p class="eyebrow">עסק משפחתי</p><h2>זיסו קרמיקה</h2>
+<div><h2>זיסו קרמיקה</h2>
 <p>עסק משפחתי מטירת כרמל, שמלווה משפחות, קבלנים ואדריכלים מחיפה, הקריות וכל אזור הכרמל בבחירת ריצוף, חיפוי ואמבטיה. אילת ושיר הן מעצבות פנים עם דיפלומה, והייעוץ והעיצוב באולם הם בחינם. את מה שבאולם בחרנו בעצמנו, ואנחנו שם גם אחרי הקנייה כשצריך עוד קרטון, החלפה או עצה.</p>
 <p class="since">מאז 1985 · 4.3 בגוגל על 85 ביקורות</p>
 <div class="names"><span>משה</span><span>אילת</span><span>שיר</span><span>אביב</span></div></div>
 <div class="portraits" aria-label="משפחת זיסו"><figure><img src="img/family-1.jpg" alt="משה זיסו" loading="lazy" width="693" height="653"><figcaption>משה זיסו</figcaption></figure><figure><img src="img/family-2.jpg" alt="אילת זיסו" loading="lazy" width="312" height="369"><figcaption>אילת זיסו<small>מעצבת פנים</small></figcaption></figure><figure><img src="img/family-3.jpg" alt="שיר זיסו" loading="lazy" width="720" height="720"><figcaption>שיר זיסו<small>מעצבת פנים</small></figcaption></figure><figure><img src="img/family-4.jpg" alt="אביב זיסו" loading="lazy" width="609" height="533"><figcaption>אביב זיסו</figcaption></figure></div>
 </div></section>
 {gallery}{client}<section id="faq"><div class="wrap">
-<div class="head" data-reveal><div><p class="eyebrow">שאלות נפוצות</p><h2>מה שואלים אותנו הכי הרבה</h2></div></div>
+<div class="head" data-reveal><div><h2>מה שואלים אותנו הכי הרבה</h2></div></div>
 {faq}
 </div></section>
 <section id="visit"><div class="wrap visit">
-<div><p class="eyebrow">ביקור באולם</p><h2>בואו לראות ולגעת</h2>
+<div><h2>בואו לראות ולגעת</h2>
 <p class="lede">האולם נמצא בטירת כרמל, דקות מחיפה, נשר והקריות. פגישת ייעוץ ועיצוב עם מעצבת פנים מוסמכת היא בחינם. כדאי לתאם מראש כדי שנקדיש לכם את הזמן.</p>
 <dl class="contact">
 <div><dt>וואטסאפ וטלפון</dt><dd><a class="ltr" href="tel:{phone_intl}">{phone}</a></dd></div>
 <div><dt>אימייל</dt><dd><a class="ltr" href="mailto:{email}">{email}</a></dd></div>
 <div><dt>שעות פתיחה</dt><dd>{hours}</dd></div></dl>
 <ul class="areas" aria-label="אזורים">{areas}</ul></div>
-<div class="mapcard"><div><p class="eyebrow">כתובת</p><div class="addr">עוצמה 5<br>טירת כרמל</div></div>
+<div class="mapcard"><div><div class="addr">עוצמה 5<br>טירת כרמל</div></div>
 <div class="actions"><a class="btn brass" href="https://waze.com/ul?q={addr}&navigate=yes" target="_blank" rel="noopener">ניווט בוויז</a>
 <a class="btn ghost" href="https://www.google.com/maps/search/?api=1&query={addr}" target="_blank" rel="noopener">Google Maps</a></div></div>
 </div></section>
 </main>
-'''.format(wa=WA_VISIT, phone=PHONE, phone_intl=PHONE_INTL, email=EMAIL, hours=HOURS_HTML, video=video, reel=reel_html(), gallery=('<section id="works"><div class="wrap"><div class="head" data-reveal><div><p class="eyebrow">מהאולם ומהלקוחות</p><h2>עבודות אחרונות</h2></div><a class="btn ghost" href="gallery.html">לכל העבודות</a></div>' + gallery_html(GALLERY[:6]) + '</div></section>') if GALLERY else '', strip=''.join('<span>%s</span>' % c['name'] for c in CATS), tiles=tiles_html(),
+'''.format(wa=WA_VISIT, phone=PHONE, phone_intl=PHONE_INTL, email=EMAIL, hours=HOURS_HTML, video=video, reel=reel_html(), gallery=('<section id="works"><div class="wrap"><div class="head" data-reveal><div><h2>עבודות אחרונות</h2></div><a class="btn ghost" href="gallery.html">לכל העבודות</a></div>' + gallery_html(GALLERY[:6]) + '</div></section>') if GALLERY else '', strip=''.join('<span>%s</span>' % c['name'] for c in CATS), tiles=tiles_html(),
            calc=CALC, step4=STEP4, client=client_section(), faq=faq_html(HOME_FAQ), areas="".join("<li>%s</li>" % a for a in AREAS), addr=ADDR_Q) + FOOTER
   h, b = write("index.html", "זיסו קרמיקה | ריצוף, גרניט פורצלן ואמבטיה בטירת כרמל ליד חיפה",
     "אולם תצוגה לגרניט פורצלן, כלים סניטריים, ארונות אמבטיה, מקלחונים לפי מידה, ברזים, בריקים ופרקט בטירת כרמל, דקות מחיפה והקריות. עסק משפחתי עם ליווי לאורך כל השיפוץ.",
@@ -550,7 +549,7 @@ def build():
 {visual}
 </div></div>
 <main><section><div class="wrap article"><article class="prose">{parts}</article>{side}</div></section>
-<section><div class="wrap"><p class="eyebrow">עוד באולם</p><ul class="areas">{others}</ul></div></section></main>
+<section><div class="wrap"><h2 class="more-h">עוד באולם</h2><ul class="areas">{others}</ul></div></section></main>
 '''.format(name=c["name"], h1=c["h1"], lede=c["lede"], wa=WA_VISIT, visual=cat_video or (
       '<div class="sw photo" role="img" aria-label="%s"><img src="img/gallery/%s" alt="" width="1200" height="900">%s</div>' % (c["name"], CAT_PHOTOS[c["slug"]], sz)
       if c["slug"] in CAT_PHOTOS and os.path.exists(os.path.join(GALLERY_DIR, CAT_PHOTOS[c["slug"]])) else '<div class="sw %s" role="img" aria-label="%s">%s</div>' % (c["sw"], c["name"], sz)), parts=ltr_sizes("\n".join(parts)), side=sidebar(c["name"]), others=others) + FOOTER
@@ -616,7 +615,7 @@ def build():
 <div><dt>פייסבוק</dt><dd><a href="https://www.facebook.com/zisoceramics" target="_blank" rel="noopener" class="ltr">zisoceramics</a></dd></div>{tiktok}
 </dl>
 <p class="lede">{legal} · ח.פ. <span class="ltr">{cid}</span></p></div>
-<div class="mapcard"><div><p class="eyebrow">ניווט</p><div class="addr">עוצמה 5<br>טירת כרמל</div></div>
+<div class="mapcard"><div><div class="addr">עוצמה 5<br>טירת כרמל</div></div>
 <div class="actions"><a class="btn brass" href="https://waze.com/ul?q={addr}&navigate=yes" target="_blank" rel="noopener">ניווט בוויז</a>
 <a class="btn ghost" href="https://www.google.com/maps/search/?api=1&query={addr}" target="_blank" rel="noopener">Google Maps</a></div></div>
 </div></section></main>
