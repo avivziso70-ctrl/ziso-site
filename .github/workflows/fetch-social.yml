@@ -1,0 +1,32 @@
+name: Fetch social source media
+# Higgsfield clips and narration live on a CDN the build container cannot reach; this job downloads them
+# unchanged into social/hf-round-1/raw/ and commits them so the reels can be assembled in the container.
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/**']
+    paths: ['social/hf-round-1/sources.json', '.github/workflows/fetch-social.yml']
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download
+        run: |
+          set -euo pipefail
+          mkdir -p social/hf-round-1/raw
+          jq -r 'to_entries[] | "\(.key) \(.value)"' social/hf-round-1/sources.json | while read -r name url; do
+            out="social/hf-round-1/raw/$name"
+            if [ -s "$out" ]; then echo "keep $out"; continue; fi
+            echo "fetch $name"; curl -sS -f -L -o "$out" "$url"; ls -la "$out"
+          done
+      - name: Commit
+        run: |
+          git config user.name "ziso-site bot"; git config user.email "actions@users.noreply.github.com"
+          git add social/hf-round-1/raw
+          git diff --cached --quiet && echo "nothing new" && exit 0
+          git commit -m "Add Higgsfield source clips and narration for social round 1"
+          git pull --rebase origin "${GITHUB_REF_NAME}" || true
+          git push origin HEAD:"${GITHUB_REF_NAME}"
