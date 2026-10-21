@@ -1,6 +1,8 @@
 # Builds the six reel specs: clip order, narration file, hook lines, captions timed from words.json.
-import json, re
-W = json.load(open('words.json'))
+import json, re, sys
+# usage: python3 gen_specs.py [words.json] [vo-suffix] [spec-suffix]  e.g. words_moshe.json m m
+WF = sys.argv[1] if len(sys.argv) > 1 else 'words.json'; VS = sys.argv[2] if len(sys.argv) > 2 else ''; SS = sys.argv[3] if len(sys.argv) > 3 else ''
+W = json.load(open(WF))
 R = {
  1: dict(clips=['c11','c12','c13','c14'], hook=['החדר הכי קטן בבית.','2 מ״ר.'], next='הברז נבחר ראשון',
     caps=['החדר הכי קטן בבית','שני מטר רבוע','וזה החדר שכל אורח רואה','בחרנו *טרוורטין* על הרצפה','ארון אלון *מרחף* שמשאיר אוויר','וברז *קיר* שמפנה את המשטח','שלוש החלטות','והחדר נראה *פי שניים* גדול','רוצים כזה אצלכם?','פגישת תכנון *חינם* עם המעצבות של זיסו','הקישור בוואטסאפ']),
@@ -10,7 +12,7 @@ R = {
     caps=['שמתם לב שבמלונות אין מדרגה במקלחת?','גם אצלכם זה אפשרי','תעלת ניקוז *ליניארית*','שיפוע נכון של הרצפה','וזכוכית אחת *בלי מסגרת*','התוצאה:','רצפה אחת רציפה','חדר שנראה *גדול יותר*','וניקיון בשנייה','זה נקבע *בתכנון*, לא באתר','פגישת תכנון *חינם* עם המעצבות שלנו','הקישור בוואטסאפ']),
  4: dict(clips=['c41','c42','c43','c44'], hook=['פרקט אמיתי','או דמוי עץ?'], next='ארון שלא קיים בקטלוג',
     caps=['פרקט אמיתי, או אריח שנראה כמו עץ?','בבית הזה בחרנו *שניהם*','*פישבון אמיתי* בסלון, מול הים','במקום שבו הולכים יחפים','ובחדר הרחצה ובחדר הכביסה','*פורצלן דמוי עץ* שלא מפחד ממים','אותו גוון, שני חומרים','בית אחד שלם','איך מחליטים איפה כל אחד?','בפגישת תכנון *חינם*','הקישור בוואטסאפ']),
- 5: dict(clips=['c51','c52','c53','c54'], hook=['הארון הזה','לא קיים בקטלוג'], next='קיר אחד משנה הכל',
+ 5: dict(clips=['c51t','c52','c53','c54'], hook=['הארון הזה','לא קיים בקטלוג'], next='קיר אחד משנה הכל',
     caps=['הארון הזה לא קיים בשום קטלוג','הוא נבנה *למשפחה אחת*','בגוון שהם בחרו','במידה שבדיוק נכנסת לקיר שלהם','ככה זה אצלנו:','לא ארון מהמדף','אלא ארון *שתוכנן לחדר*','כיור מחורץ על אגוז','משטח אבן עם ברז קיר','או *כחול* שאף אחד אחר לא יקבל','מתכננים איתכם, *בחינם*','הקישור בוואטסאפ']),
  6: dict(clips=['c61','c62','c63','c64'], hook=['קיר אחד.','זה כל מה שצריך'], next='החדר הכי קטן בבית',
     caps=['קיר אחד.','זה כל מה שצריך כדי שהחדר ייראה כמו ממגזין','*פסיפס אצבעות* לבן','אריחי *פיקט* בזיגוג יד','*ריצוף מעוטר* מתחת לאמבטיה','שאר החדר נשאר שקט','והקיר הזה עושה את *כל העבודה*','איזה קיר מתאים לבית שלכם?','בואו נבחר יחד','פגישה *חינם* עם המעצבות של זיסו','הקישור בוואטסאפ']),
@@ -26,6 +28,8 @@ for i, r in R.items():
     for p, q in zip(caps, caps[1:]):  # no overlap
         if p['t1'] > q['t0']: p['t1'] = round(q['t0'], 2)
     caps[-1]['t1'] = round(words[-1][1] + 1.0, 2)
-    spec = dict(name=f'r{i}', clips=[c + '.mp4' for c in r['clips']], vo=f'vo{i}.mp3', hook=r['hook'], next=r['next'], caps=caps)
-    json.dump(spec, open(f'r{i}.json', 'w'), ensure_ascii=False, indent=1)
+    spec = dict(name=f'r{i}{SS}', clips=[c + '.mp4' for c in r['clips']], vo=f'vo{i}{VS}.mp3', hook=r['hook'], next=r['next'], caps=caps)
+    json.dump(spec, open(f'r{i}{SS}.json', 'w'), ensure_ascii=False, indent=1)
+    sh = dict(spec, name=f'r{i}{SS}-shorts', follow='הירשמו', handle='@zisoceramics', handleSub='YouTube')  # YouTube Shorts end card
+    json.dump(sh, open(f'r{i}{SS}-shorts.json', 'w'), ensure_ascii=False, indent=1)
     print(i, nw, ns, [(c['t0'], c['t1']) for c in caps])

@@ -39,7 +39,7 @@ const shots={
   base:`<div class="abs scrim"></div><div class="abs scrimtop"></div><div class="abs brand"><i></i>זיסו קרמיקה</div>`,
   hook:`<div class="abs hook">${spec.hook.map((l,i)=>`<div class="${i?'b':''}">${esc(l)}</div>`).join('')}</div>`,
   cta:`<div class="abs pill">${esc(spec.cta||'וואטסאפ · פגישת תכנון חינם')}</div><div class="abs sub"><b><span dir="ltr">050-4770040</span></b> · זיסו קרמיקה · טירת כרמל · מאז 1985</div>`,
-  end:`<div class="abs endbg"></div><div class="abs e1">פרק הבא</div><div class="abs e2">${esc(spec.next)}</div><div class="abs hair"></div><div class="abs e3">עקבו <span dir="ltr">${esc(spec.handle||'@ziso_ceramics')}</span></div><div class="abs e4">${esc(spec.handleSub||'Instagram · TikTok · Facebook')}</div>`
+  end:`<div class="abs endbg"></div><div class="abs e1">פרק הבא</div><div class="abs e2">${esc(spec.next)}</div><div class="abs hair"></div><div class="abs e3">${esc(spec.follow||'עקבו')} <span dir="ltr">${esc(spec.handle||'@ziso_ceramics')}</span></div><div class="abs e4">${esc(spec.handleSub||'Instagram · TikTok · Facebook')}</div>`
 };
 spec.caps.forEach((c,i)=>{shots['cap'+i]=`<div class="abs cap">${mark(c.text)}</div>`});
 const br=await chromium.launch({args:['--no-sandbox']});
