@@ -16,14 +16,15 @@ html,body{width:1080px;height:1920px;overflow:hidden;background:transparent}
 .abs{position:absolute}
 .brand{right:70px;top:190px;font:500 30px/1 HB;letter-spacing:.08em;color:var(--brass-l);text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .brand i{display:inline-block;width:44px;height:2px;background:var(--brass);vertical-align:middle;margin-left:16px}
-.scrim{left:0;right:0;bottom:0;height:900px;background:linear-gradient(0deg,rgba(15,12,10,.86) 0%,rgba(15,12,10,.62) 40%,rgba(15,12,10,.2) 72%,rgba(15,12,10,0) 100%)}
-.scrimtop{left:0;right:0;top:0;height:760px;background:linear-gradient(180deg,rgba(15,12,10,.72) 0%,rgba(15,12,10,.35) 55%,rgba(15,12,10,0) 100%)}
+.scrim{left:0;right:0;bottom:0;height:900px;background:linear-gradient(0deg,rgba(15,12,10,.72) 0%,rgba(15,12,10,.48) 40%,rgba(15,12,10,.12) 72%,rgba(15,12,10,0) 100%)}
+.scrimtop{left:0;right:0;top:0;height:760px;background:linear-gradient(180deg,rgba(15,12,10,.5) 0%,rgba(15,12,10,.22) 55%,rgba(15,12,10,0) 100%)}
 .hook{right:70px;left:70px;top:300px;text-align:right;font-family:FR,serif;font-weight:700;color:var(--bone);font-size:132px;line-height:1.06;letter-spacing:-.01em;text-shadow:0 4px 30px rgba(0,0,0,.55)}
 .hook .b{color:var(--brass-l)}
-.cap{right:70px;left:70px;top:1270px;text-align:center;font:700 66px/1.25 HB;color:var(--bone);text-shadow:0 3px 18px rgba(0,0,0,.7)}
+.cap{right:70px;left:70px;top:1150px;text-align:center;font:700 62px/1.25 HB;color:var(--bone);text-shadow:0 3px 18px rgba(0,0,0,.7)}
 .cap .k{color:var(--brass-l)}
-.pill{left:70px;right:70px;top:1380px;height:140px;border-radius:70px;background:var(--wa);color:var(--wa-ink);font:700 58px/140px HB;text-align:center;box-shadow:0 14px 40px rgba(0,0,0,.45)}
-.sub{left:70px;right:70px;top:1545px;text-align:center;font:500 40px/1.2 HB;color:var(--bone);opacity:.92}
+.pill{left:70px;right:70px;top:1400px;height:136px;border-radius:68px;background:var(--wa);color:var(--wa-ink);font:700 56px/136px HB;white-space:nowrap;text-align:center;box-shadow:0 14px 40px rgba(0,0,0,.45)}
+.sub{left:70px;right:70px;top:1560px;text-align:center;font:500 40px/1.2 HB;color:var(--bone);opacity:.92;white-space:nowrap}
+.sub b{font-weight:700;color:var(--brass-l)}
 .endbg{inset:0;background:var(--ink)}
 .e1{left:70px;right:70px;top:700px;text-align:center;font:500 44px/1 HB;letter-spacing:.1em;color:var(--brass-l)}
 .e2{left:70px;right:70px;top:790px;text-align:center;font-family:FR,serif;font-weight:700;font-size:118px;line-height:1.1;color:var(--bone)}
@@ -37,8 +38,8 @@ const mark=s=>esc(s).replace(/\*(.+?)\*/g,'<span class="k">$1</span>');
 const shots={
   base:`<div class="abs scrim"></div><div class="abs scrimtop"></div><div class="abs brand"><i></i>זיסו קרמיקה</div>`,
   hook:`<div class="abs hook">${spec.hook.map((l,i)=>`<div class="${i?'b':''}">${esc(l)}</div>`).join('')}</div>`,
-  cta:`<div class="abs pill">${esc(spec.cta||'פגישת תכנון חינם · וואטסאפ 050-4770040')}</div><div class="abs sub">${esc(spec.sub||'עם המעצבות המוסמכות של זיסו · טירת כרמל · מאז 1985')}</div>`,
-  end:`<div class="abs endbg"></div><div class="abs e1">פרק הבא</div><div class="abs e2">${esc(spec.next)}</div><div class="abs hair"></div><div class="abs e3">עקבו ${esc(spec.handle||'@ziso_ceramics')}</div><div class="abs e4">${esc(spec.handleSub||'Instagram · TikTok · Facebook')}</div>`
+  cta:`<div class="abs pill">${esc(spec.cta||'וואטסאפ · פגישת תכנון חינם')}</div><div class="abs sub"><b><span dir="ltr">050-4770040</span></b> · זיסו קרמיקה · טירת כרמל · מאז 1985</div>`,
+  end:`<div class="abs endbg"></div><div class="abs e1">פרק הבא</div><div class="abs e2">${esc(spec.next)}</div><div class="abs hair"></div><div class="abs e3">עקבו <span dir="ltr">${esc(spec.handle||'@ziso_ceramics')}</span></div><div class="abs e4">${esc(spec.handleSub||'Instagram · TikTok · Facebook')}</div>`
 };
 spec.caps.forEach((c,i)=>{shots['cap'+i]=`<div class="abs cap">${mark(c.text)}</div>`});
 const br=await chromium.launch({args:['--no-sandbox']});
