@@ -2,9 +2,11 @@
 // POST {session, message, page} -> {session, reply}. The conversation lives in chat_sessions/chat_messages so the
 // widget sends only the new message. Limits: 40 messages per session, 60 per IP per hour, 1000 chars per message.
 // Secrets: ANTHROPIC_API_KEY (Aviv sets it in the Supabase dashboard). Supabase URL/key are injected by the platform.
+// Internal WhatsApp route (wa-webhook only): header "x-internal-channel: whatsapp" + "authorization: Bearer <service role key>",
+// body {channel:"whatsapp", history, message} -> {reply, lead, usage}. No rows are written here; see whatsappTurn.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.90.0";
-import { runTurn, type Turn } from "./bot.ts";
+import { cleanPhone, runTurn, type Turn } from "./bot.ts";
 
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const ORIGINS = new Set(["https://www.zisoceramics.com", "https://zisoceramics.com", "http://localhost:8080", "http://127.0.0.1:8080"]);
@@ -20,15 +22,33 @@ function cors(req: Request) {
   return { "access-control-allow-origin": ORIGINS.has(o) ? o : "https://www.zisoceramics.com", "access-control-allow-headers": "content-type", "access-control-allow-methods": "POST, OPTIONS", "vary": "origin", "content-type": "application/json; charset=utf-8" };
 }
 const json = (req: Request, body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: cors(req) });
+// Internal WhatsApp route (wa-webhook calls it; never browsers). Stateless on purpose: the WhatsApp thread keeps the
+// conversation in wa_messages (so the bot also sees what Eilat/Shir answered from the phone app), writes the lead,
+// enforces caps and the human-quiet rule. Body {channel:"whatsapp", history:[{role,content}], message, phone?, name?, first?}.
+async function whatsappTurn(req: Request, body: { history?: unknown; message: string; phone?: string; name?: string; first?: boolean }) {
+  const auth = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!auth || auth !== Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) return json(req, { error: "auth" }, 401);
+  const history: Turn[] = (Array.isArray(body.history) ? body.history : [])
+    .filter((t: any) => t && (t.role === "user" || t.role === "assistant") && typeof t.content === "string" && t.content.trim())
+    .slice(-MAX_PER_SESSION * 2).map((t: any) => ({ role: t.role, content: t.content.slice(0, MAX_CHARS * 2) }));
+  const phone = cleanPhone((body.phone || "").toString()) || undefined;
+  const name = (body.name || "").toString().slice(0, 80) || undefined;
+  const client = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY") });
+  try {
+    const r = await runTurn(client, history, body.message, "whatsapp", { phone, name, first: !!body.first });
+    return json(req, { reply: r.text, lead: r.lead, usage: r.usage });
+  } catch (e) { console.error("anthropic", e); return json(req, { error: "anthropic" }, 502); }
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(req) });
   if (req.method !== "POST") return json(req, { error: "method" }, 405);
   if (!Deno.env.get("ANTHROPIC_API_KEY")) return json(req, { error: "offline", reply: "הצ'אט עדיין לא פעיל. אפשר לכתוב לנו בוואטסאפ 050-4770040." }, 503);
-  let body: { session?: string; message?: string; page?: string };
+  let body: { session?: string; message?: string; page?: string; channel?: string; history?: unknown; phone?: string; name?: string; first?: boolean };
   try { body = await req.json(); } catch { return json(req, { error: "bad json" }, 400); }
   const message = (body.message || "").toString().trim().slice(0, MAX_CHARS);
   if (!message) return json(req, { error: "empty" }, 400);
+  if (body.channel === "whatsapp" || req.headers.get("x-internal-channel") === "whatsapp") return whatsappTurn(req, { ...body, message });
   const ip = await ipHash(req);
 
   // Per-IP limit before touching the model.
