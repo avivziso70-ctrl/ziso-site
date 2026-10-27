@@ -7,7 +7,8 @@ import Anthropic from "npm:@anthropic-ai/sdk@0.90.0";
 import { KNOWLEDGE } from "./knowledge.ts";
 import { searchCatalog, familySummary } from "./search.ts";
 
-export const MODEL = "claude-opus-5-5";
+// BOT_MODEL secret overrides the model (promotional credits may cover only some models).
+export const MODEL = Deno.env.get("BOT_MODEL") || "claude-sonnet-5-5";
 export type Channel = "site" | "whatsapp";
 export type Turn = { role: "user" | "assistant"; content: string };
 export type Lead = { name: string; phone: string; topic: string; preferred_time?: string };
