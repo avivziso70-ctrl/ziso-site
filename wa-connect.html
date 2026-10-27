@@ -14,7 +14,7 @@ button{background:#166fe5;color:#fff;border:0;border-radius:6px;padding:12px 22p
 var APP_ID = '1742263687036823', CONFIG_ID = '1390410153079487';
 var ONBOARD = 'https://ppnjosyraosrdephsksu.supabase.co/functions/v1/wa-onboard';
 var signup = {}, code = null, log = function (t) { document.getElementById('log').textContent += t + '\n'; };
-window.fbAsyncInit = function () { FB.init({ appId: APP_ID, autoLogAppEvents: true, xfbml: false, version: 'v23.0' }); };
+window.fbAsyncInit = function () { FB.init({ appId: APP_ID, autoLogAppEvents: true, xfbml: false, version: 'v26.0' }); };
 window.addEventListener('message', function (e) {
   if (!/facebook\.com$/.test(new URL(e.origin).hostname)) return;
   try { var d = JSON.parse(e.data); } catch (_) { return; }
@@ -34,7 +34,9 @@ function finish() {
 document.getElementById('go').onclick = function () {
   FB.login(function (r) { if (r.authResponse && r.authResponse.code) { code = r.authResponse.code; finish(); } else log('ההתחברות בוטלה.'); },
     { config_id: CONFIG_ID, response_type: 'code', override_default_response_type: true,
-      extras: { setup: {}, featureType: 'whatsapp_business_app_onboarding', sessionInfoVersion: '3' } });
+      // Embedded Signup v5 (v2/v3 were retired 15.10.2026): WhatsApp Business app onboarding (coexistence)
+      // is on by default and comes from the login configuration, so no featureType is needed.
+      extras: { version: 'v5', setup: {} } });
 };
 </script>
 <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
