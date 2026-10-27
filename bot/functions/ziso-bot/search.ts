@@ -15,7 +15,7 @@ function expand(tok: string): string[] {
   if (tok.startsWith("ה") && tok.length > 3) out.add(tok.slice(1));
   return [...out];
 }
-const index = CATALOG.map(([fam, desc]) => ({ fam, desc, text: " " + norm(fam + " " + desc) + " " }));
+const index = Object.entries(CATALOG).flatMap(([fam, descs]) => descs.map((desc) => ({ fam, desc, text: " " + norm(fam + " " + desc) + " " })));
 
 export function searchCatalog(query: string, limit = 12): { family: string; items: string[] }[] {
   const toks = norm(query).split(" ").filter((t) => t.length > 1);
