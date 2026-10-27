@@ -266,7 +266,7 @@ def head(title, desc, canon, schemas):
 # Legal pages required or expected in Israel: accessibility statement (תקנות שוויון זכויות לאנשים עם מוגבלות, התאמות נגישות לשירות, תקן 5568 / WCAG 2.0 AA),
 # privacy policy incl. cookies (חוק הגנת הפרטיות ותיקון 13), terms of use. Written in content; edit here.
 A11Y_DATE = "7 באוקטובר 2026"
-PRIVACY_DATE = "13 באוקטובר 2026"
+PRIVACY_DATE = "27 באוקטובר 2026"
 LEGAL_PAGES = [
   ("accessibility.html", "הצהרת נגישות", "הצהרת הנגישות של אתר זיסו קרמיקה: רמת הנגישות, ההתאמות שבוצעו, פרטי רכז הנגישות ודרכי פנייה.", "הצהרת נגישות",
    "אנחנו רואים בנגישות חלק מהשירות, באולם ובאתר. העמוד מפרט מה נעשה באתר, איך משתמשים בכלי הנגישות ולמי פונים אם משהו לא עובד.", '''
@@ -320,20 +320,20 @@ LEGAL_PAGES = [
 <h2>קישורים חיצוניים</h2>
 <p>האתר מקשר לשירותים כמו Waze, Google Maps, Instagram ו-Facebook. השימוש בהם כפוף למדיניות הפרטיות שלהם.</p>
 <h2>וואטסאפ עסקי</h2>
-<p>אנחנו מקבלים פניות גם דרך WhatsApp Business Platform של Meta. ההודעות שאתם שולחים למספר העסקי שלנו ותשובותינו, מספר הטלפון ושם הפרופיל שלכם, ופרטי ההזמנה שמסרתם, נשמרים בחשבונות העסקיים של זיסו קרמיקה (Google Workspace / Google Drive) ובמערכת ניהול העסק שלנו, עם גישה לצוות העסק בלבד. המידע משמש למענה, להצעות מחיר ולטיפול בהזמנות; איננו מוכרים אותו ואיננו משתמשים בו לפרסום. כלי בינה מלאכותית שפועלים עבורנו עשויים לסכם שיחות לצוות; המידע לא משמש לאימון מודלים של צד שלישי. למחיקת המידע ראו <a href="data-deletion.html">הוראות מחיקת מידע</a>.</p>
+<p>אנחנו מקבלים פניות גם דרך WhatsApp Business Platform של Meta. ההודעות שאתם שולחים למספר העסקי שלנו ותשובותינו, מספר הטלפון ושם הפרופיל שלכם, ופרטי ההזמנה שמסרתם, נשמרים בחשבונות העסקיים של זיסו קרמיקה (Google Workspace / Google Drive) ובמערכת ניהול העסק שלנו, עם גישה לצוות העסק בלבד. המידע משמש למענה, להצעות מחיר ולטיפול בהזמנות; איננו מוכרים אותו ואיננו משתמשים בו לפרסום. חלק מההודעות בוואטסאפ עשויות להיענות על ידי "העוזר של זיסו", עוזר אוטומטי מבוסס בינה מלאכותית ולא נציג אנושי, שמציג את עצמו ככזה; אפשר לבקש בכל שלב לדבר עם אדם מהצוות. במקרה כזה תוכן ההודעות מועבר לעיבוד אצל ספק מודל השפה שלנו, Anthropic (ארה"ב), שלפי תנאיו אינו משתמש בתוכן לאימון מודלים, ונשמר אצלנו (Supabase) עד 90 ימים, כמו בצ'אט באתר. כלי בינה מלאכותית עשויים גם לסכם שיחות לצוות. אל תשלחו בוואטסאפ מידע רגיש. למחיקת המידע ראו <a href="data-deletion.html">הוראות מחיקת מידע</a>.</p>
 <h2>עדכונים</h2>
 <p>נעדכן את המדיניות כשיהיה צורך, ותאריך העדכון יופיע כאן. עודכן לאחרונה ב-%s.</p>
 <section class="en" lang="en" dir="ltr">
 <h2>Privacy Policy (English summary, WhatsApp)</h2>
-<p>This section describes how ZISO CERAMICS LTD (company no. %s), Otzma 5, Tirat Carmel, Israel ("Ziso Ceramics", "we") handles information when customers contact us on WhatsApp and when we use our WhatsApp Business integration (Meta app "Ziso Ceramics"). Last updated: October 13, 2026.</p>
+<p>This section describes how ZISO CERAMICS LTD (company no. %s), Otzma 5, Tirat Carmel, Israel ("Ziso Ceramics", "we") handles information when customers contact us on WhatsApp and when we use our WhatsApp Business integration (Meta app "Ziso Ceramics"). Last updated: October 27, 2026.</p>
 <h3>What we collect</h3>
 <p>Messages you send to our WhatsApp business number and our replies, your phone number and WhatsApp profile name, and order details you share with us (for example product choices, quantities and delivery address).</p>
 <h3>Why we use it</h3>
 <p>To answer your questions, prepare quotes, process and track your orders, provide customer service, and improve our service internally. We do not use your data for advertising profiles and we do not sell it.</p>
 <h3>Where it is stored</h3>
-<p>Messages are received through the WhatsApp Business Platform (Meta) and stored in Ziso Ceramics' own business accounts (Google Workspace / Google Drive and our business software), accessible only to Ziso Ceramics staff. AI tools operated on our behalf may summarize conversations for staff; this data is not used to train third-party models.</p>
+<p>Messages are received through the WhatsApp Business Platform (Meta) and stored in Ziso Ceramics' own business accounts (Google Workspace / Google Drive and our business software), accessible only to Ziso Ceramics staff. Some WhatsApp messages may be answered by "Ziso's assistant", an automated AI assistant (not a human) that identifies itself as such; you can ask for a staff member at any time. In that case message content is processed by our language-model provider, Anthropic (USA), which under its terms does not use it to train models, and is stored in our database (Supabase) for up to 90 days. AI tools may also summarize conversations for staff. Please do not send sensitive information over WhatsApp.</p>
 <h3>Sharing</h3>
-<p>We share information only with service providers that run our systems for us (Meta/WhatsApp, Google, our hosting provider, our ERP), or when required by law.</p>
+<p>We share information only with service providers that run our systems for us (Meta/WhatsApp, Google, Anthropic, Supabase, our hosting provider, our ERP), or when required by law.</p>
 <h3>Retention</h3>
 <p>We keep conversation records for as long as needed to serve you and to meet legal and accounting obligations, and then delete them.</p>
 <h3>Your rights and deletion</h3>
@@ -370,8 +370,8 @@ LEGAL_PAGES = [
 <p>המידע באתר הוא מידע כללי לצורך התרשמות והכנה לביקור, ואינו הצעה מחייבת. המבחר, הזמינות, הגוונים והמחירים נקבעים באולם ובהצעת המחיר שתקבלו בכתב. גוון אריח על מסך עשוי להיות שונה מהמוצר האמיתי. עסקאות כפופות לחוק הגנת הצרכן, התשמ"א-1981, ולתנאי ההזמנה שייחתמו באולם.</p>
 <h2>מחשבון הכמויות</h2>
 <p>המחשבון נותן הערכה בלבד לפי המידות שהזנתם ואחוזי פחת מקובלים. הכמות הסופית נקבעת עם הרצף ולפי המידות בפועל, ואיננו אחראים להפרשים הנובעים משימוש במחשבון.</p>
-<h2>הצ'אט באתר</h2>
-<p>"העוזר של זיסו" הוא עוזר אוטומטי מבוסס בינה מלאכותית, לא נציג אנושי. תשובותיו הן מידע כללי לצורך הכנה לביקור ועלולות לכלול טעויות; הן אינן ייעוץ מקצועי, הצעת מחיר או התחייבות מטעמנו. מחירים, זמינות וכמויות נקבעים רק באולם ובהצעת מחיר בכתב. אין להשתמש בצ'אט לשימוש פוגעני או לניסיון לשבש את פעולתו.</p>
+<h2>הצ'אט באתר ובוואטסאפ</h2>
+<p>"העוזר של זיסו", בצ'אט באתר ובחלק מהשיחות בוואטסאפ, הוא עוזר אוטומטי מבוסס בינה מלאכותית, לא נציג אנושי. תשובותיו הן מידע כללי לצורך הכנה לביקור ועלולות לכלול טעויות; הן אינן ייעוץ מקצועי, הצעת מחיר או התחייבות מטעמנו. מחירים, זמינות וכמויות נקבעים רק באולם ובהצעת מחיר בכתב. אין להשתמש בעוזר לשימוש פוגעני או לניסיון לשבש את פעולתו.</p>
 <h2>קניין רוחני</h2>
 <p>התמונות, הסרטונים, הטקסטים והעיצוב באתר שייכים לזיסו קרמיקה או לבעלי זכויות שאישרו את השימוש. תמונות של פרויקטים פורסמו בהסכמת הלקוחות. אין להעתיק או להשתמש בתכנים בלי אישור בכתב.</p>
 <h2>אחריות</h2>
