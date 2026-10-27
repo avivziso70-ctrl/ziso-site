@@ -37,7 +37,7 @@
 <nav class="areas-nav" aria-label="מדריכים"><span>מדריכים:</span><a href="guide-7-decisions.html">7 החלטות</a><a href="guide-bathroom-cost.html">עלות שיפוץ אמבטיה</a><a href="guide-custom-shower.html">מקלחון לפי מידה</a><a href="guide-parquet-vs-tile.html">פרקט או אריח</a><a href="guide-tile-size.html">גודל אריח</a><a href="guide-vanity-hung-or-floor.html">ארון תלוי או עומד</a></nav>
 <nav class="legal-links" aria-label="מידע משפטי"><a href="accessibility.html">הצהרת נגישות</a><a href="privacy.html">מדיניות פרטיות ועוגיות</a><a href="terms.html">תנאי שימוש</a><a href="data-deletion.html">מחיקת מידע</a><button type="button" class="linkbtn" data-cookie-settings>הגדרות עוגיות</button></nav>
 </div></footer>
-<aside class="floating" aria-label="כלים צפים">
+<aside class="floating" aria-label="כלים צפים"><button class="chat-btn" type="button" aria-expanded="false" aria-controls="chat" aria-label="צ'אט עם העוזר של זיסו"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9l-4.2 3.4A.5.5 0 0 1 4 19V5.5z"/><path d="M8 9h8M8 12.5h5"/></svg><span>צ'אט</span></button>
 <button class="a11y-btn" type="button" aria-expanded="false" aria-controls="a11y" aria-label="תפריט נגישות"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="currentColor"><circle cx="12" cy="4" r="2"/><path d="M19 8.5c-2.3.5-4.6.8-7 .8s-4.7-.3-7-.8l-.4 1.9c1.7.4 3.4.6 5.1.7v2.2L7.4 21l1.8.6L12 15.8l2.8 5.8 1.8-.6-2.3-7.7v-2.2c1.7-.1 3.4-.3 5.1-.7L19 8.5z"/></svg></button>
 <div class="a11y" id="a11y" hidden role="dialog" aria-label="הגדרות נגישות">
 <div class="a11y-head"><strong>נגישות</strong><button class="x" type="button" aria-label="סגירת תפריט נגישות">×</button></div>
@@ -49,6 +49,14 @@
 </div>
 <a href="accessibility.html">הצהרת הנגישות של האתר</a></div>
 </aside>
+<div class="chat" id="chat" hidden role="dialog" aria-labelledby="chat-title" data-url="https://ppnjosyraosrdephsksu.supabase.co/functions/v1/ziso-bot">
+<div class="chat-head"><div><strong id="chat-title">העוזר של זיסו</strong><span>עוזר אוטומטי (AI), לא נציג אנושי</span></div><button class="x" type="button" aria-label="סגירת הצ'אט">×</button></div>
+<div class="chat-log" role="log" aria-live="polite" aria-relevant="additions" aria-label="הודעות הצ'אט">
+<div class="msg bot"><p>שלום, אני העוזר הדיגיטלי של זיסו קרמיקה. אני בוט, לא אדם, ועונה על שאלות על ריצוף, חיפוי, אמבטיה ועל האולם בטירת כרמל. במה אפשר לעזור?</p></div>
+</div>
+<p class="chat-note">השיחה נשמרת אצל זיסו קרמיקה עד 90 ימים כדי לענות ולשפר את השירות, ומעובדת גם אצל ספק הבינה המלאכותית שלנו (Anthropic). פרטים שתבחרו למסור ישמשו רק כדי לחזור אליכם. <a href="privacy.html">למדיניות הפרטיות</a>. בשאלות דחופות: <a href="https://wa.me/972504770040" target="_blank" rel="noopener">וואטסאפ</a> או <a class="ltr" href="tel:+972504770040">050-4770040</a>.</p>
+<form class="chat-form"><label for="chat-in" class="sr">ההודעה שלכם</label><textarea id="chat-in" rows="1" maxlength="1000" placeholder="כתבו כאן…" autocomplete="off" required></textarea><button class="btn brass" type="submit">שליחה</button></form>
+</div>
 <div class="cookie" id="cookie" hidden role="region" aria-label="הודעת עוגיות"><p>האתר משתמש בעוגיות של מדידה כדי להבין איך משתמשים בו ולשפר אותו. אפשר להסכים או לדחות; האתר עובד גם בלי. <a href="privacy.html">למדיניות הפרטיות</a></p><div class="actions"><button class="btn brass" type="button" data-consent="yes">מסכים/ה</button><button class="btn line" type="button" data-consent="no">לא תודה</button></div></div>
 <a class="wa" href="https://wa.me/972504770040" target="_blank" rel="noopener" aria-label="שליחת הודעה בוואטסאפ">וואטסאפ</a>
 <dialog class="light" id="light" aria-label="תצוגה מוגדלת"><button class="x" type="button" aria-label="סגירה">×</button><div class="lightbody"></div></dialog>
