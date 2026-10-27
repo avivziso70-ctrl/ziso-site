@@ -8,6 +8,7 @@ EMAIL = "info@zisoceramics.com"
 # Set PORTAL_ON = True to bring back the nav link, the home panel, the FAQ answer and the privacy clause.
 PORTAL_ON = False
 PORTAL = "https://script.google.com/macros/s/AKfycbymgAcl8G130iqF7HCzGWalwu9RM0AWPv11FQQazA2SLMTTFHC6KO6BIIhevgcwA5zI/exec"
+CHAT_URL = "https://ppnjosyraosrdephsksu.supabase.co/functions/v1/ziso-bot"  # site chat bot endpoint (bot/functions/ziso-bot); empty = no chat widget
 INTAKE_URL = ""  # Apps Script /exec of "Ziso CRM Intake" (thread תיק לקוח); empty = form page shows WhatsApp fallback
 HERO_VIDEO = ""  # URL of a short muted showroom clip (mp4, <6MB) to play behind the hero; empty = live tile wall only
 LEGAL = 'זיסו קרמיקה בע"מ'

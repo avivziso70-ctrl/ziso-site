@@ -203,6 +203,21 @@ def load_pages(kind):
 AREA_PAGES = load_pages("areas")
 GUIDE_PAGES = load_pages("guides")
 
+# Site chat bot (bot/functions/ziso-bot). Shown only when CHAT_URL is set. The panel is a non-modal dialog: the page stays
+# usable, Esc closes, the log is a polite live region, every control has a name (IS 5568 / WCAG 2.0 AA).
+# The first message discloses that it is a bot and how the chat is kept; details for a callback are asked for in the
+# conversation, with the purpose stated before they are saved (חוק הגנת הפרטיות, סעיף 11).
+CHAT_BTN = '''<button class="chat-btn" type="button" aria-expanded="false" aria-controls="chat" aria-label="צ'אט עם העוזר של זיסו"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9l-4.2 3.4A.5.5 0 0 1 4 19V5.5z"/><path d="M8 9h8M8 12.5h5"/></svg><span>צ'אט</span></button>'''
+CHAT_PANEL = '''
+<div class="chat" id="chat" hidden role="dialog" aria-labelledby="chat-title" data-url="%s">
+<div class="chat-head"><div><strong id="chat-title">העוזר של זיסו</strong><span>עוזר אוטומטי (AI), לא נציג אנושי</span></div><button class="x" type="button" aria-label="סגירת הצ'אט">×</button></div>
+<div class="chat-log" role="log" aria-live="polite" aria-relevant="additions" aria-label="הודעות הצ'אט">
+<div class="msg bot"><p>שלום, אני העוזר הדיגיטלי של זיסו קרמיקה. אני בוט, לא אדם, ועונה על שאלות על ריצוף, חיפוי, אמבטיה ועל האולם בטירת כרמל. במה אפשר לעזור?</p></div>
+</div>
+<p class="chat-note">השיחה נשמרת אצל זיסו קרמיקה עד 90 ימים כדי לענות ולשפר את השירות, ומעובדת גם אצל ספק הבינה המלאכותית שלנו (Anthropic). פרטים שתבחרו למסור ישמשו רק כדי לחזור אליכם. <a href="privacy.html">למדיניות הפרטיות</a>. בשאלות דחופות: <a href="https://wa.me/%s" target="_blank" rel="noopener">וואטסאפ</a> או <a class="ltr" href="tel:%s">%s</a>.</p>
+<form class="chat-form"><label for="chat-in" class="sr">ההודעה שלכם</label><textarea id="chat-in" rows="1" maxlength="1000" placeholder="כתבו כאן…" autocomplete="off" required></textarea><button class="btn brass" type="submit">שליחה</button></form>
+</div>''' % (CHAT_URL, WA, PHONE_INTL, PHONE)
+
 FOOTER = '''<footer><div class="wrap">
 <div class="legal"><strong style="color:var(--wall-ink)">זיסו קרמיקה</strong>
 <span>%s · <span class="ltr">ZISO CERAMICS LTD</span> · ח.פ. <span class="ltr">%s</span> · עוצמה 5, טירת כרמל</span>
@@ -210,7 +225,7 @@ FOOTER = '''<footer><div class="wrap">
 <nav class="social" aria-label="מוצרים ורשתות">%s<a href="https://www.instagram.com/ziso_ceramics/" target="_blank" rel="noopener">Instagram</a><a href="https://www.facebook.com/zisoceramics" target="_blank" rel="noopener">Facebook</a>%s%s</nav>%s
 <nav class="legal-links" aria-label="מידע משפטי"><a href="accessibility.html">הצהרת נגישות</a><a href="privacy.html">מדיניות פרטיות ועוגיות</a><a href="terms.html">תנאי שימוש</a><a href="data-deletion.html">מחיקת מידע</a><button type="button" class="linkbtn" data-cookie-settings>הגדרות עוגיות</button></nav>
 </div></footer>
-<aside class="floating" aria-label="כלים צפים">
+<aside class="floating" aria-label="כלים צפים">%s
 <button class="a11y-btn" type="button" aria-expanded="false" aria-controls="a11y" aria-label="תפריט נגישות"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="currentColor"><circle cx="12" cy="4" r="2"/><path d="M19 8.5c-2.3.5-4.6.8-7 .8s-4.7-.3-7-.8l-.4 1.9c1.7.4 3.4.6 5.1.7v2.2L7.4 21l1.8.6L12 15.8l2.8 5.8 1.8-.6-2.3-7.7v-2.2c1.7-.1 3.4-.3 5.1-.7L19 8.5z"/></svg></button>
 <div class="a11y" id="a11y" hidden role="dialog" aria-label="הגדרות נגישות">
 <div class="a11y-head"><strong>נגישות</strong><button class="x" type="button" aria-label="סגירת תפריט נגישות">×</button></div>
@@ -221,7 +236,7 @@ FOOTER = '''<footer><div class="wrap">
 <button type="button" data-a11y="reset" class="wide">איפוס</button>
 </div>
 <a href="accessibility.html">הצהרת הנגישות של האתר</a></div>
-</aside>
+</aside>%s
 <div class="cookie" id="cookie" hidden role="region" aria-label="הודעת עוגיות"><p>האתר משתמש בעוגיות של מדידה כדי להבין איך משתמשים בו ולשפר אותו. אפשר להסכים או לדחות; האתר עובד גם בלי. <a href="privacy.html">למדיניות הפרטיות</a></p><div class="actions"><button class="btn brass" type="button" data-consent="yes">מסכים/ה</button><button class="btn line" type="button" data-consent="no">לא תודה</button></div></div>
 <a class="wa" href="https://wa.me/%s" target="_blank" rel="noopener" aria-label="שליחת הודעה בוואטסאפ">וואטסאפ</a>
 <dialog class="light" id="light" aria-label="תצוגה מוגדלת"><button class="x" type="button" aria-label="סגירה">×</button><div class="lightbody"></div></dialog>''' % (
@@ -229,7 +244,8 @@ FOOTER = '''<footer><div class="wrap">
   ('<a href="%s" target="_blank" rel="noopener">TikTok</a>' % TIKTOK) if TIKTOK else "",
   ('<a href="%s" target="_blank" rel="noopener">YouTube</a>' % YOUTUBE) if YOUTUBE else "",
   (('\n<nav class="areas-nav" aria-label="אזורי שירות"><span>אזורי שירות:</span>%s</nav>' % "".join('<a href="%s.html">%s</a>' % (a["slug"], a["city"]) for a in AREA_PAGES)) if AREA_PAGES else "") +
-  (('\n<nav class="areas-nav" aria-label="מדריכים"><span>מדריכים:</span>%s</nav>' % "".join('<a href="%s.html">%s</a>' % (g["slug"], g["short"]) for g in GUIDE_PAGES)) if GUIDE_PAGES else ""), WA)
+  (('\n<nav class="areas-nav" aria-label="מדריכים"><span>מדריכים:</span>%s</nav>' % "".join('<a href="%s.html">%s</a>' % (g["slug"], g["short"]) for g in GUIDE_PAGES)) if GUIDE_PAGES else ""),
+  CHAT_BTN if CHAT_URL else "", CHAT_PANEL if CHAT_URL else "", WA)
 
 def head(title, desc, canon, schemas):
   ld = "".join('<script type="application/ld+json">%s</script>\n' % json.dumps(s, ensure_ascii=False) for s in schemas)
@@ -288,10 +304,11 @@ LEGAL_PAGES = [
 <li><b>פנייה בוואטסאפ, בטלפון או במייל.</b> כשאתם פונים אלינו, אנחנו שומרים את הפרטים שמסרתם (שם, טלפון, תוכן הפנייה) כדי לענות, לתאם ביקור באולם ולהכין הצעת מחיר. השיחה בוואטסאפ כפופה גם למדיניות הפרטיות של WhatsApp (Meta).</li>
 <li><b>טופס "תיק לקוח".</b> הפרטים שאתם ממלאים (שם, טלפון, אימייל, פרטי הפרויקט, תמונות ותוכניות אם צירפתם) נשמרים במערכות Google Workspace שלנו ובמערכת ניהול הלקוחות שלנו, ומשמשים להכנת הפגישה, להצעת מחיר ולניהול ההזמנה. מסירת המידע תלויה ברצונכם; בלי שם וטלפון לא נוכל לחזור אליכם.</li>
 <li><b>אזור הלקוחות.</b> הכניסה נעשית עם מספר הטלפון ומספר הלקוח או ההזמנה, ומציגה רק את הנתונים של אותה הזמנה ממערכת הניהול שלנו. לא נשמר מידע נוסף מעבר לרישום הגישה.</li>
+<li><b>צ'אט באתר ("העוזר של זיסו").</b> הצ'אט מופעל על ידי בינה מלאכותית ואינו נציג אנושי, וכך הוא מציג את עצמו. תוכן השיחה נשמר אצלנו עד 90 ימים כדי לענות לכם ולשפר את השירות, ומועבר לעיבוד לספק מודל השפה שלנו, Anthropic (ארה"ב), שלפי תנאיו אינו משתמש בתוכן לאימון מודלים. לצורך מניעת שימוש לרעה נשמר ערך מוצפן (hash) של כתובת ה-IP, לא הכתובת עצמה. שם וטלפון נשמרים רק אם בחרתם למסור אותם לצורך חזרה אליכם, והבוט אומר זאת לפני השמירה. אל תמסרו בצ'אט מידע רגיש. אפשר לבקש מחיקה של שיחה בכל עת.</li>
 <li><b>דיוור שיווקי.</b> לא נשלח אליכם הודעות פרסומת בלי הסכמה מפורשת, בהתאם לסעיף 30א לחוק התקשורת (בזק ושידורים). בכל הודעה כזו תהיה דרך פשוטה להסרה.</li>
 </ul>
 <h2>מי מקבל את המידע</h2>
-<p>המידע נשמר אצלנו ואצל ספקי השירות שמפעילים את המערכות שלנו: Google (Workspace, Drive), Meta (WhatsApp), ספקית תוכנת ניהול העסק, וחברת הסליקה כשמבצעים תשלום. חלק מספקים אלה שומרים מידע מחוץ לישראל, במדינות עם רמת הגנה מוכרת. אנחנו לא מוכרים ולא מעבירים מידע לצדדים שלישיים לצורכי שיווק. נמסור מידע אם נידרש לכך לפי דין או כדי לממש זכויות משפטיות.</p>
+<p>המידע נשמר אצלנו ואצל ספקי השירות שמפעילים את המערכות שלנו: Google (Workspace, Drive), Meta (WhatsApp), Anthropic (הצ'אט באתר), Supabase (אחסון פניות וצ'אט), ספקית תוכנת ניהול העסק, וחברת הסליקה כשמבצעים תשלום. חלק מספקים אלה שומרים מידע מחוץ לישראל, במדינות עם רמת הגנה מוכרת. אנחנו לא מוכרים ולא מעבירים מידע לצדדים שלישיים לצורכי שיווק. נמסור מידע אם נידרש לכך לפי דין או כדי לממש זכויות משפטיות.</p>
 <h2>כמה זמן שומרים</h2>
 <p>פניות שלא הבשילו לעסקה נשמרות עד שנתיים. מסמכי עסקה (הזמנות, חשבוניות, קבלות) נשמרים לפי חובות הדיווח והנהלת החשבונות (שבע שנים לפחות).</p>
 <h2>הזכויות שלכם</h2>
@@ -353,6 +370,8 @@ LEGAL_PAGES = [
 <p>המידע באתר הוא מידע כללי לצורך התרשמות והכנה לביקור, ואינו הצעה מחייבת. המבחר, הזמינות, הגוונים והמחירים נקבעים באולם ובהצעת המחיר שתקבלו בכתב. גוון אריח על מסך עשוי להיות שונה מהמוצר האמיתי. עסקאות כפופות לחוק הגנת הצרכן, התשמ"א-1981, ולתנאי ההזמנה שייחתמו באולם.</p>
 <h2>מחשבון הכמויות</h2>
 <p>המחשבון נותן הערכה בלבד לפי המידות שהזנתם ואחוזי פחת מקובלים. הכמות הסופית נקבעת עם הרצף ולפי המידות בפועל, ואיננו אחראים להפרשים הנובעים משימוש במחשבון.</p>
+<h2>הצ'אט באתר</h2>
+<p>"העוזר של זיסו" הוא עוזר אוטומטי מבוסס בינה מלאכותית, לא נציג אנושי. תשובותיו הן מידע כללי לצורך הכנה לביקור ועלולות לכלול טעויות; הן אינן ייעוץ מקצועי, הצעת מחיר או התחייבות מטעמנו. מחירים, זמינות וכמויות נקבעים רק באולם ובהצעת מחיר בכתב. אין להשתמש בצ'אט לשימוש פוגעני או לניסיון לשבש את פעולתו.</p>
 <h2>קניין רוחני</h2>
 <p>התמונות, הסרטונים, הטקסטים והעיצוב באתר שייכים לזיסו קרמיקה או לבעלי זכויות שאישרו את השימוש. תמונות של פרויקטים פורסמו בהסכמת הלקוחות. אין להעתיק או להשתמש בתכנים בלי אישור בכתב.</p>
 <h2>אחריות</h2>

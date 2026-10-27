@@ -258,3 +258,31 @@
     document.querySelectorAll('[data-cookie-settings]').forEach(function(b){b.addEventListener('click',function(){try{localStorage.removeItem(CK)}catch(e){}box.hidden=false;box.querySelector('button').focus()})});
   }
 })();
+
+// ===== site chat bot: a thin client for bot/functions/ziso-bot. The server keeps the conversation; the browser keeps only
+// the session id for this tab (sessionStorage). Bot text is rendered as text nodes (links get anchors), never as HTML.
+(function(){
+  var panel=document.getElementById('chat'),btn=document.querySelector('.chat-btn');if(!panel||!btn)return;
+  var url=panel.getAttribute('data-url'),log=panel.querySelector('.chat-log'),form=panel.querySelector('.chat-form'),input=document.getElementById('chat-in'),send=form.querySelector('button'),busy=false;
+  var SK='ziso_chat';function sid(){try{return sessionStorage.getItem(SK)||''}catch(e){return ''}}
+  function toggle(open){panel.hidden=!open;btn.setAttribute('aria-expanded',open?'true':'false');if(open){input.focus();if(window.zisoTrack)window.zisoTrack('chat_open',{})}else btn.focus()}
+  btn.addEventListener('click',function(){toggle(panel.hidden)});
+  panel.querySelector('.x').addEventListener('click',function(){toggle(false)});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!panel.hidden)toggle(false)});
+  function linkify(p,text){var re=/https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"]/g,i=0,m;
+    while((m=re.exec(text))){p.appendChild(document.createTextNode(text.slice(i,m.index)));var a=document.createElement('a');a.href=m[0];a.textContent=m[0].replace(/^https?:\/\/(www\.)?/,'');a.target='_blank';a.rel='noopener';p.appendChild(a);i=m.index+m[0].length}
+    p.appendChild(document.createTextNode(text.slice(i)))}
+  function add(cls,text){var d=document.createElement('div');d.className='msg '+cls;var p=document.createElement('p');if(text)linkify(p,text);d.appendChild(p);log.appendChild(d);log.scrollTop=log.scrollHeight;return d}
+  function grow(){input.style.height='auto';input.style.height=Math.min(140,input.scrollHeight)+'px'}
+  input.addEventListener('input',grow);
+  input.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();form.requestSubmit?form.requestSubmit():send.click()}});
+  form.addEventListener('submit',function(e){e.preventDefault();var text=input.value.trim();if(!text||busy)return;
+    busy=true;send.disabled=true;add('me',text);input.value='';grow();var wait=add('bot wait','');wait.setAttribute('aria-hidden','true');
+    if(window.zisoTrack)window.zisoTrack('chat_message',{});
+    var body={session:sid(),message:text,page:location.pathname};
+    fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})}).then(function(x){
+      wait.remove();var j=x.j||{};if(j.session){try{sessionStorage.setItem(SK,j.session)}catch(err){}}
+      if(j.reply)add('bot',j.reply);else add('err','לא הצלחנו לשלוח. אפשר לנסות שוב או לכתוב לנו בוואטסאפ.');
+      if(j.lead&&window.zisoTrack)window.zisoTrack('generate_lead',{method:'chat'});
+    }).catch(function(){wait.remove();add('err','אין חיבור כרגע. אפשר לנסות שוב או לכתוב לנו בוואטסאפ.')}).then(function(){busy=false;send.disabled=false;input.focus()})});
+})();
