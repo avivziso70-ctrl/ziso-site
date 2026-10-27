@@ -13,6 +13,8 @@ export type Channel = "site" | "whatsapp";
 export type Turn = { role: "user" | "assistant"; content: string };
 export type Lead = { name: string; phone: string; topic: string; preferred_time?: string };
 export type TurnResult = { text: string; lead: Lead | null; usage: { input: number; output: number; cached: number } };
+// WhatsApp knows who is writing: the sender's number (local format) and profile name; first = first message of the conversation.
+export type TurnContext = { phone?: string; name?: string; first?: boolean };
 
 const RULES = `אתה "העוזר של זיסו קרמיקה", עוזר דיגיטלי אוטומטי (AI) באתר של זיסו קרמיקה, אולם תצוגה לריצוף, חיפוי, כלים סניטריים, ארונות אמבטיה, מקלחונים וברזים בטירת כרמל.
 
@@ -91,7 +93,14 @@ export function nowInIsrael(d = new Date()): string {
   return new Intl.DateTimeFormat("he-IL", { timeZone: "Asia/Jerusalem", weekday: "long", hour: "2-digit", minute: "2-digit", day: "numeric", month: "long" }).format(d);
 }
 
-export async function runTurn(client: Anthropic, history: Turn[], userText: string, channel: Channel): Promise<TurnResult> {
+function channelNote(channel: Channel, ctx: TurnContext): string {
+  if (channel === "site") return "ערוץ: צ'אט באתר.";
+  const who = ctx.phone ? ` הלקוח כותב ממספר ${ctx.phone}${ctx.name ? ` (שם הפרופיל: ${ctx.name})` : ""}. אל תבקש מספר טלפון; ב-save_lead השתמש במספר הזה, ושאל רק שם פרטי אם אינו ברור.` : "";
+  const first = ctx.first ? " זו ההודעה הראשונה בשיחה: פתח במשפט קצר שאתה העוזר הדיגיטלי האוטומטי של זיסו קרמיקה ושהצוות קורא את השיחה ועונה בעצמו בשעות הפעילות." : "";
+  return `ערוץ: וואטסאפ. הלקוח כבר כותב לנו בוואטסאפ, אז לעולם אל תפנה אותו "לוואטסאפ 050-4770040" ואל תציע "להשאיר פרטים כאן"; במקום זה אמור שהצוות רואה את השיחה הזו ועונה בה בעצמו בשעות הפעילות.${who}${first} אם הלקוח מבקש לדבר עם אדם או כותב שיחכה לנציג, אמור שהצוות יראה את ההודעה ויחזור בשעות הפעילות, ואל תמשיך לשאול. בשבת אל תבטיח שיחת טלפון או תשובה היום; הצוות חוזר ביום ראשון.`;
+}
+
+export async function runTurn(client: Anthropic, history: Turn[], userText: string, channel: Channel, ctx: TurnContext = {}): Promise<TurnResult> {
   const messages: Anthropic.MessageParam[] = [
     ...history.map((t) => ({ role: t.role, content: t.content }) as Anthropic.MessageParam),
     { role: "user", content: userText },
@@ -108,13 +117,13 @@ export async function runTurn(client: Anthropic, history: Turn[], userText: stri
       fallbacks: "default",
       system: [
         { type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } },
-        { type: "text", text: `ערוץ: ${channel === "site" ? "צ'אט באתר" : "וואטסאפ"}. עכשיו בישראל: ${nowInIsrael()}.` },
+        { type: "text", text: `${channelNote(channel, ctx)} עכשיו בישראל: ${nowInIsrael()}.` },
       ],
       tools: [SEARCH_CATALOG as Anthropic.Beta.BetaTool, SAVE_LEAD as Anthropic.Beta.BetaTool],
       messages,
     });
     usage.input += res.usage.input_tokens; usage.output += res.usage.output_tokens; usage.cached += res.usage.cache_read_input_tokens ?? 0;
-    if (res.stop_reason === "refusal") { texts.push("על זה אני לא יכול לעזור. לכל שאלה על ריצוף, חיפוי ואמבטיה אני כאן, ואפשר גם בוואטסאפ 050-4770040."); break; }
+    if (res.stop_reason === "refusal") { texts.push(channel === "whatsapp" ? "על זה אני לא יכול לעזור. לכל שאלה על ריצוף, חיפוי ואמבטיה אני כאן, והצוות רואה את השיחה ועונה בשעות הפעילות." : "על זה אני לא יכול לעזור. לכל שאלה על ריצוף, חיפוי ואמבטיה אני כאן, ואפשר גם בוואטסאפ 050-4770040."); break; }
     const toolUses: Anthropic.Beta.BetaToolUseBlock[] = [];
     for (const b of res.content) {
       if (b.type === "text" && b.text.trim()) texts.push(b.text.trim());
@@ -130,7 +139,7 @@ export async function runTurn(client: Anthropic, history: Turn[], userText: stri
         continue;
       }
       const inp = tu.input as Lead;
-      const phone = cleanPhone(inp.phone || "");
+      const phone = cleanPhone(inp.phone || "") || (channel === "whatsapp" ? cleanPhone(ctx.phone || "") : null);
       if (tu.name === "save_lead" && phone && !lead) {
         lead = { name: (inp.name || "").slice(0, 80), phone, topic: (inp.topic || "").slice(0, 200), preferred_time: (inp.preferred_time || "").slice(0, 80) };
         results.push({ type: "tool_result", tool_use_id: tu.id, content: "נשמר. אשר ללקוח במשפט קצר שהצוות יחזור אליו בשעות הפעילות." });
@@ -140,5 +149,5 @@ export async function runTurn(client: Anthropic, history: Turn[], userText: stri
     }
     messages.push({ role: "user", content: results });
   }
-  return { text: texts.join("\n\n") || "לא הצלחתי לענות הפעם. אפשר לכתוב לנו בוואטסאפ 050-4770040 ונחזור בשעות הפעילות.", lead, usage };
+  return { text: texts.join("\n\n") || (channel === "whatsapp" ? "לא הצלחתי לענות הפעם. הצוות רואה את ההודעה ויחזור אליך בשעות הפעילות." : "לא הצלחתי לענות הפעם. אפשר לכתוב לנו בוואטסאפ 050-4770040 ונחזור בשעות הפעילות."), lead, usage };
 }
