@@ -476,6 +476,8 @@ def build():
   for f in ("wa-connect.html", "social-connect.html", "checklist.pdf", "checklist.png"): shutil.copy(os.path.join(HERE, f), DIST)
   #   crm/                <- staff page "זיסו צוות" (WhatsApp inbox + customer cards, Supabase login, noindex, blocked in robots.txt)
   shutil.copytree(os.path.join(HERE, "crm"), os.path.join(DIST, "crm"))
+  #   dashboard/          <- team dashboard "לוח בקרה" (Supabase login, dash_bundle, noindex, blocked in robots.txt)
+  shutil.copytree(os.path.join(HERE, "dashboard"), os.path.join(DIST, "dashboard"))
 
   # Home
   video = ('<video class="herovid" autoplay muted loop playsinline preload="auto" poster="img/video/hero.jpg" data-hero aria-hidden="true"><source src="%s" type="video/mp4"></video>' % HERO_CLIP) if HERO_CLIP else ''
@@ -722,7 +724,7 @@ def build():
   urls = ["", "about.html", "contact.html", "calculator.html", "tik-lakoach.html", "accessibility.html", "privacy.html", "terms.html", "data-deletion.html"] + [a["slug"] + ".html" for a in AREA_PAGES] + [g["slug"] + ".html" for g in GUIDE_PAGES] + (["gallery.html"] if GALLERY else []) + [c["slug"] + ".html" for c in CATS]
   open(os.path.join(DIST, "sitemap.xml"), "w").write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n%s</urlset>\n' %
     "".join("  <url><loc>%s%s</loc><lastmod>%s</lastmod></url>\n" % (SITE, u, TODAY) for u in urls))
-  open(os.path.join(DIST, "robots.txt"), "w").write("User-agent: *\nAllow: /\nDisallow: /toda\nDisallow: /crm\nSitemap: %ssitemap.xml\n" % SITE)
+  open(os.path.join(DIST, "robots.txt"), "w").write("User-agent: *\nAllow: /\nDisallow: /toda\nDisallow: /crm\nDisallow: /dashboard\nSitemap: %ssitemap.xml\n" % SITE)
   open(os.path.join(DIST, "CNAME"), "w").write("www.zisoceramics.com\n")
   open(os.path.join(DIST, "googlee191b4da733a4939.html"), "w").write("google-site-verification: googlee191b4da733a4939.html")  # Search Console
 
