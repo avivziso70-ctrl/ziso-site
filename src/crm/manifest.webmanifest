@@ -1,0 +1,13 @@
+{
+  "name": "זיסו צוות",
+  "short_name": "זיסו צוות",
+  "description": "שיחות וואטסאפ וכרטיסי לקוח של זיסו קרמיקה, לצוות בלבד",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f1113",
+  "theme_color": "#0f1113",
+  "icons": [{ "src": "../img/logo.jpg", "sizes": "512x512", "type": "image/jpeg", "purpose": "any" }]
+}
