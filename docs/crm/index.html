@@ -47,6 +47,13 @@ input::placeholder,textarea::placeholder{color:var(--mute)}
 .pill.wait{background:var(--red-soft);color:var(--red)}
 .pill.bot{background:var(--brass-soft);color:var(--brass)}
 .pill.ok{background:var(--green-soft);color:var(--green)}
+.pill.late{background:var(--red);color:#fff}
+.pill.flag{background:var(--red-soft);color:var(--red);border:1px solid var(--red)}
+#chat .acts{display:flex;gap:6px;overflow:auto;padding-bottom:2px;align-items:center}
+#chat .acts > *,#chat .acts .pill{flex-shrink:0;white-space:nowrap}
+#chat .acts button{min-height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--graphite);font-size:13px;cursor:pointer;white-space:nowrap}
+#chat .acts button[aria-pressed="true"]{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
+.kpi .sub{font-size:12px;color:var(--mute)}
 .muted{color:var(--mute)}.small{font-size:14px}
 .row{display:flex;align-items:center;gap:10px}
 .grow{flex:1;min-width:0}
@@ -221,6 +228,7 @@ details summary{cursor:pointer;color:var(--brass);font-size:14px}
           <button data-f="waiting" aria-pressed="true">ממתינים</button>
           <button data-f="mine" aria-pressed="false">שלי</button>
           <button data-f="all" aria-pressed="false">הכל</button>
+          <button data-f="nc" aria-pressed="false">לא לקוחות</button>
         </div>
       </div>
       <ul class="list" id="convList"></ul>
@@ -235,6 +243,12 @@ details summary{cursor:pointer;color:var(--brass);font-size:14px}
           <div class="who grow"><div class="name ellip" id="chatName">בחרו שיחה</div><div class="small muted ellip" id="chatSub"></div></div>
           <button class="btn small" id="openCard">כרטיס</button>
           <button class="btn small" id="claimBtn">אני מטפלת</button>
+        </div>
+        <div class="acts hidden" id="chatActs" role="group" aria-label="סימון מהיר">
+          <span id="chatState" class="row" style="gap:6px;flex-wrap:nowrap"></span>
+          <button type="button" data-act="quote" aria-pressed="false">נשלחה הצעה</button>
+          <button type="button" data-act="won" aria-pressed="false">נסגר ✓</button>
+          <button type="button" data-act="nc" aria-pressed="false">לא לקוח</button>
         </div>
       </div>
       <div class="msgs" id="msgs"><div class="empty">בחרו שיחה מהרשימה</div></div>
@@ -294,12 +308,23 @@ var SB_URL = 'https://ppnjosyraosrdephsksu.supabase.co';
 var SB_KEY = 'sb_publishable_yjpTHQkvH5-l4v-HCcEj4w_ofAYpQmV';
 var FN = SB_URL + '/functions/v1/';
 var STAGES = [['new','חדש'],['answered','נענה'],['visited','ביקר'],['quoted','הצעה'],['won','נסגר'],['lost','אבד']];
-var KINDS = [['private','פרטי'],['contractor','קבלן'],['architect','אדריכל/ית'],['supplier','ספק'],['other','אחר']];
+var KINDS = [['private','פרטי'],['contractor','קבלן'],['architect','אדריכל/ית'],['other','אחר'],['supplier','ספק (לא לקוח)'],['not_customer','לא לקוח: מתקין, נהג, משפחה']];
+var NC = ['supplier', 'not_customer'];
+var SOURCES = [['google','חיפוש או מפות בגוגל'],['google_ads','מודעה בגוגל'],['meta','פייסבוק או אינסטגרם'],['tiktok','טיקטוק'],['site','האתר'],['friend','המלצה של חבר'],['designer','מעצבת או איש מקצוע'],['passing','עבר ליד האולם'],['returning','לקוח חוזר'],['other','אחר']];
 var QUICK = [
   ['שעות', 'שלום, האולם פתוח א׳–ה׳ 08:00–18:00 ו-ו׳ 08:00–13:30. מחכים לכם בעוצמה 5, טירת כרמל.'],
   ['כתובת', 'אנחנו בעוצמה 5, טירת כרמל (אזור התעשייה). ניווט: https://waze.com/ul?q=עוצמה 5 טירת כרמל&navigate=yes'],
   ['פגישה', 'נשמח לקבוע לכם פגישת ייעוץ ועיצוב באולם, בחינם, עם מעצבת פנים מוסמכת. מתי נוח לכם?'],
-  ['מחיר', 'כדי לתת מחיר מדויק נשמח לדעת: איזה חדר, כמה מ"ר בערך, ועד מתי צריך. אפשר גם לשלוח תמונה של מה שאהבתם.'],
+  ['פרטים למחיר', 'כדי לתת מחיר מדויק נשמח לדעת: איזה חדר, כמה מ"ר בערך, ועד מתי צריך. אפשר גם לשלוח תמונה של מה שאהבתם.'],
+  ['הצעת מחיר', 'עבור [דגם, מידה וגוון]: ___ ש"ח כולל מע"מ.\nזמינות: במלאי / בהזמנה, מגיע עד ___.\nהובלה או התקנה: בערך ___ ש"ח (המחיר הסופי לפי הכתובת).\nאת תנאי האחריות של הדגם הזה נצרף להצעה. לשריין לכם?'],
+  ['אין, יש דומה', 'את הדגם הזה אין כרגע במלאי, אבל יש דגם דומה מאוד (מצרפים תמונה). אפשר גם להזמין את המקורי, זה לוקח בערך ___ ימים. מה מתאים לכם?'],
+  ['הובלה', 'הובלה בטנדר לפי המרחק מהאולם: טירת כרמל בערך 200 ש"ח, חיפה בערך 300 ש"ח, הקריות בערך 400 ש"ח, ורחוק יותר בהתאם. המחיר הסופי לפי הכתובת, ונאשר אותו איתכם.'],
+  ['התקנה', 'התקנה, מחירים בערך: מקלחון מ-350 ש"ח. מדידה 180 ש"ח, שמתקזזים מההתקנה. ארון 400 ש"ח, ועוד 150 ש"ח לפירוק הישן. המחיר הסופי נאשר איתכם.'],
+  ['איסוף', 'איסוף פריטים גדולים מהמחסן: א׳–ה׳ עד 15:00. פריטים קטנים אפשר לאסוף מהאולם עד 18:00, וביום ו׳ עד 13:30. כדאי לכתוב לנו לפני שמגיעים, ונכין הכל.'],
+  ['אחריות', 'האחריות משתנה לפי המוצר והיצרן, ולכן אין נוסח אחד לכולם. את תנאי האחריות של הדגם המדויק נשלח לכם יחד עם הצעת המחיר.'],
+  ['העתק חשבונית', 'בשמחה. כדי למצוא את החשבונית נצטרך את השם שעליו נרשמה ההזמנה ואת החודש שבו קניתם.'],
+  ['קריאת שירות', 'מצטערים לשמוע. כדי לפתוח קריאת שירות מול היצרן, שלחו בבקשה: תמונה מקרוב של התקלה, תמונה רחבה של המוצר, תמונה של המדבקה או החותמת של היצרן, ושנת הקנייה.'],
+  ['מעקב הצעה', 'שלום, רצינו לבדוק אם ההצעה ששלחנו מתאימה לכם, ואם יש שאלות. נשמח לעזור.'],
   ['ביקורת', 'תודה רבה! אם תרצו, ביקורת קצרה בגוגל עוזרת לנו מאוד: https://g.page/r/CewpRPPNS-JNEAE/review']
 ];
 var sb = supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
@@ -403,37 +428,44 @@ document.querySelectorAll('.filters button').forEach(function (b) {
 });
 function loadConvs(quiet) {
   var q = $('q').value.trim();
-  sb.rpc('crm_conversations', { p_search: q || null, p_limit: 300 }).then(function (r) {
+  sb.rpc('crm_inbox', { p_search: q || null, p_limit: 300 }).then(function (r) {
     if (r.error) { if (!quiet) toast('שגיאה בטעינת השיחות'); return; }
     convs = r.data || []; renderConvs();
-    var w = convs.filter(function (c) { return c.state === 'waiting'; }).length;
+    var w = convs.filter(needsHuman).length;
     $('waitBadge').textContent = w; $('waitBadge').classList.toggle('hidden', !w);
     document.title = (w ? '(' + w + ') ' : '') + 'זיסו צוות';
   });
 }
 function renderConvs() {
   var list = convs.filter(function (c) {
-    if (filter === 'waiting') return c.state === 'waiting' || c.state === 'bot';
+    if (filter === 'nc') return c.nc;
+    if (c.nc && !$('q').value.trim()) return false;
+    if (filter === 'waiting') return needsHuman(c);
     if (filter === 'mine') return c.claimed_by && c.claimed_by.toLowerCase() === me.email.toLowerCase();
     return true;
   });
   $('convEmpty').classList.toggle('hidden', list.length > 0);
   $('convList').innerHTML = list.map(function (c) {
     var st = c.state === 'waiting' ? 'wait' : c.state === 'bot' ? 'bot' : 'ok';
-    var wait = c.state === 'waiting' && c.waiting_since ? '<span class="pill wait">ממתין ' + ago(c.waiting_since) + '</span>' : c.state === 'bot' ? '<span class="pill bot">הבוט ענה</span>' : '';
+    var wait = needsHuman(c) ? waitPill(c) + (c.state === 'bot' ? '<span class="pill bot">הבוט ענה</span>' : '') : '';
+    var flag = c.flag ? '<span class="pill flag">רגיש: לבדוק</span>' : '';
+    var quote = c.quote_at && !/won|lost/.test(c.lead_stage || '') ? '<span class="pill bot">הצעה נשלחה ' + esc(ago(c.quote_at)) + '</span>' : '';
     var who = c.claimed_by ? '<span class="pill">' + esc(nameOf(c.claimed_by)) + '</span>' : '';
-    var lead = c.lead_stage ? '<span class="pill">' + esc(stageLabel(c.lead_stage)) + '</span>' : '';
+    var lead = c.lead_stage && !(quote && c.lead_stage === 'quoted') ? '<span class="pill">' + esc(stageLabel(c.lead_stage)) + '</span>' : '';
     var pc = c.cust_no ? '<span class="pill ok">לקוח בפריוריטי</span>' : '';
     return '<li><button data-phone="' + esc(c.phone) + '" aria-current="' + (c.phone === cur) + '">' +
       '<span class="dot ' + st + '"></span>' +
       '<span class="name ellip">' + esc(c.name || localPhone(c.phone)) + '</span>' +
       '<span class="when">' + esc(ago(c.last_ts)) + '</span>' +
       '<span class="last ellip">' + (c.last_dir === 'out' ? '↩ ' : '') + esc(c.last_text || '') + '</span>' +
-      (wait || who || lead || pc ? '<span class="meta">' + wait + who + lead + pc + '</span>' : '') +
+      (wait || flag || quote || who || lead || pc ? '<span class="meta">' + flag + wait + quote + who + lead + pc + '</span>' : '') +
       '</button></li>';
   }).join('');
   $('convList').querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () { go('chat', b.dataset.phone); }); });
 }
+function needsHuman(c) { return !c.nc && (c.state === 'waiting' || c.state === 'bot') && !!c.waiting_since; }
+function bizLabel(m) { m = Math.round(m || 0); return m < 60 ? m + ' דק׳' : m < 600 ? Math.floor(m / 60) + ' ש׳ ' + (m % 60 ? (m % 60) + ' דק׳' : '') : Math.round(m / 60) + ' ש׳'; }
+function waitPill(c) { var m = Number(c.wait_biz_min || 0); return '<span class="pill ' + (m >= 15 ? 'late' : 'wait') + '" title="דקות בשעות הפתיחה מאז הפנייה. היעד: מענה תוך 15 דקות">ממתין ' + esc(bizLabel(m)) + ' עבודה</span>'; }
 function stageLabel(s) { var x = STAGES.filter(function (p) { return p[0] === s; })[0]; return x ? x[1] : s; }
 
 /* ---------- chat ---------- */
@@ -446,6 +478,7 @@ function openChat(phone) {
   $('compose').classList.remove('hidden');
   renderQuick();
   updateClaimBtn(c);
+  updateActs(c);
   renderConvs();
   loadChat(phone);
 }
@@ -453,6 +486,36 @@ function updateClaimBtn(c) {
   var mine = c && c.claimed_by && c.claimed_by.toLowerCase() === me.email.toLowerCase();
   $('claimBtn').textContent = mine ? 'אני מטפלת ✓' : c && c.claimed_by ? nameOf(c.claimed_by) + ' מטפלת' : 'אני מטפלת';
   $('claimBtn').classList.toggle('brass', !!mine);
+}
+function updateActs(c) {
+  $('chatActs').classList.toggle('hidden', !curTail);
+  var on = { quote: !!(c && c.quote_at && Date.now() - new Date(c.quote_at) < 14 * 86400000), won: !!(c && c.lead_stage === 'won'), nc: !!(c && c.nc) };
+  $('chatActs').querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', on[b.dataset.act] ? 'true' : 'false'); });
+  $('chatState').innerHTML = c ? (c.flag ? '<span class="pill flag">רגיש: לבדוק</span>' : '') + (needsHuman(c) ? waitPill(c) : '') : '';
+}
+$('chatActs').querySelectorAll('button').forEach(function (b) {
+  b.addEventListener('click', function () {
+    if (!curTail) return;
+    var c = convs.filter(function (x) { return x.phone === cur; })[0];
+    var pressed = b.getAttribute('aria-pressed') === 'true', act = b.dataset.act, args;
+    if (act === 'quote') args = { p_what: pressed ? 'unquote' : 'quote' };
+    else if (act === 'won') {
+      if (pressed) args = { p_what: 'stage', p_value: 'quoted' };
+      else { var a = prompt('נסגר! סכום העסקה לפני מע"מ (לא חובה):'); if (a === null) return; args = { p_what: 'stage', p_value: 'won', p_detail: { amount: (a || '').replace(/[^\d.]/g, '') } }; }
+    } else {
+      if (!pressed && !confirm('לסמן כ"לא לקוח"? השיחה תרד מהתור ומהמדדים, ותופיע תחת "לא לקוחות".')) return;
+      args = { p_what: 'kind', p_value: pressed ? null : 'not_customer' };
+    }
+    mark(args, { quote: 'סומן: נשלחה הצעה', unquote: 'הסימון הוסר', won: 'סומן כנסגר', quoted: 'חזר לשלב הצעה', not_customer: 'סומן כלא לקוח', kind: 'חזר לרשימת הלקוחות' }[args.p_value || args.p_what] || 'נשמר');
+  });
+});
+function mark(args, msg, after) {
+  return sb.rpc('crm_mark', Object.assign({ p_tail9: curTail }, args)).then(function (r) {
+    if (r.error) { toast('לא נשמר: ' + r.error.message); return; }
+    toast(msg || 'נשמר'); loadConvs(true);
+    setTimeout(function () { var c = convs.filter(function (x) { return x.phone === cur; })[0]; updateActs(c); }, 700);
+    if (after) after();
+  });
 }
 $('claimBtn').addEventListener('click', function () {
   if (!curTail) { toast('למספר הזה אין 9 ספרות לזיהוי'); return; }
@@ -565,12 +628,14 @@ function renderCard() {
     '<dt>עיר</dt><dd><input id="cCity" value="' + esc(crm.city || (pr[0] && pr[0].city) || '') + '" aria-label="עיר"></dd>' +
     '<dt>סוג</dt><dd><select id="cKind" aria-label="סוג"><option value="">—</option>' + KINDS.map(function (k) { return '<option value="' + k[0] + '"' + (crm.kind === k[0] ? ' selected' : '') + '>' + k[1] + '</option>'; }).join('') + '</select></dd>' +
     (pr.length ? '<dt>פריוריטי</dt><dd>' + pr.map(function (p) { return 'לקוח ' + esc(p.cust_no) + (p.name !== name ? ' (' + esc(p.name) + ')' : ''); }).join(', ') + '</dd>' : '<dt>פריוריטי</dt><dd class="muted">עדיין לא לקוח בפריוריטי</dd>') +
-    (lead ? '<dt>מקור</dt><dd>' + esc(channelLabel(lead.channel)) + (lead.source_detail ? ' · ' + esc(lead.source_detail) : '') + ' · ' + esc(fmtDate(lead.created_at)) + '</dd>' : '') +
+    '<dt>מאיפה הגיע</dt><dd><select id="cSource" aria-label="מאיפה הגיע"><option value="">לא ידוע, לשאול</option>' + SOURCES.map(function (k) { return '<option value="' + k[0] + '"' + (crm.source === k[0] ? ' selected' : '') + '>' + k[1] + '</option>'; }).join('') + '</select>' +
+      (lead ? '<div class="small muted">פנייה ראשונה: ' + esc(channelLabel(lead.channel)) + (lead.source_detail ? ' · ' + esc(lead.source_detail) : '') + ' · ' + esc(fmtDate(lead.created_at)) + '</div>' : '') + '</dd>' +
     '</dl><div class="row"><button class="btn small" id="saveCust">שמירת פרטים</button>' + (isOwner() && crm.tail9 ? '<button class="btn small" id="delCust">מחיקת הכרטיס</button>' : '') + '</div></div>';
-  if (lead) {
-    h += '<div class="sect"><h3>שלב בעסקה <span class="n">פנייה מ-' + esc(fmtDate(lead.created_at)) + '</span></h3><div class="stage">' + STAGES.map(function (s) { return '<button data-stage="' + s[0] + '" aria-pressed="' + (lead.stage === s[0]) + '">' + s[1] + '</button>'; }).join('') + '</div>' +
-      (lead.first_message ? '<div class="small muted">"' + esc(lead.first_message) + '"</div>' : '') +
-      (c.leads.length > 1 ? '<details><summary>' + (c.leads.length - 1) + ' פניות קודמות</summary><table class="t">' + c.leads.slice(1).map(function (l) { return '<tr><td>' + esc(fmtDate(l.created_at)) + '</td><td>' + esc(channelLabel(l.channel)) + '</td><td>' + esc(stageLabel(l.stage)) + '</td></tr>'; }).join('') + '</table></details>' : '') + '</div>';
+  {
+    h += '<div class="sect"><h3>שלב בעסקה <span class="n">' + (lead ? 'פנייה מ-' + esc(fmtDate(lead.created_at)) : 'עוד אין פנייה רשומה') + '</span></h3><div class="stage">' + STAGES.map(function (s) { return '<button data-stage="' + s[0] + '" aria-pressed="' + (!!lead && lead.stage === s[0]) + '">' + s[1] + '</button>'; }).join('') + '</div>' +
+      '<div class="row"><button class="btn small" id="quoteBtn">' + (crm.quote_at ? 'הצעה סומנה ' + esc(fmtDate(crm.quote_at)) + ' · הסרה' : 'נשלחה הצעת מחיר') + '</button><span class="small muted">גם כשההצעה נשלחה כתמונה או PDF</span></div>' +
+      (lead && lead.first_message ? '<div class="small muted">"' + esc(lead.first_message) + '"</div>' : '') +
+      (lead && c.leads.length > 1 ? '<details><summary>' + (c.leads.length - 1) + ' פניות קודמות</summary><table class="t">' + c.leads.slice(1).map(function (l) { return '<tr><td>' + esc(fmtDate(l.created_at)) + '</td><td>' + esc(channelLabel(l.channel)) + '</td><td>' + esc(stageLabel(l.stage)) + '</td></tr>'; }).join('') + '</table></details>' : '') + '</div>';
   }
   h += '<div class="sect"><h3>סיכום חכם</h3><div class="summary" id="summaryBox">' + (crm.summary ? esc(crm.summary) + '<div class="small muted">עודכן ' + esc(fmtDate(crm.summary_at)) + '</div>' : '<span class="muted">עדיין אין סיכום.</span>') + '</div><div class="row"><button class="btn small" id="sumBtn"' + (c.chat_n ? '' : ' disabled') + '>' + (crm.summary ? 'רענון הסיכום' : 'סיכום השיחה') + '</button><span class="small muted">' + (c.chat_n ? c.chat_n + ' הודעות בוואטסאפ' : 'אין שיחת וואטסאפ') + '</span></div></div>';
   h += '<div class="sect"><h3>הזמנות <span class="n">' + openOrders.length + ' פתוחות' + (debt ? ' · חוב ' + money(debt) : '') + '</span></h3>';
@@ -591,7 +656,8 @@ function renderCard() {
   $('addTask').addEventListener('click', addTask);
   $('addNote').addEventListener('click', addNote);
   $('sumBtn').addEventListener('click', summarize);
-  $('cardBody').querySelectorAll('[data-stage]').forEach(function (b) { b.addEventListener('click', function () { setStage(lead.id, b.dataset.stage); }); });
+  $('cardBody').querySelectorAll('[data-stage]').forEach(function (b) { b.addEventListener('click', function () { setStage(b.dataset.stage); }); });
+  $('quoteBtn').addEventListener('click', function () { curTail = card.tail9; mark({ p_what: crm.quote_at ? 'unquote' : 'quote' }, crm.quote_at ? 'הסימון הוסר' : 'סומן: נשלחה הצעה', function () { openCard(card.tail9); }); });
   $('cardBody').querySelectorAll('[data-done]').forEach(function (cb) { cb.addEventListener('change', function () { doneTask(cb.dataset.done, cb.checked); }); });
   $('cardBody').querySelectorAll('[data-delnote]').forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); delNote(a.dataset.delnote); }); });
 }
@@ -606,18 +672,19 @@ function ensureCust() {
   return sb.from('crm_customers').insert({ tail9: card.tail9, name: pr.name || (card.contact && card.contact.name) || null, city: pr.city || null, priority_cust_no: pr.cust_no || null, created_by: me.email, updated_by: me.email }).then(function (r) { if (r.error && r.error.code !== '23505') throw r.error; card.crm = card.crm || { tail9: card.tail9 }; });
 }
 function saveCust() {
-  var v = { name: $('cName').value.trim() || null, city: $('cCity').value.trim() || null, kind: $('cKind').value || null, updated_by: me.email, updated_at: new Date().toISOString() };
+  var v = { name: $('cName').value.trim() || null, city: $('cCity').value.trim() || null, kind: $('cKind').value || null, source: $('cSource').value || null, updated_by: me.email, updated_at: new Date().toISOString() };
   ensureCust().then(function () { return sb.from('crm_customers').update(v).eq('tail9', card.tail9); }).then(function (r) { if (r.error) throw r.error; sb.rpc('crm_log', { p_action: 'customer_save', p_tail9: card.tail9 }); toast('נשמר'); openCard(card.tail9); loadConvs(true); }).catch(function (e) { toast('לא נשמר: ' + (e.message || e)); });
 }
 function delCust() {
   if (!confirm('למחוק את הכרטיס (הערות, משימות וסיכום)? השיחות בוואטסאפ ומסמכי פריוריטי נשארים.')) return;
   sb.from('crm_customers').update({ deleted_at: new Date().toISOString(), deleted_by: me.email, updated_by: me.email }).eq('tail9', card.tail9).then(function (r) { if (r.error) { toast('לא נמחק: ' + r.error.message); return; } sb.rpc('crm_log', { p_action: 'customer_delete', p_tail9: card.tail9 }); toast('הכרטיס נמחק'); openCard(card.tail9); });
 }
-function setStage(leadId, stage) {
-  var extra = {};
-  if (stage === 'won') { var a = prompt('סכום העסקה (לפני מע"מ), לא חובה:'); if (a && Number(a)) extra.p_won_amount = Number(a); var pc = card.priority[0]; if (pc) extra.p_priority_cust_no = pc.cust_no; }
-  if (stage === 'lost') { var why = prompt('למה אבד? (מחיר / בחר אחר / לא רלוונטי / אחר)'); if (why) extra.p_lost_reason = why; }
-  sb.rpc('set_lead_stage', Object.assign({ p_id: leadId, p_stage: stage }, extra)).then(function (r) { if (r.error) { toast('לא נשמר: ' + r.error.message); return; } sb.rpc('crm_log', { p_action: 'stage_' + stage, p_tail9: card.tail9, p_detail: { lead: leadId } }); openCard(card.tail9); loadConvs(true); });
+function setStage(stage) {
+  var d = {};
+  if (stage === 'won') { var a = prompt('סכום העסקה לפני מע"מ (לא חובה):'); if (a === null) return; d.amount = (a || '').replace(/[^\d.]/g, ''); }
+  if (stage === 'lost') { var why = prompt('למה אבד? (מחיר / בחר אחר / לא רלוונטי / אחר)'); if (why === null) return; d.reason = why; }
+  curTail = card.tail9;
+  mark({ p_what: 'stage', p_value: stage, p_detail: d }, 'השלב עודכן: ' + stageLabel(stage), function () { openCard(card.tail9); });
 }
 function addTask() {
   var text = $('taskText').value.trim(); if (!text) return;
@@ -659,23 +726,29 @@ function doSearch() {
 
 /* ---------- today ---------- */
 function loadToday() {
-  var waiting = convs.filter(function (c) { return c.state === 'waiting'; });
+  var waiting = convs.filter(needsHuman).sort(function (a, b) { return (b.flag - a.flag) || (Number(b.wait_biz_min || 0) - Number(a.wait_biz_min || 0)); });
+  var late = waiting.filter(function (c) { return Number(c.wait_biz_min || 0) >= 15; }).length;
   var mine = convs.filter(function (c) { return c.claimed_by && c.claimed_by.toLowerCase() === me.email.toLowerCase(); });
   Promise.all([
     sb.from('crm_tasks').select('id,tail9,text,due,assigned_to,by,done_at').is('done_at', null).order('due', { ascending: true, nullsFirst: false }).limit(50),
-    sb.from('leads').select('id,created_at,channel,stage,name,phone_tail9').gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()).order('created_at', { ascending: false }).limit(200)
+    sb.from('leads').select('id,created_at,channel,stage,name,phone_tail9').gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()).order('created_at', { ascending: false }).limit(200),
+    sb.rpc('crm_kpi'),
+    sb.rpc('crm_followups')
   ]).then(function (rs) {
-    var tasks = rs[0].data || [], leads = rs[1].data || [];
+    var tasks = rs[0].data || [], leads = rs[1].data || [], k = rs[2].data || {}, fu = rs[3].data || [];
     var today = new Date().toDateString();
     var leadsToday = leads.filter(function (l) { return new Date(l.created_at).toDateString() === today; });
+    var pct = k.pct7 == null ? '—' : k.pct7 + '%';
     var h = '<div class="kpis">' +
-      '<div class="kpi' + (waiting.length ? ' bad' : ' good') + '"><b>' + waiting.length + '</b><span>ממתינים למענה</span></div>' +
-      '<div class="kpi"><b>' + leadsToday.length + '</b><span>פניות היום</span></div>' +
-      '<div class="kpi"><b>' + leads.length + '</b><span>פניות 7 ימים</span></div>' +
-      '<div class="kpi"><b>' + tasks.length + '</b><span>משימות פתוחות</span></div></div>';
-    h += '<div class="sect"><h3>ממתינים עכשיו</h3>' + (waiting.length ? '<ul class="list" style="padding:0">' + waiting.slice(0, 20).map(function (c) { return '<li><button data-phone="' + esc(c.phone) + '"><span class="dot wait"></span><span class="name ellip">' + esc(c.name || localPhone(c.phone)) + '</span><span class="when">' + esc(ago(c.waiting_since || c.last_ts)) + '</span><span class="last ellip">' + esc(c.last_text || '') + '</span></button></li>'; }).join('') + '</ul>' : '<div class="small muted">כולם נענו</div>') + '</div>';
+      '<div class="kpi' + (k.pct7 == null ? '' : k.pct7 >= 80 ? ' good' : ' bad') + '"><b>' + pct + '</b><span>נענו תוך 15 דק׳ עבודה, 7 ימים</span><span class="sub">יעד 80%' + (k.pct_prev != null ? ' · שבוע קודם ' + k.pct_prev + '%' : '') + '</span></div>' +
+      '<div class="kpi' + (late ? ' bad' : waiting.length ? '' : ' good') + '"><b>' + waiting.length + '</b><span>ממתינים לאדם עכשיו</span><span class="sub">' + (late ? late + ' עברו 15 דק׳' : 'אף אחד לא באיחור') + '</span></div>' +
+      '<div class="kpi"><b>' + (k.quotes7 || 0) + '</b><span>הצעות מחיר, 7 ימים</span><span class="sub">' + (k.open_quotes7 || 0) + ' בלי תשובה מהלקוח</span></div>' +
+      '<div class="kpi"><b>' + (k.won7 || 0) + '</b><span>נסגרו, 7 ימים</span><span class="sub">מסמנים "נסגר" בשיחה</span></div></div>';
+    h += '<div class="sect"><h3>ממתינים עכשיו <span class="n">לפי זמן בשעות הפתיחה</span></h3>' + (waiting.length ? '<ul class="list" style="padding:0">' + waiting.slice(0, 20).map(function (c) { return '<li><button data-phone="' + esc(c.phone) + '"><span class="dot wait"></span><span class="name ellip">' + esc(c.name || localPhone(c.phone)) + '</span><span class="when">' + esc(ago(c.waiting_since || c.last_ts)) + '</span><span class="last ellip">' + esc(c.last_text || '') + '</span><span class="meta">' + (c.flag ? '<span class="pill flag">רגיש: לבדוק</span>' : '') + waitPill(c) + (c.claimed_by ? '<span class="pill">' + esc(nameOf(c.claimed_by)) + '</span>' : '<span class="pill">אין אחראית</span>') + '</span></button></li>'; }).join('') + '</ul>' : '<div class="small muted">כולם נענו</div>') + '</div>';
+    h += '<div class="sect"><h3>מעקב הצעות של 16:30 <span class="n">' + fu.length + '</span></h3><div class="small muted">הצעות מה-48 שעות האחרונות שהלקוח לא ענה עליהן. שולחים פעם אחת, ידנית, רק למי שכתב לנו קודם. יש תשובה מוכנה "מעקב הצעה".</div>' +
+      (fu.length ? '<ul class="list" style="padding:0">' + fu.map(function (f) { return '<li><button data-phone="' + esc(f.phone) + '"><span class="dot bot"></span><span class="name ellip">' + esc(f.name || localPhone(f.phone)) + '</span><span class="when">' + esc(ago(f.quote_at)) + '</span><span class="last ellip">' + (f.quote_text ? esc(f.quote_text) : f.manual ? 'הצעה סומנה ידנית' : '') + '</span></button></li>'; }).join('') + '</ul>' : '<div class="small muted">אין הצעות שמחכות למעקב</div>') + '</div>';
     h += '<div class="sect"><h3>משימות</h3>' + (tasks.length ? tasks.map(function (t) { return '<div class="task' + '"><input type="checkbox" data-done="' + t.id + '" aria-label="בוצע"><div><div class="txt"><a href="#card/' + esc(t.tail9) + '">' + esc(t.text) + '</a></div><div class="due' + (t.due && new Date(t.due) < new Date() ? ' late' : '') + '">' + (t.due ? esc(fmtDate(t.due)) + ' ' + esc(fmtTime(t.due)) : '') + (t.assigned_to ? ' · ' + esc(nameOf(t.assigned_to)) : '') + '</div></div></div>'; }).join('') : '<div class="small muted">אין משימות פתוחות</div>') + '</div>';
-    h += '<div class="sect"><h3>פניות 7 ימים אחרונים</h3><table class="t"><tr><th>מתי</th><th>ערוץ</th><th>שם</th><th>שלב</th></tr>' + leads.slice(0, 30).map(function (l) { return '<tr><td>' + esc(fmtDate(l.created_at)) + '</td><td>' + esc(channelLabel(l.channel)) + '</td><td>' + (l.phone_tail9 ? '<a href="#card/' + esc(l.phone_tail9) + '">' + esc(l.name || '—') + '</a>' : esc(l.name || '—')) + '</td><td>' + esc(stageLabel(l.stage)) + '</td></tr>'; }).join('') + '</table></div>';
+    h += '<div class="sect"><h3>פניות 7 ימים אחרונים <span class="n">' + leadsToday.length + ' היום · ' + leads.length + ' בשבוע</span></h3><table class="t"><tr><th>מתי</th><th>ערוץ</th><th>שם</th><th>שלב</th></tr>' + leads.slice(0, 30).map(function (l) { return '<tr><td>' + esc(fmtDate(l.created_at)) + '</td><td>' + esc(channelLabel(l.channel)) + '</td><td>' + (l.phone_tail9 ? '<a href="#card/' + esc(l.phone_tail9) + '">' + esc(l.name || '—') + '</a>' : esc(l.name || '—')) + '</td><td>' + esc(stageLabel(l.stage)) + '</td></tr>'; }).join('') + '</table></div>';
     if (mine.length) h += '<div class="sect"><h3>השיחות שלי</h3><ul class="list" style="padding:0">' + mine.map(function (c) { return '<li><button data-phone="' + esc(c.phone) + '"><span class="dot ' + (c.state === 'waiting' ? 'wait' : 'ok') + '"></span><span class="name ellip">' + esc(c.name || localPhone(c.phone)) + '</span><span class="when">' + esc(ago(c.last_ts)) + '</span></button></li>'; }).join('') + '</ul></div>';
     $('todayBody').innerHTML = h;
     $('todayBody').querySelectorAll('[data-phone]').forEach(function (b) { b.addEventListener('click', function () { go('chat', b.dataset.phone); }); });
