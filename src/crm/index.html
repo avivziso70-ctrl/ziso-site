@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0f1113">
+<title>זיסו צוות</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="../img/logo.jpg">
+<link rel="icon" href="../img/logo.jpg">
+<link rel="stylesheet" href="../fonts.css">
+<style>
+/* Tokens follow the site (styles.css): dark wall, brass, Bellefair + Assistant. Light theme when the phone asks for it. */
+:root{
+  --wall:#0f1113;--surface:#1d2024;--graphite:#22262a;--grout:#2f3338;--line:#3a3f45;
+  --ink:#f2efe8;--mute:#b9b3a7;--brass:#cfae74;--brass-ink:#1a1610;--brass-soft:#2d271d;
+  --red:#e07a6a;--red-soft:#3a1f1b;--green:#8fc9a0;--green-soft:#1d2e22;--amber:#e3b86a;
+  --in:#262a2f;--out:#2d2a22;--me:#2b3a2f;
+  --display:"Bellefair","Times New Roman",serif;--body:"Assistant","Segoe UI",Arial,sans-serif;
+  --r:12px;--pad:16px;
+}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
+  --wall:#f3f2ef;--surface:#ffffff;--graphite:#ecebe7;--grout:#dfdcd6;--line:#d2cec5;
+  --ink:#1e1b17;--mute:#66645f;--brass:#8a6a35;--brass-ink:#fff;--brass-soft:#efe7da;
+  --red:#b8432f;--red-soft:#fbe9e5;--green:#2e7d4f;--green-soft:#e3f2e8;--amber:#8c6200;
+  --in:#f1efe9;--out:#efe7da;--me:#e3f2e8;
+}}
+*{box-sizing:border-box}html,body{height:100%}
+body{margin:0;background:var(--wall);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.45;-webkit-font-smoothing:antialiased;letter-spacing:.01em}
+a{color:var(--brass)}button{font:inherit;color:inherit}
+h1,h2,h3{font-family:var(--display);font-weight:400;letter-spacing:.02em;margin:0}
+.ltr{direction:ltr;unicode-bidi:isolate;display:inline-block}
+::selection{background:var(--brass);color:var(--brass-ink)}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+*{scrollbar-color:var(--grout) transparent}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 18px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:600;font-size:16px;white-space:nowrap}
+.btn.brass{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
+.btn.small{min-height:38px;padding:0 14px;font-size:15px}
+.btn.icon{width:48px;padding:0;border-radius:50%}
+.btn:disabled{opacity:.5;cursor:default}
+input,textarea,select{font:inherit;color:var(--ink);background:var(--graphite);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;width:100%;min-height:48px}
+textarea{resize:none;line-height:1.4}
+input::placeholder,textarea::placeholder{color:var(--mute)}
+.hidden{display:none !important}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:13px;font-weight:600;line-height:1.5;background:var(--graphite);color:var(--mute)}
+.pill.wait{background:var(--red-soft);color:var(--red)}
+.pill.bot{background:var(--brass-soft);color:var(--brass)}
+.pill.ok{background:var(--green-soft);color:var(--green)}
+.muted{color:var(--mute)}.small{font-size:14px}
+.row{display:flex;align-items:center;gap:10px}
+.grow{flex:1;min-width:0}
+.ellip{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Login */
+#login{min-height:100%;display:grid;place-items:center;padding:24px}
+#login form{width:min(420px,100%);background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:28px 24px;display:grid;gap:14px}
+#login h1{font-size:34px}
+#login .logo{width:56px;height:56px;border-radius:50%;object-fit:cover;border:1px solid var(--line)}
+#login .err{color:var(--red);min-height:1.4em}
+
+/* App shell */
+#app{height:100%;display:grid;grid-template-rows:auto 1fr auto}
+header.top{display:flex;align-items:center;gap:12px;padding:10px var(--pad);border-bottom:1px solid var(--line);background:var(--surface);min-height:60px}
+header.top .logo{width:34px;height:34px;border-radius:50%;object-fit:cover}
+header.top h1{font-size:24px}
+header.top .spacer{flex:1}
+main{min-height:0;display:grid;grid-template-columns:1fr;overflow:hidden}
+.pane{min-height:0;overflow:auto;display:flex;flex-direction:column}
+.pane > .head{position:sticky;top:0;z-index:2;background:var(--wall);padding:12px var(--pad);border-bottom:1px solid var(--line);display:grid;gap:10px}
+.pane > .head h2{font-size:26px}
+nav.tabs{display:flex;border-top:1px solid var(--line);background:var(--surface);padding-bottom:env(safe-area-inset-bottom)}
+nav.tabs button{flex:1;min-height:58px;background:none;border:0;border-top:2px solid transparent;color:var(--mute);font-weight:600;font-size:15px;display:grid;gap:2px;justify-items:center;cursor:pointer;position:relative}
+nav.tabs button[aria-current="page"]{color:var(--brass);border-top-color:var(--brass)}
+nav.tabs .badge{position:absolute;top:19px;inset-inline-start:calc(50% + 30px);min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--red);color:#fff;font-size:12px;line-height:20px;text-align:center}
+
+/* Conversations list */
+.filters{display:flex;gap:8px;overflow:auto;padding-bottom:2px}
+.filters button{min-height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:14px;font-weight:600;color:var(--mute);cursor:pointer;white-space:nowrap}
+.filters button[aria-pressed="true"]{background:var(--brass-soft);color:var(--brass);border-color:var(--brass)}
+ul.list{list-style:none;margin:0;padding:8px var(--pad) 24px;display:grid;gap:8px}
+ul.list li button{width:100%;text-align:start;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:center;cursor:pointer}
+ul.list li button[aria-current="true"]{border-color:var(--brass);background:var(--brass-soft)}
+ul.list .dot{width:12px;height:12px;border-radius:50%;background:var(--grout);grid-row:span 2}
+ul.list .dot.wait{background:var(--red)}ul.list .dot.bot{background:var(--brass)}ul.list .dot.ok{background:var(--green)}
+ul.list .name{font-weight:600}
+ul.list .when{color:var(--mute);font-size:13px;white-space:nowrap}
+ul.list .last{grid-column:2 / span 2;color:var(--mute);font-size:15px}
+ul.list .meta{grid-column:2 / span 2;display:flex;gap:6px;flex-wrap:wrap;font-size:13px}
+.empty{padding:40px var(--pad);text-align:center;color:var(--mute)}
+
+/* Chat */
+#chat .head .who{display:grid;gap:2px}
+#chat .head .who .name{font-size:22px;font-family:var(--display)}
+.msgs{flex:1;padding:12px var(--pad);display:flex;flex-direction:column;gap:6px}
+.day{align-self:center;font-size:13px;color:var(--mute);padding:4px 12px;border-radius:999px;background:var(--graphite);margin:10px 0 4px}
+.msg{max-width:min(80%,560px);padding:9px 13px;border-radius:16px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.4;position:relative}
+.msg.in{align-self:flex-start;background:var(--in);border-end-start-radius:4px}
+.msg.out{align-self:flex-end;background:var(--out);border-end-end-radius:4px}
+.msg.out.me{background:var(--me)}
+.msg .by{display:block;font-size:12px;color:var(--mute);margin-top:4px;text-align:end}
+.msg .by b{font-weight:600}
+.msg img{max-width:100%;max-height:360px;border-radius:10px;display:block;cursor:zoom-in}
+.msg .file{display:inline-flex;gap:8px;align-items:center}
+.compose{position:sticky;bottom:0;background:var(--wall);border-top:1px solid var(--line);padding:10px var(--pad);display:grid;gap:8px}
+.compose .quick{display:flex;gap:8px;overflow:auto}
+.compose .quick button{min-height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:14px;cursor:pointer;white-space:nowrap}
+.compose .row textarea{min-height:48px;max-height:140px}
+.compose .note{font-size:13px;color:var(--mute)}
+.compose .note.warn{color:var(--amber)}
+
+/* Card */
+#card .body{padding:12px var(--pad) 32px;display:grid;gap:14px}
+.sect{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:grid;gap:8px}
+.sect h3{font-size:20px;display:flex;align-items:baseline;gap:8px}
+.sect h3 .n{font-family:var(--body);font-size:13px;color:var(--mute)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:15px}
+.kv dt{color:var(--mute)}.kv dd{margin:0}
+.stage{display:flex;gap:6px;flex-wrap:wrap}
+.stage button{min-height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--graphite);font-size:14px;cursor:pointer}
+.stage button[aria-pressed="true"]{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
+table.t{width:100%;border-collapse:collapse;font-size:14px}
+table.t th,table.t td{text-align:start;padding:6px 4px;border-bottom:1px solid var(--grout);vertical-align:top}
+table.t th{color:var(--mute);font-weight:600}
+table.t td.num,table.t th.num{text-align:end;font-variant-numeric:tabular-nums;white-space:nowrap}
+details summary{cursor:pointer;color:var(--brass);font-size:14px}
+.note{padding:8px 0;border-bottom:1px solid var(--grout)}
+.note:last-child{border:0}
+.note .who{font-size:13px;color:var(--mute)}
+.task{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;padding:8px 0;border-bottom:1px solid var(--grout)}
+.task:last-child{border:0}
+.task input[type=checkbox]{width:22px;height:22px;min-height:0;margin-top:2px;accent-color:var(--brass)}
+.task.done .txt{text-decoration:line-through;color:var(--mute)}
+.task .due{font-size:13px;color:var(--mute)}
+.task .due.late{color:var(--red)}
+.addrow{display:grid;grid-template-columns:1fr auto;gap:8px}
+.summary{white-space:pre-wrap;font-size:15px}
+
+/* Today */
+#today .body{padding:12px var(--pad) 32px;display:grid;gap:14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:grid;gap:2px}
+.kpi b{font-size:30px;font-family:var(--display);line-height:1}
+.kpi span{font-size:13px;color:var(--mute)}
+.kpi.bad b{color:var(--red)}.kpi.good b{color:var(--green)}
+
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:24px;z-index:40}
+.sheet form{width:min(420px,100%);background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:24px;display:grid;gap:12px}
+.sheet h2{font-size:24px}.sheet .row{justify-content:flex-start}
+.toast{position:fixed;bottom:80px;inset-inline:16px;margin:auto;max-width:480px;background:var(--surface);border:1px solid var(--brass);border-radius:var(--r);padding:12px 16px;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);display:grid;place-items:center;z-index:60;cursor:zoom-out}
+.lightbox img{max-width:96vw;max-height:92vh}
+
+/* Mobile: one pane at a time by hash. Desktop: three panes. */
+@media (max-width: 1023px){
+  main > .pane{display:none}
+  main[data-view="chats"] > #chats,main[data-view="chat"] > #chat,main[data-view="card"] > #card,main[data-view="today"] > #today,main[data-view="search"] > #search{display:flex}
+  .back{display:inline-flex}
+}
+@media (min-width: 1024px){
+  main{grid-template-columns:360px 1fr 400px}
+  main > .pane{display:flex;border-inline-start:1px solid var(--line)}
+  main > .pane:first-child{border:0}
+  #today,#search{display:none}
+  main[data-view="today"] > #today{display:flex;grid-column:2 / span 2}
+  main[data-view="today"] > #chat,main[data-view="today"] > #card{display:none}
+  main[data-view="search"] > #search{display:flex;grid-column:2 / span 2}
+  main[data-view="search"] > #chat,main[data-view="search"] > #card{display:none}
+  nav.tabs{display:none}
+  .back{display:none}
+  header.top .desk{display:flex;gap:8px}
+}
+@media (max-width:1023px){header.top .desk{display:none}}
+
+</style>
+</head>
+<body>
+<div id="login">
+  <form id="loginForm" autocomplete="on">
+    <img class="logo" src="../img/logo.jpg" alt="">
+    <h1>זיסו צוות</h1>
+    <p class="muted" style="margin:0">הדף הפנימי של זיסו קרמיקה: שיחות וואטסאפ וכרטיסי לקוח. הכניסה למורשים בלבד.</p>
+    <label>אימייל<input type="email" name="email" autocomplete="username" required inputmode="email" dir="ltr"></label>
+    <label>סיסמה<input type="password" name="password" autocomplete="current-password" required dir="ltr"></label>
+    <button class="btn brass" type="submit">כניסה</button>
+    <div class="err" id="loginErr" role="alert"></div>
+  </form>
+</div>
+
+<div id="pwSheet" class="sheet hidden" role="dialog" aria-labelledby="pwTitle">
+  <form id="pwForm" autocomplete="off">
+    <h2 id="pwTitle">החלפת סיסמה</h2>
+    <p class="small muted" id="pwNote">בכניסה הראשונה בוחרים סיסמה אישית. לפחות 8 תווים.</p>
+    <label>סיסמה חדשה<input type="password" name="p1" minlength="8" required autocomplete="new-password"></label>
+    <label>עוד פעם<input type="password" name="p2" minlength="8" required autocomplete="new-password"></label>
+    <div class="err" id="pwErr"></div>
+    <div class="row"><button class="btn brass" type="submit">שמירה</button><button class="btn" type="button" id="pwLater">אחר כך</button><button class="btn" type="button" id="pwOut">יציאה מהחשבון</button></div>
+  </form>
+</div>
+<div id="app" class="hidden">
+  <header class="top">
+    <img class="logo" src="../img/logo.jpg" alt="">
+    <h1>זיסו צוות</h1>
+    <span class="pill" id="syncPill" title="מתי עודכנו נתוני פריוריטי"></span>
+    <span class="spacer"></span>
+    <div class="desk">
+      <button class="btn small" id="deskSearch">חיפוש לקוח</button>
+      <button class="btn small" id="deskToday">היום</button>
+      <button class="btn small" id="deskChats">שיחות</button>
+    </div>
+    <button class="btn small" id="meBtn" title="החשבון שלי"></button>
+  </header>
+
+  <main data-view="chats">
+    <!-- Conversations -->
+    <section class="pane" id="chats" aria-label="שיחות">
+      <div class="head">
+        <div class="row"><h2 class="grow">שיחות</h2><button class="btn icon small" id="refreshBtn" title="רענון" aria-label="רענון">↻</button></div>
+        <input type="search" id="q" placeholder="חיפוש לפי שם או טלפון" autocomplete="off">
+        <div class="filters" role="group" aria-label="סינון">
+          <button data-f="waiting" aria-pressed="true">ממתינים</button>
+          <button data-f="mine" aria-pressed="false">שלי</button>
+          <button data-f="all" aria-pressed="false">הכל</button>
+        </div>
+      </div>
+      <ul class="list" id="convList"></ul>
+      <div class="empty hidden" id="convEmpty">אין שיחות להצגה</div>
+    </section>
+
+    <!-- Chat -->
+    <section class="pane" id="chat" aria-label="שיחה">
+      <div class="head">
+        <div class="row">
+          <button class="btn icon small back" id="backFromChat" aria-label="חזרה">→</button>
+          <div class="who grow"><div class="name ellip" id="chatName">בחרו שיחה</div><div class="small muted ellip" id="chatSub"></div></div>
+          <button class="btn small" id="openCard">כרטיס</button>
+          <button class="btn small" id="claimBtn">אני מטפלת</button>
+        </div>
+      </div>
+      <div class="msgs" id="msgs"><div class="empty">בחרו שיחה מהרשימה</div></div>
+      <div class="compose hidden" id="compose">
+        <div class="quick" id="quick"></div>
+        <div class="row">
+          <textarea id="draft" rows="1" placeholder="כתיבת תשובה ללקוח"></textarea>
+          <input type="file" id="fileIn" class="hidden" accept="image/*,application/pdf">
+          <button class="btn icon" id="attachBtn" title="צירוף תמונה או PDF" aria-label="צירוף קובץ">📎</button>
+          <button class="btn icon brass" id="sendBtn" title="שליחה" aria-label="שליחה">➤</button>
+        </div>
+        <div class="note" id="composeNote"></div>
+      </div>
+    </section>
+
+    <!-- Customer card -->
+    <section class="pane" id="card" aria-label="כרטיס לקוח">
+      <div class="head">
+        <div class="row">
+          <button class="btn icon small back" id="backFromCard" aria-label="חזרה">→</button>
+          <h2 class="grow ellip" id="cardName">כרטיס לקוח</h2>
+          <button class="btn small" id="cardChat">לשיחה</button>
+        </div>
+      </div>
+      <div class="body" id="cardBody"><div class="empty">בחרו שיחה או חפשו לקוח</div></div>
+    </section>
+
+    <!-- Search -->
+    <section class="pane" id="search" aria-label="חיפוש לקוח">
+      <div class="head">
+        <div class="row"><h2 class="grow">לקוחות</h2></div>
+        <input type="search" id="q2" placeholder="שם, טלפון או מספר לקוח בפריוריטי" autocomplete="off">
+      </div>
+      <ul class="list" id="searchList"></ul>
+      <div class="empty" id="searchEmpty">חיפוש בכל הלקוחות: פריוריטי, וואטסאפ וכרטיסים</div>
+    </section>
+
+    <!-- Today -->
+    <section class="pane" id="today" aria-label="היום">
+      <div class="head"><div class="row"><h2 class="grow">היום</h2></div></div>
+      <div class="body" id="todayBody"></div>
+    </section>
+  </main>
+
+  <nav class="tabs" aria-label="ניווט">
+    <button data-view="chats" aria-current="page">שיחות<span class="badge hidden" id="waitBadge"></span></button>
+    <button data-view="search">לקוחות</button>
+    <button data-view="today">היום</button>
+  </nav>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+<script>
+(function () {
+'use strict';
+var SB_URL = 'https://ppnjosyraosrdephsksu.supabase.co';
+var SB_KEY = 'sb_publishable_yjpTHQkvH5-l4v-HCcEj4w_ofAYpQmV';
+var FN = SB_URL + '/functions/v1/';
+var STAGES = [['new','חדש'],['answered','נענה'],['visited','ביקר'],['quoted','הצעה'],['won','נסגר'],['lost','אבד']];
+var KINDS = [['private','פרטי'],['contractor','קבלן'],['architect','אדריכל/ית'],['supplier','ספק'],['other','אחר']];
+var QUICK = [
+  ['שעות', 'שלום, האולם פתוח א׳–ה׳ 08:00–18:00 ו-ו׳ 08:00–13:30. מחכים לכם בעוצמה 5, טירת כרמל.'],
+  ['כתובת', 'אנחנו בעוצמה 5, טירת כרמל (אזור התעשייה). ניווט: https://waze.com/ul?q=עוצמה 5 טירת כרמל&navigate=yes'],
+  ['פגישה', 'נשמח לקבוע לכם פגישת ייעוץ ועיצוב באולם, בחינם, עם מעצבת פנים מוסמכת. מתי נוח לכם?'],
+  ['מחיר', 'כדי לתת מחיר מדויק נשמח לדעת: איזה חדר, כמה מ"ר בערך, ועד מתי צריך. אפשר גם לשלוח תמונה של מה שאהבתם.'],
+  ['ביקורת', 'תודה רבה! אם תרצו, ביקורת קצרה בגוגל עוזרת לנו מאוד: https://g.page/r/CewpRPPNS-JNEAE/review']
+];
+var sb = supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+var me = null, staff = [], convs = [], filter = 'waiting', cur = null, curTail = null, card = null, timer = null, mediaUrls = {};
+var $ = function (id) { return document.getElementById(id); };
+var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+var fmtTime = function (d) { d = new Date(d); return d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }); };
+var fmtDate = function (d) { d = new Date(d); return d.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric', year: '2-digit' }); };
+var fmtDay = function (d) { d = new Date(d); return d.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' }); };
+var money = function (n) { return n == null ? '' : '₪' + Math.round(Number(n)).toLocaleString('he-IL'); };
+var ago = function (d) {
+  var m = Math.round((Date.now() - new Date(d)) / 60000);
+  if (m < 1) return 'עכשיו'; if (m < 60) return m + ' דק׳'; if (m < 48 * 60) return Math.round(m / 60) + ' שע׳'; return Math.round(m / 1440) + ' ימים';
+};
+var localPhone = function (p) { p = String(p || '').replace(/\D/g, ''); if (/^972/.test(p)) p = '0' + p.slice(3); return p.length === 10 ? p.slice(0, 3) + '-' + p.slice(3) : p; };
+var tail9 = function (p) { p = String(p || '').replace(/\D/g, ''); return p.length >= 9 ? p.slice(-9) : null; };
+var nameOf = function (email) { var s = staff.filter(function (x) { return x.email.toLowerCase() === String(email || '').toLowerCase(); })[0]; return s ? s.name : (email || ''); };
+var toast = function (t, ms) { var el = document.createElement('div'); el.className = 'toast'; el.textContent = t; document.body.appendChild(el); setTimeout(function () { el.remove(); }, ms || 3000); };
+var isOwner = function () { var s = staff.filter(function (x) { return x.email.toLowerCase() === me.email.toLowerCase(); })[0]; return !!(s && s.role === 'owner'); };
+var within24h = function (msgs) { var lastIn = null; msgs.forEach(function (m) { if (m.dir === 'in') lastIn = m.ts; }); return lastIn && (Date.now() - new Date(lastIn)) < 24 * 3600 * 1000; };
+
+/* ---------- auth ---------- */
+$('loginForm').addEventListener('submit', function (e) {
+  e.preventDefault(); $('loginErr').textContent = '';
+  var f = e.target;
+  sb.auth.signInWithPassword({ email: f.email.value.trim(), password: f.password.value }).then(function (r) {
+    if (r.error) { $('loginErr').textContent = 'הכניסה נכשלה. בדקו אימייל וסיסמה.'; return; }
+  });
+});
+sb.auth.onAuthStateChange(function (ev, session) {
+  if (session && session.user) { if (!me || me.email !== session.user.email) { me = session.user; start(); } }
+  else { me = null; $('app').classList.add('hidden'); $('login').classList.remove('hidden'); if (timer) clearInterval(timer); }
+});
+function openPw(first) {
+  $('pwNote').textContent = first ? 'בכניסה הראשונה בוחרים סיסמה אישית. לפחות 8 תווים.' : 'סיסמה חדשה לחשבון ' + me.email + '. לפחות 8 תווים.';
+  $('pwLater').classList.toggle('hidden', !!first); $('pwErr').textContent = ''; $('pwForm').reset();
+  $('pwSheet').classList.remove('hidden'); setTimeout(function () { $('pwForm').p1.focus(); }, 50);
+}
+$('meBtn').addEventListener('click', function () { openPw(false); });
+$('pwLater').addEventListener('click', function () { $('pwSheet').classList.add('hidden'); });
+$('pwOut').addEventListener('click', function () { $('pwSheet').classList.add('hidden'); sb.auth.signOut(); });
+$('pwForm').addEventListener('submit', function (e) {
+  e.preventDefault(); var f = e.target;
+  if (f.p1.value !== f.p2.value) { $('pwErr').textContent = 'הסיסמאות לא זהות.'; return; }
+  sb.auth.updateUser({ password: f.p1.value, data: { pw_changed_at: new Date().toISOString() } }).then(function (r) {
+    if (r.error) { $('pwErr').textContent = 'לא נשמר: ' + r.error.message; return; }
+    if (me && me.user_metadata) me.user_metadata.pw_changed_at = new Date().toISOString();
+    $('pwSheet').classList.add('hidden'); toast('הסיסמה הוחלפה'); sb.rpc('crm_log', { p_action: 'password_change' });
+  });
+});
+
+function start() {
+  sb.from('crm_staff').select('email,name,role').then(function (r) {
+    staff = r.data || [];
+    var mine = staff.filter(function (x) { return x.email.toLowerCase() === me.email.toLowerCase(); })[0];
+    if (!mine) { $('loginErr').textContent = 'החשבון הזה לא מורשה. פנו לאביב.'; sb.auth.signOut(); return; }
+    $('meBtn').textContent = mine.name;
+    $('login').classList.add('hidden'); $('app').classList.remove('hidden');
+    sb.rpc('crm_log', { p_action: 'login' });
+    route(); loadConvs(); loadSync();
+    if (!(me.user_metadata && me.user_metadata.pw_changed_at)) openPw(true);
+    if (timer) clearInterval(timer);
+    timer = setInterval(function () { if (document.visibilityState === 'visible') { loadConvs(true); if (cur) loadChat(cur, true); } }, 20000);
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') loadConvs(true); });
+  });
+}
+function loadSync() {
+  sb.from('priority_sync').select('key,source_at').then(function (r) {
+    var c = (r.data || []).filter(function (x) { return x.key === 'orders'; })[0];
+    $('syncPill').textContent = c && c.source_at ? 'פריוריטי ' + fmtDate(c.source_at) + ' ' + fmtTime(c.source_at) : '';
+  });
+}
+
+/* ---------- routing (hash) ---------- */
+function setView(v) { document.querySelector('main').dataset.view = v; document.querySelectorAll('nav.tabs button').forEach(function (b) { b.setAttribute('aria-current', b.dataset.view === v || (v === 'chat' && b.dataset.view === 'chats') || (v === 'card' && b.dataset.view === 'search') ? 'page' : 'false'); }); }
+function go(v, arg) { location.hash = v + (arg ? '/' + arg : ''); }
+function route() {
+  var h = location.hash.replace(/^#/, '').split('/'), v = h[0] || 'chats', arg = h[1];
+  if (v === 'chat' && arg) { openChat(arg); setView('chat'); }
+  else if (v === 'card' && arg) { openCard(arg); setView('card'); }
+  else if (v === 'today') { setView('today'); loadToday(); }
+  else if (v === 'search') { setView('search'); setTimeout(function () { $('q2').focus(); }, 50); }
+  else setView('chats');
+}
+window.addEventListener('hashchange', route);
+document.querySelectorAll('nav.tabs button').forEach(function (b) { b.addEventListener('click', function () { go(b.dataset.view); }); });
+$('deskSearch').addEventListener('click', function () { go('search'); });
+$('deskToday').addEventListener('click', function () { go('today'); });
+$('deskChats').addEventListener('click', function () { go(cur ? 'chat' : 'chats', cur); });
+$('backFromChat').addEventListener('click', function () { go('chats'); });
+$('backFromCard').addEventListener('click', function () { go(cur ? 'chat' : 'search', cur); });
+$('openCard').addEventListener('click', function () { if (curTail) go('card', curTail); else toast('למספר הזה אין 9 ספרות לזיהוי'); });
+$('cardChat').addEventListener('click', function () { if (card && card.contact && card.contact.phone) go('chat', card.contact.phone); else if (cur) go('chat', cur); else toast('אין שיחת וואטסאפ עם הלקוח הזה'); });
+
+/* ---------- conversations ---------- */
+var qTimer = null;
+$('q').addEventListener('input', function () { clearTimeout(qTimer); qTimer = setTimeout(function () { loadConvs(); }, 250); });
+$('refreshBtn').addEventListener('click', function () { loadConvs(); if (cur) loadChat(cur); loadSync(); });
+document.querySelectorAll('.filters button').forEach(function (b) {
+  b.addEventListener('click', function () { filter = b.dataset.f; document.querySelectorAll('.filters button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); renderConvs(); });
+});
+function loadConvs(quiet) {
+  var q = $('q').value.trim();
+  sb.rpc('crm_conversations', { p_search: q || null, p_limit: 300 }).then(function (r) {
+    if (r.error) { if (!quiet) toast('שגיאה בטעינת השיחות'); return; }
+    convs = r.data || []; renderConvs();
+    var w = convs.filter(function (c) { return c.state === 'waiting'; }).length;
+    $('waitBadge').textContent = w; $('waitBadge').classList.toggle('hidden', !w);
+    document.title = (w ? '(' + w + ') ' : '') + 'זיסו צוות';
+  });
+}
+function renderConvs() {
+  var list = convs.filter(function (c) {
+    if (filter === 'waiting') return c.state === 'waiting' || c.state === 'bot';
+    if (filter === 'mine') return c.claimed_by && c.claimed_by.toLowerCase() === me.email.toLowerCase();
+    return true;
+  });
+  $('convEmpty').classList.toggle('hidden', list.length > 0);
+  $('convList').innerHTML = list.map(function (c) {
+    var st = c.state === 'waiting' ? 'wait' : c.state === 'bot' ? 'bot' : 'ok';
+    var wait = c.state === 'waiting' && c.waiting_since ? '<span class="pill wait">ממתין ' + ago(c.waiting_since) + '</span>' : c.state === 'bot' ? '<span class="pill bot">הבוט ענה</span>' : '';
+    var who = c.claimed_by ? '<span class="pill">' + esc(nameOf(c.claimed_by)) + '</span>' : '';
+    var lead = c.lead_stage ? '<span class="pill">' + esc(stageLabel(c.lead_stage)) + '</span>' : '';
+    var pc = c.cust_no ? '<span class="pill ok">לקוח בפריוריטי</span>' : '';
+    return '<li><button data-phone="' + esc(c.phone) + '" aria-current="' + (c.phone === cur) + '">' +
+      '<span class="dot ' + st + '"></span>' +
+      '<span class="name ellip">' + esc(c.name || localPhone(c.phone)) + '</span>' +
+      '<span class="when">' + esc(ago(c.last_ts)) + '</span>' +
+      '<span class="last ellip">' + (c.last_dir === 'out' ? '↩ ' : '') + esc(c.last_text || '') + '</span>' +
+      (wait || who || lead || pc ? '<span class="meta">' + wait + who + lead + pc + '</span>' : '') +
+      '</button></li>';
+  }).join('');
+  $('convList').querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () { go('chat', b.dataset.phone); }); });
+}
+function stageLabel(s) { var x = STAGES.filter(function (p) { return p[0] === s; })[0]; return x ? x[1] : s; }
+
+/* ---------- chat ---------- */
+var chatMsgs = [];
+function openChat(phone) {
+  cur = phone; curTail = tail9(phone);
+  var c = convs.filter(function (x) { return x.phone === phone; })[0];
+  $('chatName').textContent = (c && c.name) || localPhone(phone);
+  $('chatSub').innerHTML = '<span class="ltr">' + esc(localPhone(phone)) + '</span>' + (c && c.cust_no ? ' · לקוח ' + esc(c.cust_no) : '');
+  $('compose').classList.remove('hidden');
+  renderQuick();
+  updateClaimBtn(c);
+  renderConvs();
+  loadChat(phone);
+}
+function updateClaimBtn(c) {
+  var mine = c && c.claimed_by && c.claimed_by.toLowerCase() === me.email.toLowerCase();
+  $('claimBtn').textContent = mine ? 'אני מטפלת ✓' : c && c.claimed_by ? nameOf(c.claimed_by) + ' מטפלת' : 'אני מטפלת';
+  $('claimBtn').classList.toggle('brass', !!mine);
+}
+$('claimBtn').addEventListener('click', function () {
+  if (!curTail) { toast('למספר הזה אין 9 ספרות לזיהוי'); return; }
+  var c = convs.filter(function (x) { return x.phone === cur; })[0];
+  var mine = c && c.claimed_by && c.claimed_by.toLowerCase() === me.email.toLowerCase();
+  var p = mine ? sb.from('crm_claims').delete().eq('tail9', curTail) : sb.from('crm_claims').upsert({ tail9: curTail, by: me.email, at: new Date().toISOString() });
+  p.then(function (r) { if (r.error) { toast('לא נשמר: ' + r.error.message); return; } sb.rpc('crm_log', { p_action: mine ? 'unclaim' : 'claim', p_tail9: curTail }); loadConvs(true); if (c) { c.claimed_by = mine ? null : me.email; updateClaimBtn(c); } });
+});
+function loadChat(phone, quiet) {
+  sb.from('wa_messages').select('id,ts,dir,type,text,name,source,raw').eq('phone', phone).neq('type', 'errors').not('id', 'like', 'wamid.TEST%').order('ts', { ascending: true }).limit(500).then(function (r) {
+    if (r.error) { if (!quiet) toast('שגיאה בטעינת השיחה'); return; }
+    if (phone !== cur) return;
+    var same = quiet && r.data.length === chatMsgs.length && r.data.length && r.data[r.data.length - 1].id === chatMsgs[chatMsgs.length - 1].id;
+    var grew = quiet && chatMsgs.length && r.data.length > chatMsgs.length; chatMsgs = r.data; if (!same) renderChat(grew);
+  });
+}
+function mediaId(m) { var r = m.raw || {}; var o = r.image || r.document || r.audio || r.video || r.sticker; return o && o.id; }
+function renderChat(same) {
+  var box = $('msgs'), html = '', lastDay = '';
+  if (!chatMsgs.length) html = '<div class="empty">אין הודעות</div>';
+  chatMsgs.forEach(function (m) {
+    var day = fmtDate(m.ts); if (day !== lastDay) { html += '<div class="day">' + esc(fmtDay(m.ts)) + '</div>'; lastDay = day; }
+    var body = '', mid = mediaId(m), r = m.raw || {};
+    if (m.type === 'image' || m.type === 'sticker') body = mid ? '<img data-media="' + esc(mid) + '" alt="תמונה מהלקוח" loading="lazy">' : '(תמונה)';
+    else if (m.type === 'document') body = mid ? '<a class="file" href="#" data-media="' + esc(mid) + '" data-name="' + esc((r.document || {}).filename || 'קובץ') + '">📄 ' + esc((r.document || {}).filename || 'קובץ') + '</a>' : '(קובץ)';
+    else if (m.type === 'audio') body = mid ? '<audio controls data-media="' + esc(mid) + '"></audio>' : '(הודעה קולית)';
+    else if (m.type === 'media_placeholder') body = '<span class="muted">(תמונה או קובץ שנשלח לפני החיבור, רואים בטלפון)</span>';
+    else if (m.type === 'location') body = '📍 מיקום';
+    else if (m.type === 'contacts') body = '👤 איש קשר';
+    else body = esc(m.text || '');
+    var cap = (r.image || r.document || {}).caption; if (cap) body += '<div>' + esc(cap) + '</div>';
+    var by = m.dir === 'out' ? (m.source === 'bot' ? 'הבוט' : m.source === 'crm' ? (m.name ? nameOf(m.name) || m.name : 'מהדף') : m.source === 'phone-app' ? 'מהטלפון' : m.source === 'history' ? 'זיסו' : 'זיסו') : '';
+    var mine = m.dir === 'out' && m.source === 'crm' && m.name && m.name.toLowerCase() === me.email.toLowerCase();
+    html += '<div class="msg ' + m.dir + (mine ? ' me' : '') + '">' + body + '<span class="by">' + (by ? '<b>' + esc(by) + '</b> · ' : '') + esc(fmtTime(m.ts)) + '</span></div>';
+  });
+  box.innerHTML = html;
+  box.querySelectorAll('[data-media]').forEach(loadMedia);
+  var sc = box.closest('.pane'); sc.scrollTo({ top: sc.scrollHeight, behavior: same ? 'smooth' : 'auto' });
+  var ok = within24h(chatMsgs);
+  $('composeNote').textContent = ok ? 'אפשר לענות בחופשיות (בתוך 24 שעות מההודעה האחרונה של הלקוח). התשובה תופיע גם בוואטסאפ בטלפון.' : 'עברו יותר מ-24 שעות מההודעה האחרונה של הלקוח: לפי כללי מטא אפשר לשלוח רק תבנית מאושרת. בינתיים אפשר לענות מהטלפון או להתקשר.';
+  $('composeNote').classList.toggle('warn', !ok);
+  $('sendBtn').disabled = !ok; $('attachBtn').disabled = !ok;
+}
+function loadMedia(el) {
+  var id = el.dataset.media;
+  sb.auth.getSession().then(function (s) {
+    var tok = s.data.session && s.data.session.access_token; if (!tok) return;
+    if (mediaUrls[id]) return apply(mediaUrls[id]);
+    fetch(FN + 'crm-media?id=' + encodeURIComponent(id), { headers: { authorization: 'Bearer ' + tok } }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.blob(); }).then(function (b) {
+      mediaUrls[id] = URL.createObjectURL(b); apply(mediaUrls[id]);
+    }).catch(function () { if (el.tagName === 'IMG') el.alt = '(התמונה לא זמינה יותר)'; });
+  });
+  function apply(u) {
+    if (el.tagName === 'IMG') { el.addEventListener('load', function () { var sc = el.closest('.pane'); if (sc && sc.scrollHeight - sc.scrollTop - sc.clientHeight < 600) sc.scrollTop = sc.scrollHeight; }); el.src = u; el.addEventListener('click', function () { var lb = document.createElement('div'); lb.className = 'lightbox'; lb.innerHTML = '<img src="' + u + '" alt="">'; lb.addEventListener('click', function () { lb.remove(); }); document.body.appendChild(lb); }); }
+    else if (el.tagName === 'AUDIO') el.src = u;
+    else { el.href = u; el.download = el.dataset.name || 'file'; el.target = '_blank'; }
+  }
+}
+/* quick replies + compose */
+function renderQuick() {
+  $('quick').innerHTML = QUICK.map(function (q, i) { return '<button type="button" data-i="' + i + '">' + esc(q[0]) + '</button>'; }).join('');
+  $('quick').querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () { var d = $('draft'); d.value = (d.value ? d.value + '\n' : '') + QUICK[b.dataset.i][1]; d.focus(); autosize(); }); });
+}
+function autosize() { var d = $('draft'); d.style.height = 'auto'; d.style.height = Math.min(140, d.scrollHeight) + 'px'; }
+$('draft').addEventListener('input', autosize);
+$('draft').addEventListener('keydown', function (e) { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(); } });
+$('sendBtn').addEventListener('click', send);
+$('attachBtn').addEventListener('click', function () { $('fileIn').click(); });
+$('fileIn').addEventListener('change', function () { var f = this.files[0]; if (f) sendFile(f); this.value = ''; });
+function send() {
+  var text = $('draft').value.trim(); if (!text || !cur) return;
+  $('sendBtn').disabled = true;
+  callSend({ phone: cur, text: text }).then(function () { $('draft').value = ''; autosize(); loadChat(cur); loadConvs(true); }).catch(function (e) { toast('לא נשלח: ' + e.message, 5000); }).then(function () { $('sendBtn').disabled = false; });
+}
+function sendFile(f) {
+  if (f.size > 5 * 1024 * 1024) { toast('הקובץ גדול מ-5MB'); return; }
+  var caption = $('draft').value.trim();
+  var fd = new FormData(); fd.append('phone', cur); fd.append('file', f, f.name); if (caption) fd.append('caption', caption);
+  toast('שולח…', 1500);
+  callSend(fd).then(function () { $('draft').value = ''; autosize(); loadChat(cur); loadConvs(true); }).catch(function (e) { toast('לא נשלח: ' + e.message, 5000); });
+}
+function callSend(payload) {
+  return sb.auth.getSession().then(function (s) {
+    var tok = s.data.session && s.data.session.access_token; if (!tok) throw new Error('לא מחובר');
+    var opt = { method: 'POST', headers: { authorization: 'Bearer ' + tok } };
+    if (payload instanceof FormData) opt.body = payload; else { opt.headers['content-type'] = 'application/json'; opt.body = JSON.stringify(payload); }
+    return fetch(FN + 'wa-send', opt).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || j.ok === false) throw new Error(j.error || ('שגיאה ' + r.status)); return j; }); });
+  });
+}
+
+/* ---------- customer card ---------- */
+function openCard(t9) {
+  curTail = t9; $('cardBody').innerHTML = '<div class="empty">טוען…</div>';
+  sb.rpc('crm_card', { p_tail9: t9 }).then(function (r) {
+    if (r.error || !r.data) { $('cardBody').innerHTML = '<div class="empty">לא נמצא</div>'; return; }
+    card = r.data; renderCard();
+    sb.rpc('crm_log', { p_action: 'card_view', p_tail9: t9 });
+  });
+}
+function renderCard() {
+  var c = card, crm = c.crm || {}, pr = c.priority || [], name = crm.name || (pr[0] && pr[0].name) || (c.contact && c.contact.name) || localPhone(c.contact && c.contact.phone || c.tail9);
+  $('cardName').textContent = name;
+  var lead = c.leads[0];
+  var openOrders = c.orders.filter(function (o) { return !/נסגר/.test(o.status || ''); });
+  var debt = c.aging.reduce(function (s, a) { return s + Number(a.total || 0); }, 0);
+  var h = '';
+  h += '<div class="sect"><h3>פרטים</h3><dl class="kv">' +
+    '<dt>שם</dt><dd><input id="cName" value="' + esc(crm.name || name) + '" aria-label="שם"></dd>' +
+    '<dt>טלפון</dt><dd class="ltr">' + esc(localPhone(c.contact && c.contact.phone || (pr[0] && pr[0].phone) || c.tail9)) + '</dd>' +
+    '<dt>עיר</dt><dd><input id="cCity" value="' + esc(crm.city || (pr[0] && pr[0].city) || '') + '" aria-label="עיר"></dd>' +
+    '<dt>סוג</dt><dd><select id="cKind" aria-label="סוג"><option value="">—</option>' + KINDS.map(function (k) { return '<option value="' + k[0] + '"' + (crm.kind === k[0] ? ' selected' : '') + '>' + k[1] + '</option>'; }).join('') + '</select></dd>' +
+    (pr.length ? '<dt>פריוריטי</dt><dd>' + pr.map(function (p) { return 'לקוח ' + esc(p.cust_no) + (p.name !== name ? ' (' + esc(p.name) + ')' : ''); }).join(', ') + '</dd>' : '<dt>פריוריטי</dt><dd class="muted">עדיין לא לקוח בפריוריטי</dd>') +
+    (lead ? '<dt>מקור</dt><dd>' + esc(channelLabel(lead.channel)) + (lead.source_detail ? ' · ' + esc(lead.source_detail) : '') + ' · ' + esc(fmtDate(lead.created_at)) + '</dd>' : '') +
+    '</dl><div class="row"><button class="btn small" id="saveCust">שמירת פרטים</button>' + (isOwner() && crm.tail9 ? '<button class="btn small" id="delCust">מחיקת הכרטיס</button>' : '') + '</div></div>';
+  if (lead) {
+    h += '<div class="sect"><h3>שלב בעסקה <span class="n">פנייה מ-' + esc(fmtDate(lead.created_at)) + '</span></h3><div class="stage">' + STAGES.map(function (s) { return '<button data-stage="' + s[0] + '" aria-pressed="' + (lead.stage === s[0]) + '">' + s[1] + '</button>'; }).join('') + '</div>' +
+      (lead.first_message ? '<div class="small muted">"' + esc(lead.first_message) + '"</div>' : '') +
+      (c.leads.length > 1 ? '<details><summary>' + (c.leads.length - 1) + ' פניות קודמות</summary><table class="t">' + c.leads.slice(1).map(function (l) { return '<tr><td>' + esc(fmtDate(l.created_at)) + '</td><td>' + esc(channelLabel(l.channel)) + '</td><td>' + esc(stageLabel(l.stage)) + '</td></tr>'; }).join('') + '</table></details>' : '') + '</div>';
+  }
+  h += '<div class="sect"><h3>סיכום חכם</h3><div class="summary" id="summaryBox">' + (crm.summary ? esc(crm.summary) + '<div class="small muted">עודכן ' + esc(fmtDate(crm.summary_at)) + '</div>' : '<span class="muted">עדיין אין סיכום.</span>') + '</div><div class="row"><button class="btn small" id="sumBtn"' + (c.chat_n ? '' : ' disabled') + '>' + (crm.summary ? 'רענון הסיכום' : 'סיכום השיחה') + '</button><span class="small muted">' + (c.chat_n ? c.chat_n + ' הודעות בוואטסאפ' : 'אין שיחת וואטסאפ') + '</span></div></div>';
+  h += '<div class="sect"><h3>הזמנות <span class="n">' + openOrders.length + ' פתוחות' + (debt ? ' · חוב ' + money(debt) : '') + '</span></h3>';
+  if (!c.orders.length) h += '<div class="small muted">אין הזמנות בפריוריטי</div>';
+  else h += '<table class="t"><tr><th>הזמנה</th><th>תאריך</th><th>סטטוס</th><th class="num">פתוח</th></tr>' + c.orders.slice(0, 12).map(function (o) {
+    return '<tr><td><details><summary>' + esc(o.so) + '</summary><table class="t">' + (o.lines || []).map(function (l) { return '<tr><td>' + esc(l.desc || l.item) + '</td><td class="num">' + esc(l.bal != null ? l.bal + '/' + l.qty : l.qty) + ' ' + esc(l.unit || '') + '</td><td class="num">' + (l.total != null ? money(l.total) : '') + '</td></tr>'; }).join('') + '</table></details></td><td>' + esc(fmtDate(o.date)) + '</td><td>' + esc(o.status || 'פתוחה') + '</td><td class="num">' + (o.open_total ? money(o.open_total) : '') + '</td></tr>';
+  }).join('') + '</table>';
+  if (c.aging.length) h += '<div class="small">יתרת חוב: ' + c.aging.map(function (a) { return money(a.total) + (a.d90p ? ' (מעל 90 יום: ' + money(a.d90p) + ')' : ''); }).join(', ') + '</div>';
+  if (c.invoices.length || c.receipts.length) h += '<details><summary>חשבוניות וקבלות השנה</summary><table class="t">' + c.invoices.slice(0, 10).map(function (i) { return '<tr><td>חשבונית ' + esc(i.doc) + '</td><td>' + esc(fmtDate(i.date)) + '</td><td class="num">' + money(i.amount) + '</td></tr>'; }).join('') + c.receipts.slice(0, 10).map(function (i) { return '<tr><td>קבלה ' + esc(i.doc) + (i.method ? ' · ' + esc(i.method) : '') + '</td><td>' + esc(fmtDate(i.date)) + '</td><td class="num">' + money(i.amount) + '</td></tr>'; }).join('') + '</table></details>';
+  h += '</div>';
+  h += '<div class="sect"><h3>משימות <span class="n">' + c.tasks.filter(function (t) { return !t.done_at; }).length + ' פתוחות</span></h3><div id="taskList">' + c.tasks.map(taskRow).join('') + '</div>' +
+    '<div class="addrow"><input id="taskText" placeholder="משימה חדשה, למשל: לחזור עם הצעת מחיר" aria-label="משימה חדשה"></div><div class="addrow"><input type="datetime-local" id="taskDue" aria-label="מועד"><button class="btn small" id="addTask">הוספה</button></div></div>';
+  h += '<div class="sect"><h3>הערות <span class="n">' + c.notes.length + '</span></h3><div id="noteList">' + c.notes.map(function (n) { return '<div class="note"><div>' + esc(n.text) + '</div><div class="who">' + esc(nameOf(n.by)) + ' · ' + esc(fmtDate(n.at)) + ' ' + esc(fmtTime(n.at)) + (isOwner() ? ' · <a href="#" data-delnote="' + n.id + '">מחיקה</a>' : '') + '</div></div>'; }).join('') + '</div>' +
+    '<div class="addrow"><textarea id="noteText" rows="2" placeholder="הערה לצוות (לא נשלחת ללקוח)" aria-label="הערה"></textarea><button class="btn small" id="addNote">הוספה</button></div></div>';
+  $('cardBody').innerHTML = h;
+  $('saveCust').addEventListener('click', saveCust);
+  if ($('delCust')) $('delCust').addEventListener('click', delCust);
+  $('addTask').addEventListener('click', addTask);
+  $('addNote').addEventListener('click', addNote);
+  $('sumBtn').addEventListener('click', summarize);
+  $('cardBody').querySelectorAll('[data-stage]').forEach(function (b) { b.addEventListener('click', function () { setStage(lead.id, b.dataset.stage); }); });
+  $('cardBody').querySelectorAll('[data-done]').forEach(function (cb) { cb.addEventListener('change', function () { doneTask(cb.dataset.done, cb.checked); }); });
+  $('cardBody').querySelectorAll('[data-delnote]').forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); delNote(a.dataset.delnote); }); });
+}
+function taskRow(t) {
+  var late = t.due && !t.done_at && new Date(t.due) < new Date();
+  return '<div class="task' + (t.done_at ? ' done' : '') + '"><input type="checkbox" data-done="' + t.id + '"' + (t.done_at ? ' checked' : '') + ' aria-label="בוצע"><div><div class="txt">' + esc(t.text) + '</div><div class="due' + (late ? ' late' : '') + '">' + (t.due ? esc(fmtDate(t.due)) + ' ' + esc(fmtTime(t.due)) : '') + (t.assigned_to ? ' · ' + esc(nameOf(t.assigned_to)) : '') + '</div></div><span class="small muted">' + esc(nameOf(t.by)) + '</span></div>';
+}
+function channelLabel(ch) { return { whatsapp: 'וואטסאפ', phone: 'טלפון', site_form: 'אתר', instagram: 'אינסטגרם', facebook: 'פייסבוק', tiktok: 'טיקטוק', google_ads: 'פרסום גוגל', meta_ads: 'פרסום מטא', social: 'רשתות', gbp: 'גוגל', walk_in: 'הגיע לאולם', other: 'אחר' }[ch] || ch || ''; }
+function ensureCust() {
+  if (card.crm && card.crm.tail9) return Promise.resolve();
+  var pr = card.priority[0] || {};
+  return sb.from('crm_customers').insert({ tail9: card.tail9, name: pr.name || (card.contact && card.contact.name) || null, city: pr.city || null, priority_cust_no: pr.cust_no || null, created_by: me.email, updated_by: me.email }).then(function (r) { if (r.error && r.error.code !== '23505') throw r.error; card.crm = card.crm || { tail9: card.tail9 }; });
+}
+function saveCust() {
+  var v = { name: $('cName').value.trim() || null, city: $('cCity').value.trim() || null, kind: $('cKind').value || null, updated_by: me.email, updated_at: new Date().toISOString() };
+  ensureCust().then(function () { return sb.from('crm_customers').update(v).eq('tail9', card.tail9); }).then(function (r) { if (r.error) throw r.error; sb.rpc('crm_log', { p_action: 'customer_save', p_tail9: card.tail9 }); toast('נשמר'); openCard(card.tail9); loadConvs(true); }).catch(function (e) { toast('לא נשמר: ' + (e.message || e)); });
+}
+function delCust() {
+  if (!confirm('למחוק את הכרטיס (הערות, משימות וסיכום)? השיחות בוואטסאפ ומסמכי פריוריטי נשארים.')) return;
+  sb.from('crm_customers').update({ deleted_at: new Date().toISOString(), deleted_by: me.email, updated_by: me.email }).eq('tail9', card.tail9).then(function (r) { if (r.error) { toast('לא נמחק: ' + r.error.message); return; } sb.rpc('crm_log', { p_action: 'customer_delete', p_tail9: card.tail9 }); toast('הכרטיס נמחק'); openCard(card.tail9); });
+}
+function setStage(leadId, stage) {
+  var extra = {};
+  if (stage === 'won') { var a = prompt('סכום העסקה (לפני מע"מ), לא חובה:'); if (a && Number(a)) extra.p_won_amount = Number(a); var pc = card.priority[0]; if (pc) extra.p_priority_cust_no = pc.cust_no; }
+  if (stage === 'lost') { var why = prompt('למה אבד? (מחיר / בחר אחר / לא רלוונטי / אחר)'); if (why) extra.p_lost_reason = why; }
+  sb.rpc('set_lead_stage', Object.assign({ p_id: leadId, p_stage: stage }, extra)).then(function (r) { if (r.error) { toast('לא נשמר: ' + r.error.message); return; } sb.rpc('crm_log', { p_action: 'stage_' + stage, p_tail9: card.tail9, p_detail: { lead: leadId } }); openCard(card.tail9); loadConvs(true); });
+}
+function addTask() {
+  var text = $('taskText').value.trim(); if (!text) return;
+  var due = $('taskDue').value ? new Date($('taskDue').value).toISOString() : null;
+  ensureCust().then(function () { return sb.from('crm_tasks').insert({ tail9: card.tail9, text: text, due: due, by: me.email, assigned_to: me.email }); }).then(function (r) { if (r.error) throw r.error; sb.rpc('crm_log', { p_action: 'task_add', p_tail9: card.tail9 }); openCard(card.tail9); }).catch(function (e) { toast('לא נשמר: ' + (e.message || e)); });
+}
+function doneTask(id, done) {
+  sb.from('crm_tasks').update({ done_at: done ? new Date().toISOString() : null, done_by: done ? me.email : null }).eq('id', id).then(function (r) { if (r.error) toast('לא נשמר'); else openCard(card.tail9); });
+}
+function addNote() {
+  var text = $('noteText').value.trim(); if (!text) return;
+  ensureCust().then(function () { return sb.from('crm_notes').insert({ tail9: card.tail9, text: text, by: me.email }); }).then(function (r) { if (r.error) throw r.error; sb.rpc('crm_log', { p_action: 'note_add', p_tail9: card.tail9 }); openCard(card.tail9); }).catch(function (e) { toast('לא נשמר: ' + (e.message || e)); });
+}
+function delNote(id) {
+  if (!confirm('למחוק את ההערה?')) return;
+  sb.from('crm_notes').update({ deleted_at: new Date().toISOString() }).eq('id', id).then(function (r) { if (r.error) toast('לא נמחק'); else { sb.rpc('crm_log', { p_action: 'note_delete', p_tail9: card.tail9, p_detail: { id: id } }); openCard(card.tail9); } });
+}
+function summarize() {
+  $('sumBtn').disabled = true; $('summaryBox').innerHTML = '<span class="muted">מסכם…</span>';
+  sb.auth.getSession().then(function (s) {
+    return fetch(FN + 'crm-summary', { method: 'POST', headers: { authorization: 'Bearer ' + s.data.session.access_token, 'content-type': 'application/json' }, body: JSON.stringify({ tail9: card.tail9 }) });
+  }).then(function (r) { return r.json(); }).then(function (j) { if (!j.ok) throw new Error(j.error || 'שגיאה'); openCard(card.tail9); }).catch(function (e) { toast('הסיכום נכשל: ' + e.message); $('sumBtn').disabled = false; });
+}
+
+/* ---------- search ---------- */
+var q2Timer = null;
+$('q2').addEventListener('input', function () { clearTimeout(q2Timer); q2Timer = setTimeout(doSearch, 250); });
+function doSearch() {
+  var q = $('q2').value.trim();
+  if (q.length < 2) { $('searchList').innerHTML = ''; $('searchEmpty').textContent = 'חיפוש בכל הלקוחות: פריוריטי, וואטסאפ וכרטיסים'; $('searchEmpty').classList.remove('hidden'); return; }
+  sb.rpc('crm_search', { p_q: q, p_limit: 40 }).then(function (r) {
+    var rows = r.data || []; var seen = {};
+    rows = rows.filter(function (x) { if (seen[x.tail9]) return false; seen[x.tail9] = 1; return true; });
+    $('searchEmpty').classList.toggle('hidden', rows.length > 0); $('searchEmpty').textContent = 'לא נמצא';
+    $('searchList').innerHTML = rows.map(function (x) { return '<li><button data-t9="' + esc(x.tail9) + '"><span class="dot"></span><span class="name ellip">' + esc(x.name || localPhone(x.phone || x.tail9)) + '</span><span class="when ltr">' + esc(localPhone(x.phone || x.tail9)) + '</span><span class="last">' + (x.cust_no ? 'לקוח ' + esc(x.cust_no) + ' בפריוריטי' : x.src === 'whatsapp' ? 'איש קשר בוואטסאפ' : 'כרטיס') + (x.city ? ' · ' + esc(x.city) : '') + '</span></button></li>'; }).join('');
+    $('searchList').querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () { go('card', b.dataset.t9); }); });
+  });
+}
+
+/* ---------- today ---------- */
+function loadToday() {
+  var waiting = convs.filter(function (c) { return c.state === 'waiting'; });
+  var mine = convs.filter(function (c) { return c.claimed_by && c.claimed_by.toLowerCase() === me.email.toLowerCase(); });
+  Promise.all([
+    sb.from('crm_tasks').select('id,tail9,text,due,assigned_to,by,done_at').is('done_at', null).order('due', { ascending: true, nullsFirst: false }).limit(50),
+    sb.from('leads').select('id,created_at,channel,stage,name,phone_tail9').gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()).order('created_at', { ascending: false }).limit(200)
+  ]).then(function (rs) {
+    var tasks = rs[0].data || [], leads = rs[1].data || [];
+    var today = new Date().toDateString();
+    var leadsToday = leads.filter(function (l) { return new Date(l.created_at).toDateString() === today; });
+    var h = '<div class="kpis">' +
+      '<div class="kpi' + (waiting.length ? ' bad' : ' good') + '"><b>' + waiting.length + '</b><span>ממתינים למענה</span></div>' +
+      '<div class="kpi"><b>' + leadsToday.length + '</b><span>פניות היום</span></div>' +
+      '<div class="kpi"><b>' + leads.length + '</b><span>פניות 7 ימים</span></div>' +
+      '<div class="kpi"><b>' + tasks.length + '</b><span>משימות פתוחות</span></div></div>';
+    h += '<div class="sect"><h3>ממתינים עכשיו</h3>' + (waiting.length ? '<ul class="list" style="padding:0">' + waiting.slice(0, 20).map(function (c) { return '<li><button data-phone="' + esc(c.phone) + '"><span class="dot wait"></span><span class="name ellip">' + esc(c.name || localPhone(c.phone)) + '</span><span class="when">' + esc(ago(c.waiting_since || c.last_ts)) + '</span><span class="last ellip">' + esc(c.last_text || '') + '</span></button></li>'; }).join('') + '</ul>' : '<div class="small muted">כולם נענו</div>') + '</div>';
+    h += '<div class="sect"><h3>משימות</h3>' + (tasks.length ? tasks.map(function (t) { return '<div class="task' + '"><input type="checkbox" data-done="' + t.id + '" aria-label="בוצע"><div><div class="txt"><a href="#card/' + esc(t.tail9) + '">' + esc(t.text) + '</a></div><div class="due' + (t.due && new Date(t.due) < new Date() ? ' late' : '') + '">' + (t.due ? esc(fmtDate(t.due)) + ' ' + esc(fmtTime(t.due)) : '') + (t.assigned_to ? ' · ' + esc(nameOf(t.assigned_to)) : '') + '</div></div></div>'; }).join('') : '<div class="small muted">אין משימות פתוחות</div>') + '</div>';
+    h += '<div class="sect"><h3>פניות 7 ימים אחרונים</h3><table class="t"><tr><th>מתי</th><th>ערוץ</th><th>שם</th><th>שלב</th></tr>' + leads.slice(0, 30).map(function (l) { return '<tr><td>' + esc(fmtDate(l.created_at)) + '</td><td>' + esc(channelLabel(l.channel)) + '</td><td>' + (l.phone_tail9 ? '<a href="#card/' + esc(l.phone_tail9) + '">' + esc(l.name || '—') + '</a>' : esc(l.name || '—')) + '</td><td>' + esc(stageLabel(l.stage)) + '</td></tr>'; }).join('') + '</table></div>';
+    if (mine.length) h += '<div class="sect"><h3>השיחות שלי</h3><ul class="list" style="padding:0">' + mine.map(function (c) { return '<li><button data-phone="' + esc(c.phone) + '"><span class="dot ' + (c.state === 'waiting' ? 'wait' : 'ok') + '"></span><span class="name ellip">' + esc(c.name || localPhone(c.phone)) + '</span><span class="when">' + esc(ago(c.last_ts)) + '</span></button></li>'; }).join('') + '</ul></div>';
+    $('todayBody').innerHTML = h;
+    $('todayBody').querySelectorAll('[data-phone]').forEach(function (b) { b.addEventListener('click', function () { go('chat', b.dataset.phone); }); });
+    $('todayBody').querySelectorAll('[data-done]').forEach(function (cb) { cb.addEventListener('change', function () { sb.from('crm_tasks').update({ done_at: new Date().toISOString(), done_by: me.email }).eq('id', cb.dataset.done).then(loadToday); }); });
+  });
+}
+
+/* ---------- PWA ---------- */
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
+})();
+</script>
+</body>
+</html>
