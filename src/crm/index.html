@@ -144,6 +144,9 @@ details summary{cursor:pointer;color:var(--brass);font-size:14px}
 .kpi span{font-size:13px;color:var(--mute)}
 .kpi.bad b{color:var(--red)}.kpi.good b{color:var(--green)}
 
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:24px;z-index:40}
+.sheet form{width:min(420px,100%);background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:24px;display:grid;gap:12px}
+.sheet h2{font-size:24px}.sheet .row{justify-content:flex-start}
 .toast{position:fixed;bottom:80px;inset-inline:16px;margin:auto;max-width:480px;background:var(--surface);border:1px solid var(--brass);border-radius:var(--r);padding:12px 16px;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.3)}
 .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);display:grid;place-items:center;z-index:60;cursor:zoom-out}
 .lightbox img{max-width:96vw;max-height:92vh}
@@ -184,6 +187,16 @@ details summary{cursor:pointer;color:var(--brass);font-size:14px}
   </form>
 </div>
 
+<div id="pwSheet" class="sheet hidden" role="dialog" aria-labelledby="pwTitle">
+  <form id="pwForm" autocomplete="off">
+    <h2 id="pwTitle">החלפת סיסמה</h2>
+    <p class="small muted" id="pwNote">בכניסה הראשונה בוחרים סיסמה אישית. לפחות 8 תווים.</p>
+    <label>סיסמה חדשה<input type="password" name="p1" minlength="8" required autocomplete="new-password"></label>
+    <label>עוד פעם<input type="password" name="p2" minlength="8" required autocomplete="new-password"></label>
+    <div class="err" id="pwErr"></div>
+    <div class="row"><button class="btn brass" type="submit">שמירה</button><button class="btn" type="button" id="pwLater">אחר כך</button><button class="btn" type="button" id="pwOut">יציאה מהחשבון</button></div>
+  </form>
+</div>
 <div id="app" class="hidden">
   <header class="top">
     <img class="logo" src="../img/logo.jpg" alt="">
@@ -320,8 +333,22 @@ sb.auth.onAuthStateChange(function (ev, session) {
   if (session && session.user) { if (!me || me.email !== session.user.email) { me = session.user; start(); } }
   else { me = null; $('app').classList.add('hidden'); $('login').classList.remove('hidden'); if (timer) clearInterval(timer); }
 });
-$('meBtn').addEventListener('click', function () {
-  if (confirm('לצאת מהחשבון ' + me.email + '?')) sb.auth.signOut();
+function openPw(first) {
+  $('pwNote').textContent = first ? 'בכניסה הראשונה בוחרים סיסמה אישית. לפחות 8 תווים.' : 'סיסמה חדשה לחשבון ' + me.email + '. לפחות 8 תווים.';
+  $('pwLater').classList.toggle('hidden', !!first); $('pwErr').textContent = ''; $('pwForm').reset();
+  $('pwSheet').classList.remove('hidden'); setTimeout(function () { $('pwForm').p1.focus(); }, 50);
+}
+$('meBtn').addEventListener('click', function () { openPw(false); });
+$('pwLater').addEventListener('click', function () { $('pwSheet').classList.add('hidden'); });
+$('pwOut').addEventListener('click', function () { $('pwSheet').classList.add('hidden'); sb.auth.signOut(); });
+$('pwForm').addEventListener('submit', function (e) {
+  e.preventDefault(); var f = e.target;
+  if (f.p1.value !== f.p2.value) { $('pwErr').textContent = 'הסיסמאות לא זהות.'; return; }
+  sb.auth.updateUser({ password: f.p1.value, data: { pw_changed_at: new Date().toISOString() } }).then(function (r) {
+    if (r.error) { $('pwErr').textContent = 'לא נשמר: ' + r.error.message; return; }
+    if (me && me.user_metadata) me.user_metadata.pw_changed_at = new Date().toISOString();
+    $('pwSheet').classList.add('hidden'); toast('הסיסמה הוחלפה'); sb.rpc('crm_log', { p_action: 'password_change' });
+  });
 });
 
 function start() {
@@ -333,6 +360,7 @@ function start() {
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
     sb.rpc('crm_log', { p_action: 'login' });
     route(); loadConvs(); loadSync();
+    if (!(me.user_metadata && me.user_metadata.pw_changed_at)) openPw(true);
     if (timer) clearInterval(timer);
     timer = setInterval(function () { if (document.visibilityState === 'visible') { loadConvs(true); if (cur) loadChat(cur, true); } }, 20000);
     document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') loadConvs(true); });
