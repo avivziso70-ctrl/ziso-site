@@ -607,17 +607,43 @@ function renderQuick() {
   getPayLink().then(function (l) { $('payChip').classList.toggle('hidden', !l); });
 }
 /* Tranzila payment link: fixed link from crm_settings.pay_link, goes into the draft, staff send it */
-var payLink;
+var payLink;  // {link} = fixed Tranzila page from crm_settings.pay_link, {api:true} = per-customer link via crm-pay
 function getPayLink() {
   if (payLink !== undefined) return Promise.resolve(payLink);
-  return sb.from('crm_settings').select('pay_link').eq('id', 1).maybeSingle().then(function (r) { payLink = (r.data && r.data.pay_link) || null; return payLink; });
+  return sb.from('crm_settings').select('pay_link').eq('id', 1).maybeSingle().then(function (r) {
+    if (r.data && r.data.pay_link) return (payLink = { link: r.data.pay_link });
+    return payFn({ action: 'status' }).then(function (j) { return (payLink = j.configured ? { api: true } : null); }, function () { return (payLink = null); });
+  });
 }
-function payDraft(amount) {
-  getPayLink().then(function (link) {
-    if (!link) { toast('הלינק לתשלום עוד לא הוגדר במערכת'); return; }
-    var d = $('draft'), t = (amount ? 'סכום לתשלום: ' + money(amount) + '\n' : '') + 'לתשלום מאובטח בכרטיס אשראי, דרך טרנזילה:\n' + link + '\nאחרי התשלום תקבלו מאיתנו אישור. לשאלות: 050-4770040';
-    d.value = (d.value ? d.value + '\n' : '') + t; d.focus(); autosize();
-    sb.rpc('crm_log', { p_action: 'pay_link_draft', p_tail9: curTail, p_detail: { amount: amount || null } });
+function payFn(body) {
+  return sb.auth.getSession().then(function (s) {
+    return fetch(FN + 'crm-pay', { method: 'POST', headers: { authorization: 'Bearer ' + s.data.session.access_token, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  }).then(function (r) { return r.json(); });
+}
+function payText(amount, link) {
+  return (amount ? 'סכום לתשלום: ' + money(amount) + '\n' : '') + 'לתשלום מאובטח בכרטיס אשראי, דרך טרנזילה:\n' + link + '\nאחרי התשלום תקבלו מאיתנו אישור. לשאלות: 050-4770040';
+}
+function putDraft(t) { var d = $('draft'); d.value = (d.value ? d.value + '\n' : '') + t; d.focus(); autosize(); }
+// Aviv only: read-only auth check, then one ₪1 request to his own email. Nothing goes into a customer chat.
+function payTest(t9) {
+  toast('בודק חיבור לטרנזילה…');
+  payFn({ action: 'check' }).then(function (c) {
+    if (!c.ok) { alert('החיבור לטרנזילה נכשל.\n' + JSON.stringify(c.results || c.error)); return; }
+    return payFn({ action: 'create', tail9: t9, test: true }).then(function (j) {
+      alert(j.ok ? 'עובד. אימות לפי שיטה ' + c.scheme + '.\nנוצר לינק בדיקה של ₪1 (אין צורך לשלם):\n' + j.pr_link : 'האימות עבר (שיטה ' + c.scheme + '), אבל הלינק לא נוצר:\n' + j.error);
+    });
+  }).catch(function (e) { alert('שגיאה: ' + e.message); });
+}
+function payDraft(amount, test) {
+  getPayLink().then(function (p) {
+    if (!p) { toast('הלינק לתשלום עוד לא הוגדר במערכת'); return; }
+    if (p.link) { putDraft(payText(amount, p.link)); sb.rpc('crm_log', { p_action: 'pay_link_draft', p_tail9: curTail, p_detail: { amount: amount || null } }); return; }
+    if (!test && !amount) { var a = prompt('סכום לתשלום בש"ח (כולל מע"מ):'); if (a === null) return; amount = Number((a || '').replace(/[^\d.]/g, '')) || null; if (!amount) { toast('צריך סכום כדי ליצור לינק'); return; } }
+    toast('יוצר לינק בטרנזילה…');
+    payFn({ action: 'create', tail9: curTail, amount: amount, test: !!test }).then(function (j) {
+      if (!j.ok) throw new Error(j.error || 'שגיאה');
+      putDraft(payText(j.amount, j.pr_link));
+    }).catch(function (e) { toast('הלינק לא נוצר: ' + e.message, 6000); });
   });
 }
 function autosize() { var d = $('draft'); d.style.height = 'auto'; d.style.height = Math.min(140, d.scrollHeight) + 'px'; }
@@ -701,9 +727,11 @@ function renderCard() {
   $('cardBody').querySelectorAll('[data-doc]').forEach(function (b) { b.addEventListener('click', function () { openDoc(b.dataset.doc, b.dataset.so); }); });
   getPayLink().then(function (l) { if (!l && $('payBtn')) $('payBtn').classList.add('hidden'); });
   $('payBtn').addEventListener('click', function () {
-    var phone = card.contact && card.contact.phone;
+    var phone = card.contact && card.contact.phone, owner = me.email.toLowerCase() === 'avivziso70@gmail.com';
+    if (!owner && (!phone || tail9(phone) !== card.tail9)) { toast('אין שיחת וואטסאפ עם הלקוח הזה'); return; }
+    var a = prompt('סכום לתשלום בש"ח, כולל מע"מ' + (payLink && payLink.link ? ' (לא חובה)' : '') + ':', debt > 0 ? String(Math.round(debt)) : ''); if (a === null) return;
+    if (owner && a.trim() === 'בדיקה') { payTest(card.tail9); return; }
     if (!phone || tail9(phone) !== card.tail9) { toast('אין שיחת וואטסאפ עם הלקוח הזה'); return; }
-    var a = prompt('סכום לתשלום בש"ח (לא חובה, אפשר להשאיר ריק):', debt > 0 ? String(Math.round(debt)) : ''); if (a === null) return;
     a = Number((a || '').replace(/[^\d.]/g, '')) || null;
     go('chat', phone); setTimeout(function () { payDraft(a); }, 400);
   });
