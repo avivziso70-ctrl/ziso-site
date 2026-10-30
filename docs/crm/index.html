@@ -711,6 +711,7 @@ function renderCard() {
     return '<tr><td><details><summary>' + esc(o.so) + '</summary><table class="t">' + (o.lines || []).map(function (l) { return '<tr><td>' + esc(l.desc || l.item) + '</td><td class="num">' + esc(l.bal != null ? l.bal + '/' + l.qty : l.qty) + ' ' + esc(l.unit || '') + '</td><td class="num">' + (l.total != null ? money(l.total) : '') + '</td></tr>'; }).join('') + '</table><button class="btn small" type="button" data-doc="order" data-so="' + esc(o.so) + '">פירוט הזמנה כ-PDF</button></details></td><td>' + esc(fmtDate(o.date)) + '</td><td>' + esc(o.status || 'פתוחה') + '</td><td class="num">' + (o.open_total ? money(o.open_total) : '') + '</td></tr>';
   }).join('') + '</table>';
   h += '<div class="row">' + (c.orders.length || c.aging.length ? '<button class="btn small" type="button" data-doc="balance">דף יתרה כ-PDF</button>' : '') + '<button class="btn small" type="button" id="payBtn">לינק לתשלום</button></div>';
+  h += '<div id="payList"></div>';
   if (c.aging.length) h += '<div class="small">יתרת חוב: ' + c.aging.map(function (a) { return money(a.total) + (a.d90p ? ' (מעל 90 יום: ' + money(a.d90p) + ')' : ''); }).join(', ') + '</div>';
   if (c.invoices.length || c.receipts.length) h += '<details><summary>חשבוניות וקבלות השנה</summary><table class="t">' + c.invoices.slice(0, 10).map(function (i) { return '<tr><td>חשבונית ' + esc(i.doc) + '</td><td>' + esc(fmtDate(i.date)) + '</td><td class="num">' + money(i.amount) + '</td></tr>'; }).join('') + c.receipts.slice(0, 10).map(function (i) { return '<tr><td>קבלה ' + esc(i.doc) + (i.method ? ' · ' + esc(i.method) : '') + '</td><td>' + esc(fmtDate(i.date)) + '</td><td class="num">' + money(i.amount) + '</td></tr>'; }).join('') + '</table></details>';
   h += '</div>';
@@ -726,6 +727,7 @@ function renderCard() {
   $('sumBtn').addEventListener('click', summarize);
   $('cardBody').querySelectorAll('[data-doc]').forEach(function (b) { b.addEventListener('click', function () { openDoc(b.dataset.doc, b.dataset.so); }); });
   getPayLink().then(function (l) { if (!l && $('payBtn')) $('payBtn').classList.add('hidden'); });
+  loadPays(card.tail9);
   $('payBtn').addEventListener('click', function () {
     var phone = card.contact && card.contact.phone, owner = me.email.toLowerCase() === 'avivziso70@gmail.com';
     if (!owner && (!phone || tail9(phone) !== card.tail9)) { toast('אין שיחת וואטסאפ עם הלקוח הזה'); return; }
@@ -739,6 +741,15 @@ function renderCard() {
   $('quoteBtn').addEventListener('click', function () { curTail = card.tail9; mark({ p_what: crm.quote_at ? 'unquote' : 'quote' }, crm.quote_at ? 'הסימון הוסר' : 'סומן: נשלחה הצעה', function () { openCard(card.tail9); }); });
   $('cardBody').querySelectorAll('[data-done]').forEach(function (cb) { cb.addEventListener('change', function () { doneTask(cb.dataset.done, cb.checked); }); });
   $('cardBody').querySelectorAll('[data-delnote]').forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); delNote(a.dataset.delnote); }); });
+}
+// Payment links sent from the card; Tranzila's notify marks them paid once the payment is confirmed.
+function loadPays(t9) {
+  sb.from('crm_pay_requests').select('amount, status, test, created_at, paid_at').eq('tail9', t9).in('status', ['created', 'paid']).not('pr_link', 'is', null).order('created_at', { ascending: false }).limit(10).then(function (r) {
+    if (r.error || !r.data || !r.data.length || !$('payList') || curTail !== t9) return;
+    $('payList').innerHTML = '<table class="t"><tr><th>לינק לתשלום</th><th>נשלח</th><th>סטטוס</th></tr>' + r.data.map(function (p) {
+      return '<tr><td class="num">' + money(p.amount) + (p.test ? ' <span class="small muted">בדיקה</span>' : '') + '</td><td>' + esc(fmtDate(p.created_at)) + '</td><td>' + (p.status === 'paid' ? '<b>שולם</b> ' + esc(fmtDate(p.paid_at)) : '<span class="muted">ממתין</span>') + '</td></tr>';
+    }).join('') + '</table>';
+  });
 }
 function taskRow(t) {
   var late = t.due && !t.done_at && new Date(t.due) < new Date();
