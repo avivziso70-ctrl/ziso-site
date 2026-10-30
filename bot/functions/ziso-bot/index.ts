@@ -11,6 +11,15 @@ import { cleanPhone, runTurn, type Turn } from "./bot.ts";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const ORIGINS = new Set(["https://www.zisoceramics.com", "https://zisoceramics.com", "http://localhost:8080", "http://127.0.0.1:8080"]);
 const MAX_PER_SESSION = 40, MAX_PER_IP_HOUR = 60, MAX_CHARS = 1000;
+// Business rules edited in SQL (table bot_settings, id 1): extra_rules for every channel, wa_rules for WhatsApp only.
+let rulesCache: { at: number; all: string; wa: string } | null = null;
+async function extraRules(channel: "site" | "whatsapp") {
+  if (!rulesCache || Date.now() - rulesCache.at > 60_000) {
+    const { data } = await db.from("bot_settings").select("extra_rules, wa_rules").eq("id", 1).maybeSingle();
+    rulesCache = { at: Date.now(), all: data?.extra_rules || "", wa: data?.wa_rules || "" };
+  }
+  return [rulesCache.all, channel === "whatsapp" ? rulesCache.wa : ""].filter(Boolean).join("\n");
+}
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const hex = (b: ArrayBuffer) => Array.from(new Uint8Array(b)).map((x) => x.toString(16).padStart(2, "0")).join("");
@@ -35,7 +44,7 @@ async function whatsappTurn(req: Request, body: { history?: unknown; message: st
   const name = (body.name || "").toString().slice(0, 80) || undefined;
   const client = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY") });
   try {
-    const r = await runTurn(client, history, body.message, "whatsapp", { phone, name, first: !!body.first });
+    const r = await runTurn(client, history, body.message, "whatsapp", { phone, name, first: !!body.first, extra: await extraRules("whatsapp") });
     return json(req, { reply: r.text, lead: r.lead, usage: r.usage });
   } catch (e) { console.error("anthropic", e); return json(req, { error: "anthropic" }, 502); }
 }
@@ -73,7 +82,7 @@ Deno.serve(async (req) => {
 
   const client = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY") });
   let result;
-  try { result = await runTurn(client, history, message, "site"); }
+  try { result = await runTurn(client, history, message, "site", { extra: await extraRules("site") }); }
   catch (e) { console.error("anthropic", e); return json(req, { session, reply: "יש לי תקלה רגעית. אפשר לנסות שוב בעוד רגע או לכתוב בוואטסאפ 050-4770040." }, 502); }
 
   let leadId: number | null = null;

@@ -14,7 +14,8 @@ export type Turn = { role: "user" | "assistant"; content: string };
 export type Lead = { name: string; phone: string; topic: string; preferred_time?: string };
 export type TurnResult = { text: string; lead: Lead | null; usage: { input: number; output: number; cached: number } };
 // WhatsApp knows who is writing: the sender's number (local format) and profile name; first = first message of the conversation.
-export type TurnContext = { phone?: string; name?: string; first?: boolean };
+// extra = rules kept in table bot_settings (index.ts loads them), so business rules change without a redeploy.
+export type TurnContext = { phone?: string; name?: string; first?: boolean; extra?: string };
 
 const RULES = `אתה "העוזר של זיסו קרמיקה", עוזר דיגיטלי אוטומטי (AI) באתר של זיסו קרמיקה, אולם תצוגה לריצוף, חיפוי, כלים סניטריים, ארונות אמבטיה, מקלחונים וברזים בטירת כרמל.
 
@@ -117,7 +118,7 @@ export async function runTurn(client: Anthropic, history: Turn[], userText: stri
       fallbacks: "default",
       system: [
         { type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } },
-        { type: "text", text: `${channelNote(channel, ctx)} עכשיו בישראל: ${nowInIsrael()}.` },
+        { type: "text", text: `${channelNote(channel, ctx)} עכשיו בישראל: ${nowInIsrael()}.${ctx.extra ? "\n\n# כללים נוספים של העסק (גוברים על המידע למעלה)\n" + ctx.extra : ""}` },
       ],
       tools: [SEARCH_CATALOG as Anthropic.Beta.BetaTool, SAVE_LEAD as Anthropic.Beta.BetaTool],
       messages,
