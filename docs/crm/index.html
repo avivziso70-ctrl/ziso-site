@@ -604,6 +604,7 @@ function renderQuick() {
   $('quick').innerHTML = '<button type="button" class="pay" id="payChip">לינק לתשלום</button>' + QUICK.map(function (q, i) { return '<button type="button" data-i="' + i + '">' + esc(q[0]) + '</button>'; }).join('');
   $('quick').querySelectorAll('button[data-i]').forEach(function (b) { b.addEventListener('click', function () { var d = $('draft'); d.value = (d.value ? d.value + '\n' : '') + QUICK[b.dataset.i][1]; d.focus(); autosize(); }); });
   $('payChip').addEventListener('click', function () { payDraft(null); });
+  getPayLink().then(function (l) { $('payChip').classList.toggle('hidden', !l); });
 }
 /* Tranzila payment link: fixed link from crm_settings.pay_link, goes into the draft, staff send it */
 var payLink;
@@ -698,6 +699,7 @@ function renderCard() {
   $('addNote').addEventListener('click', addNote);
   $('sumBtn').addEventListener('click', summarize);
   $('cardBody').querySelectorAll('[data-doc]').forEach(function (b) { b.addEventListener('click', function () { openDoc(b.dataset.doc, b.dataset.so); }); });
+  getPayLink().then(function (l) { if (!l && $('payBtn')) $('payBtn').classList.add('hidden'); });
   $('payBtn').addEventListener('click', function () {
     var phone = card.contact && card.contact.phone;
     if (!phone || tail9(phone) !== card.tail9) { toast('אין שיחת וואטסאפ עם הלקוח הזה'); return; }
