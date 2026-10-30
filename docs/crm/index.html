@@ -111,6 +111,7 @@ ul.list .meta{grid-column:2 / span 2;display:flex;gap:6px;flex-wrap:wrap;font-si
 .msg .file{display:inline-flex;gap:8px;align-items:center}
 .compose{position:sticky;bottom:0;background:var(--wall);border-top:1px solid var(--line);padding:10px var(--pad);display:grid;gap:8px}
 .compose .quick{display:flex;gap:8px;overflow:auto}
+.compose .quick button.pay{border-color:var(--brass);color:var(--brass)}
 .compose .quick button{min-height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:14px;cursor:pointer;white-space:nowrap}
 .compose .row textarea{min-height:48px;max-height:140px}
 .compose .note{font-size:13px;color:var(--mute)}
@@ -600,8 +601,23 @@ function loadMedia(el) {
 }
 /* quick replies + compose */
 function renderQuick() {
-  $('quick').innerHTML = QUICK.map(function (q, i) { return '<button type="button" data-i="' + i + '">' + esc(q[0]) + '</button>'; }).join('');
-  $('quick').querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () { var d = $('draft'); d.value = (d.value ? d.value + '\n' : '') + QUICK[b.dataset.i][1]; d.focus(); autosize(); }); });
+  $('quick').innerHTML = '<button type="button" class="pay" id="payChip">לינק לתשלום</button>' + QUICK.map(function (q, i) { return '<button type="button" data-i="' + i + '">' + esc(q[0]) + '</button>'; }).join('');
+  $('quick').querySelectorAll('button[data-i]').forEach(function (b) { b.addEventListener('click', function () { var d = $('draft'); d.value = (d.value ? d.value + '\n' : '') + QUICK[b.dataset.i][1]; d.focus(); autosize(); }); });
+  $('payChip').addEventListener('click', function () { payDraft(null); });
+}
+/* Tranzila payment link: fixed link from crm_settings.pay_link, goes into the draft, staff send it */
+var payLink;
+function getPayLink() {
+  if (payLink !== undefined) return Promise.resolve(payLink);
+  return sb.from('crm_settings').select('pay_link').eq('id', 1).maybeSingle().then(function (r) { payLink = (r.data && r.data.pay_link) || null; return payLink; });
+}
+function payDraft(amount) {
+  getPayLink().then(function (link) {
+    if (!link) { toast('הלינק לתשלום עוד לא הוגדר במערכת'); return; }
+    var d = $('draft'), t = (amount ? 'סכום לתשלום: ' + money(amount) + '\n' : '') + 'לתשלום מאובטח בכרטיס אשראי, דרך טרנזילה:\n' + link + '\nאחרי התשלום תקבלו מאיתנו אישור. לשאלות: 050-4770040';
+    d.value = (d.value ? d.value + '\n' : '') + t; d.focus(); autosize();
+    sb.rpc('crm_log', { p_action: 'pay_link_draft', p_tail9: curTail, p_detail: { amount: amount || null } });
+  });
 }
 function autosize() { var d = $('draft'); d.style.height = 'auto'; d.style.height = Math.min(140, d.scrollHeight) + 'px'; }
 $('draft').addEventListener('input', autosize);
@@ -667,7 +683,7 @@ function renderCard() {
   else h += '<table class="t"><tr><th>הזמנה</th><th>תאריך</th><th>סטטוס</th><th class="num">פתוח</th></tr>' + c.orders.slice(0, 12).map(function (o) {
     return '<tr><td><details><summary>' + esc(o.so) + '</summary><table class="t">' + (o.lines || []).map(function (l) { return '<tr><td>' + esc(l.desc || l.item) + '</td><td class="num">' + esc(l.bal != null ? l.bal + '/' + l.qty : l.qty) + ' ' + esc(l.unit || '') + '</td><td class="num">' + (l.total != null ? money(l.total) : '') + '</td></tr>'; }).join('') + '</table><button class="btn small" type="button" data-doc="order" data-so="' + esc(o.so) + '">פירוט הזמנה כ-PDF</button></details></td><td>' + esc(fmtDate(o.date)) + '</td><td>' + esc(o.status || 'פתוחה') + '</td><td class="num">' + (o.open_total ? money(o.open_total) : '') + '</td></tr>';
   }).join('') + '</table>';
-  if (c.orders.length || c.aging.length) h += '<div class="row"><button class="btn small" type="button" data-doc="balance">דף יתרה כ-PDF</button><span class="small muted">פירוט, לא חשבונית מס</span></div>';
+  h += '<div class="row">' + (c.orders.length || c.aging.length ? '<button class="btn small" type="button" data-doc="balance">דף יתרה כ-PDF</button>' : '') + '<button class="btn small" type="button" id="payBtn">לינק לתשלום</button></div>';
   if (c.aging.length) h += '<div class="small">יתרת חוב: ' + c.aging.map(function (a) { return money(a.total) + (a.d90p ? ' (מעל 90 יום: ' + money(a.d90p) + ')' : ''); }).join(', ') + '</div>';
   if (c.invoices.length || c.receipts.length) h += '<details><summary>חשבוניות וקבלות השנה</summary><table class="t">' + c.invoices.slice(0, 10).map(function (i) { return '<tr><td>חשבונית ' + esc(i.doc) + '</td><td>' + esc(fmtDate(i.date)) + '</td><td class="num">' + money(i.amount) + '</td></tr>'; }).join('') + c.receipts.slice(0, 10).map(function (i) { return '<tr><td>קבלה ' + esc(i.doc) + (i.method ? ' · ' + esc(i.method) : '') + '</td><td>' + esc(fmtDate(i.date)) + '</td><td class="num">' + money(i.amount) + '</td></tr>'; }).join('') + '</table></details>';
   h += '</div>';
@@ -682,6 +698,13 @@ function renderCard() {
   $('addNote').addEventListener('click', addNote);
   $('sumBtn').addEventListener('click', summarize);
   $('cardBody').querySelectorAll('[data-doc]').forEach(function (b) { b.addEventListener('click', function () { openDoc(b.dataset.doc, b.dataset.so); }); });
+  $('payBtn').addEventListener('click', function () {
+    var phone = card.contact && card.contact.phone;
+    if (!phone || tail9(phone) !== card.tail9) { toast('אין שיחת וואטסאפ עם הלקוח הזה'); return; }
+    var a = prompt('סכום לתשלום בש"ח (לא חובה, אפשר להשאיר ריק):', debt > 0 ? String(Math.round(debt)) : ''); if (a === null) return;
+    a = Number((a || '').replace(/[^\d.]/g, '')) || null;
+    go('chat', phone); setTimeout(function () { payDraft(a); }, 400);
+  });
   $('cardBody').querySelectorAll('[data-stage]').forEach(function (b) { b.addEventListener('click', function () { setStage(b.dataset.stage); }); });
   $('quoteBtn').addEventListener('click', function () { curTail = card.tail9; mark({ p_what: crm.quote_at ? 'unquote' : 'quote' }, crm.quote_at ? 'הסימון הוסר' : 'סומן: נשלחה הצעה', function () { openCard(card.tail9); }); });
   $('cardBody').querySelectorAll('[data-done]').forEach(function (cb) { cb.addEventListener('change', function () { doneTask(cb.dataset.done, cb.checked); }); });
