@@ -151,9 +151,25 @@ details summary{cursor:pointer;color:var(--brass);font-size:14px}
 .kpi span{font-size:13px;color:var(--mute)}
 .kpi.bad b{color:var(--red)}.kpi.good b{color:var(--green)}
 
-.sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:24px;z-index:40}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);display:grid;grid-template-columns:minmax(0,1fr);justify-items:center;place-items:center;padding:24px;z-index:40}
 .sheet form{width:min(420px,100%);background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:24px;display:grid;gap:12px}
-.sheet h2{font-size:24px}.sheet .row{justify-content:flex-start}
+.sheet h2{font-size:24px}.sheet .row{justify-content:flex-start;flex-wrap:wrap}
+.sheet form.docform{grid-template-columns:minmax(0,1fr);width:min(640px,100%);max-height:calc(100vh - 48px);overflow:auto}
+.docprev{background:#e9e6e0;border-radius:12px;padding:10px;overflow:hidden auto;max-height:55vh;min-width:0;position:relative}
+.docprev .zdoc{transform-origin:top right;position:absolute;top:10px;right:10px}
+.zdoc{width:794px;min-height:600px;background:#fff;color:#1b1b1b;direction:rtl;font-family:var(--body);padding:56px 60px;box-sizing:border-box;font-size:15px;line-height:1.5}
+.zdoc header{display:flex;align-items:center;gap:16px;border-bottom:2px solid #b08d57;padding-bottom:16px;margin-bottom:22px}
+.zdoc header img{width:64px;height:64px;border-radius:50%}
+.zdoc header .co{font-family:var(--display);font-size:26px;letter-spacing:.02em}
+.zdoc header .co small{display:block;font-family:var(--body);font-size:12px;color:#555;letter-spacing:0}
+.zdoc h1{font-family:var(--display);font-weight:400;font-size:30px;margin:0 0 6px}
+.zdoc .meta{color:#444;margin-bottom:18px}
+.zdoc table{width:100%;border-collapse:collapse;margin:8px 0 18px}
+.zdoc th{background:#f3efe7;text-align:right;font-weight:600;padding:8px;border-bottom:1px solid #d8d0c2}
+.zdoc td{padding:8px;border-bottom:1px solid #eee;vertical-align:top}
+.zdoc .num{text-align:left;direction:ltr;white-space:nowrap}
+.zdoc .sum{font-size:18px;font-weight:600;margin-top:6px}
+.zdoc footer{margin-top:34px;border-top:1px solid #ddd;padding-top:12px;font-size:12px;color:#666}
 .toast{position:fixed;bottom:80px;inset-inline:16px;margin:auto;max-width:480px;background:var(--surface);border:1px solid var(--brass);border-radius:var(--r);padding:12px 16px;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.3)}
 .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);display:grid;place-items:center;z-index:60;cursor:zoom-out}
 .lightbox img{max-width:96vw;max-height:92vh}
@@ -194,6 +210,14 @@ details summary{cursor:pointer;color:var(--brass);font-size:14px}
   </form>
 </div>
 
+<div id="docSheet" class="sheet hidden" role="dialog" aria-labelledby="docTitle">
+  <form id="docForm" class="docform" autocomplete="off">
+    <h2 id="docTitle">מסמך ללקוח</h2>
+    <div id="docPreview" class="docprev"></div>
+    <p class="small muted" id="docNote"></p>
+    <div class="row"><button class="btn brass" type="button" id="docSend">שליחה ללקוח בוואטסאפ</button><button class="btn" type="button" id="docDl">הורדה</button><button class="btn" type="button" id="docClose">סגירה</button></div>
+  </form>
+</div>
 <div id="pwSheet" class="sheet hidden" role="dialog" aria-labelledby="pwTitle">
   <form id="pwForm" autocomplete="off">
     <h2 id="pwTitle">החלפת סיסמה</h2>
@@ -641,8 +665,9 @@ function renderCard() {
   h += '<div class="sect"><h3>הזמנות <span class="n">' + openOrders.length + ' פתוחות' + (debt ? ' · חוב ' + money(debt) : '') + '</span></h3>';
   if (!c.orders.length) h += '<div class="small muted">אין הזמנות בפריוריטי</div>';
   else h += '<table class="t"><tr><th>הזמנה</th><th>תאריך</th><th>סטטוס</th><th class="num">פתוח</th></tr>' + c.orders.slice(0, 12).map(function (o) {
-    return '<tr><td><details><summary>' + esc(o.so) + '</summary><table class="t">' + (o.lines || []).map(function (l) { return '<tr><td>' + esc(l.desc || l.item) + '</td><td class="num">' + esc(l.bal != null ? l.bal + '/' + l.qty : l.qty) + ' ' + esc(l.unit || '') + '</td><td class="num">' + (l.total != null ? money(l.total) : '') + '</td></tr>'; }).join('') + '</table></details></td><td>' + esc(fmtDate(o.date)) + '</td><td>' + esc(o.status || 'פתוחה') + '</td><td class="num">' + (o.open_total ? money(o.open_total) : '') + '</td></tr>';
+    return '<tr><td><details><summary>' + esc(o.so) + '</summary><table class="t">' + (o.lines || []).map(function (l) { return '<tr><td>' + esc(l.desc || l.item) + '</td><td class="num">' + esc(l.bal != null ? l.bal + '/' + l.qty : l.qty) + ' ' + esc(l.unit || '') + '</td><td class="num">' + (l.total != null ? money(l.total) : '') + '</td></tr>'; }).join('') + '</table><button class="btn small" type="button" data-doc="order" data-so="' + esc(o.so) + '">פירוט הזמנה כ-PDF</button></details></td><td>' + esc(fmtDate(o.date)) + '</td><td>' + esc(o.status || 'פתוחה') + '</td><td class="num">' + (o.open_total ? money(o.open_total) : '') + '</td></tr>';
   }).join('') + '</table>';
+  if (c.orders.length || c.aging.length) h += '<div class="row"><button class="btn small" type="button" data-doc="balance">דף יתרה כ-PDF</button><span class="small muted">פירוט, לא חשבונית מס</span></div>';
   if (c.aging.length) h += '<div class="small">יתרת חוב: ' + c.aging.map(function (a) { return money(a.total) + (a.d90p ? ' (מעל 90 יום: ' + money(a.d90p) + ')' : ''); }).join(', ') + '</div>';
   if (c.invoices.length || c.receipts.length) h += '<details><summary>חשבוניות וקבלות השנה</summary><table class="t">' + c.invoices.slice(0, 10).map(function (i) { return '<tr><td>חשבונית ' + esc(i.doc) + '</td><td>' + esc(fmtDate(i.date)) + '</td><td class="num">' + money(i.amount) + '</td></tr>'; }).join('') + c.receipts.slice(0, 10).map(function (i) { return '<tr><td>קבלה ' + esc(i.doc) + (i.method ? ' · ' + esc(i.method) : '') + '</td><td>' + esc(fmtDate(i.date)) + '</td><td class="num">' + money(i.amount) + '</td></tr>'; }).join('') + '</table></details>';
   h += '</div>';
@@ -656,6 +681,7 @@ function renderCard() {
   $('addTask').addEventListener('click', addTask);
   $('addNote').addEventListener('click', addNote);
   $('sumBtn').addEventListener('click', summarize);
+  $('cardBody').querySelectorAll('[data-doc]').forEach(function (b) { b.addEventListener('click', function () { openDoc(b.dataset.doc, b.dataset.so); }); });
   $('cardBody').querySelectorAll('[data-stage]').forEach(function (b) { b.addEventListener('click', function () { setStage(b.dataset.stage); }); });
   $('quoteBtn').addEventListener('click', function () { curTail = card.tail9; mark({ p_what: crm.quote_at ? 'unquote' : 'quote' }, crm.quote_at ? 'הסימון הוסר' : 'סומן: נשלחה הצעה', function () { openCard(card.tail9); }); });
   $('cardBody').querySelectorAll('[data-done]').forEach(function (cb) { cb.addEventListener('change', function () { doneTask(cb.dataset.done, cb.checked); }); });
@@ -708,6 +734,77 @@ function summarize() {
     return fetch(FN + 'crm-summary', { method: 'POST', headers: { authorization: 'Bearer ' + s.data.session.access_token, 'content-type': 'application/json' }, body: JSON.stringify({ tail9: card.tail9 }) });
   }).then(function (r) { return r.json(); }).then(function (j) { if (!j.ok) throw new Error(j.error || 'שגיאה'); openCard(card.tail9); }).catch(function (e) { toast('הסיכום נכשל: ' + e.message); $('sumBtn').disabled = false; });
 }
+
+/* ---------- customer documents (order detail, balance) ---------- */
+var docBlob = null, docName = '', docCaption = '';
+function loadLib(src, test) { return test() ? Promise.resolve() : new Promise(function (ok, bad) { var x = document.createElement('script'); x.src = src; x.crossOrigin = 'anonymous'; x.onload = ok; x.onerror = function () { bad(new Error('הטעינה נכשלה')); }; document.head.appendChild(x); }); }
+function docHtml(kind, so) {
+  var c = card, crm = c.crm || {}, pr = c.priority[0] || {}, name = crm.name || pr.name || (c.contact && c.contact.name) || '';
+  var head = '<header><img src="../img/logo.jpg" alt=""><div class="co">זיסו קרמיקה<small>זיסו קרמיקה בע״מ · ח.פ. 517079661 · עוצמה 5, טירת כרמל · 050-4770040 · info@zisoceramics.com</small></div></header>';
+  var who = '<div class="meta">לכבוד: ' + esc(name) + (pr.cust_no ? ' · מס׳ לקוח ' + esc(pr.cust_no) : '') + '<br>תאריך הפקה: ' + esc(fmtDate(new Date())) + '</div>';
+  var foot = '<footer>המסמך הופק ממערכת זיסו לפי הנתונים בפריוריטי, לנוחותכם. זו אינה חשבונית מס ואינה קבלה. העתקי חשבוניות וקבלות נשלחים מתוך מערכת הנהלת החשבונות. לשאלות: 050-4770040.</footer>';
+  if (kind === 'order') {
+    var o = c.orders.filter(function (x) { return x.so === so; })[0]; if (!o) return null;
+    var lines = o.lines || [], tot = lines.reduce(function (s, l) { return s + Number(l.total || 0); }, 0);
+    docName = 'zisoceramics-order-' + o.so + '.pdf'; docCaption = 'פירוט הזמנה ' + o.so;
+    return head + '<h1>פירוט הזמנה ' + esc(o.so) + '</h1>' + who.replace('<br>', '<br>תאריך ההזמנה: ' + esc(fmtDate(o.date)) + ' · סטטוס: ' + esc(o.status || 'פתוחה') + '<br>') +
+      '<table><tr><th>פריט</th><th class="num">כמות</th><th class="num">יתרה לאספקה</th><th class="num">סה״כ</th></tr>' + lines.map(function (l) { return '<tr><td>' + esc(l.desc || l.item) + (l.item && l.desc ? '<div style="color:#777;font-size:12px">' + esc(l.item) + '</div>' : '') + '</td><td class="num">' + esc(l.qty) + ' ' + esc(l.unit || '') + '</td><td class="num">' + (l.bal != null ? esc(l.bal) : '') + '</td><td class="num">' + (l.total != null ? money(l.total) : '') + '</td></tr>'; }).join('') + '</table>' +
+      (tot ? '<div class="sum">סה״כ שורות: ' + money(tot) + '</div>' : '') + (o.open_total ? '<div>יתרה פתוחה בהזמנה: ' + money(o.open_total) + '</div>' : '') + foot;
+  }
+  var open = c.orders.filter(function (o) { return !/נסגר/.test(o.status || ''); }), debt = c.aging.reduce(function (s, a) { return s + Number(a.total || 0); }, 0);
+  docName = 'zisoceramics-balance-' + (pr.cust_no || c.tail9) + '.pdf'; docCaption = 'דף יתרה';
+  return head + '<h1>דף יתרה</h1>' + who +
+    '<table><tr><th>הזמנה</th><th>תאריך</th><th>סטטוס</th><th class="num">יתרה פתוחה</th></tr>' + (open.length ? open.map(function (o) { return '<tr><td>' + esc(o.so) + '</td><td>' + esc(fmtDate(o.date)) + '</td><td>' + esc(o.status || 'פתוחה') + '</td><td class="num">' + (o.open_total ? money(o.open_total) : '') + '</td></tr>'; }).join('') : '<tr><td colspan="4">אין הזמנות פתוחות</td></tr>') + '</table>' +
+    '<div class="sum">יתרת חוב בחשבון: ' + money(debt) + '</div>' +
+    (c.aging.some(function (a) { return a.d90p; }) ? '<div>מתוכה מעל 90 יום: ' + money(c.aging.reduce(function (s, a) { return s + Number(a.d90p || 0); }, 0)) + '</div>' : '') + foot;
+}
+function openDoc(kind, so) {
+  var html = docHtml(kind, so); if (!html) { toast('לא נמצא'); return; }
+  docBlob = null;
+  var phone = card.contact && card.contact.phone;
+  $('docTitle').textContent = docCaption;
+  $('docPreview').innerHTML = '<div class="zdoc" id="zdoc">' + html + '</div>';
+
+  $('docNote').textContent = phone ? 'יישלח רק למספר של הלקוח הזה: ' + localPhone(phone) + '. לבדוק את הפרטים לפני השליחה.' : 'ללקוח הזה אין שיחת וואטסאפ. אפשר להוריד את הקובץ.';
+  $('docSend').disabled = !phone;
+  $('docSheet').classList.remove('hidden');
+  var pv = $('docPreview'), z = $('zdoc'), sc = Math.min(1, (pv.clientWidth - 20) / 794); z.style.transform = 'scale(' + sc + ')'; pv.style.height = Math.min(window.innerHeight * 0.55, z.scrollHeight * sc + 20) + 'px';
+  sb.rpc('crm_log', { p_action: 'doc_view', p_tail9: card.tail9, p_detail: { kind: kind, so: so || null } });
+}
+function makePdf() {
+  if (docBlob) return Promise.resolve(docBlob);
+  return loadLib('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', function () { return !!window.html2canvas; })
+    .then(function () { return loadLib('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', function () { return !!(window.jspdf && window.jspdf.jsPDF); }); })
+    .then(function () {
+      var src = $('zdoc'), clone = src.cloneNode(true); clone.style.transform = 'none'; clone.style.position = 'fixed'; clone.style.top = '0'; clone.style.left = '-10000px'; document.body.appendChild(clone);
+      return html2canvas(clone, { scale: 2, backgroundColor: '#ffffff', useCORS: true }).then(function (cv) {
+        clone.remove();
+        var pdf = new window.jspdf.jsPDF({ unit: 'pt', format: 'a4' }), W = pdf.internal.pageSize.getWidth(), H = pdf.internal.pageSize.getHeight();
+        var pageH = Math.floor(cv.width * H / W), y = 0, first = true;
+        while (y < cv.height) {
+          var part = document.createElement('canvas'); part.width = cv.width; part.height = Math.min(pageH, cv.height - y);
+          part.getContext('2d').drawImage(cv, 0, y, cv.width, part.height, 0, 0, cv.width, part.height);
+          if (!first) pdf.addPage(); first = false;
+          pdf.addImage(part.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, W, part.height * W / cv.width);
+          y += pageH;
+        }
+        docBlob = pdf.output('blob'); return docBlob;
+      });
+    });
+}
+$('docClose').addEventListener('click', function () { $('docSheet').classList.add('hidden'); });
+$('docDl').addEventListener('click', function () {
+  makePdf().then(function (b) { var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = docName; document.body.appendChild(a); a.click(); a.remove(); sb.rpc('crm_log', { p_action: 'doc_download', p_tail9: card.tail9, p_detail: { file: docName } }); }).catch(function (e) { toast('לא נוצר קובץ: ' + e.message); });
+});
+$('docSend').addEventListener('click', function () {
+  var phone = card.contact && card.contact.phone; if (!phone || tail9(phone) !== card.tail9) { toast('אין מספר תואם ללקוח הזה'); return; }
+  if (!confirm('לשלוח את "' + docCaption + '" ל-' + localPhone(phone) + '?')) return;
+  $('docSend').disabled = true;
+  makePdf().then(function (b) {
+    var fd = new FormData(); fd.append('phone', phone); fd.append('caption', docCaption + ' מזיסו קרמיקה'); fd.append('file', new File([b], docName, { type: 'application/pdf' }));
+    return callSend(fd);
+  }).then(function () { toast('נשלח'); $('docSheet').classList.add('hidden'); sb.rpc('crm_log', { p_action: 'doc_send', p_tail9: card.tail9, p_detail: { file: docName } }); }).catch(function (e) { toast('לא נשלח: ' + e.message, 6000); }).then(function () { $('docSend').disabled = false; });
+});
 
 /* ---------- search ---------- */
 var q2Timer = null;
