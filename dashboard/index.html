@@ -1,0 +1,2344 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0f1113">
+<title>לוח בקרה · זיסו צוות</title>
+<link rel="icon" href="../img/logo.jpg">
+<link rel="apple-touch-icon" href="../img/logo.jpg">
+<link rel="stylesheet" href="../fonts.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js" crossorigin="anonymous"></script>
+<style>
+/* Tokens follow the site and the CRM (dark wall, brass, Bellefair + Assistant). The dashboard page below reads the --color-*, --font-* and --cds-* names. */
+:root{
+  color-scheme:dark;
+  --color-bg:#0f1113;--color-panel:#1d2024;--color-fg:#f2efe8;--color-fg-muted:#b9b3a7;--color-border-line:#3a3f45;
+  --color-ok:#8fc9a0;--color-warn:#e3b86a;--color-bad:#e07a6a;--brass:#cfae74;--brass-ink:#1a1610;--field:#22262a;
+  --font-anthropic-sans:"Assistant","Segoe UI",Arial,sans-serif;--font-anthropic-serif:"Bellefair","Times New Roman",serif;
+  --cds-gap-xs:.375rem;--cds-gap-sm:.625rem;--cds-gap-md:1rem;--cds-gap-lg:1.5rem;
+  --cds-pad-xs:.375rem;--cds-pad-sm:.625rem;--cds-pad-md:1rem;--cds-pad-lg:1.25rem;
+  --cds-font-size-caption:.9rem;--cds-font-size-body:1rem;--cds-font-size-heading:1.3rem;--cds-font-size-title:2.1rem;
+  --cds-font-weight-medium:600;--cds-radius:14px;--cds-dur-slow:.4s;
+  --cds-surface-popover:#262a2f;--cds-border:var(--color-border-line);--cds-shadow-popover:0 6px 24px rgba(0,0,0,.4);--cds-text-secondary:var(--color-fg-muted);
+  --cds-chart-grid:#2f3338;--cds-chart-axis:#5b6168;--cds-chart-muted:#4a4f56;
+  --cds-chart-status-good:var(--color-ok);--cds-chart-status-warning:var(--color-warn);--cds-chart-status-critical:var(--color-bad);
+}
+@media (prefers-color-scheme: light){:root{
+  color-scheme:light;
+  --color-bg:#f3f2ef;--color-panel:#ffffff;--color-fg:#1e1b17;--color-fg-muted:#5d5b56;--color-border-line:#d2cec5;
+  --color-ok:#2e7d4f;--color-warn:#8c6200;--color-bad:#b8432f;--brass:#8a6a35;--brass-ink:#fff;--field:#ecebe7;
+  --cds-surface-popover:#ffffff;--cds-shadow-popover:0 6px 24px rgba(0,0,0,.12);
+  --cds-chart-grid:#e4e1db;--cds-chart-axis:#a9a49b;--cds-chart-muted:#cfcac1;
+}}
+*{box-sizing:border-box}
+html{font-size:18px}
+body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(--font-anthropic-sans);line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:var(--brass)}
+:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+.gone,#ziso .z-gone,#ziso [hidden]{display:none !important}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 20px;border-radius:999px;border:1px solid var(--color-border-line);background:var(--color-panel);color:var(--color-fg);cursor:pointer;font:inherit;font-weight:600;text-decoration:none;white-space:nowrap}
+.btn.brass{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
+
+/* login */
+#login{min-height:100vh;display:grid;place-items:center;padding:16px}
+#login form{width:100%;max-width:400px;display:flex;flex-direction:column;gap:16px;background:var(--color-panel);border:1px solid var(--color-border-line);border-radius:18px;padding:28px 22px}
+#login .logo{width:72px;height:72px;border-radius:50%;object-fit:cover;align-self:center}
+#login h1{font-family:var(--font-anthropic-serif);font-weight:400;font-size:2rem;margin:0;text-align:center}
+#login p{margin:0;color:var(--color-fg-muted);text-align:center}
+#login label{display:flex;flex-direction:column;gap:6px;font-weight:600}
+#login input{font:inherit;color:var(--color-fg);background:var(--field);border:1px solid var(--color-border-line);border-radius:12px;padding:12px 14px;min-height:52px;width:100%}
+#login .err{color:var(--color-bad);font-weight:600;min-height:1.5em;text-align:center}
+
+/* app bar */
+#app{padding:12px 16px 40px}
+.bar{max-width:1240px;margin:0 auto 12px;display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.bar .who{font-weight:600;margin-inline-end:auto}
+.bar .status{color:var(--color-fg-muted);font-size:.9rem;width:100%}
+.bar .status.bad{color:var(--color-bad);font-weight:600}
+.notice{max-width:1240px;margin:0 auto 14px;padding:12px 16px;border-radius:12px;border:1px solid var(--brass);background:color-mix(in srgb,var(--brass) 12%,var(--color-panel))}
+
+/* the dashboard, made calmer for the team: bigger tabs and text, less on screen */
+#ziso .z-tab{min-height:52px;padding:.5rem 1.4rem;font-size:1.1rem;font-weight:600;color:var(--color-fg)}
+#ziso .z-tabs{gap:10px}
+#ziso .z-note{font-size:.95rem}
+#ziso td,#ziso th{font-size:1rem}
+#take-biz,#ziso .z-link,#tab-marketing,#tab-leads,#marketing,#leads,
+#c-targets,#c-monthly,#c-methods,#c-debt-age,#c-debtors,#c-orders,#c-sections,#c-reports,
+#service > .z-kpis,#c-chat,#c-chat-pages,#c-comment-cats{display:none !important}
+.dash-skeleton{color:transparent !important;background:color-mix(in srgb,var(--color-fg) 8%,transparent);border-radius:6px;animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.5}}
+@media (prefers-reduced-motion: reduce){.dash-skeleton{animation:none}}
+</style>
+</head>
+<body>
+<main id="login">
+  <form id="loginForm" autocomplete="on">
+    <img class="logo" src="../img/logo.jpg" alt="">
+    <h1>לוח הבקרה</h1>
+    <p>נכנסים עם אותו אימייל ואותה סיסמה של ה-CRM.</p>
+    <label>אימייל<input type="email" name="email" autocomplete="username" required inputmode="email" dir="ltr"></label>
+    <label>סיסמה<input type="password" name="password" autocomplete="current-password" required dir="ltr"></label>
+    <button class="btn brass" type="submit">כניסה</button>
+    <div class="err" id="loginErr" role="alert"></div>
+  </form>
+</main>
+<div id="app" class="gone">
+  <div class="bar">
+    <span class="who" id="who"></span>
+    <button class="btn" type="button" id="refreshBtn">רענון</button>
+    <a class="btn" href="../crm/">ל-CRM</a>
+    <button class="btn" type="button" id="outBtn">יציאה</button>
+    <span class="status" id="status" role="status" aria-live="polite"></span>
+  </div>
+  <div class="notice gone" id="firstNotice">בכניסה הראשונה צריך לבחור סיסמה אישית. נכנסים פעם אחת ל-<a href="../crm/">CRM</a>, בוחרים סיסמה, וחוזרים לכאן.</div>
+<script>
+/* A small stand-in for the claude.ai dashboard runtime: the page below calls dash.loader / dash.calc / dash.data / dash.onData,
+   and here the data comes from Supabase (dash_bundle, active crm_staff only) instead of each reader's own connectors. */
+(function () {
+  var SB_URL = 'https://ppnjosyraosrdephsksu.supabase.co';
+  var SB_KEY = 'sb_publishable_yjpTHQkvH5-l4v-HCcEj4w_ofAYpQmV';
+  var sb = supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+  // Queries kept in public.dash_queries; FILE ids read the Priority part of the morning file, rebuilt from the priority_* tables.
+  var SQL = ['chat_kpi', 'chat_pages', 'chat_recent', 'comments_categories', 'comments_kpi', 'leads_channels', 'leads_daily', 'leads_kpi', 'leads_open', 'review_queue', 'wa_kpi', 'wa_open', 'wa_quotes', 'wa_sla'];
+  var FILE = ['sales_docs', 'debts', 'orders', 'order_lines', 'reports'];
+  var EMPTY = ['order_totals']; // the full orders export is only in Drive: an empty list makes the page skip draft filtering and order targets
+  var loaders = {}, calcs = {}, listeners = [], raw = {}, cache = {}, loaded = false, busy = false, user = null, timer = null, lastLoad = 0;
+  var $ = function (id) { return document.getElementById(id); };
+  var isSource = function (id) { return SQL.indexOf(id) >= 0 || FILE.indexOf(id) >= 0 || EMPTY.indexOf(id) >= 0; };
+  function missing(id, seen) {
+    if (isSource(id)) return false;
+    var c = calcs[id];
+    if (!c) return true;
+    seen = seen || {};
+    if (seen[id]) return false;
+    seen[id] = 1;
+    return c.inputs.some(function (i) { return missing(i, seen); });
+  }
+  function res(status, data, extra) {
+    data = data || [];
+    var r = { status: status, data: data, rows: data, columns: (extra && extra.columns) || (data[0] ? Object.keys(data[0]) : []), meta: (extra && extra.meta) || [], message: (extra && extra.message) || '', refreshing: busy && status === 'ok' };
+    r.value = data;
+    return r;
+  }
+  function get(id) {
+    if (cache[id]) return cache[id];
+    var out;
+    if (missing(id)) out = res('missing');
+    else if (!loaded) out = res('loading');
+    else if (isSource(id)) out = raw[id] || res('loading');
+    else {
+      var c = calcs[id], ins = c.inputs.map(get), bad = ins.filter(function (x) { return x.status !== 'ok'; });
+      if (bad.length) out = res(bad.some(function (x) { return x.status === 'error'; }) ? 'error' : 'loading', [], { message: bad[0].message });
+      else try {
+        var v = c.fn.apply(null, ins.map(function (x) { return x.data; }));
+        out = res('ok', Array.isArray(v) ? v : v && Array.isArray(v.rows) ? v.rows : v == null ? [] : [v]);
+      } catch (e) { console.error('calc ' + id, e); out = res('error', [], { message: String(e && e.message || e) }); }
+    }
+    cache[id] = out;
+    return out;
+  }
+  // Hide what this page has no data for (Drive-only parts), and a card once nothing in it is left.
+  function prune() {
+    var root = $('ziso');
+    if (!root) return;
+    root.querySelectorAll('[data-source]').forEach(function (el) {
+      if (el.dataset.source.split(/\s+/).every(missing)) (el.closest('.z-kpi, .z-day-list, .z-tg') || el).classList.add('z-gone');
+    });
+    root.querySelectorAll('.z-card').forEach(function (card) {
+      var marks = card.querySelectorAll('[data-source]');
+      if (marks.length && Array.prototype.every.call(marks, function (m) { return m.closest('.z-gone'); })) card.classList.add('z-gone');
+    });
+  }
+  function notify() {
+    cache = {};
+    listeners.forEach(function (fn) { try { fn(); } catch (e) { console.error(e); } });
+    prune();
+  }
+  function setStatus(t, bad) { var s = $('status'); if (s) { s.textContent = t; s.classList.toggle('bad', !!bad); } }
+  function b64(str) {
+    var bytes = new TextEncoder().encode(str), s = '';
+    for (var i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(s);
+  }
+  async function load() {
+    if (busy || !user) return;
+    busy = loaded; lastLoad = Date.now();
+    setStatus('מעדכן…');
+    if (loaded) notify();
+    var r = await sb.rpc('dash_bundle', { p_ids: SQL.concat(['priority_file']) });
+    if (r.error) {
+      busy = false;
+      if (/not staff/.test(r.error.message)) return denied();
+      setStatus('לא הצלחתי לעדכן עכשיו. אפשר ללחוץ "רענון" בעוד רגע.', true);
+      notify();
+      return;
+    }
+    var b = r.data || {}, next = {};
+    SQL.forEach(function (id) { var x = b[id]; next[id] = x && x.rows ? res('ok', x.rows) : res('error', [], { message: (x && x.error) || 'no data' }); });
+    var pf = b.priority_file, file = pf && pf.rows && pf.rows[0] && pf.rows[0].file;
+    var answer = file ? { content: b64(JSON.stringify(file)) } : { error: (pf && pf.error) || 'no Priority data' };
+    for (var i = 0; i < FILE.length; i++) {
+      var id = FILE[i];
+      try { var o = await loaders[id]({ answer: answer, call: function () { return Promise.reject(new Error('not available here')); } }); next[id] = res('ok', o.rows, o); }
+      catch (e) { next[id] = res('error', [], { message: String(e && e.message || e) }); }
+    }
+    EMPTY.forEach(function (id) { next[id] = res('ok', []); });
+    raw = next; loaded = true; busy = false;
+    notify();
+    setStatus('עודכן ב-' + new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) + '. מתעדכן לבד כל 5 דקות.');
+  }
+  function denied() {
+    $('loginErr').textContent = 'החשבון הזה לא מורשה לראות את לוח הבקרה. פנו לאביב.';
+    sb.auth.signOut();
+  }
+  function showLogin() {
+    user = null; loaded = false; raw = {};
+    if (timer) { clearInterval(timer); timer = null; }
+    $('app').classList.add('gone'); $('login').classList.remove('gone');
+  }
+  function showApp() {
+    $('login').classList.add('gone'); $('app').classList.remove('gone');
+    $('who').textContent = 'שלום, ' + ((user.user_metadata && user.user_metadata.name) || user.email);
+    $('firstNotice').classList.toggle('gone', !!(user.user_metadata && user.user_metadata.pw_changed_at));
+    notify();
+    load();
+    if (timer) clearInterval(timer);
+    timer = setInterval(function () { if (document.visibilityState === 'visible') load(); }, 5 * 60000);
+  }
+  var dark = !(window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches);
+  window.dash = {
+    loader: function (id, o) { loaders[id] = o.fn; },
+    calc: function (id, o) { calcs[id] = o; },
+    data: get,
+    onData: function (fn) { listeners.push(fn); try { fn(); } catch (e) { console.error(e); } },
+    colors: dark ? ['#cfae74', '#7fb3c8', '#8fc9a0', '#d39ac8', '#e3b86a', '#e07a6a', '#a7b0ba', '#c9a27e'] : ['#8a6a35', '#2f6f8a', '#2e7d4f', '#9a4f8c', '#a06a00', '#b8432f', '#5f6b76', '#8b5e3c'],
+    refresh: function () { load(); },
+    setLink: function (name) { try { history.replaceState(null, '', '#' + name); } catch (e) {} },
+    params: function () { return {}; }, setParams: function () {}, resetParams: function () {}
+  };
+  document.addEventListener('DOMContentLoaded', function () {
+    prune();
+    $('loginForm').addEventListener('submit', function (e) {
+      e.preventDefault(); $('loginErr').textContent = '';
+      var f = e.target;
+      sb.auth.signInWithPassword({ email: f.email.value.trim(), password: f.password.value }).then(function (r) {
+        if (r.error) $('loginErr').textContent = 'הכניסה לא הצליחה. כדאי לבדוק את האימייל והסיסמה.';
+      });
+    });
+    $('outBtn').addEventListener('click', function () { sb.auth.signOut(); });
+    $('refreshBtn').addEventListener('click', load);
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && Date.now() - lastLoad > 2 * 60000) load(); });
+    var w = window.innerWidth, t = null;
+    window.addEventListener('resize', function () { if (window.innerWidth === w) return; w = window.innerWidth; clearTimeout(t); t = setTimeout(notify, 200); });
+    sb.auth.onAuthStateChange(function (ev, session) {
+      if (session && session.user) { if (user && user.email === session.user.email) return; user = session.user; showApp(); }
+      else showLogin();
+    });
+  });
+})();
+</script>
+<div id="dash-root">
+<style>
+/* Layout: one column of cards per tab; KPI row on top, then charts in an auto-fit grid. RTL Hebrew. */
+.z{--z-muted:color-mix(in srgb,var(--color-fg) 32%,var(--color-fg-muted));direction:rtl;font-family:var(--font-anthropic-sans);display:flex;flex-direction:column;gap:var(--cds-gap-lg);max-width:1240px;margin-inline:auto}
+.z-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--cds-gap-md)}
+.z-title{font-family:var(--font-anthropic-serif);font-weight:400;font-size:var(--cds-font-size-title);margin:0;text-wrap:balance}
+.z-take{margin:var(--cds-gap-xs) 0 0;color:var(--z-muted);font-size:var(--cds-font-size-body);max-width:70ch;line-height:1.5}
+.z-take b,.z .num b{font-weight:600}
+.z-tabs{display:flex;gap:var(--cds-gap-xs);flex-wrap:wrap}
+.z-tab{font:inherit;font-size:var(--cds-font-size-body);padding:var(--cds-pad-xs) var(--cds-pad-md);border:1px solid var(--color-border-line);border-radius:999px;background:transparent;color:var(--z-muted);cursor:pointer}
+.z-tab[aria-selected="true"]{background:var(--color-fg);color:var(--color-bg);border-color:var(--color-fg)}
+.z-tab:focus-visible{outline:2px solid var(--color-fg);outline-offset:2px}
+.z-link{font-size:var(--cds-font-size-caption);color:var(--z-muted);display:inline-flex;align-items:center;gap:.3rem;text-underline-offset:3px}
+.z-link svg{width:.8rem;height:.8rem;flex:none}
+.z-link:focus-visible{outline:2px solid var(--color-fg);outline-offset:2px;border-radius:2px}
+.z-page{display:flex;flex-direction:column;gap:var(--cds-gap-lg)}
+.z-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,11.5rem),1fr));gap:var(--cds-gap-md)}
+.z-kpi{background:var(--color-panel);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);padding:var(--cds-pad-md) var(--cds-pad-lg);display:flex;flex-direction:column;gap:var(--cds-gap-xs);min-width:0}
+.z-kpi .lbl{font-size:var(--cds-font-size-caption);color:var(--z-muted)}
+.z-kpi .big{font-family:var(--font-anthropic-serif);font-weight:400;font-size:var(--cds-font-size-title);font-variant-numeric:tabular-nums;line-height:1.15;min-height:1.15em}
+.z-kpi .sub{font-size:var(--cds-font-size-caption);color:var(--z-muted);font-variant-numeric:tabular-nums;line-height:1.45}
+.z .up{color:var(--color-ok)} .z .down{color:var(--color-bad)} .z .warn{color:var(--color-warn)}
+.z-kpi .lbl-row{display:flex;align-items:baseline;justify-content:space-between;gap:var(--cds-gap-sm)}
+.z-kpi .st{display:inline-flex;align-items:center;gap:.35rem;font-size:var(--cds-font-size-caption);white-space:nowrap}
+.z-kpi .st i{width:.55rem;height:.55rem;border-radius:50%;background:var(--z-st)}
+.z-tbl tr.late td{color:var(--color-bad)}
+.z-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr));gap:var(--cds-gap-md)}
+.z-card{background:var(--color-panel);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);padding:var(--cds-pad-lg);display:flex;flex-direction:column;gap:var(--cds-gap-sm);min-width:0}
+.z-card.wide{grid-column:1/-1}
+.z-card h2{margin:0;font-size:var(--cds-font-size-heading);font-weight:var(--cds-font-weight-medium)}
+.z-note{margin:0;max-width:62ch;font-size:var(--cds-font-size-caption);color:var(--z-muted);line-height:1.5}
+.z-legend{display:flex;flex-wrap:wrap;gap:var(--cds-gap-md);font-size:var(--cds-font-size-caption);color:var(--z-muted)}
+.z-legend i{display:inline-block;width:.7rem;height:.7rem;border-radius:3px;margin-inline-end:.35rem;vertical-align:-1px}
+.z-legend i.line{height:3px;border-radius:2px;vertical-align:3px}
+.z-chart{position:relative;min-height:240px;direction:ltr}
+.z-chart.short{min-height:180px}
+.z-chart svg{display:block;overflow:visible}
+.z-chart text{fill:var(--z-muted);font-size:11px;font-family:var(--font-anthropic-sans)}
+.z-tip{position:absolute;pointer-events:none;background:var(--cds-surface-popover);border:1px solid var(--cds-border);border-radius:var(--cds-radius);box-shadow:var(--cds-shadow-popover);padding:var(--cds-pad-xs) var(--cds-pad-sm);font-size:var(--cds-font-size-caption);direction:rtl;white-space:nowrap;z-index:2}
+.z-tip .t{color:var(--cds-text-secondary)}
+.z-tip i{display:inline-block;width:.6rem;height:.6rem;border-radius:2px;margin-inline-end:.3rem}
+.z-bars{display:flex;flex-direction:column;gap:var(--cds-gap-sm);min-height:120px}
+.z-bar{display:grid;grid-template-columns:minmax(6rem,9rem) 1fr auto;align-items:center;gap:var(--cds-gap-sm);font-size:var(--cds-font-size-caption)}
+.z-bar .track{height:12px;border-radius:4px;background:var(--cds-chart-grid);overflow:hidden}
+.z-bar .fill{height:100%;border-radius:4px}
+.z-bar .v{font-variant-numeric:tabular-nums;min-width:4.5rem;text-align:start}
+.z-tbl{overflow-x:auto;max-height:26rem;overflow-y:auto}
+.z table{width:100%;border-collapse:collapse;font-size:var(--cds-font-size-caption);font-variant-numeric:tabular-nums}
+.z th{text-align:start;font-weight:var(--cds-font-weight-medium);color:var(--z-muted);padding:var(--cds-pad-xs) var(--cds-pad-sm);border-bottom:1px solid var(--color-border-line);position:sticky;top:0;background:var(--color-panel)}
+.z td{padding:var(--cds-pad-xs) var(--cds-pad-sm);border-bottom:1px solid var(--color-border-line);vertical-align:top}
+.z td.n,.z th.n{text-align:end}
+.z td.txt{max-width:22rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.z .pill{display:inline-block;padding:0 .5rem;border-radius:999px;font-size:var(--cds-font-size-caption);border:1px solid currentColor}
+.z-prog{height:14px;border-radius:7px;background:var(--cds-chart-grid);overflow:hidden}
+.z-prog>div{height:100%;border-radius:7px}
+.z-fail{display:flex;align-items:center;justify-content:center;gap:.4rem;min-height:inherit;height:100%;color:var(--z-muted);font-size:var(--cds-font-size-caption)}
+.z-fail::before{content:"";width:.375rem;height:.375rem;border-radius:50%;background:var(--color-bad)}
+.z [data-dash-source-state=empty]{color:transparent}
+.z [data-dash-source-state=refreshing]{opacity:.5;transition:opacity var(--cds-dur-slow)}
+.z-day-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--cds-gap-sm)}
+.z-chips{display:flex;flex-wrap:wrap;gap:var(--cds-gap-xs)}
+.z-chip{font:inherit;font-size:var(--cds-font-size-caption);padding:.2rem .7rem;border:1px solid var(--color-border-line);border-radius:999px;background:transparent;color:var(--z-muted);cursor:pointer;font-variant-numeric:tabular-nums}
+.z-chip[aria-pressed="true"]{background:var(--color-fg);color:var(--color-bg);border-color:var(--color-fg)}
+.z-chip:focus-visible{outline:2px solid var(--color-fg);outline-offset:2px}
+.z-day .z-kpis{gap:0;row-gap:var(--cds-gap-md)}
+.z-day .z-kpi{background:transparent;border:0;border-radius:0;border-inline-start:1px solid var(--color-border-line);padding-block:0}
+.z-day .z-kpi:first-child{border-inline-start:0}
+@media (max-width:40rem){.z-day .z-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--cds-gap-md)}.z-day .z-kpi{border-inline-start:0;padding-inline:0}}
+.z-day-lists{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,24rem),1fr));gap:var(--cds-gap-lg)}
+.z-day-list{display:flex;flex-direction:column;gap:var(--cds-gap-xs);min-width:0}
+.z-day-list h3{margin:0;font-size:var(--cds-font-size-body);font-weight:var(--cds-font-weight-medium)}
+.z-day-list td{white-space:nowrap}
+.z-day-list .z-tbl{max-height:20rem}
+.z .pill.new{color:var(--color-ok);margin-inline-start:.35rem}
+.z td.empty,.z .nm{color:var(--z-muted)}
+.z-follow{display:grid;grid-template-columns:minmax(0,16rem) minmax(0,1fr);gap:var(--cds-gap-lg);align-items:start}
+.z-follow .z-kpi{background:transparent;border:0;padding:0}
+.z-follow th,.z-follow td{white-space:nowrap}
+@media (max-width:40rem){.z-follow{grid-template-columns:minmax(0,1fr)}}
+.z-tgs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr));gap:var(--cds-gap-md) var(--cds-gap-lg)}
+.z-tg{display:flex;flex-direction:column;gap:var(--cds-gap-xs);border-top:1px solid var(--color-border-line);padding-top:var(--cds-pad-sm);min-width:0}
+.z-tg-top{display:flex;align-items:baseline;justify-content:space-between;gap:var(--cds-gap-sm)}
+.z-tg .lbl{font-size:var(--cds-font-size-caption);color:var(--z-muted)}
+.z-tg .st{display:inline-flex;align-items:center;gap:.35rem;font-size:var(--cds-font-size-caption);white-space:nowrap}
+.z-tg .st i{width:.55rem;height:.55rem;border-radius:50%;background:var(--z-st)}
+.z-tg .big{font-family:var(--font-anthropic-serif);font-weight:400;font-size:var(--cds-font-size-title);font-variant-numeric:tabular-nums;line-height:1.15;min-height:1.15em}
+.z-tg .big.nd{font-family:var(--font-anthropic-sans);font-size:var(--cds-font-size-heading);color:var(--z-muted)}
+.z-tg .sub{font-size:var(--cds-font-size-caption);color:var(--z-muted);font-variant-numeric:tabular-nums;line-height:1.45}
+.z-tg-bar{position:relative;height:6px;border-radius:3px;background:var(--cds-chart-grid);margin-block:.3rem .15rem}
+.z-tg-bar span{position:absolute;inset-block:0;inset-inline-start:0;border-radius:3px;background:var(--z-st)}
+.z-tg-bar span.ghost{opacity:.35}
+.z-tg-bar b{position:absolute;top:-3px;bottom:-3px;width:2px;margin-inline-start:-1px;border-radius:1px;background:var(--z-muted)}
+.z-search{font:inherit;font-size:var(--cds-font-size-body);padding:var(--cds-pad-xs) var(--cds-pad-sm);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);background:var(--color-bg);color:var(--color-fg);width:100%;max-width:28rem;box-sizing:border-box}
+.z-search:focus-visible{outline:2px solid var(--color-fg);outline-offset:1px}
+.z-ord{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--cds-gap-lg);align-items:start}
+@media (min-width:64rem){.z-ord{grid-template-columns:minmax(0,2fr) minmax(0,3fr)}}
+.z-ord-list{display:flex;flex-direction:column;gap:var(--cds-gap-xs);min-width:0}
+.z #t-orders tbody tr{cursor:pointer}
+.z #t-orders tbody tr:hover td{background:var(--cds-chart-grid)}
+.z #t-orders tbody tr.sel td{background:var(--cds-chart-grid);font-weight:var(--cds-font-weight-medium)}
+.z-detail{display:flex;flex-direction:column;gap:var(--cds-gap-sm);min-width:0;border-top:1px solid var(--color-border-line);padding-top:var(--cds-pad-md)}
+.z-detail h3{margin:0;font-size:var(--cds-font-size-heading);font-weight:var(--cds-font-weight-medium);font-family:var(--font-anthropic-serif)}
+.z-detail .meta{display:flex;flex-wrap:wrap;gap:.25rem var(--cds-gap-md);font-size:var(--cds-font-size-caption);color:var(--z-muted)}
+.z-detail .z-tbl{max-height:none}
+.z-detail th,.z-detail td{white-space:nowrap}
+.z-detail td.txt{max-width:14rem}
+.z-money{display:flex;flex-wrap:wrap;gap:var(--cds-gap-sm) var(--cds-gap-lg);align-items:flex-end}
+.z-money>div{display:flex;flex-direction:column;gap:.1rem}
+.z-money .l{font-size:var(--cds-font-size-caption);color:var(--z-muted)}
+.z-money span:not(.l){font-variant-numeric:tabular-nums;font-size:var(--cds-font-size-body)}
+.z-money span.v{font-family:var(--font-anthropic-serif);font-size:var(--cds-font-size-heading)}
+.z-linkbtn{font:inherit;padding:0;border:0;background:none;color:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.z-linkbtn:focus-visible{outline:2px solid var(--color-fg);outline-offset:2px}
+.z #b-orders .z-bar{cursor:pointer}
+.z ::selection{background:color-mix(in srgb,var(--color-fg) 16%,transparent)}
+.z-tbl{scrollbar-width:thin;scrollbar-color:var(--cds-chart-axis) transparent}
+.z-search{caret-color:var(--color-fg)}
+.z-search::placeholder{color:var(--z-muted)}
+.z tbody tr[tabindex]:focus-visible{outline:2px solid var(--color-fg);outline-offset:-2px}
+.z #b-orders .z-bar:focus-visible{outline:2px solid var(--color-fg);outline-offset:2px;border-radius:4px}
+.z #b-orders .z-bar:hover .fill{filter:brightness(1.1)}
+@media (max-width:520px){.z-bar{grid-template-columns:minmax(5rem,7rem) 1fr auto}}
+.z-post-kpis .z-kpi{background:transparent;border:0;border-radius:0;border-inline-start:1px solid var(--color-border-line);padding-block:0}
+.z-post-kpis .z-kpi:first-child{border-inline-start:0}
+.z-top{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--color-fg)}
+@media (max-width:40rem){.z-post-kpis .z-kpi{border-inline-start:0;padding-inline:0}}
+.z-gantt{position:relative}
+.z-gantt .z-tbl{max-height:34rem}
+.z-gantt table{min-width:46rem}
+.z-gantt th,.z-gantt td{white-space:nowrap;vertical-align:middle}
+.z-gantt th:first-child,.z-gantt td:first-child{position:sticky;inset-inline-start:0;background:var(--color-panel);z-index:1;max-width:15rem;overflow:hidden;text-overflow:ellipsis;border-inline-end:1px solid var(--color-border-line)}
+.z-gantt th:first-child{z-index:3}
+.z-gantt th{z-index:2}
+.z-gantt tbody tr:hover td{background:color-mix(in srgb,var(--cds-chart-grid) 55%,var(--color-panel))}
+.z-gantt td.tl,.z-gantt th.tl{padding-block:0;width:100%}
+.z-tl{position:relative;height:1.6rem;min-width:calc(var(--n) * var(--slot))}
+.z-tl .sat{position:absolute;top:0;bottom:0;background:var(--cds-chart-grid)}
+.z-tl .mk{position:absolute;top:50%;height:.75rem;margin-top:-.375rem;border-radius:4px;background:var(--z-mk);box-sizing:border-box}
+.z-tl .mk.story{background:var(--color-panel);border:2px solid var(--z-mk)}
+.z-tl-h{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));min-width:calc(var(--n) * var(--slot));font-size:11px;line-height:1.2;text-align:center;font-weight:400}
+.z-tl-h span{display:flex;flex-direction:column;padding-block:.15rem}
+.z-tl-h .sat{background:var(--cds-chart-grid);border-radius:3px}
+.z-tl-h .end{color:var(--color-fg);font-weight:var(--cds-font-weight-medium)}
+.z-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.z-vb{display:inline-block;width:3.5rem;height:6px;border-radius:3px;background:var(--cds-chart-grid);margin-inline-start:.5rem;vertical-align:middle;overflow:hidden}
+.z-vb i{display:block;height:100%;border-radius:3px;background:var(--z-mk)}
+.z-legend .mk{display:inline-block;width:1rem;height:.6rem;border-radius:3px;margin-inline-end:.35rem;vertical-align:0;box-sizing:border-box}
+.z-legend .mk.story{border:2px solid var(--z-mk)}
+.z-legend .mk.sat{background:var(--cds-chart-grid)}
+@media (max-width:40rem){.z-gantt th:first-child,.z-gantt td:first-child{max-width:7rem}.z-gantt table{min-width:0}}
+.z-empty{color:var(--z-muted);font-size:var(--cds-font-size-caption);padding:var(--cds-pad-md) 0;line-height:1.5}
+.z-wa{color:inherit;text-decoration:underline;text-decoration-color:var(--color-border-line);text-underline-offset:3px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.z-wa:focus-visible{outline:2px solid var(--color-fg);outline-offset:2px;border-radius:2px}
+.z td.wrap{white-space:normal;min-width:14rem;max-width:28rem;line-height:1.4}
+</style>
+<div class="z" id="ziso">
+  <header class="z-head">
+    <div>
+      <h1 class="z-title">לוח הבקרה של זיסו</h1>
+      <p class="z-take" id="take-biz">החודש נכנסו <b data-source="money_kpi" data-field="collected_mtd" data-row="0" class="dash-skeleton">—</b>, <span id="take-chg"></span> · ללקוחות חובות של <b data-source="debt_kpi" data-field="owed" data-row="0" class="dash-skeleton">—</b>, מהם <b data-source="debt_kpi" data-field="over90" data-row="0" class="dash-skeleton">—</b> מעל 90 יום.</p>
+    </div>
+    <div class="z-tabs" role="tablist" aria-label="לשוניות">
+      <button class="z-tab" role="tab" id="tab-business" aria-controls="business" aria-selected="true" data-tab="business">היום בעסק</button>
+      <button class="z-tab" role="tab" id="tab-marketing" aria-controls="marketing" aria-selected="false" data-tab="marketing">שיווק</button>
+      <button class="z-tab" role="tab" id="tab-leads" aria-controls="leads" aria-selected="false" data-tab="leads">לידים חדשים</button>
+      <button class="z-tab" role="tab" id="tab-service" aria-controls="service" aria-selected="false" data-tab="service">ממתין לטיפול</button>
+      
+    </div>
+  </header>
+
+  <section class="z-page" id="business" role="tabpanel" aria-labelledby="tab-business">
+    <article class="z-card wide z-day" id="c-today">
+      <div class="z-day-head">
+        <h2 id="h-today">מה קרה בעסק</h2>
+        <div class="z-chips" id="day-chips" role="group" aria-label="בחירת יום" data-source="day_kpi"></div>
+      </div>
+      <div class="z-kpis">
+        <div class="z-kpi" id="d-new"><span class="lbl">לקוחות חדשים</span><span class="big dash-skeleton" data-source="day_kpi" data-field="new_customers">—</span>
+          <span class="sub"><span id="d-new-names" data-source="day_docs"></span><span id="d-new-quote" hidden> · ועוד <span data-source="quote_kpi" data-field="new_customers">—</span> רק להצעת מחיר</span></span></div>
+        <div class="z-kpi" id="d-quotes"><span class="lbl">הצעות מחיר</span><span class="big dash-skeleton" data-source="quote_kpi" data-field="quotes">—</span>
+          <span class="sub" id="d-quotes-sub"><span data-source="quote_kpi" data-field="total">—</span> כולל מע״מ</span><span class="sub" id="d-quotes-wait" hidden>מגיעות בייצוא של מחר בבוקר</span></div>
+        <div class="z-kpi" id="d-orders"><span class="lbl">הזמנות חדשות</span><span class="big dash-skeleton" data-source="day_kpi" data-field="orders">—</span>
+          <span class="sub">שנפתחו ועדיין פתוחות בפריוריטי</span></div>
+        <div class="z-kpi" id="d-receipts"><span class="lbl">קבלות</span><span class="big dash-skeleton" data-source="day_kpi" data-field="receipts">—</span>
+          <span class="sub"><span data-source="day_kpi" data-field="receipts_total">—</span> נכנסו, כולל מע״מ</span></div>
+        <div class="z-kpi" id="d-invoices"><span class="lbl">חשבוניות</span><span class="big dash-skeleton" data-source="day_kpi" data-field="invoices">—</span>
+          <span class="sub"><span data-source="day_kpi" data-field="invoices_total">—</span> אחרי זיכויים, כולל מע״מ</span></div>
+      </div>
+      <div class="z-day-lists">
+        <div class="z-day-list" id="day-docs">
+          <h3>מסמכים ביום הזה</h3>
+          <div class="z-tbl"><table id="t-day" data-source="day_docs" data-row-key="doc">
+            <thead><tr><th data-field="kind">סוג</th><th data-field="doc">מסמך</th><th data-field="name">לקוח</th><th class="n" data-field="amount">סכום</th><th data-field="note">פרטים</th></tr></thead><tbody></tbody></table></div>
+          <p class="z-note">לחיצה על מספר הזמנה פותחת את הפירוט שלה.</p>
+          <div class="z-detail" id="day-order" hidden></div>
+        </div>
+        <div class="z-day-list" id="day-quotes">
+          <h3>הצעות מחיר ביום הזה</h3>
+          <p class="z-note" id="day-quotes-note" hidden>פריוריטי מייצא את ההצעות פעם ביום, ב־06:30. הצעות של יום זה יופיעו מחר בבוקר.</p>
+          <div class="z-tbl"><table id="t-day-quotes" data-source="day_quotes" data-row-key="quote">
+            <thead><tr><th data-field="quote">הצעה</th><th data-field="name">לקוח</th><th class="n" data-field="total">סכום</th><th data-field="status">סטטוס</th><th data-field="handler">מטפל</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+      <p class="z-note" id="day-fresh" data-source="reports quotes"></p>
+    </article>
+
+    <article class="z-card wide" id="c-targets">
+      <div class="z-day-head">
+        <h2>יעדים</h2>
+        <p class="z-note" id="tg-count" data-source="targets_sales targets_orders"></p>
+      </div>
+      <div class="z-tgs" id="tg-list" data-source="targets_sales targets_orders bank_kpi"></div>
+      <p class="z-note">סכומי המכירות לפני מע״מ; גבייה ובנק כולל מע״מ. שבוע הוא ראשון עד שישי. יום חול בלי אף מסמך נחשב סגור, ויעד של שבוע עם ימים סגורים יורד לפי ימי העבודה בו. הזמנות נספרות מייצוא הבוקר, בלי טיוטות ומבוטלות. </p>
+    </article>
+
+    <article class="z-card wide" id="c-orderlist">
+      <div class="z-day-head">
+        <h2>הזמנות פתוחות</h2>
+        <div class="z-chips" id="ord-chips" role="group" aria-label="גיל ההזמנה"></div>
+      </div>
+      <input class="z-search" id="ord-q" type="search" placeholder="חיפוש לפי לקוח, מספר הזמנה או פריט" aria-label="חיפוש הזמנה" autocomplete="off">
+      <div class="z-ord">
+        <div class="z-ord-list">
+          <p class="z-note" id="ord-count"></p>
+          <div class="z-tbl"><table id="t-orders" data-source="orders" data-row-key="so">
+            <thead><tr><th data-field="so">הזמנה</th><th data-field="date">תאריך</th><th data-field="name">לקוח</th><th data-field="owner">פתח/ה</th><th class="n" data-field="open_lines">שורות פתוחות</th></tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="z-detail" id="ord-detail"></div>
+      </div>
+    </article>
+
+    <div class="z-kpis">
+      <div class="z-kpi" id="k-collected"><span class="lbl">נכנס החודש</span><span class="big dash-skeleton" data-source="money_kpi" data-field="collected_mtd" data-row="0">—</span>
+        <span class="sub"><span data-source="money_kpi" data-field="collected_change" data-row="0" id="k-col-chg"></span> מול אותם ימים בחודש שעבר</span></div>
+      <div class="z-kpi" id="k-sales"><span class="lbl">מכירות החודש (כולל מע״מ)</span><span class="big dash-skeleton" data-source="money_kpi" data-field="sales_mtd" data-row="0">—</span>
+        <span class="sub"><span data-source="money_kpi" data-field="sales_change" data-row="0" id="k-sal-chg"></span> מול אותם ימים בחודש שעבר</span></div>
+      <div class="z-kpi" id="k-profit"><span class="lbl">רווח מתחילת השנה (לפני מע״מ)</span><span class="big dash-skeleton" data-source="ytd" data-field="profit" data-row="0">—</span>
+        <span class="sub" id="k-profit-sub">מכירות <span data-source="ytd" data-field="sales" data-row="0"></span> · הוצאות <span data-source="ytd" data-field="expenses" data-row="0"></span></span></div>
+      <div class="z-kpi" id="k-debt"><span class="lbl">לקוחות חייבים</span><span class="big dash-skeleton" data-source="debt_kpi" data-field="owed" data-row="0">—</span>
+        <span class="sub"><span data-source="debt_kpi" data-field="customers" data-row="0"></span> לקוחות · מעל 90 יום <span data-source="debt_kpi" data-field="over90" data-row="0" class="down"></span></span></div>
+      <div class="z-kpi" id="k-card"><span class="lbl">אשראי ביום האחרון (טרנזילה)</span><span class="big dash-skeleton" data-source="card_kpi" data-field="net" data-row="0">—</span>
+        <span class="sub"><span data-source="card_kpi" data-field="date" data-row="0"></span> · <span data-source="card_kpi" data-field="count" data-row="0"></span> עסקאות</span></div>
+    </div>
+
+    <div class="z-grid">
+      <article class="z-card wide" id="c-monthly">
+        <h2>מכירות, הוצאות ורווח לפי חודש</h2>
+        <p class="z-note">הכל לפני מע״מ. ההוצאות מפריוריטי בלבד; חודש שבו שכר או שכירות עוד לא נרשמו מסומן בעיגול ריק, והרווח שלו גבוה מהאמת.</p>
+        <div class="z-legend" id="lg-monthly"></div>
+        <div class="z-chart" id="ch-monthly" data-source="monthly"></div>
+      </article>
+
+      <article class="z-card" id="c-methods">
+        <h2>איך שילמו החודש</h2>
+        <p class="z-note">קבלות מתחילת החודש לפי אמצעי תשלום, כולל מע״מ.</p>
+        <div class="z-bars" id="b-methods" data-source="methods"></div>
+      </article>
+
+      <article class="z-card" id="c-debt-age">
+        <h2>חובות לקוחות לפי גיל</h2>
+        <p class="z-note">רק לקוחות ביתרת חובה. כסף ששולם מראש לא נכלל: <span data-source="debt_kpi" data-field="prepaid" data-row="0" id="prepaid"></span> יתרות זכות של לקוחות.</p>
+        <div class="z-bars" id="b-debt-age" data-source="debt_age"></div>
+      </article>
+
+      <article class="z-card" id="c-debtors">
+        <h2>החובות הגדולים</h2>
+        <p class="z-note">עשרת הלקוחות שחייבים הכי הרבה, לפי דוח גיול החובות.</p>
+        <div class="z-tbl"><table id="t-debtors" data-source="top_debtors" data-row-key="cust">
+          <thead><tr><th data-field="name">לקוח</th><th class="n" data-field="total">חוב</th><th class="n" data-field="over90">מעל 90 יום</th></tr></thead><tbody></tbody></table></div>
+      </article>
+
+      <article class="z-card" id="c-orders">
+        <h2>הזמנות פתוחות לפי גיל</h2>
+        <p class="z-note">הזמנות של לקוחות רשומים שעדיין פתוחות בפריוריטי. הזמנות מעל חצי שנה הן בעיקר לניקוי, לא עבודה פתוחה.</p>
+        <div class="z-bars" id="b-orders" data-source="orders_age"></div>
+      </article>
+
+      <article class="z-card" id="c-sections">
+        <h2>הוצאות השנה לפי סעיף</h2>
+        <p class="z-note">מינואר עד היום, לפני מע״מ, לפי סעיפי רווח והפסד בפריוריטי.</p>
+        <div class="z-bars" id="b-sections" data-source="exp_sections"></div>
+      </article>
+
+      <article class="z-card" id="c-reports">
+        <h2>מתי הגיע כל דוח</h2>
+        <p class="z-note">הדוחות מפריוריטי מגיעים במייל כל כשעתיים בשעות העבודה. דוח שלא הגיע יותר מיום מסומן.</p>
+        <div class="z-tbl"><table id="t-reports" data-source="reports" data-row-key="report">
+          <thead><tr><th data-field="report">דוח</th><th data-field="at">הגיע</th><th class="n" data-field="rows">שורות</th></tr></thead><tbody></tbody></table></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="z-page" id="marketing" role="tabpanel" aria-labelledby="tab-marketing" hidden>
+    <p class="z-take" id="take-mkt">מאז 14.10 הוצאנו <b data-source="paid_kpi" data-field="spend" data-row="0" class="dash-skeleton">—</b> על מודעות, ובאותם ימים היו באתר <b data-source="paid_kpi" data-field="contact_clicks" data-row="0" class="dash-skeleton">—</b> לחיצות פנייה מכל המקורות.</p>
+    <div class="z-kpis">
+      <div class="z-kpi" id="k-spend"><span class="lbl">הוצאה על מודעות מ-14.10</span><span class="big dash-skeleton" data-source="paid_kpi" data-field="spend" data-row="0">—</span>
+        <span class="sub">גוגל <span data-source="paid_kpi" data-field="google" data-row="0"></span> · מטא <span data-source="paid_kpi" data-field="meta" data-row="0"></span></span></div>
+      <div class="z-kpi" id="k-cpl"><span class="lbl">עלות ללחיצת פנייה באתר</span><span class="big dash-skeleton" data-source="paid_kpi" data-field="per_contact" data-row="0">—</span>
+        <span class="sub">הוצאה ÷ לחיצות וואטסאפ, טלפון וטופס מאז 14.10</span></div>
+      <div class="z-kpi" id="k-sessions"><span class="lbl">ביקורים באתר, 28 יום</span><span class="big dash-skeleton" data-source="site_kpi" data-field="sessions" data-row="0">—</span>
+        <span class="sub"><span data-source="site_kpi" data-field="users" data-row="0"></span> גולשים · רק מי שאישר עוגיות</span></div>
+      <div class="z-kpi" id="k-contacts"><span class="lbl">לחיצות פנייה באתר, 28 יום</span><span class="big dash-skeleton" data-source="site_kpi" data-field="contact_clicks" data-row="0">—</span>
+        <span class="sub">וואטסאפ, טלפון, טופס וניווט</span></div>
+      <div class="z-kpi" id="k-search"><span class="lbl">קליקים מחיפוש בגוגל</span><span class="big dash-skeleton" data-source="search_totals" data-field="clicks" data-row="0">—</span>
+        <span class="sub"><span data-source="search_totals" data-field="impressions" data-row="0"></span> הופעות · מיקום ממוצע <span data-source="search_totals" data-field="position" data-row="0"></span></span></div>
+    </div>
+
+    <div class="z-grid">
+      <article class="z-card wide" id="c-paid">
+        <h2>הוצאה יומית על מודעות</h2>
+        <p class="z-note">בשקלים, מאז שהקמפיינים הנוכחיים התחילו ב-14.10. גוגל מתעדכן כל בוקר בסביבות 06:00, מטא בסביבות 07:00.</p>
+        <div class="z-legend" id="lg-paid"></div>
+        <div class="z-chart short" id="ch-paid" data-source="paid_daily"></div>
+      </article>
+
+      <article class="z-card" id="c-voucher">
+        <h2>שובר גוגל: ₪1,500 עד 13.12</h2>
+        <p class="z-note">מוציאים ₪1,500 בגוגל עד 13.12.2026 ומקבלים זיכוי באותו סכום.</p>
+        <div class="z-prog" data-source="paid_kpi" id="voucher-bar"><div></div></div>
+        <p class="z-note num">נוצל <b data-source="paid_kpi" data-field="voucher_spent" data-row="0"></b> · נשאר <b data-source="paid_kpi" data-field="voucher_left" data-row="0"></b> ב-<span data-source="paid_kpi" data-field="voucher_days" data-row="0"></span> ימים · צריך בערך <b data-source="paid_kpi" data-field="voucher_pace" data-row="0"></b> ליום</p>
+        <p class="z-note num">קליקים על מודעות מאז 14.10: <b data-source="paid_kpi" data-field="clicks" data-row="0"></b> · לחיצות התקשרות ממודעת גוגל: <b data-source="paid_kpi" data-field="calls" data-row="0"></b></p>
+      </article>
+
+      <article class="z-card" id="c-sources">
+        <h2>מאיפה הגיעו לאתר</h2>
+        <p class="z-note">28 הימים האחרונים. פניות = לחיצה על וואטסאפ, טלפון, טופס או ניווט.</p>
+        <div class="z-tbl"><table id="t-sources" data-source="site_sources" data-row-key="source">
+          <thead><tr><th data-field="source">מקור</th><th class="n" data-field="sessions">ביקורים</th><th class="n" data-field="contacts">פניות</th></tr></thead><tbody></tbody></table></div>
+      </article>
+
+      <article class="z-card wide" id="c-search">
+        <h2>חיפוש בגוגל</h2>
+        <p class="z-note">כמה פעמים האתר הופיע בתוצאות וכמה הקליקו, לפי יום. גוגל מעדכן באיחור של כמה ימים. מילות החיפוש עצמן לא עוברות בחיבור הזה.</p>
+        <div class="z-legend" id="lg-search"></div>
+        <div class="z-chart short" id="ch-search" data-source="search_daily"></div>
+      </article>
+
+      <article class="z-card" id="c-pages">
+        <h2>העמודים שמופיעים בחיפוש</h2>
+        <p class="z-note">לפי מספר ההופעות בתוצאות.</p>
+        <div class="z-tbl"><table id="t-pages" data-source="search_pages" data-row-key="page">
+          <thead><tr><th data-field="page">עמוד</th><th class="n" data-field="impressions">הופעות</th><th class="n" data-field="clicks">קליקים</th><th class="n" data-field="position">מיקום</th></tr></thead><tbody></tbody></table></div>
+      </article>
+
+      <article class="z-card" id="c-social">
+        <h2>הרשתות החברתיות, 7 ימים</h2>
+        <p class="z-note">המדד הראשי של כל רשת ב-7 הימים האחרונים שיש עליהם נתונים, מול 7 הימים שלפניהם.</p>
+        <div class="z-tbl"><table id="t-social" data-source="social_week" data-row-key="platform">
+          <thead><tr><th data-field="platform">רשת</th><th data-field="metric">מדד</th><th class="n" data-field="week">7 ימים</th><th class="n" data-field="change">שינוי</th></tr></thead><tbody></tbody></table></div>
+      </article>
+
+      <article class="z-card wide" id="c-followers">
+        <h2>עוקבים</h2>
+        <p class="z-note">עוקבים חדשים ב-7 הימים האחרונים שיש עליהם נתונים, מול היעדים בתוכנית העוקבים. נתון שלא מגיע ללוח מסומן "לא נמדד".</p>
+        <div class="z-follow">
+          <div class="z-kpi"><span class="lbl">עוקבים חדשים לכל 1,000 חשיפות באינסטגרם</span><span class="big dash-skeleton" data-source="follow_kpi" data-field="per_1k" data-row="0">—</span>
+            <span class="sub"><span data-source="follow_kpi" data-field="fresh" data-row="0"></span> עוקבים חדשים מ-<span data-source="follow_kpi" data-field="reach" data-row="0"></span> חשיפות</span>
+            <span class="sub">יעד 3 עד 12.11 ו-6 עד 31.1</span></div>
+          <div class="z-tbl"><table id="t-followers" data-source="followers_week" data-row-key="network">
+            <thead><tr><th data-field="network">רשת</th><th class="n" data-field="fresh">חדשים, 7 ימים</th><th class="n" data-field="total">סה״כ</th><th class="n" data-field="goal_nov">יעד 12.11</th><th class="n" data-field="goal_jan">יעד 31.1</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </article>
+
+      <article class="z-card wide" id="c-posts">
+        <div class="z-day-head"><h2>פוסטים ברשתות</h2>
+          <div class="z-chips" id="gantt-ctl">
+            <button type="button" class="z-chip" data-sort="date" aria-pressed="true">לפי תאריך</button>
+            <button type="button" class="z-chip" data-sort="views" aria-pressed="false">לפי צפיות</button>
+            <button type="button" class="z-chip" data-days="14" aria-pressed="true" hidden>14 ימים</button>
+            <button type="button" class="z-chip" data-days="30" aria-pressed="false" hidden>30 ימים</button>
+          </div></div>
+        <p class="z-note">כל שורה היא פרסום אחד, והסימון מראה באיזה יום עלה. צפיות ותגובות נספרות מאז שעלה, לפי Postiz, נכון ל-<span data-source="post_kpi" data-field="asof" data-row="0">—</span>. בפייסבוק נספרות רק הפעלות וידאו, ותגובות בפייסבוק לא נמדדות.</p>
+        <p class="z-note warn" id="posts-stale" hidden>Postiz לא זמין כרגע, ולכן מוצגים המספרים האחרונים שנאספו לפני התקלה. הם יתעדכנו כשהוא יחזור.</p>
+        <div class="z-kpis z-post-kpis">
+          <div class="z-kpi"><span class="lbl">צפיות בפרסומים של 7 הימים</span><span class="big dash-skeleton" data-source="post_kpi" data-field="views" data-row="0">—</span>
+            <span class="sub"><span data-source="post_kpi" data-field="pieces" data-row="0"></span> פרסומים</span></div>
+          <div class="z-kpi"><span class="lbl">תגובות עליהם</span><span class="big dash-skeleton" data-source="post_kpi" data-field="comments" data-row="0">—</span>
+            <span class="sub">באינסטגרם, טיקטוק ויוטיוב</span></div>
+          <div class="z-kpi"><span class="lbl">הכי נצפה השבוע</span><span class="big dash-skeleton" data-source="post_kpi" data-field="top_views" data-row="0">—</span>
+            <span class="sub z-top" data-source="post_kpi" data-field="top_title" data-row="0"></span>
+            <span class="sub"><span data-source="post_kpi" data-field="top_day" data-row="0"></span> · <span data-source="post_kpi" data-field="top_where" data-row="0"></span></span></div>
+        </div>
+        <div class="z-gantt" id="gantt">
+          <div class="z-tbl"><table id="t-gantt" data-source="post_gantt" data-row-key="piece"><thead></thead><tbody></tbody></table></div>
+        </div>
+        <div class="z-legend" id="lg-gantt"></div>
+      </article>
+    </div>
+  </section>
+  <section class="z-page" id="leads" role="tabpanel" aria-labelledby="tab-leads" hidden>
+    <p class="z-take" id="take-leads">ממתינים לטיפול: <b data-source="attention" data-field="leads" data-row="0" class="dash-skeleton">—</b> לידים ללא מענה · <b data-source="attention" data-field="whatsapp" data-row="0" class="dash-skeleton">—</b> שיחות וואטסאפ · <b data-source="attention" data-field="comments" data-row="0" class="dash-skeleton">—</b> תגובות ברשתות לבדיקה.</p>
+    <div class="z-kpis">
+      <div class="z-kpi" id="k-leads-today"><span class="lbl">לידים היום</span><span class="big dash-skeleton" data-source="leads_kpi" data-field="today" data-row="0">—</span>
+        <span class="sub">אתמול <span data-source="leads_kpi" data-field="yesterday" data-row="0"></span></span></div>
+      <div class="z-kpi" id="k-leads-week"><span class="lbl">לידים ב-7 ימים</span><span class="big dash-skeleton" data-source="leads_kpi" data-field="last7" data-row="0">—</span>
+        <span class="sub">שבוע קודם <span data-source="leads_kpi" data-field="prev7" data-row="0"></span> <span id="leads-week-chg"></span></span></div>
+      <div class="z-kpi" id="k-leads-open"><span class="lbl">ממתינים למענה</span><span class="big dash-skeleton" data-source="leads_kpi" data-field="open_new" data-row="0">—</span>
+        <span class="sub">מהם <span data-source="leads_kpi" data-field="waiting_over_1h" data-row="0"></span> מעל שעה</span></div>
+      <div class="z-kpi" id="k-leads-active"><span class="lbl">בטיפול</span><span class="big dash-skeleton" data-source="leads_kpi" data-field="in_progress" data-row="0">—</span>
+        <span class="sub">נענו, ביקרו באולם או קיבלו הצעה</span></div>
+      <div class="z-kpi" id="k-leads-answer"><span class="lbl">זמן מענה חציוני, 7 ימים</span><span class="big dash-skeleton" data-source="leads_kpi" data-field="median_answer_min_7d" data-row="0">—</span>
+        <span class="sub">מהפנייה עד המענה הראשון</span></div>
+      <div class="z-kpi" id="k-leads-won"><span class="lbl">נסגרו ב-30 יום</span><span class="big dash-skeleton" data-source="leads_kpi" data-field="won_30d" data-row="0">—</span>
+        <span class="sub">בשווי <span data-source="leads_kpi" data-field="won_amount_30d" data-row="0"></span> · אבדו <span data-source="leads_kpi" data-field="lost_30d" data-row="0"></span></span></div>
+    </div>
+
+    <div class="z-grid">
+      <article class="z-card wide" id="c-leads-open">
+        <h2>ממתינים לטיפול</h2>
+        <p class="z-note">כל פנייה שעוד לא נסגרה: קודם מי שלא נענה בכלל, אחר כך לפי זמן ההגעה. לחיצה על הטלפון פותחת וואטסאפ. הליד נסגר או מתקדם רק כשמעדכנים את השלב ביומן הפניות.</p>
+        <div class="z-tbl"><table id="t-leads-open" data-source="leads_open" data-row-key="id">
+          <thead><tr><th data-field="created">הגיע</th><th data-field="channel">ערוץ</th><th data-field="name">שם</th><th data-field="phone">טלפון</th><th data-field="first_message">מה ביקשו</th><th data-field="stage">שלב</th><th class="n" data-field="hours_open">ממתין</th></tr></thead><tbody></tbody></table></div>
+      </article>
+
+      <article class="z-card wide" id="c-leads-daily">
+        <h2>לידים לפי יום</h2>
+        <p class="z-note">28 הימים האחרונים, לפי הערוץ שממנו הגיעו. שעון ישראל.</p>
+        <div class="z-legend" id="lg-leads"></div>
+        <div class="z-chart short" id="ch-leads" data-source="leads_daily"></div>
+      </article>
+
+      <article class="z-card" id="c-leads-channels">
+        <h2>לפי ערוץ, 30 יום</h2>
+        <p class="z-note">מאיפה הגיעו הלידים ובאיזה שלב הם עכשיו.</p>
+        <div class="z-tbl"><table id="t-leads-channels" data-source="leads_channels" data-row-key="channel">
+          <thead><tr><th data-field="channel">ערוץ</th><th class="n" data-field="n">לידים</th><th class="n" data-field="new_n">ממתינים</th><th class="n" data-field="active_n">בטיפול</th><th class="n" data-field="won_n">נסגרו</th><th class="n" data-field="lost_n">אבדו</th></tr></thead><tbody></tbody></table></div>
+      </article>
+
+      <article class="z-card" id="c-leads-clicks">
+        <h2>לחיצות פנייה באתר, 7 ימים</h2>
+        <p class="z-note">לחיצות על וואטסאפ, טלפון, טופס וניווט באתר לפי Google Analytics, רק מי שאישר עוגיות. המדד הקרוב ביותר ללידים כל עוד הפניות עצמן לא נרשמות ביומן.</p>
+        <div class="z-bars" id="bars-clicks" data-source="contact_clicks_week"></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="z-page" id="service" role="tabpanel" aria-labelledby="tab-service" hidden>
+    <p class="z-take" id="take-service">ממתינים לאדם: <b data-source="attention" data-field="total" data-row="0" class="dash-skeleton">—</b> פניות. מענה בוואטסאפ תוך 15 דקות השבוע: <b data-source="wa_sla" data-field="pct7" data-row="0" class="dash-skeleton">—</b> (יעד 80%). שיחות עם הבוט באתר ב-7 ימים: <b data-source="chat_kpi" data-field="last7" data-row="0" class="dash-skeleton">—</b> · הודעות וואטסאפ נכנסות: <b data-source="wa_kpi" data-field="in7" data-row="0" class="dash-skeleton">—</b> · תגובות ברשתות: <b data-source="comments_kpi" data-field="last7" data-row="0" class="dash-skeleton">—</b>.</p>
+    <div class="z-kpis">
+      <div class="z-kpi" id="k-sla"><span class="lbl-row"><span class="lbl">וואטסאפ: נענו תוך 15 דקות, 7 ימים</span><span class="st" id="sla-st" hidden><i></i><span></span></span></span><span class="big dash-skeleton" data-source="wa_sla" data-field="pct7" data-row="0">—</span>
+        <span class="sub"><span data-source="wa_sla" data-field="fast7" data-row="0"></span> מתוך <span data-source="wa_sla" data-field="decided7" data-row="0"></span> פניות בשעות הפתיחה · שבוע קודם <span data-source="wa_sla" data-field="pct_prev" data-row="0"></span></span>
+        <span class="sub">יעד 80% · לפני האסטרטגיה 28%</span></div>
+      <div class="z-kpi" id="k-quotes"><span class="lbl">הצעות מחיר בלי תשובה, 7 ימים</span><span class="big dash-skeleton" data-source="wa_sla" data-field="open_quotes7" data-row="0">—</span>
+        <span class="sub">מתוך <span data-source="wa_sla" data-field="quotes7" data-row="0"></span> שנשלחו בוואטסאפ · לידים שנסגרו השבוע: <span data-source="wa_sla" data-field="won7" data-row="0"></span></span></div>
+      <div class="z-kpi" id="k-attention"><span class="lbl">ממתינים לטיפול של אדם</span><span class="big dash-skeleton" data-source="attention" data-field="total" data-row="0">—</span>
+        <span class="sub">לידים <span data-source="attention" data-field="leads" data-row="0"></span> · וואטסאפ <span data-source="attention" data-field="whatsapp" data-row="0"></span> · תגובות <span data-source="attention" data-field="comments" data-row="0"></span></span></div>
+      <div class="z-kpi" id="k-chat"><span class="lbl">שיחות עם הבוט באתר, 7 ימים</span><span class="big dash-skeleton" data-source="chat_kpi" data-field="last7" data-row="0">—</span>
+        <span class="sub">היום <span data-source="chat_kpi" data-field="today" data-row="0"></span> · שבוע קודם <span data-source="chat_kpi" data-field="prev7" data-row="0"></span> · <span data-source="chat_kpi" data-field="leads7" data-row="0"></span> הפכו לליד</span></div>
+      <div class="z-kpi" id="k-wa"><span class="lbl">הודעות וואטסאפ נכנסות, 7 ימים</span><span class="big dash-skeleton" data-source="wa_kpi" data-field="in7" data-row="0">—</span>
+        <span class="sub"><span data-source="wa_kpi" data-field="out7" data-row="0"></span> יצאו, מהן <span data-source="wa_kpi" data-field="bot7" data-row="0"></span> של הבוט · <span data-source="wa_kpi" data-field="contacts7" data-row="0"></span> אנשי קשר</span></div>
+      <div class="z-kpi" id="k-comments"><span class="lbl">תגובות ברשתות, 7 ימים</span><span class="big dash-skeleton" data-source="comments_kpi" data-field="last7" data-row="0">—</span>
+        <span class="sub"><span data-source="comments_kpi" data-field="replied7" data-row="0"></span> נענו אוטומטית · <span data-source="comments_kpi" data-field="negative7" data-row="0"></span> שליליות</span></div>
+      <div class="z-kpi" id="k-answer"><span class="lbl">זמן מענה חציוני ללידים, 7 ימים</span><span class="big dash-skeleton" data-source="leads_kpi" data-field="median_answer_min_7d" data-row="0">—</span>
+        <span class="sub">מהפנייה עד המענה הראשון</span></div>
+    </div>
+
+    <div class="z-grid">
+      <article class="z-card wide" id="c-wa">
+        <h2>פניות פתוחות בוואטסאפ</h2>
+        <p class="z-note">הודעות של לקוחות מ-14 הימים האחרונים שאף אחד עוד לא ענה עליהן, מהישנה לחדשה. באדום: עברו יותר מ-15 דקות בשעות הפתיחה (א׳–ה׳ 08:00–18:00, שישי 08:00–13:30). בין 09:00 ל-12:00 עונה מי שפנוי באולם. תשובה של הבוט לא סוגרת פנייה, תשובה מהטלפון כן. בלי בני המשפחה ובלי מספרים מחו״ל. לחיצה על הטלפון פותחת את השיחה בוואטסאפ.</p>
+        <div class="z-tbl"><table id="t-wa" data-source="wa_open" data-row-key="phone">
+          <thead><tr><th data-field="name">שם</th><th data-field="phone">טלפון</th><th data-field="text">ההודעה האחרונה</th><th data-field="last_at">מאז</th><th class="n" data-field="biz_min">ממתינה בשעות הפתיחה</th></tr></thead><tbody></tbody></table></div>
+      </article>
+
+      <article class="z-card wide" id="c-quotes">
+        <h2>מעקב 16:30: הצעות מחיר בלי תשובה</h2>
+        <p class="z-note">הצעות מחיר שנשלחו בוואטסאפ ב-48 השעות האחרונות, והלקוח לא ענה מאז. כל יום ב-16:30 שולחים לכל אחד הודעת מעקב אחת, ידנית, ורק למי שפנה אלינו קודם. שום דבר לא נשלח אוטומטית. הצעה מזוהה לפי מחיר בהודעה (מספר עם ש״ח או המילה מחיר), ולכן הצעה שנשלחה כתמונה לא תופיע כאן.</p>
+        <div class="z-tbl"><table id="t-quotes" data-source="wa_quotes" data-row-key="phone">
+          <thead><tr><th data-field="name">שם</th><th data-field="phone">טלפון</th><th data-field="text">ההצעה</th><th data-field="quote_at">נשלחה</th><th class="n" data-field="hours_since">לפני</th></tr></thead><tbody></tbody></table></div>
+      </article>
+
+      <article class="z-card wide" id="c-chat">
+        <h2>שיחות עם הבוט באתר</h2>
+        <p class="z-note">השיחות האחרונות עם העוזר באתר: מאיזה עמוד התחילו, כמה הודעות, והשאלה הראשונה של הלקוח. השיחות נשמרות 90 יום ובלי פרטים מזהים, חוץ ממה שהלקוח השאיר כליד.</p>
+        <div class="z-tbl"><table id="t-chat" data-source="chat_recent" data-row-key="id">
+          <thead><tr><th data-field="started">התחילה</th><th data-field="page">עמוד</th><th class="n" data-field="message_count">הודעות</th><th data-field="first_question">השאלה הראשונה</th><th data-field="became_lead">ליד</th></tr></thead><tbody></tbody></table></div>
+      </article>
+
+      <article class="z-card" id="c-chat-pages">
+        <h2>מאיזה עמוד פונים לבוט</h2>
+        <p class="z-note">שיחות ב-30 הימים האחרונים לפי העמוד שבו התחילו.</p>
+        <div class="z-bars" id="bars-chat-pages" data-source="chat_pages"></div>
+      </article>
+
+      <article class="z-card wide" id="c-review">
+        <h2>תגובות ברשתות שממתינות לבדיקה</h2>
+        <p class="z-note">תגובות שהמענה האוטומטי השאיר לאדם: לא ברורות, שליליות, או שהמכסה היומית נגמרה. עונים להן באינסטגרם ובפייסבוק עצמם.</p>
+        <div class="z-tbl"><table id="t-review" data-source="review_queue" data-row-key="comment_id">
+          <thead><tr><th data-field="received">מתי</th><th data-field="platform">רשת</th><th data-field="username">משתמש</th><th data-field="text">התגובה</th><th data-field="category">סוג</th></tr></thead><tbody></tbody></table></div>
+      </article>
+
+      <article class="z-card" id="c-comment-cats">
+        <h2>תגובות לפי סוג, 30 יום</h2>
+        <p class="z-note">מה כותבים לנו ברשתות, לפי הסיווג של המענה האוטומטי.</p>
+        <div class="z-bars" id="bars-cats" data-source="comments_categories"></div>
+      </article>
+    </div>
+  </section>
+</div>
+<script>
+/* loaders: each turns a Google Drive answer (base64 of a JSON file) into rows */
+const fromDrive = 'Google Drive returns the file as base64 text; this decodes it and lists ';
+dash.loader('sales_docs', {
+  description: fromDrive + 'every receipt and invoice from the Priority export as one row each.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    if (!a || typeof a.content !== 'string') throw new Error((a && (a.error || a.message)) || 'Google Drive did not return the file');
+    const f = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(a.content), c => c.charCodeAt(0))));
+    const d = f.data || {};
+    const rc = (d.receipts || []).map(r => ({ kind: 'receipt', date: String(r[0] || ''), doc: String(r[1] || ''), cust: String(r[2] || ''), name: String(r[3] || ''), amount: +r[5] || 0, method: String(r[4] || '') }));
+    const iv = (d.invoices || []).map(r => ({ kind: 'invoice', date: String(r[1] || ''), doc: String(r[0] || ''), cust: String(r[2] || ''), name: String(r[3] || ''), amount: +r[4] || 0, method: '' }));
+    return { columns: ['kind', 'date', 'doc', 'cust', 'name', 'amount', 'method'], rows: rc.concat(iv) };
+  }
+});
+dash.loader('expenses', {
+  description: fromDrive + 'every expense journal line from the Priority export (amounts before VAT).',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    if (!a || typeof a.content !== 'string') throw new Error((a && (a.error || a.message)) || 'Google Drive did not return the file');
+    const f = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(a.content), c => c.charCodeAt(0))));
+    const rows = ((f.data || {}).expenses || []).map(r => ({ date: String(r[0] || ''), doc: String(r[1] || ''), party: String(r[2] || ''), section: String(r[3] || 'שונות'), amount: +r[4] || 0, account: String(r[5] || '') }));
+    return { columns: ['date', 'doc', 'party', 'section', 'amount', 'account'], rows };
+  }
+});
+dash.loader('debts', {
+  description: fromDrive + 'the customer aging report, one row per customer (positive = the customer owes).',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    if (!a || typeof a.content !== 'string') throw new Error((a && (a.error || a.message)) || 'Google Drive did not return the file');
+    const f = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(a.content), c => c.charCodeAt(0))));
+    const rows = Object.entries((f.data || {}).aging || {}).map(([cust, v]) => ({ cust, name: String(v.name || ''), future: +v.future || 0, d1_30: +v.d30 || 0, d31_60: +v.d60 || 0, d61_90: +v.d90 || 0, d90_plus: +v.d90p || 0, total: +v.total || 0 }));
+    return { columns: ['cust', 'name', 'future', 'd1_30', 'd31_60', 'd61_90', 'd90_plus', 'total'], rows };
+  }
+});
+dash.loader('orders', {
+  description: fromDrive + 'the open sales orders from the Priority export, one row per order.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    if (!a || typeof a.content !== 'string') throw new Error((a && (a.error || a.message)) || 'Google Drive did not return the file');
+    const f = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(a.content), c => c.charCodeAt(0))));
+    const rows = ((f.data || {}).orders || []).map(o => ({ so: String(o.so || ''), date: String(o.date || ''), owner: String(o.owner || ''), walk_in: !!(o.cust && o.cust.walkIn), cust: String((o.cust && o.cust.no) || ''), name: String((o.cust && o.cust.name) || ''), quote: String(o.quote || ''), lines: (o.lines || []).length, open_lines: (o.lines || []).filter(l => +l.bal > 0).length }));
+    return { columns: ['so', 'date', 'owner', 'walk_in', 'cust', 'name', 'quote', 'lines', 'open_lines'], rows };
+  }
+});
+dash.loader('order_lines', {
+  description: fromDrive + 'every line of the open sales orders: item, quantity ordered, quantity still open, due date, stock in the warehouse, unit price, line discount % and the line total before VAT (after the line and order discounts, as Priority shows it).',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    if (!a || typeof a.content !== 'string') throw new Error((a && (a.error || a.message)) || 'Google Drive did not return the file');
+    const f = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(a.content), c => c.charCodeAt(0))));
+    const rows = [], num = v => v == null || v === '' || !isFinite(+v) ? null : +v;
+    ((f.data || {}).orders || []).forEach(o => (o.lines || []).forEach((l, i) => rows.push({ key: String(o.so || '') + '/' + (l.n != null ? l.n : i + 1), so: String(o.so || ''), n: l.n != null ? +l.n : i + 1,
+      item: String(l.item || ''), desc: String(l.desc || ''), unit: String(l.unit || ''), qty: +l.qty || 0, open: +l.bal || 0, due: String(l.due || ''), stock: l.stock != null && l.stock !== '' ? +l.stock : null,
+      price: num(l.price), disc: num(l.disc), total: num(l.total) })));
+    return { columns: ['key', 'so', 'n', 'item', 'desc', 'unit', 'qty', 'open', 'due', 'stock', 'price', 'disc', 'total'], rows };
+  }
+});
+dash.loader('card_daily', {
+  description: fromDrive + 'the daily Tranzila credit card summaries.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    if (!a || typeof a.content !== 'string') throw new Error((a && (a.error || a.message)) || 'Google Drive did not return the file');
+    const f = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(a.content), c => c.charCodeAt(0))));
+    const t = (f.data || {}).tranzila;
+    const rows = (Array.isArray(t) ? t : []).filter(r => r && r.date).map(r => ({ date: String(r.date), debit: +r.debit || 0, debit_count: +r.debitN || 0, credit: +r.credit || 0, credit_count: +r.creditN || 0 }));
+    return { columns: ['date', 'debit', 'debit_count', 'credit', 'credit_count'], rows };
+  }
+});
+dash.loader('reports', {
+  description: fromDrive + 'when each Priority report last arrived and how many rows it had.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    if (!a || typeof a.content !== 'string') throw new Error((a && (a.error || a.message)) || 'Google Drive did not return the file');
+    const f = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(a.content), c => c.charCodeAt(0))));
+    const rows = Object.entries(f.sources || {}).map(([report, s]) => ({ report, at: String((s && s.at) || ''), ok: !!(s && s.ok), rows: s && s.rows != null ? +s.rows : null }));
+    return { columns: ['report', 'at', 'ok', 'rows'], rows };
+  }
+});
+dash.loader('gads', {
+  description: fromDrive + 'Google Ads cost and clicks per campaign per day (from the daily Ads script).',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    if (!a || typeof a.content !== 'string') throw new Error((a && (a.error || a.message)) || 'Google Drive did not return the file');
+    const f = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(a.content), c => c.charCodeAt(0))));
+    const rows = (f.rows || []).map(r => ({ date: String(r.date || '').slice(0, 10), campaign: String(r.campaign || ''), cost: +r.cost || 0, clicks: +r.clicks || 0, impressions: +r.impressions || 0, conversions: +r.conversions || 0, calls: +((r.conv_by_action || {})['Clicks to call']) || 0 }));
+    return { columns: ['date', 'campaign', 'cost', 'clicks', 'impressions', 'conversions', 'calls'], rows };
+  }
+});
+dash.loader('meta_ads', {
+  description: fromDrive + 'Meta ads cost and clicks per campaign per day (from the daily Meta export).',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    if (!a || typeof a.content !== 'string') throw new Error((a && (a.error || a.message)) || 'Google Drive did not return the file');
+    const f = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(a.content), c => c.charCodeAt(0))));
+    const rows = (f.rows || []).map(r => ({ date: String(r.date || '').slice(0, 10), campaign: String(r.campaign || ''), cost: +r.cost || 0, clicks: +r.clicks || 0, impressions: +r.impressions || 0, landing_views: +((r.conv_by_action || {}).landing_page_view) || 0 }));
+    return { columns: ['date', 'campaign', 'cost', 'clicks', 'impressions', 'landing_views'], rows };
+  }
+});
+dash.loader('site_visits', {
+  description: fromDrive + 'Google Analytics sessions per day and traffic source (visitors who accepted cookies).',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    if (!a || typeof a.content !== 'string') throw new Error((a && (a.error || a.message)) || 'Google Drive did not return the file');
+    const f = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(a.content), c => c.charCodeAt(0))));
+    if (!f.ga4) throw new Error((f.errors && f.errors.ga4) || 'The social bridge file has no Google Analytics block');
+    const rows = (f.ga4.traffic || []).map(r => ({ date: String(r.date || ''), source: String(r.sessionSource || ''), medium: String(r.sessionMedium || ''), campaign: String(r.sessionCampaignName || ''), sessions: +r.sessions || 0, users: +r.totalUsers || 0, engaged: +r.engagedSessions || 0 }));
+    return { columns: ['date', 'source', 'medium', 'campaign', 'sessions', 'users', 'engaged'], rows };
+  }
+});
+dash.loader('site_leads', {
+  description: fromDrive + 'Google Analytics contact clicks on the site (WhatsApp, phone, form, directions) per day and source.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    if (!a || typeof a.content !== 'string') throw new Error((a && (a.error || a.message)) || 'Google Drive did not return the file');
+    const f = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(a.content), c => c.charCodeAt(0))));
+    if (!f.ga4) throw new Error((f.errors && f.errors.ga4) || 'The social bridge file has no Google Analytics block');
+    const rows = (f.ga4.lead_events || []).map(r => ({ date: String(r.date || ''), event: String(r.eventName || ''), source: String(r.sessionSource || ''), medium: String(r.sessionMedium || ''), campaign: String(r.sessionCampaignName || ''), count: +r.eventCount || 0 }));
+    return { columns: ['date', 'event', 'source', 'medium', 'campaign', 'count'], rows };
+  }
+});
+dash.loader('search_totals', {
+  description: fromDrive + 'Google Search totals for the site over the bridge window (via the Analytics link to Search Console).',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    if (!a || typeof a.content !== 'string') throw new Error((a && (a.error || a.message)) || 'Google Drive did not return the file');
+    const f = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(a.content), c => c.charCodeAt(0))));
+    if (!f.gsc) throw new Error((f.errors && f.errors.gsc) || 'The social bridge file has no Search Console block');
+    const t = f.gsc.totals || {};
+    return { columns: ['from', 'to', 'clicks', 'impressions', 'ctr', 'position'], rows: [{ from: String(f.gsc.from || ''), to: String(f.gsc.to || ''), clicks: +t.clicks || 0, impressions: +t.impressions || 0, ctr: t.ctr == null ? null : +t.ctr, position: t.position == null ? null : +t.position }] };
+  }
+});
+dash.loader('search_daily', {
+  description: fromDrive + 'Google Search clicks and impressions per day.',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    if (!a || typeof a.content !== 'string') throw new Error((a && (a.error || a.message)) || 'Google Drive did not return the file');
+    const f = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(a.content), c => c.charCodeAt(0))));
+    if (!f.gsc) throw new Error((f.errors && f.errors.gsc) || 'The social bridge file has no Search Console block');
+    const rows = (f.gsc.by_day || []).map(r => ({ date: String(r.date || ''), clicks: +r.clicks || 0, impressions: +r.impressions || 0, ctr: +r.ctr || 0, position: +r.position || 0 }));
+    return { columns: ['date', 'clicks', 'impressions', 'ctr', 'position'], rows };
+  }
+});
+dash.loader('search_pages', {
+  description: fromDrive + 'Google Search results per page of the site (addresses decoded from URL encoding).',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    if (!a || typeof a.content !== 'string') throw new Error((a && (a.error || a.message)) || 'Google Drive did not return the file');
+    const f = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(a.content), c => c.charCodeAt(0))));
+    if (!f.gsc) throw new Error((f.errors && f.errors.gsc) || 'The social bridge file has no Search Console block');
+    const dec = s => { try { return decodeURIComponent(s); } catch (e) { return s; } };
+    const rows = (f.gsc.pages || []).map(r => ({ page: dec(String(r.page || r.key || '')), clicks: +r.clicks || 0, impressions: +r.impressions || 0, position: +r.position || 0 }));
+    return { columns: ['page', 'clicks', 'impressions', 'position'], rows };
+  }
+});
+dash.loader('social_daily', {
+  description: fromDrive + 'Postiz account metrics per network per day (reach, views, impressions and so on), plus the YouTube channel subscriber total on the day the file was written (metric Subscribers).',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    if (!a || typeof a.content !== 'string') throw new Error((a && (a.error || a.message)) || 'Google Drive did not return the file');
+    const f = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(a.content), c => c.charCodeAt(0))));
+    if (!f.postiz) throw new Error((f.errors && f.errors.postiz) || 'The social bridge file has no Postiz block');
+    const rows = [];
+    (f.postiz.platforms || []).forEach(p => (Array.isArray(p.analytics) ? p.analytics : []).forEach(m => (m.data || []).forEach(x => rows.push({ platform: String(p.platform || ''), metric: String(m.label || ''), date: String(x.date || ''), value: +x.total || 0 }))));
+    (Array.isArray(f.youtube) ? f.youtube : []).forEach(c => { if (c && c.subscribers != null) rows.push({ platform: 'youtube', metric: 'Subscribers', date: String(f.generated_at || '').slice(0, 10), value: +c.subscribers || 0 }); });
+    return { columns: ['platform', 'metric', 'date', 'value'], rows };
+  }
+});
+dash.loader('posts', {
+  description: fromDrive + 'each published post from Postiz (the social bridge keeps the latest ones) with its type, views, likes, comments and shares, and the time the numbers were collected. When Postiz is down the bridge keeps its last good copy and marks it stale (postiz.stale_since = when that copy was collected).',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    if (!a || typeof a.content !== 'string') throw new Error((a && (a.error || a.message)) || 'Google Drive did not return the file');
+    const f = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(a.content), c => c.charCodeAt(0))));
+    if (!f.postiz) throw new Error((f.errors && f.errors.postiz) || 'The social bridge file has no Postiz block');
+    const stale = String(f.postiz.stale_since || ''), at = stale || String(f.generated_at || '');
+    const rows = (f.postiz.posts || []).map(p => {
+      const list = Array.isArray(p.analytics) ? p.analytics : [];
+      const m = {}; list.forEach(x => { m[x.label] = x.data && x.data.length ? +x.data[x.data.length - 1].total : null; });
+      const has = n => m[n] != null && !isNaN(m[n]);
+      const pick = (...k) => { for (const n of k) if (has(n)) return m[n]; return null; };
+      const vk = ['Views', 'Plays', 'Impressions'].find(has) || '';
+      return { id: String(p.id || ''), platform: String(p.platform || ''), type: String(p.type || ''), published: String(p.publishDate || ''), text: String(p.content || ''), measured: list.length > 0,
+        views: vk ? m[vk] : null, views_metric: vk, reach: pick('Reach'), likes: pick('Likes', 'Reactions'), comments: pick('Comments'), shares: pick('Shares'), file_at: at, stale: !!stale };
+    });
+    return { columns: ['id', 'platform', 'type', 'published', 'text', 'measured', 'views', 'views_metric', 'reach', 'likes', 'comments', 'shares', 'file_at', 'stale'], rows };
+  }
+});
+
+/* calculations */
+dash.calc('money_kpi', {
+  inputs: ['sales_docs'],
+  title: 'Money this month',
+  description: 'Collected and sold this month to the latest document date, against the same days last month. Drafts (T…) excluded. Sales = tax invoices + counter invoice-receipts (OV) + credits (IK, ON), incl. VAT.',
+  fn: (sales_docs) => {
+    const docs = sales_docs.filter(x => x.date && !/^T/i.test(x.doc));
+    const asof = docs.reduce((m, x) => x.date > m ? x.date : m, '');
+    const ym = asof.slice(0, 7), day = asof.slice(8, 10);
+    const [y, mo] = ym.split('-').map(Number);
+    const prev = (mo === 1 ? (y - 1) + '-12' : y + '-' + String(mo - 1).padStart(2, '0'));
+    const sum = (from, to) => {
+      const inR = docs.filter(x => x.kind === 'receipt' && x.date >= from && x.date <= to);
+      const inI = docs.filter(x => x.kind === 'invoice' && x.date >= from && x.date <= to);
+      const collected = inR.reduce((s, x) => s + x.amount, 0);
+      const tax = inI.filter(x => x.amount > 0).reduce((s, x) => s + x.amount, 0);
+      const counter = inR.filter(x => /^OV/i.test(x.doc)).reduce((s, x) => s + x.amount, 0);
+      const credits = inI.filter(x => x.amount < 0).reduce((s, x) => s + x.amount, 0) + inR.filter(x => /^ON/i.test(x.doc)).reduce((s, x) => s + x.amount, 0);
+      return { collected, sales: tax + counter + credits };
+    };
+    const cur = sum(ym + '-01', asof), was = sum(prev + '-01', prev + '-' + day);
+    return [{ asof, month: ym, collected_mtd: Math.round(cur.collected), collected_prev: Math.round(was.collected), collected_change: was.collected ? cur.collected / was.collected - 1 : null,
+      sales_mtd: Math.round(cur.sales), sales_prev: Math.round(was.sales), sales_change: was.sales ? cur.sales / was.sales - 1 : null }];
+  }
+});
+dash.calc('monthly', {
+  inputs: ['sales_docs', 'expenses'],
+  title: 'Sales, expenses and profit by month',
+  description: 'For each month of the year: sales before VAT (sales ÷ 1.18), expenses from Priority (before VAT), and their difference. A month missing salary or rent is marked partial.',
+  fn: (sales_docs, expenses) => {
+    const docs = sales_docs.filter(x => x.date && !/^T/i.test(x.doc));
+    const asof = docs.reduce((m, x) => x.date > m ? x.date : m, '');
+    const year = asof.slice(0, 4), last = +asof.slice(5, 7);
+    const out = [];
+    for (let m = 1; m <= last; m++) {
+      const ym = year + '-' + String(m).padStart(2, '0');
+      const r = docs.filter(x => x.date.slice(0, 7) === ym);
+      const tax = r.filter(x => x.kind === 'invoice' && x.amount > 0).reduce((s, x) => s + x.amount, 0);
+      const counter = r.filter(x => x.kind === 'receipt' && /^OV/i.test(x.doc)).reduce((s, x) => s + x.amount, 0);
+      const credits = r.filter(x => (x.kind === 'invoice' && x.amount < 0) || (x.kind === 'receipt' && /^ON/i.test(x.doc))).reduce((s, x) => s + x.amount, 0);
+      const e = expenses.filter(x => x.date.slice(0, 7) === ym && !/^T/i.test(x.doc));
+      const exp = e.reduce((s, x) => s + x.amount, 0);
+      const has = n => e.some(x => x.section === n && Math.abs(x.amount) >= 1);
+      const missing = [has('שכר עבודה') ? '' : 'שכר', has('דמי שכירה וחכירה') ? '' : 'שכירות'].filter(Boolean).join(', ');
+      const sales = Math.max(0, tax + counter + credits) / 1.18;
+      out.push({ month: ym, sales: Math.round(sales), expenses: Math.round(exp), profit: Math.round(sales - exp), missing });
+    }
+    return out;
+  }
+});
+dash.calc('ytd', {
+  inputs: ['monthly'],
+  title: 'Year to date',
+  description: 'Sum of the months above: sales before VAT, expenses and profit, and how many months lack salary or rent.',
+  fn: (monthly) => [{
+    sales: monthly.reduce((s, m) => s + m.sales, 0),
+    expenses: monthly.reduce((s, m) => s + m.expenses, 0),
+    profit: monthly.reduce((s, m) => s + m.profit, 0),
+    partial_months: monthly.filter(m => m.missing).length
+  }]
+});
+dash.calc('methods', {
+  inputs: ['sales_docs', 'money_kpi'],
+  title: 'Collected this month by payment method',
+  description: 'Receipts this month grouped by payment method (card brands together as credit card).',
+  fn: (sales_docs, money_kpi) => {
+    const ym = money_kpi[0].month;
+    const name = m => /ויזה|ישראכרט|אשראי|מאסטר|אמריקן|דיינרס|visa|cal/i.test(m) ? 'אשראי' : /מזומן/.test(m) ? 'מזומן' : /העברה|בנק/.test(m) ? 'העברה' : /המחאה|צ'ק|שיק/.test(m) ? 'צ׳קים' : 'אחר';
+    const by = {};
+    sales_docs.filter(x => x.kind === 'receipt' && x.date.slice(0, 7) === ym && !/^T/i.test(x.doc)).forEach(x => { const k = name(x.method); by[k] = (by[k] || 0) + x.amount; });
+    return ['אשראי', 'העברה', 'מזומן', 'צ׳קים', 'אחר'].filter(k => by[k]).map(k => ({ method: k, amount: Math.round(by[k]) }));
+  }
+});
+dash.calc('debt_kpi', {
+  inputs: ['debts'],
+  title: 'Customer debts',
+  description: 'Customers whose balance is positive (they owe): total owed, how much of it is over 90 days (per customer at most what they owe, since a newer credit can offset an old invoice), and how many customers. Also the total held as customer credit (prepaid).',
+  fn: (debts) => {
+    const owe = debts.filter(x => x.total >= 10);
+    return [{ owed: Math.round(owe.reduce((s, x) => s + x.total, 0)), over90: Math.round(owe.reduce((s, x) => s + Math.max(0, Math.min(x.total, x.d90_plus)), 0)), customers: owe.length,
+      prepaid: Math.round(-debts.filter(x => x.total <= -10).reduce((s, x) => s + x.total, 0)) }];
+  }
+});
+dash.calc('debt_age', {
+  inputs: ['debts'],
+  title: 'Debts by age',
+  description: 'For customers who owe, their debt split by how old it is.',
+  fn: (debts) => {
+    const owe = debts.filter(x => x.total >= 10);
+    const s = k => Math.round(owe.reduce((a, x) => a + Math.max(0, x[k]), 0));
+    return [{ bucket: 'עתידי', amount: s('future') }, { bucket: '1–30 יום', amount: s('d1_30') }, { bucket: '31–60', amount: s('d31_60') }, { bucket: '61–90', amount: s('d61_90') }, { bucket: 'מעל 90', amount: s('d90_plus') }];
+  }
+});
+dash.calc('top_debtors', {
+  inputs: ['debts'],
+  title: 'Largest debts',
+  description: 'The ten customers who owe the most, with the part older than 90 days.',
+  fn: (debts) => debts.filter(x => x.total >= 10).sort((a, b) => b.total - a.total).slice(0, 10)
+    .map(x => ({ cust: x.cust, name: x.name, total: Math.round(x.total), over90: Math.round(Math.max(0, Math.min(x.total, x.d90_plus))) }))
+});
+dash.calc('orders_age', {
+  inputs: ['orders', 'order_totals'],
+  title: 'Open orders by age',
+  description: 'Open orders of named customers (walk-in sales and drafts left out: numbers starting with T, or status טיוטא or מבוטלת in the morning export), by days since the order, counted to the latest order date.',
+  fn: (orders, order_totals) => {
+    const draft = new Set(order_totals.filter(t => /^טיוט/.test(t.status) || t.status === 'מבוטלת').map(t => t.so));
+    const o = orders.filter(x => !x.walk_in && x.date && !/^T/i.test(x.so) && !draft.has(x.so));
+    const asof = o.reduce((m, x) => x.date > m ? x.date : m, '');
+    const days = d => Math.round((Date.parse(asof) - Date.parse(d)) / 864e5);
+    const b = [['עד שבועיים', 0, 14], ['15–30 יום', 15, 30], ['31–90', 31, 90], ['91–180', 91, 180], ['מעל חצי שנה', 181, 1e9]];
+    return b.map(([bucket, lo, hi]) => ({ bucket, orders: o.filter(x => days(x.date) >= lo && days(x.date) <= hi).length }));
+  }
+});
+dash.calc('exp_sections', {
+  inputs: ['expenses', 'money_kpi'],
+  title: 'Expenses this year by section',
+  description: 'Expenses from January to the latest month, grouped by the Priority profit-and-loss section, before VAT.',
+  fn: (expenses, money_kpi) => {
+    const y = money_kpi[0].month.slice(0, 4), by = {};
+    expenses.filter(x => x.date.slice(0, 4) === y && !/^T/i.test(x.doc)).forEach(x => { by[x.section] = (by[x.section] || 0) + x.amount; });
+    return Object.entries(by).map(([section, amount]) => ({ section, amount: Math.round(amount) })).filter(x => Math.abs(x.amount) >= 1).sort((a, b) => b.amount - a.amount);
+  }
+});
+dash.calc('card_kpi', {
+  inputs: ['card_daily'],
+  title: 'Credit card, latest day',
+  description: 'The latest Tranzila daily summary: charges minus refunds, and the number of transactions.',
+  fn: (card_daily) => {
+    const l = card_daily.slice().sort((a, b) => a.date < b.date ? -1 : 1).pop();
+    return l ? [{ date: l.date, net: Math.round(l.debit - l.credit), count: l.debit_count + l.credit_count }] : [];
+  }
+});
+
+/* marketing */
+dash.calc('paid_daily', {
+  inputs: ['gads', 'meta_ads'],
+  title: 'Paid ads spend per day',
+  description: 'Cost per day from 14.10 (when the current campaigns started), Google and Meta side by side, in ₪.',
+  fn: (gads, meta_ads) => {
+    const by = {};
+    gads.filter(x => x.date >= '2026-10-14').forEach(x => { (by[x.date] = by[x.date] || { date: x.date, google: 0, meta: 0 }).google += x.cost; });
+    meta_ads.filter(x => x.date >= '2026-10-14').forEach(x => { (by[x.date] = by[x.date] || { date: x.date, google: 0, meta: 0 }).meta += x.cost; });
+    return Object.values(by).sort((a, b) => a.date < b.date ? -1 : 1).map(x => ({ date: x.date, google: Math.round(x.google * 100) / 100, meta: Math.round(x.meta * 100) / 100 }));
+  }
+});
+dash.calc('paid_kpi', {
+  inputs: ['gads', 'meta_ads', 'site_leads'],
+  title: 'Paid ads since 14.10',
+  description: 'Spend and clicks since 14.10, contact clicks on the site in the same days (all sources), the cost per contact click, and the Google voucher: ₪1,500 to spend between 14.10 and 13.12.2026.',
+  fn: (gads, meta_ads, site_leads) => {
+    const g = gads.filter(x => x.date >= '2026-10-14'), m = meta_ads.filter(x => x.date >= '2026-10-14');
+    const google = g.reduce((s, x) => s + x.cost, 0), meta = m.reduce((s, x) => s + x.cost, 0);
+    const asof = g.reduce((d, x) => x.date > d ? x.date : d, '2026-10-14');
+    const leads = site_leads.filter(x => x.date >= '2026-10-14').reduce((s, x) => s + x.count, 0);
+    const daysLeft = Math.max(0, Math.round((Date.parse('2026-12-13') - Date.parse(asof)) / 864e5));
+    const left = Math.max(0, 1500 - google);
+    return [{ asof, spend: Math.round(google + meta), google: Math.round(google), meta: Math.round(meta),
+      clicks: g.reduce((s, x) => s + x.clicks, 0) + m.reduce((s, x) => s + x.clicks, 0), calls: g.reduce((s, x) => s + x.calls, 0),
+      contact_clicks: leads, per_contact: leads ? Math.round((google + meta) / leads) : null,
+      voucher_spent: Math.round(Math.min(google, 1500)), voucher_share: Math.min(1, google / 1500), voucher_left: Math.round(left), voucher_days: daysLeft, voucher_pace: daysLeft ? Math.round(left / daysLeft) : null }];
+  }
+});
+dash.calc('site_kpi', {
+  inputs: ['site_visits', 'site_leads'],
+  title: 'Website, last 28 days',
+  description: 'Sessions, visitors and contact clicks recorded by Google Analytics (only visitors who accepted cookies are counted).',
+  fn: (site_visits, site_leads) => [{
+    sessions: site_visits.reduce((s, x) => s + x.sessions, 0),
+    users: site_visits.reduce((s, x) => s + x.users, 0),
+    contact_clicks: site_leads.reduce((s, x) => s + x.count, 0)
+  }]
+});
+dash.calc('site_sources', {
+  inputs: ['site_visits', 'site_leads'],
+  title: 'Website visits and contacts by source',
+  description: 'Sessions and contact clicks grouped by where the visit came from (Facebook Events Manager test visits count as other).',
+  fn: (site_visits, site_leads) => {
+    const src = (s, m) => {
+      s = String(s).toLowerCase(); m = String(m).toLowerCase();
+      if (s.startsWith('eventsmanager.')) return 'אחר';
+      if (s.includes('instagram') || s === 'ig') return 'אינסטגרם';
+      if (s.includes('facebook') || s === 'fb') return 'פייסבוק';
+      if (s.includes('tiktok')) return 'טיקטוק';
+      if (s.includes('youtube')) return 'יוטיוב';
+      if (s === 'google' && /gbp|maps|local/.test(m)) return 'פרופיל העסק בגוגל';
+      if (s === 'google' && /cpc|paid|ppc/.test(m)) return 'מודעות גוגל';
+      if (/^(google|bing|yahoo|duckduckgo)$/.test(s) && m === 'organic') return 'חיפוש בגוגל';
+      if (s.includes('whatsapp') || s === 'wa') return 'וואטסאפ';
+      if (s === '(direct)' || s === 'direct') return 'ישיר';
+      return 'אחר';
+    };
+    const by = {};
+    site_visits.forEach(x => { const k = src(x.source, x.medium); (by[k] = by[k] || { source: k, sessions: 0, contacts: 0 }).sessions += x.sessions; });
+    site_leads.forEach(x => { const k = src(x.source, x.medium); (by[k] = by[k] || { source: k, sessions: 0, contacts: 0 }).contacts += x.count; });
+    return Object.values(by).sort((a, b) => b.sessions - a.sessions || b.contacts - a.contacts);
+  }
+});
+dash.calc('social_week', {
+  inputs: ['social_daily'],
+  title: 'Social networks, last 7 days',
+  description: 'For each network, the sum of its main daily metric over its latest 7 days of data, against the 7 days before.',
+  fn: (social_daily) => {
+    const main = { instagram: 'Reach', facebook: 'Page Impressions', 'tiktok-business': 'Views', gmb: 'Mobile Map Views', youtube: 'Estimated Minutes Watched' };
+    return Object.entries(main).map(([platform, metric]) => {
+      const r = social_daily.filter(x => x.platform === platform && x.metric === metric).sort((a, b) => a.date < b.date ? -1 : 1);
+      if (!r.length) return null;
+      const last = r[r.length - 1].date, d = n => new Date(Date.parse(last) - n * 864e5).toISOString().slice(0, 10);
+      const sum = (lo, hi) => r.filter(x => x.date > lo && x.date <= hi).reduce((s, x) => s + x.value, 0);
+      const week = sum(d(7), last), prev = r[0].date <= d(7) ? sum(d(14), d(7)) : null;
+      return { platform, metric, last, week, prev, change: prev ? week / prev - 1 : null };
+    }).filter(Boolean);
+  }
+});
+dash.calc('followers_week', {
+  inputs: ['social_daily'],
+  title: 'Followers, last 7 days',
+  description: 'New followers per network over its latest 7 days of data (Instagram Follower Count, Facebook Page followers, YouTube subscribers gained minus lost), the total where the feed has one (YouTube only), and the goals from the follower growth plan of 21.10.2026 (social-media/growth/follower-growth-plan.md). TikTok and Google reviews are not in the feed, so they stay empty.',
+  fn: (social_daily) => {
+    const series = (platform, metric) => social_daily.filter(x => x.platform === platform && x.metric === metric).sort((a, b) => a.date < b.date ? -1 : 1);
+    const week = (platform, metric) => {
+      const r = series(platform, metric);
+      if (!r.length) return null;
+      const from = new Date(Date.parse(r[r.length - 1].date) - 7 * 864e5).toISOString().slice(0, 10);
+      return r.filter(x => x.date > from).reduce((s, x) => s + x.value, 0);
+    };
+    const yt = series('youtube', 'Subscribers'), gained = week('youtube', 'Subscribers Gained');
+    return [
+      { network: 'instagram', fresh: week('instagram', 'Follower Count'), total: null, goal_nov: '2.8K', goal_jan: '5K' },
+      { network: 'facebook', fresh: week('facebook', 'Page followers'), total: null, goal_nov: '+50', goal_jan: '+300' },
+      { network: 'tiktok-business', fresh: null, total: null, goal_nov: '1K', goal_jan: '5K' },
+      { network: 'youtube', fresh: gained == null ? null : gained - (week('youtube', 'Subscribers Lost') || 0), total: yt.length ? yt[yt.length - 1].value : null, goal_nov: '30', goal_jan: '150' },
+      { network: 'reviews', fresh: null, total: null, goal_nov: '105', goal_jan: '150' }
+    ];
+  }
+});
+dash.calc('follow_kpi', {
+  inputs: ['social_daily'],
+  title: 'Instagram followers per 1,000 reached',
+  description: 'New Instagram followers per 1,000 accounts reached over the latest 7 days of data: sum of Follower Count / sum of Reach x 1,000. Goal 3 by 12.11.2026 and 6 by 31.1.2027.',
+  fn: (social_daily) => {
+    const ig = social_daily.filter(x => x.platform === 'instagram' && (x.metric === 'Reach' || x.metric === 'Follower Count'));
+    const last = ig.filter(x => x.metric === 'Reach').reduce((m, x) => x.date > m ? x.date : m, '');
+    if (!last) return [{ per_1k: null, fresh: null, reach: null, from: '', to: '' }];
+    const from = new Date(Date.parse(last) - 7 * 864e5).toISOString().slice(0, 10);
+    const sum = m => ig.filter(x => x.metric === m && x.date > from && x.date <= last).reduce((s, x) => s + x.value, 0);
+    const fresh = sum('Follower Count'), reach = sum('Reach');
+    return [{ per_1k: reach ? fresh / reach * 1000 : null, fresh, reach, from: new Date(Date.parse(from) + 864e5).toISOString().slice(0, 10), to: last }];
+  }
+});
+
+dash.calc('post_gantt', {
+  inputs: ['posts'],
+  title: 'Posts by day and network',
+  description: 'Posts that went out at the same minute (Israel time) are one piece, one row. Views and comments are summed over the networks that report them. Facebook photo posts report Impressions as 0 and Facebook reports no comments, so both count as not measured.',
+  fn: (posts) => {
+    const NET = { instagram: 'instagram', facebook: 'facebook', 'tiktok-business': 'tiktok', youtube: 'youtube', gmb: 'google' };
+    const order = Object.keys(NET);
+    const local = s => new Date(s).toLocaleString('sv-SE', { timeZone: 'Asia/Jerusalem' }).slice(0, 16);
+    const asof = posts.reduce((m, p) => p.file_at > m ? p.file_at : m, ''), stale = posts.some(p => p.stale);
+    const groups = new Map();
+    posts.filter(p => p.published && NET[p.platform]).forEach(p => {
+      const at = local(p.published), story = p.type === 'story', k = at + (story ? ' story' : '');
+      if (!groups.has(k)) groups.set(k, { at, story, list: [] });
+      groups.get(k).list.push(p);
+    });
+    const views = p => p.platform === 'facebook' && p.views_metric === 'Impressions' ? null : p.views;
+    const sum = v => v.length ? v.reduce((s, x) => s + x, 0) : null;
+    return [...groups.values()].map(({ at, story, list }) => {
+      list.sort((a, b) => order.indexOf(a.platform) - order.indexOf(b.platform));
+      const typed = list.some(p => p.type);
+      const row = { piece: list[0].id, day: at.slice(0, 10), time: at.slice(11, 16), title: list[0].text, kind: story ? 'story' : typed ? 'post' : '',
+        where: [...new Set(list.map(p => NET[p.platform]))].join(','), asof: asof ? local(asof) : '', stale };
+      order.forEach(n => { row['views_' + NET[n]] = sum(list.filter(p => p.platform === n).map(views).filter(v => v != null)); });
+      row.views = sum(list.map(views).filter(v => v != null));
+      row.comments = sum(list.map(p => p.comments).filter(v => v != null));
+      row.likes = sum(list.map(p => p.likes).filter(v => v != null));
+      row.shares = sum(list.map(p => p.shares).filter(v => v != null));
+      return row;
+    }).sort((a, b) => (b.day + b.time).localeCompare(a.day + a.time));
+  }
+});
+dash.calc('post_kpi', {
+  inputs: ['post_gantt'],
+  title: 'Posts of the last 7 days',
+  description: 'Pieces published in the 7 days up to the day the Postiz numbers were collected: how many, their views and comments so far, and the one with the most views. stale = Postiz was down, so these are the last numbers the bridge kept.',
+  fn: (post_gantt) => {
+    const asof = post_gantt.reduce((m, r) => r.asof > m ? r.asof : m, '');
+    if (!asof) return [{ asof: '', from: '', pieces: 0, views: null, comments: null, top_title: '', top_views: null, top_day: '', top_where: '', stale: false }];
+    const to = asof.slice(0, 10), from = new Date(Date.parse(to) - 6 * 864e5).toISOString().slice(0, 10);
+    const wk = post_gantt.filter(r => r.day >= from && r.day <= to);
+    const top = wk.filter(r => r.views != null).sort((a, b) => b.views - a.views)[0];
+    const sum = k => wk.reduce((s, r) => s + (r[k] || 0), 0);
+    return [{ asof, from, pieces: wk.length, views: sum('views'), comments: sum('comments'), top_title: top ? top.title : '', top_views: top ? top.views : null, top_day: top ? top.day : '', top_where: top ? top.where : '', stale: post_gantt.some(r => r.stale) }];
+  }
+});
+
+/* the day in the business: quotes from the morning Priority export, plus the day's documents */
+dash.loader('quotes', {
+  description: 'Google Drive finds the daily Priority export price_quotes.xlsx, or price_quotes_partial.xlsx on days the robot saw a changed screen layout; this opens the newest one with at least 300 quotes that are not all drafts (an Excel file) and lists every price quote in it, with the date the file was exported.',
+  fn: async ({ answer, call }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    const files = ((a && a.files) || []).filter(f => f && f.id && /^price_quotes(_partial)?\.xlsx$/.test(f.title))
+      .sort((x, y) => String(y.modifiedTime).localeCompare(String(x.modifiedTime)));
+    if (!files.length) throw new Error((a && (a.error || a.message)) || 'Google Drive found no price_quotes.xlsx');
+    // The robot saves a screen whose layout changed as <name>_partial.xlsx; use the newest file that is complete enough.
+    let fallback = null, err = null;
+    for (const file of files.slice(0, 3)) try {
+      const g = await call('download_file_content', { fileId: file.id });
+      const b = typeof g === 'string' ? JSON.parse(g) : g;
+      if (!b || typeof b.content !== 'string') throw new Error((b && (b.error || b.message)) || 'Google Drive did not return price_quotes.xlsx');
+      const zip = Uint8Array.from(atob(b.content), c => c.charCodeAt(0));
+      const dv = new DataView(zip.buffer);
+      let eocd = -1;
+      for (let i = zip.length - 22; i >= Math.max(0, zip.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+      if (eocd < 0) throw new Error('price_quotes.xlsx is not an Excel file');
+      const entries = {};
+      for (let p = dv.getUint32(eocd + 16, true), n = dv.getUint16(eocd + 10, true); n > 0; n--) {
+        const nl = dv.getUint16(p + 28, true), name = new TextDecoder().decode(zip.subarray(p + 46, p + 46 + nl));
+        entries[name] = { method: dv.getUint16(p + 10, true), size: dv.getUint32(p + 20, true), at: dv.getUint32(p + 42, true) };
+        p += 46 + nl + dv.getUint16(p + 30, true) + dv.getUint16(p + 32, true);
+      }
+      const open = async name => {
+        const e = entries[name];
+        if (!e) return null;
+        const start = e.at + 30 + dv.getUint16(e.at + 26, true) + dv.getUint16(e.at + 28, true);
+        const raw = zip.subarray(start, start + e.size);
+        if (e.method === 0) return new TextDecoder().decode(raw);
+        const out = await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer();
+        return new TextDecoder().decode(out);
+      };
+      const sheet = await open('xl/worksheets/sheet1.xml');
+      if (!sheet) throw new Error('price_quotes.xlsx has no sheet');
+      const unx = t => t.replace(/&(lt|gt|quot|apos|amp|#\d+|#x[0-9a-f]+);/gi, (m, k) => ({ lt: '<', gt: '>', quot: '"', apos: "'", amp: '&' })[k.toLowerCase()] || String.fromCodePoint(k[1].toLowerCase() === 'x' ? parseInt(k.slice(2), 16) : +k.slice(1)));
+      const shared = [];
+      const ss = await open('xl/sharedStrings.xml');
+      if (ss) for (const m of ss.matchAll(/<(?:\w+:)?si\b[^>]*>([\s\S]*?)<\/(?:\w+:)?si>/g)) shared.push([...m[1].matchAll(/<(?:\w+:)?t\b[^>]*>([\s\S]*?)<\/(?:\w+:)?t>/g)].map(t => unx(t[1])).join(''));
+      const table = [...sheet.matchAll(/<(?:\w+:)?row\b[^>]*>([\s\S]*?)<\/(?:\w+:)?row>/g)].map(r => {
+        const cells = {};
+        for (const c of r[1].matchAll(/<(?:\w+:)?c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/(?:\w+:)?c>)/g)) {
+          const ref = (/\br="([A-Z]+)/.exec(c[1]) || [])[1], type = (/\bt="(\w+)"/.exec(c[1]) || [])[1], inner = c[2] || '';
+          const t = /<(?:\w+:)?t\b[^>]*>([\s\S]*?)<\/(?:\w+:)?t>/.exec(inner), v = /<(?:\w+:)?v>([\s\S]*?)<\/(?:\w+:)?v>/.exec(inner);
+          if (ref) cells[ref] = type === 's' && v ? shared[+v[1]] : unx(t ? t[1] : v ? v[1] : '');
+        }
+        return cells;
+      });
+      const head = table.shift() || {}, col = {};
+      Object.entries(head).forEach(([ref, label]) => { col[label.trim()] = ref; });
+      if (!col['סטטוס']) { const k = Object.keys(col).find(h => /^סטטוס/.test(h)); if (k) col['סטטוס'] = col[k]; }  // 27.10: the restored ORDERS layout titles the status column 'סטטוס הזמנה'
+      const need = ['הצעת מחיר', 'ת. הצעת מחיר', 'מס. לקוח'];
+      const missing = need.filter(h => !col[h]);
+      if (missing.length) throw new Error('price_quotes.xlsx is missing the columns ' + missing.join(', '));
+      const day = v => /^\d+(\.\d+)?$/.test(v) ? new Date(Math.round((+v - 25569) * 864e5)).toISOString().slice(0, 10) : String(v || '').slice(0, 10);
+      const cell = (r, h) => col[h] ? (r[col[h]] || '') : '';
+      const fileDate = new Date(file.modifiedTime).toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+      const rows = table.filter(r => cell(r, 'הצעת מחיר')).map(r => ({
+        quote: cell(r, 'הצעת מחיר'), date: day(cell(r, 'ת. הצעת מחיר')), cust: cell(r, 'מס. לקוח'), name: cell(r, 'שם לקוח'),
+        status: cell(r, 'סטטוס'), total: +cell(r, 'מחיר כולל מע"מ') || 0, before_vat: +cell(r, 'מחיר אחרי הנחה') || 0, handler: cell(r, 'לטיפול'), file_date: fileDate
+      }));
+      const out = { columns: ['quote', 'date', 'cust', 'name', 'status', 'total', 'before_vat', 'handler', 'file_date'], rows,
+        meta: [{ label: 'File', value: file.title + ' · exported ' + file.modifiedTime }] };
+      if (rows.length >= 300 && rows.some(r => r.status && !/^טיוט/.test(r.status))) return out;
+      fallback = fallback || out;
+    } catch (e) { err = err || e; }
+    if (fallback) return fallback;
+    throw err;
+  }
+});
+dash.calc('day_docs', {
+  inputs: ['sales_docs', 'orders', 'order_totals'],
+  title: 'What happened each day',
+  description: 'Every receipt, invoice and new order of the last 7 days with activity, one row each (a receipt paid several ways is summed; drafts left out: numbers starting with T, and orders in status טיוטא or מבוטלת in the morning export). A customer is new on the day of its first document when its 6-digit number is higher than every customer seen before that day.',
+  fn: (sales_docs, orders, order_totals) => {
+    const draft = new Set(order_totals.filter(t => /^טיוט/.test(t.status) || t.status === 'מבוטלת').map(t => t.so));
+    const one = {};
+    sales_docs.filter(x => x.date && !/^T/i.test(x.doc)).forEach(x => {
+      const m = one[x.doc];
+      if (!m) one[x.doc] = { day: x.date, kind: x.kind, doc: x.doc, cust: x.cust, name: x.name, amount: x.amount, note: x.method };
+      else { m.amount += x.amount; if (x.method && !m.note.split(' + ').includes(x.method)) m.note += ' + ' + x.method; }
+    });
+    const docs = Object.values(one).concat(orders.filter(o => o.date && !/^T/i.test(o.so) && !draft.has(o.so)).map(o => ({ day: o.date, kind: 'order', doc: o.so, cust: o.cust, name: o.name, amount: null, note: o.owner + (o.quote ? ' · ' + o.quote : '') })));
+    const first = {};
+    docs.forEach(x => { if (/^\d{6}$/.test(x.cust) && !(first[x.cust] <= x.day)) first[x.cust] = x.day; });
+    const byDay = {};
+    Object.keys(first).forEach(c => { (byDay[first[c]] = byDay[first[c]] || []).push(+c); });
+    const fresh = new Set();
+    let top = 0;
+    Object.keys(byDay).sort().forEach(d => { byDay[d].forEach(n => { if (n > top) fresh.add(String(n)); }); top = Math.max(top, ...byDay[d]); });
+    const days = [...new Set(docs.map(x => x.day))].sort().slice(-7);
+    return docs.filter(x => days.includes(x.day)).map(x => ({ ...x, new_customer: fresh.has(x.cust) && first[x.cust] === x.day }))
+      .sort((a, b) => a.day < b.day ? 1 : a.day > b.day ? -1 : a.doc < b.doc ? -1 : 1);
+  }
+});
+dash.calc('day_kpi', {
+  inputs: ['day_docs'],
+  title: 'Each day in numbers',
+  description: 'Per day: new customers, new orders, receipts (money in, incl. VAT) and invoices net of credits (incl. VAT).',
+  fn: (day_docs) => {
+    const days = [...new Set(day_docs.map(x => x.day))].sort();
+    return days.map(day => {
+      const d = day_docs.filter(x => x.day === day), rc = d.filter(x => x.kind === 'receipt'), iv = d.filter(x => x.kind === 'invoice');
+      return { day, new_customers: new Set(d.filter(x => x.new_customer).map(x => x.cust)).size, orders: d.filter(x => x.kind === 'order').length,
+        receipts: rc.length, receipts_total: Math.round(rc.reduce((s, x) => s + x.amount, 0)), invoices: iv.length, invoices_total: Math.round(iv.reduce((s, x) => s + x.amount, 0)) };
+    });
+  }
+});
+dash.calc('day_quotes', {
+  inputs: ['quotes', 'sales_docs', 'orders', 'order_totals'],
+  title: 'Quotes each day',
+  description: 'Price quotes of the 14 days before the morning export, one row each. A customer opened for a quote is new when the quote is its first document that day, its number is higher than every customer seen before, and it had no receipt, invoice or order that day. Drafts T… are left out.',
+  fn: (quotes, sales_docs, orders, order_totals) => {
+    const draft = new Set(order_totals.filter(t => /^טיוט/.test(t.status) || t.status === 'מבוטלת').map(t => t.so));
+    const qs = quotes.filter(q => !/^T/i.test(q.quote));
+    const docs = sales_docs.filter(x => x.date && !/^T/i.test(x.doc)).map(x => [x.cust, x.date]).concat(orders.filter(o => !/^T/i.test(o.so) && !draft.has(o.so)).map(o => [o.cust, o.date]));
+    const first = {}, other = new Set(docs.map(([c, d]) => c + '|' + d));
+    docs.concat(qs.map(q => [q.cust, q.date])).forEach(([c, d]) => { if (d && /^\d{6}$/.test(c) && !(first[c] <= d)) first[c] = d; });
+    const byDay = {};
+    Object.keys(first).forEach(c => { (byDay[first[c]] = byDay[first[c]] || []).push(+c); });
+    const fresh = new Set();
+    let top = 0;
+    Object.keys(byDay).sort().forEach(d => { byDay[d].forEach(n => { if (n > top) fresh.add(String(n)); }); top = Math.max(top, ...byDay[d]); });
+    const end = (quotes[0] || {}).file_date || '', from = end ? new Date(Date.parse(end) - 14 * 864e5).toISOString().slice(0, 10) : '';
+    return qs.filter(q => q.date >= from && q.date < end).map(q => ({ quote: q.quote, day: q.date, cust: q.cust, name: q.name, status: q.status, total: Math.round(q.total), handler: q.handler,
+      new_customer: fresh.has(q.cust) && first[q.cust] === q.date && !other.has(q.cust + '|' + q.date) })).sort((a, b) => a.quote < b.quote ? 1 : -1);
+  }
+});
+dash.calc('quote_kpi', {
+  inputs: ['quotes', 'day_quotes'],
+  title: 'Quotes per day',
+  description: 'For each of the 14 days before the morning export: how many quotes were opened, their total incl. VAT, and customers opened just for a quote. Days after the export are not in it yet.',
+  fn: (quotes, day_quotes) => {
+    const end = (quotes[0] || {}).file_date;
+    if (!end) return [];
+    return Array.from({ length: 14 }, (_, i) => new Date(Date.parse(end) - (i + 1) * 864e5).toISOString().slice(0, 10)).map(day => {
+      const q = day_quotes.filter(x => x.day === day);
+      return { day, quotes: q.length, total: q.reduce((s, x) => s + x.total, 0), new_customers: new Set(q.filter(x => x.new_customer).map(x => x.cust)).size, exported: end };
+    });
+  }
+});
+dash.loader('order_totals', {
+  description: 'Google Drive finds the daily Priority export customer_orders.xlsx, or customer_orders_partial.xlsx on days the robot saw a changed screen layout; this opens the newest one with at least 1,000 orders that are not all drafts (an Excel file) and lists each order with its status (column סטטוס or סטטוס הזמנה), discount and totals before and after VAT (before VAT only when the file has that column).',
+  fn: async ({ answer, call }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    const files = ((a && a.files) || []).filter(f => f && f.id && /^customer_orders(_partial)?\.xlsx$/.test(f.title))
+      .sort((x, y) => String(y.modifiedTime).localeCompare(String(x.modifiedTime)));
+    if (!files.length) throw new Error((a && (a.error || a.message)) || 'Google Drive found no customer_orders.xlsx');
+    // The robot saves a screen whose layout changed as <name>_partial.xlsx; use the newest file that is complete enough.
+    let fallback = null, err = null;
+    for (const file of files.slice(0, 3)) try {
+      const g = await call('download_file_content', { fileId: file.id });
+      const b = typeof g === 'string' ? JSON.parse(g) : g;
+      if (!b || typeof b.content !== 'string') throw new Error((b && (b.error || b.message)) || 'Google Drive did not return customer_orders.xlsx');
+      const zip = Uint8Array.from(atob(b.content), c => c.charCodeAt(0));
+      const dv = new DataView(zip.buffer);
+      let eocd = -1;
+      for (let i = zip.length - 22; i >= Math.max(0, zip.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+      if (eocd < 0) throw new Error('customer_orders.xlsx is not an Excel file');
+      const entries = {};
+      for (let p = dv.getUint32(eocd + 16, true), n = dv.getUint16(eocd + 10, true); n > 0; n--) {
+        const nl = dv.getUint16(p + 28, true), name = new TextDecoder().decode(zip.subarray(p + 46, p + 46 + nl));
+        entries[name] = { method: dv.getUint16(p + 10, true), size: dv.getUint32(p + 20, true), at: dv.getUint32(p + 42, true) };
+        p += 46 + nl + dv.getUint16(p + 30, true) + dv.getUint16(p + 32, true);
+      }
+      const open = async name => {
+        const e = entries[name];
+        if (!e) return null;
+        const start = e.at + 30 + dv.getUint16(e.at + 26, true) + dv.getUint16(e.at + 28, true);
+        const raw = zip.subarray(start, start + e.size);
+        if (e.method === 0) return new TextDecoder().decode(raw);
+        return new TextDecoder().decode(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+      };
+      const sheet = await open('xl/worksheets/sheet1.xml');
+      if (!sheet) throw new Error('customer_orders.xlsx has no sheet');
+      const unx = t => t.replace(/&(lt|gt|quot|apos|amp|#\d+|#x[0-9a-f]+);/gi, (m, k) => ({ lt: '<', gt: '>', quot: '"', apos: "'", amp: '&' })[k.toLowerCase()] || String.fromCodePoint(k[1].toLowerCase() === 'x' ? parseInt(k.slice(2), 16) : +k.slice(1)));
+      const shared = [];
+      const ss = await open('xl/sharedStrings.xml');
+      if (ss) for (const m of ss.matchAll(/<(?:\w+:)?si\b[^>]*>([\s\S]*?)<\/(?:\w+:)?si>/g)) shared.push([...m[1].matchAll(/<(?:\w+:)?t\b[^>]*>([\s\S]*?)<\/(?:\w+:)?t>/g)].map(t => unx(t[1])).join(''));
+      const table = [...sheet.matchAll(/<(?:\w+:)?row\b[^>]*>([\s\S]*?)<\/(?:\w+:)?row>/g)].map(r => {
+        const cells = {};
+        for (const c of r[1].matchAll(/<(?:\w+:)?c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/(?:\w+:)?c>)/g)) {
+          const ref = (/\br="([A-Z]+)/.exec(c[1]) || [])[1], type = (/\bt="(\w+)"/.exec(c[1]) || [])[1], inner = c[2] || '';
+          const t = /<(?:\w+:)?t\b[^>]*>([\s\S]*?)<\/(?:\w+:)?t>/.exec(inner), v = /<(?:\w+:)?v>([\s\S]*?)<\/(?:\w+:)?v>/.exec(inner);
+          if (ref) cells[ref] = type === 's' && v ? shared[+v[1]] : unx(t ? t[1] : v ? v[1] : '');
+        }
+        return cells;
+      });
+      const head = table.shift() || {}, col = {};
+      Object.entries(head).forEach(([ref, label]) => { if (!col[label.trim()]) col[label.trim()] = ref; });
+      if (!col['סטטוס']) { const k = Object.keys(col).find(h => /^סטטוס/.test(h)); if (k) col['סטטוס'] = col[k]; }  // 27.10: the restored ORDERS layout titles the status column 'סטטוס הזמנה'
+      const missing = ['הזמנה', 'מחיר כולל מע"מ'].filter(h => !col[h]);
+      if (missing.length) throw new Error('customer_orders.xlsx is missing the columns ' + missing.join(', '));
+      const cell = (r, h) => col[h] ? (r[col[h]] || '') : '';
+      const day = v => /^\d+(\.\d+)?$/.test(v) ? new Date(Math.round((+v - 25569) * 864e5)).toISOString().slice(0, 10) : String(v || '').slice(0, 10);
+      const fileDate = new Date(file.modifiedTime).toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+      const rows = table.filter(r => cell(r, 'הזמנה')).map(r => ({
+        so: cell(r, 'הזמנה'), date: day(cell(r, 'תאריך')), status: cell(r, 'סטטוס'), list_price: +cell(r, 'מחיר כולל') || 0, discount_pct: +cell(r, 'הנחה כללית (%)') || 0,
+        before_vat: col['מחיר אחרי הנחה'] ? +cell(r, 'מחיר אחרי הנחה') || 0 : null, vat: col['מע"מ'] ? +cell(r, 'מע"מ') || 0 : null, total: +cell(r, 'מחיר כולל מע"מ') || 0, items: +cell(r, 'כמות פריטים') || 0, file_date: fileDate
+      }));
+      const out = { columns: ['so', 'date', 'status', 'list_price', 'discount_pct', 'before_vat', 'vat', 'total', 'items', 'file_date'], rows,
+        meta: [{ label: 'File', value: file.title + ' · exported ' + file.modifiedTime }] };
+      if (rows.length >= 1000 && rows.some(r => r.status && !/^טיוט/.test(r.status) && r.status !== 'מבוטלת')) return out;
+      fallback = fallback || out;
+    } catch (e) { err = err || e; }
+    if (fallback) return fallback;
+    throw err;
+  }
+});
+dash.loader('bank', {
+  description: 'Google Drive finds the daily Priority export bank_page_print.xlsx (the bank statement pages Sofi loads into Priority); this opens the newest one and lists each statement page with its opening and closing balance and its first and last date. No transaction details or names.',
+  fn: async ({ answer, call }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    const files = ((a && a.files) || []).filter(f => f && f.id && f.title === 'bank_page_print.xlsx')
+      .sort((x, y) => String(y.modifiedTime).localeCompare(String(x.modifiedTime)));
+    if (!files.length) throw new Error((a && (a.error || a.message)) || 'Google Drive found no bank_page_print.xlsx');
+    const file = files[0];
+    const g = await call('download_file_content', { fileId: file.id });
+    const b = typeof g === 'string' ? JSON.parse(g) : g;
+    if (!b || typeof b.content !== 'string') throw new Error((b && (b.error || b.message)) || 'Google Drive did not return bank_page_print.xlsx');
+    const zip = Uint8Array.from(atob(b.content), c => c.charCodeAt(0));
+    const dv = new DataView(zip.buffer);
+    let eocd = -1;
+    for (let i = zip.length - 22; i >= Math.max(0, zip.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+    if (eocd < 0) throw new Error('bank_page_print.xlsx is not an Excel file');
+    const entries = {};
+    for (let p = dv.getUint32(eocd + 16, true), n = dv.getUint16(eocd + 10, true); n > 0; n--) {
+      const nl = dv.getUint16(p + 28, true), name = new TextDecoder().decode(zip.subarray(p + 46, p + 46 + nl));
+      entries[name] = { method: dv.getUint16(p + 10, true), size: dv.getUint32(p + 20, true), at: dv.getUint32(p + 42, true) };
+      p += 46 + nl + dv.getUint16(p + 30, true) + dv.getUint16(p + 32, true);
+    }
+    const open = async name => {
+      const e = entries[name];
+      if (!e) return null;
+      const start = e.at + 30 + dv.getUint16(e.at + 26, true) + dv.getUint16(e.at + 28, true);
+      const raw = zip.subarray(start, start + e.size);
+      if (e.method === 0) return new TextDecoder().decode(raw);
+      return new TextDecoder().decode(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+    };
+    const sheet = await open('xl/worksheets/sheet1.xml');
+    if (!sheet) throw new Error('bank_page_print.xlsx has no sheet');
+    const unx = t => t.replace(/&(lt|gt|quot|apos|amp|#\d+|#x[0-9a-f]+);/gi, (m, k) => ({ lt: '<', gt: '>', quot: '"', apos: "'", amp: '&' })[k.toLowerCase()] || String.fromCodePoint(k[1].toLowerCase() === 'x' ? parseInt(k.slice(2), 16) : +k.slice(1)));
+    const shared = [];
+    const ss = await open('xl/sharedStrings.xml');
+    if (ss) for (const m of ss.matchAll(/<(?:\w+:)?si\b[^>]*>([\s\S]*?)<\/(?:\w+:)?si>/g)) shared.push([...m[1].matchAll(/<(?:\w+:)?t\b[^>]*>([\s\S]*?)<\/(?:\w+:)?t>/g)].map(t => unx(t[1])).join(''));
+    const table = [...sheet.matchAll(/<(?:\w+:)?row\b[^>]*>([\s\S]*?)<\/(?:\w+:)?row>/g)].map(r => {
+      const cells = {};
+      for (const c of r[1].matchAll(/<(?:\w+:)?c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/(?:\w+:)?c>)/g)) {
+        const ref = (/\br="([A-Z]+)/.exec(c[1]) || [])[1], type = (/\bt="(\w+)"/.exec(c[1]) || [])[1], inner = c[2] || '';
+        const t = /<(?:\w+:)?t\b[^>]*>([\s\S]*?)<\/(?:\w+:)?t>/.exec(inner), v = /<(?:\w+:)?v>([\s\S]*?)<\/(?:\w+:)?v>/.exec(inner);
+        if (ref) cells[ref] = type === 's' && v ? shared[+v[1]] : unx(t ? t[1] : v ? v[1] : '');
+      }
+      return cells;
+    });
+    const head = table.shift() || {}, col = {};
+    Object.entries(head).forEach(([ref, label]) => { if (!col[label.trim()]) col[label.trim()] = ref; });
+    const missing = ['קוד חשבון הבנק', 'שנה', 'מס. דף', 'יתרה בסוף הדף', 'תאריך רישום'].filter(h => !col[h]);
+    if (missing.length) throw new Error('bank_page_print.xlsx is missing the columns ' + missing.join(', '));
+    const cell = (r, h) => col[h] ? (r[col[h]] || '') : '';
+    const day = v => /^\d+(\.\d+)?$/.test(v) ? new Date(Math.round((+v - 25569) * 864e5)).toISOString().slice(0, 10) : String(v || '').slice(0, 10);
+    const fileDate = new Date(file.modifiedTime).toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+    const pages = {};
+    table.filter(r => cell(r, 'מס. דף')).forEach(r => {
+      const k = cell(r, 'קוד חשבון הבנק') + '|' + cell(r, 'שנה') + '|' + cell(r, 'מס. דף'), d = day(cell(r, 'תאריך רישום'));
+      const p = pages[k] || (pages[k] = { account: cell(r, 'תאור חשבון הבנק') || cell(r, 'קוד חשבון הבנק'), year: +cell(r, 'שנה') || 0, page: +cell(r, 'מס. דף') || 0,
+        opening: +cell(r, 'יתרה בתחילת הדף') || 0, closing: +cell(r, 'יתרה בסוף הדף') || 0, from: d, to: d, lines: 0, file_date: fileDate });
+      if (d && (!p.from || d < p.from)) p.from = d;
+      if (d > p.to) p.to = d;
+      p.lines++;
+    });
+    const rows = Object.values(pages).sort((x, y) => x.to < y.to ? -1 : x.to > y.to ? 1 : x.year - y.year || x.page - y.page);
+    return { columns: ['account', 'year', 'page', 'opening', 'closing', 'from', 'to', 'lines', 'file_date'], rows,
+      meta: [{ label: 'File', value: file.title + ' · exported ' + file.modifiedTime }] };
+  }
+});
+
+/* targets (Aviv approved 26.10, doc "יעדי מכירות ורווחיות"): green / yellow / red per measure.
+   Week = Sunday to Saturday (Saturday is closed). A past weekday with no document at all counts as a closed day,
+   Friday as half a day, and a week's targets shrink with its working days. */
+const TG = { month: [360000, 300000], roll: [340000, 280000], week: [85000, 65000], collect: [95000, 70000], ordersWeek: [22, 16], ordersDay: [4, 2], debt60: [20000, 35000] };
+const tgDay = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+const tgDow = d => new Date(d + 'T12:00:00Z').getUTCDay();
+const tgToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+const tgUp = (v, [green, red]) => v == null ? 'none' : v >= green ? 'green' : v < red ? 'red' : 'yellow';
+const tgWeight = (d, active, end) => { const w = tgDow(d); return w === 6 || (d <= end && !active.has(d)) ? 0 : w === 5 ? 0.5 : 1; };
+const tgSpan = (from, to, f) => { let s = 0; for (let d = from; d <= to; d = tgDay(d, 1)) s += f(d); return s; };
+dash.calc('targets_sales', {
+  inputs: ['sales_docs', 'debts'],
+  title: 'Targets: sales, collections, old debts',
+  description: 'Sales before VAT (invoices less credits plus counter invoice-receipts, ÷1.18) for the month to date with its projection, the last 28 days and the last full week; collections incl. VAT (all receipts) for the last full week; customer debt older than 60 days (capped at each customer\'s balance). Counted to the last full day. Drafts (T…) left out.',
+  fn: (sales_docs, debts) => {
+    const docs = sales_docs.filter(x => x.date && !/^T/i.test(x.doc));
+    const active = new Set(docs.map(x => x.date));
+    const asof = docs.reduce((m, x) => x.date > m ? x.date : m, '');
+    const today = tgToday(), end = asof < tgDay(today, -1) ? asof : tgDay(today, -1);
+    const sales = (from, to) => docs.filter(x => x.date >= from && x.date <= to && (x.kind === 'invoice' || /^O[VN]/i.test(x.doc))).reduce((s, x) => s + x.amount, 0) / 1.18;
+    const collected = (from, to) => docs.filter(x => x.kind === 'receipt' && x.date >= from && x.date <= to).reduce((s, x) => s + x.amount, 0);
+    const wt = d => tgWeight(d, active, end);
+    const m1 = end.slice(0, 8) + '01', mEnd = tgDay(tgDay(m1, 32).slice(0, 8) + '01', -1);
+    const mtd = sales(m1, end), done = tgSpan(m1, end, wt), all = tgSpan(m1, mEnd, wt);
+    const proj = done ? mtd / done * all : null;
+    const r1 = tgDay(end, -27), roll = sales(r1, end);
+    let ws = tgDay(end, -tgDow(end));
+    if (tgDow(end) < 5) ws = tgDay(ws, -7);
+    const we = tgDay(ws, 6), scale = tgSpan(ws, we, wt) / 5.5;
+    const adj = ([g, r]) => [g * scale, r * scale];
+    const cur = tgDay(today, -tgDow(today)), curOn = cur > we, upto = asof < today ? asof : today;
+    const owe = debts.filter(x => x.total > 9), debt60 = owe.reduce((s, x) => s + Math.max(0, Math.min(x.total, x.d61_90 + x.d90_plus)), 0);
+    const base = { asof, end, from: '', to: '', value: null, projection: null, pace: null, green: null, red: null, scale: 1, so_far: null, count: null };
+    return [
+      { ...base, key: 'month', from: m1, to: end, value: Math.round(mtd), projection: proj == null ? null : Math.round(proj), pace: all ? Math.round(TG.month[0] * done / all) : null,
+        green: TG.month[0], red: TG.month[1], status: tgUp(proj, TG.month), done: end === mEnd },
+      { ...base, key: 'roll', from: r1, to: end, value: Math.round(roll), green: TG.roll[0], red: TG.roll[1], status: tgUp(roll, TG.roll) },
+      { ...base, key: 'week', from: ws, to: we, value: Math.round(sales(ws, we)), green: Math.round(adj(TG.week)[0]), red: Math.round(adj(TG.week)[1]), scale,
+        status: tgUp(sales(ws, we), adj(TG.week)), so_far: curOn ? Math.round(sales(cur, upto)) : null },
+      { ...base, key: 'collect', from: ws, to: we, value: Math.round(collected(ws, we)), green: Math.round(adj(TG.collect)[0]), red: Math.round(adj(TG.collect)[1]), scale,
+        status: tgUp(collected(ws, we), adj(TG.collect)), so_far: curOn ? Math.round(collected(cur, upto)) : null },
+      { ...base, key: 'debt60', value: Math.round(debt60), green: TG.debt60[0], red: TG.debt60[1], count: owe.filter(x => Math.min(x.total, x.d61_90 + x.d90_plus) > 9).length,
+        status: debt60 < TG.debt60[0] ? 'green' : debt60 > TG.debt60[1] ? 'red' : 'yellow' }
+    ];
+  }
+});
+dash.calc('targets_orders', {
+  inputs: ['order_totals', 'sales_docs'],
+  title: 'Targets: new orders',
+  description: 'New orders from this morning\'s export (drafts, cancelled and T… left out): on the last working day before the export, and in the last full week, with that week\'s value before VAT (information only, and only when the export carries the after-discount column). No figure when the export is not from today or is partial (under 1,000 orders or no totals).',
+  fn: (order_totals, sales_docs) => {
+    const today = tgToday(), file = (order_totals[0] || {}).file_date || '';
+    const partial = order_totals.length < 1000 || !order_totals.some(o => o.total > 0);
+    const base = { file_date: file, day: '', from: '', to: '', value: null, worth: null, green: null, red: null, scale: 1, status: 'none', reason: '' };
+    const reason = !file ? 'nofile' : file !== today ? 'stale' : partial ? 'partial' : '';
+    if (reason) return [{ ...base, key: 'orders_day', reason }, { ...base, key: 'orders_week', reason }];
+    const ok = order_totals.filter(o => o.date && !/^T/i.test(o.so) && !/^טיוט/.test(o.status) && o.status !== 'מבוטלת');
+    const active = new Set(sales_docs.filter(x => x.date && !/^T/i.test(x.doc)).map(x => x.date).concat(ok.map(o => o.date)));
+    const end = tgDay(file, -1);
+    let day = end;
+    for (let i = 0; i < 7 && (tgDow(day) === 6 || !active.has(day)); i++) day = tgDay(day, -1);
+    const n = ok.filter(o => o.date === day).length, fri = tgDow(day) === 5;
+    const dayStatus = fri ? (n >= 2 ? 'green' : 'red') : (n >= TG.ordersDay[0] ? 'green' : n >= TG.ordersDay[1] ? 'yellow' : 'red');
+    let ws = tgDay(end, -tgDow(end));
+    if (tgDow(end) < 5) ws = tgDay(ws, -7);
+    const we = tgDay(ws, 6), scale = tgSpan(ws, we, d => tgWeight(d, active, end)) / 5.5;
+    const wk = ok.filter(o => o.date >= ws && o.date <= we), g = Math.round(TG.ordersWeek[0] * scale), r = Math.round(TG.ordersWeek[1] * scale);
+    return [
+      { ...base, key: 'orders_day', day, value: n, green: fri ? 2 : TG.ordersDay[0], red: fri ? 2 : TG.ordersDay[1], status: dayStatus },
+      { ...base, key: 'orders_week', from: ws, to: we, value: wk.length, worth: order_totals.some(o => o.before_vat != null) ? Math.round(wk.reduce((s, o) => s + (o.before_vat || 0), 0)) : null, green: g, red: r, scale,
+        status: wk.length >= g ? 'green' : wk.length < r ? 'red' : 'yellow' }
+    ];
+  }
+});
+dash.calc('bank_kpi', {
+  inputs: ['bank'],
+  title: 'Bank balance',
+  description: 'Closing balance of the newest bank statement page in Priority, with its last date. Shown without a color until the bank is connected directly.',
+  fn: (bank) => {
+    const p = bank[bank.length - 1];
+    return [p ? { balance: Math.round(p.closing), date: p.to, account: p.account, file_date: p.file_date } : { balance: null, date: '', account: '', file_date: '' }];
+  }
+});
+
+/* ---- Supabase (project ziso-whatsapp): leads, the site bot, WhatsApp and social comments ---- */
+const fromSupabase = 'Live read-only query on Supabase project ziso-whatsapp. ';
+// The connector returns the rows as a JSON array inside a text wrapper; take the array out of it.
+const sbRows = answer => {
+  let a = answer;
+  if (typeof a === 'string') { try { a = JSON.parse(a); } catch (e) { /* plain text */ } }
+  if (Array.isArray(a)) return a;
+  if (a && Array.isArray(a.rows)) return a.rows;
+  if (a && Array.isArray(a.data)) return a.data;
+  if (a && a.error) throw new Error(typeof a.error === 'string' ? a.error : (a.error.message || 'Supabase returned an error'));
+  let text = typeof a === 'string' ? a : (a && typeof a.result === 'string' ? a.result : '');
+  if (!text && a && Array.isArray(a.content)) text = a.content.map(c => c && c.text || '').join('\n');
+  const m = text.match(/<untrusted-data-[^>]*>([\s\S]*?)<\/untrusted-data-/);
+  const body = m ? m[1] : text;
+  const s = body.indexOf('['), e = body.lastIndexOf(']');
+  if (s < 0 || e < s) throw new Error('Supabase did not return rows');
+  return JSON.parse(body.slice(s, e + 1));
+};
+const SB = {
+  leads_kpi: { what: 'One row of lead counts: today, yesterday, last 7 days and the 7 before, open and in-progress leads, median minutes to the first answer, won and lost in 30 days.',
+    cols: ['today', 'yesterday', 'last7', 'prev7', 'open_new', 'waiting_over_1h', 'in_progress', 'median_answer_min_7d', 'won_30d', 'won_amount_30d', 'lost_30d', 'all_leads', 'last_lead_at', 'queried_at'],
+    num: ['today', 'yesterday', 'last7', 'prev7', 'open_new', 'waiting_over_1h', 'in_progress', 'median_answer_min_7d', 'won_30d', 'won_amount_30d', 'lost_30d', 'all_leads'] },
+  leads_open: { what: 'Open leads (new, answered, visited, quoted), newest and unanswered first, with the name, phone and start of the first message needed to call back.',
+    cols: ['id', 'created', 'last_contact', 'channel', 'source_detail', 'name', 'phone', 'first_message', 'stage', 'contacts', 'hours_open'], num: ['id', 'contacts', 'hours_open'] },
+  leads_channels: { what: 'Leads of the last 30 days per channel and stage.', cols: ['channel', 'n', 'new_n', 'active_n', 'won_n', 'lost_n', 'won_amount'], num: ['n', 'new_n', 'active_n', 'won_n', 'lost_n', 'won_amount'] },
+  leads_daily: { what: 'Leads per day (Israel time) and channel, last 28 days.', cols: ['day', 'channel', 'n'], num: ['n'] },
+  chat_kpi: { what: 'One row of site-bot counts: conversations today, last 7 days and the 7 before, messages, conversations that became leads.',
+    cols: ['today', 'last7', 'prev7', 'msgs7', 'leads7', 'all_sessions', 'all_leads', 'last_at'], num: ['today', 'last7', 'prev7', 'msgs7', 'leads7', 'all_sessions', 'all_leads'] },
+  chat_recent: { what: 'The 25 latest site-bot conversations: start, page, messages, the customer\'s first question (its start) and whether it became a lead.',
+    cols: ['id', 'started', 'channel', 'page', 'message_count', 'became_lead', 'first_question'], num: ['message_count'] },
+  chat_pages: { what: 'Site-bot conversations of the last 30 days per page they started on.', cols: ['page', 'sessions', 'leads'], num: ['sessions', 'leads'] },
+  comments_kpi: { what: 'One row of social-comment counts for the last 7 days: seen, auto-replied, queued for a person, negative, price and question comments.',
+    cols: ['last7', 'prev7', 'replied7', 'queue_open', 'negative7', 'price7', 'question7', 'leads7', 'all_comments', 'last_at'], num: ['last7', 'prev7', 'replied7', 'queue_open', 'negative7', 'price7', 'question7', 'leads7', 'all_comments'] },
+  review_queue: { what: 'Social comments the auto-reply left for a person and nobody reviewed yet.', cols: ['comment_id', 'received', 'platform', 'username', 'text', 'category'], num: [] },
+  comments_categories: { what: 'Social comments of the last 30 days per category, with how many were auto-replied or queued.', cols: ['category', 'n', 'replied', 'queued'], num: ['n', 'replied', 'queued'] },
+  wa_kpi: { what: 'One row of WhatsApp counts (customers only: no family or staff, no foreign numbers): inbound and outbound messages (and the bot\'s share) and contacts in 7 days, open inquiries of the last 14 days and how many waited more than 15 opening-hours minutes.',
+    cols: ['in7', 'out7', 'bot7', 'contacts7', 'awaiting_reply', 'awaiting_late', 'all_msgs', 'last_at'], num: ['in7', 'out7', 'bot7', 'contacts7', 'awaiting_reply', 'awaiting_late', 'all_msgs'] },
+  wa_open: { what: 'Open WhatsApp inquiries of the last 14 days: a customer message no person has answered yet (bot replies don\'t count), oldest first: name, phone, start of the last message, waiting since, opening-hours minutes waiting, late (over 15).', cols: ['phone', 'name', 'last_at', 'text', 'type', 'hours_waiting', 'biz_min', 'late'], num: ['hours_waiting', 'biz_min'] },
+  wa_sla: { what: 'One row for the WhatsApp response goal: inquiries that came in during opening hours in the last 7 days (and the 7 before), how many a person answered within 15 opening-hours minutes, open and late inquiries now, price quotes sent in 7 days and how many got no reply, leads marked won in 7 days.',
+    cols: ['inq7', 'decided7', 'fast7', 'pct7', 'decided_prev', 'pct_prev', 'open_now', 'late_now', 'quotes7', 'open_quotes7', 'won7', 'queried_at'], num: ['inq7', 'decided7', 'fast7', 'pct7', 'decided_prev', 'pct_prev', 'open_now', 'late_now', 'quotes7', 'open_quotes7', 'won7'] },
+  wa_quotes: { what: 'Price quotes sent on WhatsApp in the last 48 hours that the customer has not answered since, only to customers who wrote to us first: name, phone, start of the quote, when it was sent.', cols: ['phone', 'name', 'quote_at', 'text', 'hours_since'], num: ['hours_since'] }
+};
+Object.entries(SB).forEach(([id, o]) => dash.loader(id, {
+  description: fromSupabase + o.what,
+  fn: ({ answer }) => {
+    const rows = sbRows(answer).map(r => {
+      const x = {};
+      o.cols.forEach(k => { const v = r[k]; x[k] = o.num.includes(k) ? (v == null || v === '' ? null : +v) : (v == null ? null : typeof v === 'boolean' ? v : String(v)); });
+      return x;
+    });
+    return { columns: o.cols, rows };
+  }
+}));
+dash.calc('attention', {
+  inputs: ['leads_kpi', 'wa_kpi', 'comments_kpi'],
+  title: 'Waiting for a person',
+  description: 'Unanswered leads, open WhatsApp inquiries (no person has answered yet), and social comments queued for review, added up.',
+  fn: (leads_kpi, wa_kpi, comments_kpi) => {
+    const l = leads_kpi[0] || {}, w = wa_kpi[0] || {}, c = comments_kpi[0] || {};
+    const leads = l.open_new || 0, whatsapp = w.awaiting_reply || 0, comments = c.queue_open || 0;
+    return [{ leads, whatsapp, comments, total: leads + whatsapp + comments }];
+  }
+});
+dash.calc('contact_clicks_week', {
+  inputs: ['site_leads'],
+  title: 'Site contact clicks, 7 days',
+  description: 'Clicks on WhatsApp, phone, form and directions in the latest 7 days of Google Analytics data, against the 7 days before.',
+  fn: (site_leads) => {
+    const label = { whatsapp_click: 'וואטסאפ', phone_click: 'טלפון', form_submit: 'טופס', directions_click: 'ניווט' };
+    const last = site_leads.reduce((m, x) => x.date > m ? x.date : m, '');
+    if (!last) return [];
+    const d = n => new Date(Date.parse(last) - n * 864e5).toISOString().slice(0, 10);
+    const by = {};
+    site_leads.forEach(x => {
+      const o = by[x.event] = by[x.event] || { event: x.event, label: label[x.event] || x.event, week: 0, prev: 0 };
+      if (x.date > d(7) && x.date <= last) o.week += x.count; else if (x.date > d(14) && x.date <= d(7)) o.prev += x.count;
+    });
+    return Object.values(by).sort((a, b) => b.week - a.week);
+  }
+});
+</script>
+<script>
+/* shared formatting and small drawing helpers */
+const Z = window.Z = {};
+Z.$ = id => document.getElementById(id);
+/* dates as YYYY-MM-DD: a day n days later, and the weekday (0 = Sunday). Each script of the page has its own scope, so draw.js uses these, not logic.js's tgDay/tgDow. */
+Z.addDays = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+Z.dow = d => new Date(d + 'T12:00:00Z').getUTCDay();
+Z.ils = v => {
+  if (v == null || !isFinite(v)) return '—';
+  const a = Math.abs(v), s = v < 0 ? '−' : '';
+  if (a >= 1e6) return s + '₪' + (a / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M';
+  if (a >= 1e4) return s + '₪' + Math.round(a / 1e3) + 'K';
+  return s + '₪' + d3.format(',.0f')(a);
+};
+Z.n = v => v == null || !isFinite(v) ? '—' : d3.format(',.0f')(v);
+Z.pct = v => v == null || !isFinite(v) ? '' : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(Math.round(v * 100)) + '%';
+Z.dm = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) : '';
+Z.MON = ['ינו׳', 'פבר׳', 'מרץ', 'אפר׳', 'מאי', 'יוני', 'יולי', 'אוג׳', 'ספט׳', 'אוק׳', 'נוב׳', 'דצמ׳'];
+Z.NET = { instagram: 'אינסטגרם', facebook: 'פייסבוק', 'tiktok-business': 'טיקטוק', tiktok: 'טיקטוק', youtube: 'יוטיוב', gmb: 'גוגל עסקים' };
+Z.METRIC = { 'Reach': 'חשיפה', 'Page Impressions': 'חשיפות לעמוד', 'Views': 'צפיות', 'Mobile Map Views': 'צפיות במפה', 'Estimated Minutes Watched': 'דקות צפייה' };
+Z.REPORT = { receipts: 'קבלות', invoices: 'חשבוניות', expenses: 'הוצאות', aging: 'גיול חובות', orders: 'הזמנות', orderprices: 'מחירי הזמנות', customers: 'לקוחות', tranzila: 'טרנזילה' };
+Z.ok = id => dash.data(id).status === 'ok';
+Z.rows = id => { const d = dash.data(id); return d.status === 'ok' && Array.isArray(d.data) ? d.data : []; };
+Z.row0 = id => Z.rows(id)[0] || null;
+Z.bad = id => ['error', 'connect', 'declined'].includes(dash.data(id).status);
+Z.fail = el => { el.replaceChildren(); const d = document.createElement('div'); d.className = 'z-fail'; d.textContent = 'לא נטען'; el.appendChild(d); };
+Z.skel = (el, on) => el && el.classList.toggle('dash-skeleton', !!on);
+Z.fill = (calc, fmt) => {
+  const r = Z.row0(calc);
+  document.querySelectorAll(`[data-source="${calc}"][data-field]`).forEach(el => {
+    if (el.closest('table')) return;
+    Z.skel(el, !r && !Z.bad(calc));
+    if (!r) { if (Z.bad(calc)) el.textContent = '—'; return; }
+    const f = el.dataset.field, v = r[f];
+    el.textContent = (fmt[f] || Z.n)(v);
+    if (/change$/.test(f)) el.className = v > 0 ? 'up' : v < 0 ? 'down' : '';
+  });
+};
+Z.tip = (box) => { let t = box.querySelector('.z-tip'); if (!t) { t = document.createElement('div'); t.className = 'z-tip'; t.hidden = true; box.appendChild(t); } return t; };
+Z.showTip = (box, t, lines, x, y) => {
+  t.replaceChildren();
+  lines.forEach((l, i) => { const d = document.createElement('div'); if (i === 0) d.className = 't'; if (l.c) { const s = document.createElement('i'); s.style.background = l.c; d.appendChild(s); } d.appendChild(document.createTextNode(l.t)); t.appendChild(d); });
+  t.hidden = false;
+  const bw = box.clientWidth, tw = t.offsetWidth;
+  t.style.left = Math.max(0, Math.min(bw - tw, x - tw / 2)) + 'px';
+  t.style.top = Math.max(0, y - t.offsetHeight - 10) + 'px';
+};
+Z.legend = (el, items) => { el.replaceChildren(...items.map(([label, color, line]) => { const s = document.createElement('span'); const i = document.createElement('i'); i.style.background = color; if (line) i.className = 'line'; s.append(i, label); return s; })); };
+/* horizontal bar list */
+Z.bars = (id, calc, labelKey, valueKey, fmt, color) => {
+  const el = Z.$(id), rows = Z.rows(calc);
+  if (Z.bad(calc)) return Z.fail(el);
+  Z.skel(el, !Z.ok(calc));
+  el.replaceChildren();
+  if (!Z.ok(calc)) return;
+  const max = d3.max(rows, r => Math.abs(r[valueKey])) || 1;
+  rows.forEach((r, i) => {
+    const line = document.createElement('div'); line.className = 'z-bar';
+    const lb = document.createElement('span'); lb.textContent = typeof labelKey === 'function' ? labelKey(r) : r[labelKey];
+    const tr = document.createElement('div'); tr.className = 'track';
+    const f = document.createElement('div'); f.className = 'fill'; f.style.width = (Math.abs(r[valueKey]) / max * 100).toFixed(1) + '%'; f.style.background = typeof color === 'function' ? color(r, i) : color;
+    tr.appendChild(f);
+    const v = document.createElement('span'); v.className = 'v'; v.textContent = fmt(r[valueKey]);
+    line.append(lb, tr, v); el.appendChild(line);
+  });
+};
+/* table body from rows */
+Z.table = (id, calc, cols, keyOf) => {
+  const tb = Z.$(id).querySelector('tbody');
+  const d = dash.data(calc);
+  tb.replaceChildren();
+  if (d.status !== 'ok') {
+    const tr = document.createElement('tr'), td = document.createElement('td'); td.colSpan = cols.length;
+    if (Z.bad(calc)) { td.className = 'z-fail'; td.textContent = 'לא נטען'; } else { td.className = 'dash-skeleton'; td.textContent = '—'; }
+    tr.appendChild(td); tb.appendChild(tr); return;
+  }
+  (keyOf.rows ? keyOf.rows(d.data) : d.data).forEach(r => {
+    const tr = document.createElement('tr'); tr.dataset.key = keyOf.key(r); if (keyOf.cls) tr.className = keyOf.cls(r) || '';
+    cols.forEach(c => { const td = document.createElement('td'); if (c.n) td.className = 'n'; if (c.txt) td.className = 'txt'; const v = c.f ? c.f(r[c.k], r) : r[c.k]; if (v instanceof Node) td.appendChild(v); else td.textContent = v == null ? '—' : v; if (c.title) td.title = r[c.k]; tr.appendChild(td); });
+    tb.appendChild(tr);
+  });
+};
+</script>
+<script>
+{
+const Z = window.Z, C = dash.colors;
+let tab = 'business';
+
+/* grouped bars (sales, expenses) + profit line, by month */
+function drawMonthly() {
+  const box = Z.$('ch-monthly');
+  if (Z.bad('monthly')) return Z.fail(box);
+  box.replaceChildren(); Z.skel(box, !Z.ok('monthly'));
+  if (!Z.ok('monthly')) return;
+  const rows = Z.rows('monthly');
+  const W = box.clientWidth || 600, H = 240, m = { t: 12, r: 8, b: 26, l: 8 };
+  const lo = Math.min(0, d3.min(rows, r => r.profit)), hi = d3.max(rows, r => Math.max(r.sales, r.expenses, r.profit));
+  const y = d3.scaleLinear([lo, hi], [H - m.b, m.t]).nice(4);
+  const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', 'מכירות, הוצאות ורווח לפי חודש');
+  const ticks = y.ticks(4);
+  const tg = svg.append('g');
+  const lab = tg.selectAll('text').data(ticks).join('text').attr('x', 0).attr('y', d => y(d) + 4).text(d => Z.ils(d));
+  m.l = d3.max(lab.nodes(), n => n.getComputedTextLength()) + 10;
+  tg.selectAll('line').data(ticks).join('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', d => y(d)).attr('y2', d => y(d))
+    .attr('stroke', d => d === 0 ? 'var(--cds-chart-axis)' : 'var(--cds-chart-grid)');
+  const x = d3.scaleBand(rows.map(r => r.month), [m.l, W - m.r]).paddingInner(0.3).paddingOuter(0.15);
+  const bw = Math.min(28, x.bandwidth() / 2 - 1);
+  const g = svg.append('g');
+  const bar = (k, off, color) => g.selectAll('rect.' + k).data(rows).join('rect').attr('class', k)
+    .attr('x', r => x(r.month) + x.bandwidth() / 2 + off).attr('width', bw)
+    .attr('y', r => y(Math.max(0, r[k]))).attr('height', r => Math.abs(y(r[k]) - y(0))).attr('rx', 4).attr('fill', color);
+  bar('sales', -bw - 1, C[0]); bar('expenses', 1, C[1]);
+  const cx = r => x(r.month) + x.bandwidth() / 2;
+  svg.append('path').datum(rows).attr('fill', 'none').attr('stroke', C[2]).attr('stroke-width', 2).attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round')
+    .attr('d', d3.line(cx, r => y(r.profit)));
+  svg.append('g').selectAll('circle').data(rows).join('circle').attr('cx', cx).attr('cy', r => y(r.profit)).attr('r', 4.5)
+    .attr('fill', r => r.missing ? 'var(--color-panel)' : C[2]).attr('stroke', C[2]).attr('stroke-width', 2);
+  svg.append('g').selectAll('text').data(rows).join('text').attr('x', cx).attr('y', H - 6).attr('text-anchor', 'middle').text(r => Z.MON[+r.month.slice(5, 7) - 1]);
+  const t = Z.tip(box);
+  svg.append('g').selectAll('rect').data(rows).join('rect').attr('x', r => x(r.month) - x.step() * x.paddingInner() / 2).attr('width', x.step()).attr('y', 0).attr('height', H).attr('fill', 'transparent')
+    .on('mousemove', (e, r) => { const [px, py] = d3.pointer(e, box); Z.showTip(box, t, [{ t: Z.MON[+r.month.slice(5, 7) - 1] + ' ' + r.month.slice(0, 4) }, { t: 'מכירות ' + Z.ils(r.sales), c: C[0] }, { t: 'הוצאות ' + Z.ils(r.expenses), c: C[1] }, { t: 'רווח ' + Z.ils(r.profit), c: C[2] }].concat(r.missing ? [{ t: 'עוד לא נרשם: ' + r.missing }] : []), px, py); })
+    .on('mouseleave', () => { t.hidden = true; });
+}
+
+/* stacked daily bars, Google + Meta */
+function drawPaid() {
+  const box = Z.$('ch-paid');
+  if (Z.bad('paid_daily')) return Z.fail(box);
+  box.replaceChildren(); Z.skel(box, !Z.ok('paid_daily'));
+  if (!Z.ok('paid_daily')) return;
+  const rows = Z.rows('paid_daily');
+  const W = box.clientWidth || 600, H = 180, m = { t: 10, r: 8, b: 24, l: 8 };
+  const y = d3.scaleLinear([0, d3.max(rows, r => r.google + r.meta) || 1], [H - m.b, m.t]).nice(3);
+  const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', 'הוצאה יומית על מודעות');
+  const ticks = y.ticks(3), tg = svg.append('g');
+  const lab = tg.selectAll('text').data(ticks).join('text').attr('x', 0).attr('y', d => y(d) + 4).text(d => '₪' + d);
+  m.l = d3.max(lab.nodes(), n => n.getComputedTextLength()) + 10;
+  tg.selectAll('line').data(ticks).join('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', d => y(d)).attr('y2', d => y(d)).attr('stroke', d => d === 0 ? 'var(--cds-chart-axis)' : 'var(--cds-chart-grid)');
+  const x = d3.scaleBand(rows.map(r => r.date), [m.l, W - m.r]).padding(0.3);
+  const bw = Math.min(32, x.bandwidth()), off = (x.bandwidth() - bw) / 2;
+  const g = svg.append('g');
+  g.selectAll('rect.g').data(rows).join('rect').attr('class', 'g').attr('x', r => x(r.date) + off).attr('width', bw).attr('y', r => y(r.google)).attr('height', r => y(0) - y(r.google)).attr('rx', 3).attr('fill', C[0]);
+  g.selectAll('rect.m').data(rows).join('rect').attr('class', 'm').attr('x', r => x(r.date) + off).attr('width', bw).attr('y', r => y(r.google + r.meta)).attr('height', r => Math.max(0, y(r.google) - y(r.google + r.meta) - 2)).attr('rx', 3).attr('fill', C[1]);
+  const every = Math.ceil(rows.length / Math.max(1, Math.floor((W - m.l) / 46)));
+  svg.append('g').selectAll('text').data(rows.filter((r, i) => i % every === 0)).join('text').attr('x', r => x(r.date) + x.bandwidth() / 2).attr('y', H - 6).attr('text-anchor', 'middle').text(r => Z.dm(r.date));
+  const t = Z.tip(box);
+  svg.append('g').selectAll('rect').data(rows).join('rect').attr('x', r => x(r.date) - x.step() * 0.15).attr('width', x.step()).attr('y', 0).attr('height', H).attr('fill', 'transparent')
+    .on('mousemove', (e, r) => { const [px, py] = d3.pointer(e, box); Z.showTip(box, t, [{ t: Z.dm(r.date) }, { t: 'גוגל ₪' + r.google.toFixed(2), c: C[0] }, { t: 'מטא ₪' + r.meta.toFixed(2), c: C[1] }], px, py); })
+    .on('mouseleave', () => { t.hidden = true; });
+}
+
+/* impressions bars + clicks line, per day */
+function drawSearch() {
+  const box = Z.$('ch-search');
+  if (Z.bad('search_daily')) return Z.fail(box);
+  box.replaceChildren(); Z.skel(box, !Z.ok('search_daily'));
+  if (!Z.ok('search_daily')) return;
+  const rows = Z.rows('search_daily');
+  const W = box.clientWidth || 600, H = 180, m = { t: 10, r: 8, b: 24, l: 8 };
+  const y = d3.scaleLinear([0, d3.max(rows, r => r.impressions) || 1], [H - m.b, m.t]).nice(3);
+  const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', 'הופעות וקליקים בחיפוש בגוגל לפי יום');
+  const ticks = y.ticks(3), tg = svg.append('g');
+  const lab = tg.selectAll('text').data(ticks).join('text').attr('x', 0).attr('y', d => y(d) + 4).text(d => d);
+  m.l = d3.max(lab.nodes(), n => n.getComputedTextLength()) + 10;
+  tg.selectAll('line').data(ticks).join('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', d => y(d)).attr('y2', d => y(d)).attr('stroke', d => d === 0 ? 'var(--cds-chart-axis)' : 'var(--cds-chart-grid)');
+  const x = d3.scaleBand(rows.map(r => r.date), [m.l, W - m.r]).padding(0.3);
+  const bw = Math.min(32, x.bandwidth()), off = (x.bandwidth() - bw) / 2, cx = r => x(r.date) + x.bandwidth() / 2;
+  svg.append('g').selectAll('rect').data(rows).join('rect').attr('x', r => x(r.date) + off).attr('width', bw).attr('y', r => y(r.impressions)).attr('height', r => y(0) - y(r.impressions)).attr('rx', 3).attr('fill', C[0]);
+  svg.append('path').datum(rows).attr('fill', 'none').attr('stroke', C[1]).attr('stroke-width', 2).attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round').attr('d', d3.line(cx, r => y(r.clicks)));
+  svg.append('g').selectAll('circle').data(rows).join('circle').attr('cx', cx).attr('cy', r => y(r.clicks)).attr('r', 3.5).attr('fill', C[1]).attr('stroke', 'var(--color-panel)').attr('stroke-width', 2);
+  const every = Math.ceil(rows.length / Math.max(1, Math.floor((W - m.l) / 46)));
+  svg.append('g').selectAll('text').data(rows.filter((r, i) => i % every === 0)).join('text').attr('x', cx).attr('y', H - 6).attr('text-anchor', 'middle').text(r => Z.dm(r.date));
+  const t = Z.tip(box);
+  svg.append('g').selectAll('rect').data(rows).join('rect').attr('x', r => x(r.date) - x.step() * 0.15).attr('width', x.step()).attr('y', 0).attr('height', H).attr('fill', 'transparent')
+    .on('mousemove', (e, r) => { const [px, py] = d3.pointer(e, box); Z.showTip(box, t, [{ t: Z.dm(r.date) }, { t: 'הופעות ' + Z.n(r.impressions), c: C[0] }, { t: 'קליקים ' + Z.n(r.clicks), c: C[1] }, { t: 'מיקום ממוצע ' + r.position.toFixed(1) }], px, py); })
+    .on('mouseleave', () => { t.hidden = true; });
+}
+
+/* the day in the business: pick one of the last active days; every mark in the card points at that day */
+const WEEK = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
+const ilDay = t => new Date(t).toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+const dayName = d => d === ilDay(Date.now()) ? 'היום' : d === ilDay(Date.now() - 864e5) ? 'אתמול' : 'יום ' + WEEK[new Date(d + 'T12:00:00Z').getUTCDay()] + ' ' + Z.dm(d);
+const KIND = r => r.kind === 'order' ? 'הזמנה' : r.kind === 'receipt' ? (/^OV/i.test(r.doc) ? 'חשבונית מס קבלה' : /^ON/i.test(r.doc) ? 'זיכוי בקבלה' : 'קבלה') : (/^IK/i.test(r.doc) ? 'זיכוי' : 'חשבונית מס');
+const KORDER = { order: 0, receipt: 1, invoice: 2 };
+const shekel = v => v == null ? '' : (v < 0 ? '−' : '') + '₪' + d3.format(',.0f')(Math.abs(v));
+const dayMarks = [...document.querySelectorAll('#c-today [data-source][data-field]')];
+dayMarks.forEach(el => { el.dataset.src = el.dataset.source; });
+let pickedDay = null;
+const hhmm = v => { if (!v) return '—'; const d = new Date(v), t = d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }); return ilDay(d) === ilDay(Date.now()) ? t : Z.dm(ilDay(d)) + ' ' + t; };
+function emptyRow(id, text) {
+  const tb = Z.$(id).querySelector('tbody');
+  if (tb.children.length || !text) return;
+  const tr = document.createElement('tr'), td = document.createElement('td');
+  td.colSpan = Z.$(id).querySelectorAll('th').length; td.className = 'empty'; td.textContent = text;
+  tr.appendChild(td); tb.appendChild(tr);
+}
+function drawDay() {
+  const kpi = Z.rows('day_kpi'), days = kpi.map(r => r.day);
+  if (!days.includes(pickedDay)) pickedDay = days[days.length - 1] || null;
+  const chips = Z.$('day-chips');
+  if (Z.bad('day_kpi')) Z.fail(chips);
+  else chips.replaceChildren(...days.slice().reverse().map(d => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'z-chip'; b.textContent = dayName(d); b.setAttribute('aria-pressed', String(d === pickedDay));
+    b.addEventListener('click', () => { pickedDay = d; dayOrd = null; drawDay(); });
+    return b;
+  }));
+  const rowOf = { day_kpi: kpi.find(x => x.day === pickedDay), quote_kpi: Z.rows('quote_kpi').find(x => x.day === pickedDay) };
+  const fmt = { receipts_total: Z.ils, invoices_total: Z.ils, total: Z.ils };
+  dayMarks.forEach(el => {
+    const src = el.dataset.src, r = rowOf[src];
+    if (r) { el.setAttribute('data-source', src); el.setAttribute('data-where', 'day=' + pickedDay); el.textContent = (fmt[el.dataset.field] || Z.n)(r[el.dataset.field]); }
+    else { el.removeAttribute('data-source'); el.removeAttribute('data-where'); el.textContent = '—'; }
+    Z.skel(el, !r && !Z.ok(src) && !Z.bad(src));
+  });
+  const qr = rowOf.quote_kpi, qWait = Z.ok('quote_kpi') && !qr && !!pickedDay;
+  Z.$('d-quotes-sub').hidden = !qr; Z.$('d-quotes-wait').hidden = !qWait;
+  Z.$('d-quotes-wait').textContent = Z.bad('quote_kpi') ? 'לא נטען' : 'מגיעות בייצוא של מחר בבוקר';
+  if (Z.bad('quote_kpi')) Z.$('d-quotes-wait').hidden = false;
+  Z.$('d-new-quote').hidden = !(qr && qr.new_customers > 0);
+  const docs = Z.rows('day_docs').filter(r => r.day === pickedDay);
+  const fresh = [...new Set(docs.filter(r => r.new_customer).map(r => r.name))];
+  Z.$('d-new-names').textContent = fresh.length ? fresh.slice(0, 3).join(', ') + (fresh.length > 3 ? ' ועוד' : '') : rowOf.day_kpi ? 'אין לקוח חדש עם מסמך' : '';
+  Z.table('t-day', 'day_docs', [{ k: 'kind', f: (v, r) => KIND(r) },
+    { k: 'doc', f: (v, r) => { if (r.kind !== 'order') return v; const b = document.createElement('button'); b.type = 'button'; b.className = 'z-linkbtn'; b.dataset.so = v; b.textContent = v; b.setAttribute('aria-expanded', String(v === dayOrd)); return b; } },
+    { k: 'name', f: (v, r) => { const s = document.createElement('span'); s.textContent = v || r.cust; if (r.new_customer) { const p = document.createElement('span'); p.className = 'pill new'; p.textContent = 'חדש'; s.appendChild(p); } return s; } },
+    { k: 'amount', n: 1, f: shekel }, { k: 'note' }],
+    { key: r => r.doc, rows: rs => rs.filter(r => r.day === pickedDay).sort((a, b) => KORDER[a.kind] - KORDER[b.kind] || (a.doc < b.doc ? -1 : 1)) });
+  if (Z.ok('day_docs')) emptyRow('t-day', 'אין מסמכים ביום הזה');
+  if (dayOrd && !docs.some(r => r.doc === dayOrd)) dayOrd = null;
+  const dbox = Z.$('day-order');
+  if (dayOrd) orderDetail(dbox, dayOrd); else { dbox.hidden = true; dbox.replaceChildren(); }
+  Z.table('t-day-quotes', 'day_quotes', [{ k: 'quote' },
+    { k: 'name', f: (v, r) => { const s = document.createElement('span'); s.textContent = v || r.cust; if (r.new_customer) { const p = document.createElement('span'); p.className = 'pill new'; p.textContent = 'לקוח חדש'; s.appendChild(p); } return s; } },
+    { k: 'total', n: 1, f: shekel }, { k: 'status' }, { k: 'handler' }],
+    { key: r => r.quote, rows: rs => rs.filter(r => r.day === pickedDay) });
+  Z.$('day-quotes-note').hidden = !qWait;
+  if (Z.ok('day_quotes')) emptyRow('t-day-quotes', qWait ? '' : 'לא נפתחו הצעות מחיר');
+  const qt = Z.$('t-day-quotes'); qt.closest('.z-tbl').hidden = qWait && !qt.querySelector('tbody tr');
+  const rep = Object.fromEntries(Z.rows('reports').map(r => [r.report, r.at])), q0 = Z.rows('quotes')[0];
+  Z.$('day-fresh').textContent = 'עדכון אחרון מפריוריטי: קבלות ' + hhmm(rep.receipts) + ' · חשבוניות ' + hhmm(rep.invoices) + ' · הזמנות ' + hhmm(rep.orders) +
+    ' · הצעות מחיר ' + (q0 ? 'מהייצוא של ' + Z.dm(q0.file_date) + ' בבוקר' : Z.bad('quotes') ? 'לא נטענו' : '…') + '. לקוח חדש = מספר לקוח חדש שהופיע לראשונה במסמך ביום הזה.';
+}
+
+/* orders: one shared detail view (header + lines), a list with age chips and search, and links from the day's list and the age bars */
+let dayOrd = null, ordSel = null, ordAge = 0;
+const qn = v => v == null || !isFinite(v) ? '—' : d3.format(',.2~f')(v);
+const ils2 = v => v == null || !isFinite(v) ? '—' : (v < 0 ? '−' : '') + '₪' + d3.format(',.2f')(Math.abs(v));
+const AGES = [['הכל', 0, 1e9], ['עד שבועיים', 0, 14], ['15–30 יום', 15, 30], ['31–90', 31, 90], ['91–180', 91, 180], ['מעל חצי שנה', 181, 1e9]];
+function orderDetail(box, so) {
+  box.replaceChildren();
+  box.hidden = !so;
+  if (!so) return;
+  const o = Z.rows('orders').find(x => x.so === so);
+  if (!o) { const p = document.createElement('p'); p.className = 'z-note'; p.textContent = Z.ok('orders') ? 'ההזמנה לא נמצאת בדוח ההזמנות הפתוחות.' : '…'; box.appendChild(p); return; }
+  const head = document.createElement('div'); head.setAttribute('data-source', 'orders');
+  const h = document.createElement('h3'); h.textContent = o.so + ' · ' + (o.name || o.cust);
+  const meta = document.createElement('div'); meta.className = 'meta';
+  ['נפתחה ' + Z.dm(o.date) + '/' + o.date.slice(2, 4), 'מס׳ לקוח ' + o.cust, o.owner ? 'פתח/ה: ' + o.owner : '', o.quote ? 'מהצעת מחיר ' + o.quote : '', o.open_lines + ' מתוך ' + o.lines + ' שורות עדיין פתוחות']
+    .filter(Boolean).forEach(t => { const s = document.createElement('span'); s.textContent = t; meta.appendChild(s); });
+  head.append(h, meta);
+  const lines = Z.rows('order_lines').filter(l => l.so === so).sort((a, b) => a.n - b.n);
+  const priced = lines.some(l => l.total != null), anyDisc = lines.some(l => l.disc);
+  const money = document.createElement('div'); money.className = 'z-money'; money.setAttribute('data-source', 'order_totals order_lines');
+  const item = (l, v, c) => { const d = document.createElement('div'), x = document.createElement('span'), y = document.createElement('span'); x.className = 'l'; x.textContent = l; y.textContent = v; if (c) y.className = c; d.append(x, y); money.appendChild(d); };
+  const tot = Z.rows('order_totals').find(x => x.so === so), t0 = Z.rows('order_totals')[0];
+  if (tot) {
+    [['סה״כ כולל מע״מ', shekel(tot.total), 'v'], tot.before_vat != null ? ['לפני מע״מ', shekel(tot.before_vat)] : null, tot.discount_pct ? ['הנחה', d3.format('.2~f')(tot.discount_pct) + '%'] : null, ['סטטוס', tot.status, tot.status === 'שולמה' ? 'up' : tot.status === 'ממתין לתשלום' ? 'warn' : '']]
+      .filter(Boolean).forEach(([l, v, c]) => item(l, v, c));
+  } else {
+    const p = document.createElement('span'); p.className = 'l';
+    p.textContent = Z.bad('order_totals') ? 'הסכומים לא נטענו' : !Z.ok('order_totals') ? '…' : t0 && o.date >= t0.file_date ? 'הסכום יגיע בייצוא של מחר בבוקר' : 'ההזמנה לא נמצאת בייצוא הבוקר';
+    money.appendChild(p);
+  }
+  if (priced) item('עוד פתוח לאספקה, לפני מע״מ', shekel(lines.reduce((s, l) => s + (l.total || 0), 0)));
+  const wrap = document.createElement('div'); wrap.className = 'z-tbl';
+  const t = document.createElement('table'); t.setAttribute('data-source', 'order_lines'); t.setAttribute('data-row-key', 'key');
+  const hr = document.createElement('tr');
+  const cols = [['desc', 'פריט'], ['qty', 'הוזמן', 1], ['open', 'פתוח', 1], ['unit', 'יח׳'], ['price', 'מחיר ליח׳', 1], anyDisc ? ['disc', 'הנחה', 1] : null, ['total', 'סה״כ פתוח', 1], ['due', 'אספקה'], ['stock', 'במחסן', 1], ['item', 'מק״ט']].filter(Boolean);
+  cols.forEach(([f, label, n]) => {
+    const th = document.createElement('th'); th.setAttribute('data-field', f); th.textContent = label; if (n) th.className = 'n'; hr.appendChild(th);
+  });
+  const thead = document.createElement('thead'); thead.appendChild(hr);
+  const tb = document.createElement('tbody');
+  if (!Z.ok('order_lines')) { const tr = document.createElement('tr'), td = document.createElement('td'); td.colSpan = cols.length; if (Z.bad('order_lines')) { td.className = 'z-fail'; td.textContent = 'לא נטען'; } else { td.className = 'dash-skeleton'; td.textContent = '—'; } tr.appendChild(td); tb.appendChild(tr); }
+  lines.forEach(l => {
+    const tr = document.createElement('tr'); tr.dataset.key = l.key;
+    const short = l.item !== '000' && l.stock != null && l.open > 0 && l.stock < l.open;
+    [[l.desc, 'txt'], [qn(l.qty), 'n'], [qn(l.open), 'n' + (l.open > 0 ? '' : ' empty')], [l.unit], [ils2(l.price), 'n'], anyDisc ? [l.disc ? d3.format('.2~f')(l.disc) + '%' : '—', 'n'] : null, [ils2(l.total), 'n'],
+      [l.due ? Z.dm(l.due) : '—'], [l.stock == null || l.item === '000' ? '—' : qn(l.stock), 'n' + (short ? ' warn' : '')], [l.item]].filter(Boolean).forEach(([v, c]) => {
+      const td = document.createElement('td'); td.textContent = v; if (c) td.className = c; if (c === 'txt') td.title = v; tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  });
+  t.append(thead, tb); wrap.appendChild(t);
+  const note = document.createElement('p'); note.className = 'z-note';
+  note.textContent = (t0 ? 'הסכום והסטטוס מייצוא פריוריטי של ' + Z.dm(t0.file_date) + ' בבוקר. ' : '') + 'פתוח = מה שעוד לא סופק. מחיר ליח׳ לפני הנחות ומע״מ; סה״כ פתוח = הכמות הפתוחה כפול המחיר, אחרי הנחת השורה וההנחה הכללית, לפני מע״מ, כפי שפריוריטי מחשב. במחסן = הכמות במחסן לפי פריוריטי בזמן הדוח; בצבע אזהרה כשהיא קטנה ממה שפתוח. פריט 000 הוא מלאי ישן בלי מק״ט.';
+  box.append(head, money, wrap, note);
+}
+function drawOrders() {
+  const draft = new Set(Z.rows('order_totals').filter(t => /^טיוט/.test(t.status) || t.status === 'מבוטלת').map(t => t.so));
+  const all = Z.rows('orders').filter(o => !o.walk_in && o.date && !/^T/i.test(o.so) && !draft.has(o.so));
+  const asof = all.reduce((m, x) => x.date > m ? x.date : m, '');
+  const age = d => Math.round((Date.parse(asof) - Date.parse(d)) / 864e5);
+  const chips = Z.$('ord-chips');
+  if (Z.bad('orders')) Z.fail(chips);
+  else chips.replaceChildren(...AGES.map(([label, lo, hi], i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'z-chip'; b.setAttribute('aria-pressed', String(i === ordAge));
+    b.textContent = label + (Z.ok('orders') ? ' · ' + all.filter(o => age(o.date) >= lo && age(o.date) <= hi).length : '');
+    b.addEventListener('click', () => { ordAge = i; drawOrders(); });
+    return b;
+  }));
+  const q = Z.$('ord-q').value.trim().toLowerCase();
+  const hit = new Set(q ? Z.rows('order_lines').filter(l => (l.desc + ' ' + l.item).toLowerCase().includes(q)).map(l => l.so) : []);
+  const [, lo, hi] = AGES[ordAge];
+  const list = all.filter(o => age(o.date) >= lo && age(o.date) <= hi)
+    .filter(o => !q || o.so.toLowerCase().includes(q) || (o.name || '').toLowerCase().includes(q) || o.cust.includes(q) || hit.has(o.so))
+    .sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : a.so < b.so ? 1 : -1);
+  if (!list.some(o => o.so === ordSel)) ordSel = list.length ? list[0].so : null;
+  Z.table('t-orders', 'orders', [{ k: 'so' }, { k: 'date', f: Z.dm }, { k: 'name', f: (v, r) => v || r.cust }, { k: 'owner' }, { k: 'open_lines', n: 1, f: Z.n }], { key: r => r.so, rows: () => list });
+  Z.$('t-orders').querySelectorAll('tbody tr[data-key]').forEach(tr => { tr.tabIndex = 0; tr.classList.toggle('sel', tr.dataset.key === ordSel); });
+  if (Z.ok('orders')) emptyRow('t-orders', 'אין הזמנות שמתאימות');
+  Z.$('ord-count').textContent = Z.ok('orders') ? list.length + ' הזמנות' + (q ? ' שמתאימות לחיפוש' : '') + ' · מהחדשה לישנה · בלי טיוטות · לחיצה פותחת פירוט' : '';
+  orderDetail(Z.$('ord-detail'), ordSel);
+}
+Z.$('ord-q').addEventListener('input', drawOrders);
+const pickOrder = e => {
+  const tr = e.target.closest('tbody tr[data-key]');
+  if (!tr || (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ')) return;
+  e.preventDefault();
+  ordSel = tr.dataset.key;
+  Z.$('t-orders').querySelectorAll('tbody tr[data-key]').forEach(r => r.classList.toggle('sel', r.dataset.key === ordSel));
+  const box = Z.$('ord-detail');
+  orderDetail(box, ordSel);
+  if (box.getBoundingClientRect().top > window.innerHeight - 80) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+Z.$('t-orders').addEventListener('click', pickOrder);
+Z.$('t-orders').addEventListener('keydown', pickOrder);
+Z.$('t-day').addEventListener('click', e => {
+  const b = e.target.closest('.z-linkbtn');
+  if (!b) return;
+  dayOrd = dayOrd === b.dataset.so ? null : b.dataset.so;
+  Z.$('t-day').querySelectorAll('.z-linkbtn').forEach(x => x.setAttribute('aria-expanded', String(x.dataset.so === dayOrd)));
+  const box = Z.$('day-order');
+  orderDetail(box, dayOrd);
+  if (dayOrd) box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
+
+/* targets: one tile per measure, a status dot and word, a thin bar with the red and green marks */
+const TGWORD = { green: 'ירוק', yellow: 'צהוב', red: 'אדום' };
+const TGCOLOR = { green: 'var(--cds-chart-status-good)', yellow: 'var(--cds-chart-status-warning)', red: 'var(--cds-chart-status-critical)' };
+const tgSpanTxt = (a, b) => Z.dm(a) + '–' + Z.dm(b);
+// one decimal between ₪10K and ₪100K, so a value just under a mark (₪64.5K against ₪65K) does not read as on it
+const tgIls = v => v != null && v >= 1e4 && v < 1e5 ? '₪' + (v / 1e3).toFixed(1).replace(/\.0$/, '') + 'K' : Z.ils(v);
+const TGMONTH = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+const tgNoOrders = r => !r ? 'לא הצלחנו לקרוא את ייצוא ההזמנות' : r.reason === 'partial' ? 'ייצוא הבוקר חלקי, ולכן אין ספירה' : r.reason === 'stale'
+  ? (new Date().toLocaleTimeString('en-GB', { hour: '2-digit', hour12: false, timeZone: 'Asia/Jerusalem' }) < '11' ? 'ייצוא הבוקר של היום עוד לא הגיע (בדרך כלל עד 07:30)' : 'ייצוא הבוקר של היום לא הגיע') : 'לא נמצא ייצוא הזמנות';
+function tgTile(t) {
+  const el = document.createElement('div'); el.className = 'z-tg';
+  if (t.status && TGWORD[t.status]) el.style.setProperty('--z-st', TGCOLOR[t.status]);
+  const top = document.createElement('div'); top.className = 'z-tg-top';
+  const lb = document.createElement('span'); lb.className = 'lbl'; lb.textContent = t.label; top.appendChild(lb);
+  if (TGWORD[t.status]) { const st = document.createElement('span'); st.className = 'st'; st.append(document.createElement('i'), TGWORD[t.status]); top.appendChild(st); }
+  const big = document.createElement('span'); big.className = 'big' + (t.value == null ? ' nd' : ''); big.textContent = t.value == null ? (t.loading ? '—' : 'אין נתון') : t.value;
+  if (t.loading) big.classList.add('dash-skeleton');
+  el.append(top, big);
+  if (t.bar && TGWORD[t.status]) {
+    const b = t.bar, max = Math.max(...b.marks, b.value, b.ghost || 0) * 1.15 || 1, pc = v => Math.max(0, Math.min(100, v / max * 100)).toFixed(1) + '%';
+    const bar = document.createElement('div'); bar.className = 'z-tg-bar'; bar.setAttribute('aria-hidden', 'true');
+    if (b.ghost > b.value) { const g = document.createElement('span'); g.className = 'ghost'; g.style.width = pc(b.ghost); bar.appendChild(g); }
+    const f = document.createElement('span'); f.style.width = pc(b.value); bar.appendChild(f);
+    b.marks.forEach(m => { const k = document.createElement('b'); k.style.insetInlineStart = pc(m); bar.appendChild(k); });
+    el.appendChild(bar);
+  }
+  (t.sub || []).filter(Boolean).forEach(x => { const s = document.createElement('span'); s.className = 'sub'; s.textContent = x; el.appendChild(s); });
+  return el;
+}
+function drawTargets() {
+  const box = Z.$('tg-list');
+  const S = Object.fromEntries(Z.rows('targets_sales').map(r => [r.key, r])), O = Object.fromEntries(Z.rows('targets_orders').map(r => [r.key, r]));
+  const sWait = !Z.ok('targets_sales') && !Z.bad('targets_sales'), oWait = !Z.ok('targets_orders') && !Z.bad('targets_orders'), bWait = !Z.ok('bank_kpi') && !Z.bad('bank_kpi');
+  const ils = (g, r, down) => down ? 'ירוק מתחת ל־' + Z.ils(g) + ' · אדום מעל ' + Z.ils(r) : 'יעד ' + Z.ils(g) + ' · אדום מתחת ל־' + Z.ils(r);
+  const short = r => r && r.scale < 0.99 ? ' (שבוע מקוצר)' : '';
+  const m = S.month, rl = S.roll, w = S.week, c = S.collect, d = S.debt60, od = O.orders_day, ow = O.orders_week, bk = Z.row0('bank_kpi');
+  const tiles = [
+    m ? { label: 'מכירות ' + TGMONTH[+m.to.slice(5, 7) - 1], value: tgIls(m.value), status: m.status, bar: { value: m.value, ghost: m.done ? 0 : m.projection, marks: [m.red, m.green] },
+      sub: [m.done ? 'החודש נסגר' : 'עד ' + Z.dm(m.to) + ' · צפי לסוף החודש ' + tgIls(m.projection), m.done ? '' : 'נדרש עד עכשיו לירוק: ' + tgIls(m.pace), ils(m.green, m.red)] } : { label: 'מכירות החודש', loading: sWait },
+    rl ? { label: 'מכירות 4 שבועות', value: tgIls(rl.value), status: rl.status, bar: { value: rl.value, marks: [rl.red, rl.green] }, sub: [tgSpanTxt(rl.from, rl.to), ils(rl.green, rl.red)] } : { label: 'מכירות 4 שבועות', loading: sWait },
+    w ? { label: 'מכירות בשבוע שעבר', value: tgIls(w.value), status: w.status, bar: { value: w.value, marks: [w.red, w.green] },
+      sub: [tgSpanTxt(w.from, Z.addDays(w.to, -1)) + (w.so_far != null ? ' · השבוע עד עכשיו ' + tgIls(w.so_far) : ''), ils(w.green, w.red) + short(w)] } : { label: 'מכירות בשבוע שעבר', loading: sWait },
+    od && od.status !== 'none' ? { label: 'הזמנות חדשות, ' + dayName(od.day), value: Z.n(od.value), status: od.status, bar: { value: od.value, marks: [od.red, od.green] },
+      sub: [Z.dow(od.day) === 5 ? 'יעד לשישי 2 ומעלה · אדום 1 ומטה' : 'יעד 4 ומעלה · אדום 1 ומטה'] } : { label: 'הזמנות חדשות ביום האחרון', loading: oWait, sub: oWait ? [] : [tgNoOrders(od)] },
+    ow && ow.status !== 'none' ? { label: 'הזמנות חדשות בשבוע שעבר', value: Z.n(ow.value), status: ow.status, bar: { value: ow.value, marks: [ow.red, ow.green] },
+      sub: [tgSpanTxt(ow.from, Z.addDays(ow.to, -1)) + (ow.worth != null ? ' · שווי ' + tgIls(ow.worth) + ' לפני מע״מ' : ''), 'יעד ' + ow.green + ' ומעלה · אדום מתחת ל־' + ow.red + short(ow)] } : { label: 'הזמנות חדשות בשבוע שעבר', loading: oWait, sub: oWait ? [] : [tgNoOrders(ow)] },
+    c ? { label: 'גבייה בשבוע שעבר', value: tgIls(c.value), status: c.status, bar: { value: c.value, marks: [c.red, c.green] },
+      sub: [tgSpanTxt(c.from, Z.addDays(c.to, -1)) + (c.so_far != null ? ' · השבוע עד עכשיו ' + tgIls(c.so_far) : ''), ils(c.green, c.red) + short(c)] } : { label: 'גבייה בשבוע שעבר', loading: sWait },
+    d ? { label: 'חובות מעל 60 יום', value: tgIls(d.value), status: d.status, bar: { value: d.value, marks: [d.green, d.red] },
+      sub: [Z.n(d.count) + ' לקוחות · יעד ביניים ₪30K עד 30/11', ils(d.green, d.red, 1)] } : { label: 'חובות מעל 60 יום', loading: sWait },
+    bk && bk.balance != null ? { label: 'יתרה בבנק', value: Z.ils(bk.balance), sub: ['נכון ל־' + Z.dm(bk.date) + ', לפי דף הבנק האחרון שנקלט בפריוריטי', 'בלי צבע עד שהבנק יתחבר ישירות'] }
+      : { label: 'יתרה בבנק', loading: bWait, sub: bWait ? [] : ['לא הצלחנו לקרוא את דף הבנק מפריוריטי'] }
+  ];
+  box.replaceChildren(...tiles.map(tgTile));
+  const n = k => tiles.filter(t => t.status === k).length;
+  Z.$('tg-count').textContent = Z.ok('targets_sales') ? ['green', 'yellow', 'red'].filter(n).map(k => TGWORD[k] + ' ' + n(k)).join(' · ') : '';
+}
+
+function drawBusiness() {
+  drawDay();
+  drawTargets();
+  drawOrders();
+  const ils = { collected_mtd: Z.ils, sales_mtd: Z.ils, collected_change: Z.pct, sales_change: Z.pct };
+  Z.fill('money_kpi', ils);
+  Z.fill('ytd', { sales: Z.ils, expenses: Z.ils, profit: Z.ils });
+  Z.fill('debt_kpi', { owed: Z.ils, over90: Z.ils, prepaid: Z.ils });
+  Z.fill('card_kpi', { net: Z.ils, date: Z.dm });
+  const mk = Z.row0('money_kpi');
+  Z.$('take-chg').textContent = mk && mk.collected_change != null ? (mk.collected_change >= 0 ? 'יותר' : 'פחות') + ' מאותם ימים בחודש שעבר' : '';
+  const ytd = Z.row0('ytd');
+  if (ytd) { const p = document.querySelector('#k-profit .big'); p.className = 'big ' + (ytd.profit < 0 ? 'down' : ''); }
+  Z.legend(Z.$('lg-monthly'), [['מכירות', C[0]], ['הוצאות', C[1]], ['רווח', C[2], 1]]);
+  drawMonthly();
+  Z.bars('b-methods', 'methods', 'method', 'amount', Z.ils, C[0]);
+  Z.bars('b-debt-age', 'debt_age', 'bucket', 'amount', Z.ils, r => r.bucket === 'מעל 90' ? 'var(--cds-chart-status-critical)' : 'var(--cds-chart-muted)');
+  Z.bars('b-orders', 'orders_age', 'bucket', 'orders', Z.n, r => r.bucket === 'מעל חצי שנה' ? 'var(--cds-chart-muted)' : C[0]);
+  Z.$('b-orders').querySelectorAll('.z-bar').forEach((el, i) => {
+    el.tabIndex = 0; el.setAttribute('role', 'button');
+    const go = () => { ordAge = i + 1; Z.$('ord-q').value = ''; drawOrders(); Z.$('c-orderlist').scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+    el.addEventListener('click', go);
+    el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  });
+  Z.bars('b-sections', 'exp_sections', 'section', 'amount', Z.ils, C[1]);
+  Z.table('t-debtors', 'top_debtors', [{ k: 'name' }, { k: 'total', n: 1, f: Z.ils }, { k: 'over90', n: 1, f: v => v ? Z.ils(v) : '' }], { key: r => r.cust });
+  Z.table('t-reports', 'reports', [{ k: 'report', f: v => Z.REPORT[v] || v },
+    { k: 'at', f: v => { if (!v) return '—'; const d = new Date(v), s = document.createElement('span'); s.textContent = Z.dm(d.toISOString().slice(0, 10)) + ' ' + d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }); if (Date.now() - d > 26 * 36e5) { s.className = 'warn'; s.textContent += ' · בפיגור'; } return s; } },
+    { k: 'rows', n: 1, f: Z.n }], { key: r => r.report });
+}
+
+/* posts gantt: one row per piece of content, a mark on the day it went out, views per network */
+const GNET = { instagram: 'אינסטגרם', facebook: 'פייסבוק', tiktok: 'טיקטוק', youtube: 'יוטיוב', google: 'גוגל עסקים' };
+const GDAY = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
+let gSort = 'date', gDays = 14;
+Z.$('gantt-ctl').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.sort) gSort = b.dataset.sort;
+  if (b.dataset.days) gDays = +b.dataset.days;
+  drawGantt();
+});
+function drawGantt() {
+  const card = Z.$('c-posts'), box = Z.$('gantt'), table = Z.$('t-gantt'), thead = table.tHead, tb = table.tBodies[0];
+  card.style.setProperty('--z-mk', C[0]);
+  const d = dash.data('post_gantt');
+  const rows = d.status === 'ok' && Array.isArray(d.data) ? d.data : [];
+  const asof = rows.reduce((m, r) => r.asof > m ? r.asof : m, '');
+  const end = asof.slice(0, 10) || rows.reduce((m, r) => r.day > m ? r.day : m, '');
+  const iso = t => new Date(t).toISOString().slice(0, 10);
+  const oldest = rows.reduce((m, r) => !m || r.day < m ? r.day : m, '');
+  const more = !!end && !!oldest && (Date.parse(end) - Date.parse(oldest)) / 864e5 >= 14;
+  if (!more) gDays = 14;
+  card.querySelectorAll('#gantt-ctl button').forEach(b => {
+    if (b.dataset.days) b.hidden = !more;
+    b.setAttribute('aria-pressed', String(b.dataset.sort ? b.dataset.sort === gSort : +b.dataset.days === gDays));
+  });
+  const leg = Z.$('lg-gantt');
+  const item = (cls, label) => { const s = document.createElement('span'), i = document.createElement('i'); i.className = 'mk ' + cls; if (cls === 'post') i.style.background = C[0]; s.append(i, label); return s; };
+  leg.replaceChildren(item('post', 'פוסט או רילס'), ...(rows.some(r => r.kind === 'story') ? [item('story', 'סטורי')] : []), item('sat', 'שבת'));
+  if (d.status !== 'ok' || !end) {
+    thead.replaceChildren(); tb.replaceChildren();
+    const tr = document.createElement('tr'), td = document.createElement('td');
+    if (Z.bad('post_gantt')) { td.className = 'z-fail'; td.textContent = 'לא נטען'; } else if (d.status === 'ok') { td.className = 'empty'; td.textContent = 'אין פוסטים בקובץ'; } else { td.className = 'dash-skeleton'; td.textContent = '—'; }
+    tr.appendChild(td); tb.appendChild(tr); return;
+  }
+  const span = Math.min(gDays, Math.round((Date.parse(end) - Date.parse(oldest)) / 864e5) + 1);
+  const days = d3.range(span).map(i => iso(Date.parse(end) - (span - 1 - i) * 864e5)), n = days.length;
+  const vis = rows.filter(r => r.day >= days[0] && r.day <= end);
+  const nets = Object.keys(GNET).filter(k => vis.some(r => r.where.split(',').includes(k)));
+  const slot = matchMedia('(max-width: 40rem)').matches ? '0.95rem' : n > 14 ? '1.15rem' : '1.6rem';
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const th = (field, label, cls) => { const e = el('th', cls, label); e.dataset.field = field; return e; };
+  const head = th('day', null, 'tl'), hg = el('div', 'z-tl-h');
+  hg.style.setProperty('--n', n); hg.style.setProperty('--slot', slot); hg.setAttribute('aria-label', 'ימים');
+  days.forEach((day, i) => {
+    const wd = new Date(day + 'T00:00:00Z').getUTCDay(), s = el('span', (wd === 6 ? 'sat ' : '') + (day === end ? 'end' : ''));
+    s.append(el('span', null, n > 14 ? (wd === 6 ? 'ש׳' : '') : GDAY[wd]), el('span', null, day.slice(8) === '01' ? Z.dm(day) : String(+day.slice(8))));
+    hg.appendChild(s);
+  });
+  head.appendChild(hg);
+  const tr0 = document.createElement('tr');
+  tr0.append(th('title', 'פרסום'), head, ...nets.map(k => th('views_' + k, GNET[k], 'n')), th('views', 'סה״כ צפיות', 'n'), th('comments', 'תגובות', 'n'));
+  thead.replaceChildren(tr0);
+  const list = gSort === 'views' ? vis.slice().sort((a, b) => (b.views == null ? -1 : b.views) - (a.views == null ? -1 : a.views) || (b.day + b.time).localeCompare(a.day + a.time)) : vis;
+  const max = d3.max(vis, r => r.views) || 1, tip = Z.tip(box);
+  const nm = t => el('span', 'nm', t);
+  tb.replaceChildren(...list.map(r => {
+    const tr = document.createElement('tr'); tr.dataset.key = r.piece;
+    const where = r.where.split(',');
+    const t = el('td', null, r.title.replace(/\s+/g, ' ')); t.title = r.title;
+    const tl = el('td', 'tl'), bar = el('div', 'z-tl');
+    bar.style.setProperty('--n', n); bar.style.setProperty('--slot', slot);
+    days.forEach((day, i) => { if (new Date(day + 'T00:00:00Z').getUTCDay() === 6) { const s = el('i', 'sat'); s.style.insetInlineStart = (i / n * 100) + '%'; s.style.width = (100 / n) + '%'; bar.appendChild(s); } });
+    const i = days.indexOf(r.day), mk = el('i', 'mk' + (r.kind === 'story' ? ' story' : ''));
+    mk.style.insetInlineStart = 'calc(' + (i / n * 100) + '% + 3px)'; mk.style.width = 'calc(' + (100 / n) + '% - 6px)';
+    bar.append(mk, el('span', 'z-sr', Z.dm(r.day) + ' ' + r.time + (r.kind === 'story' ? ' סטורי' : '')));
+    bar.addEventListener('mousemove', e => { const [x, y] = d3.pointer(e, box);
+      Z.showTip(box, tip, [{ t: GDAY[new Date(r.day + 'T00:00:00Z').getUTCDay()] + ' ' + Z.dm(r.day) + ' בשעה ' + r.time + (r.kind === 'story' ? ' · סטורי' : '') }, { t: where.map(k => GNET[k]).join(', ') },
+        { t: (r.views == null ? 'אין נתוני צפיות' : Z.n(r.views) + ' צפיות') + (r.comments ? ' · ' + Z.n(r.comments) + ' תגובות' : '') }]
+        .concat(r.likes || r.shares ? [{ t: Z.n(r.likes || 0) + ' לייקים · ' + Z.n(r.shares || 0) + ' שיתופים' }] : []), x, y); });
+    bar.addEventListener('mouseleave', () => { tip.hidden = true; });
+    tl.appendChild(bar);
+    const cells = nets.map(k => { const td = el('td', 'n'), v = r['views_' + k]; if (v != null) td.textContent = Z.n(v); else if (where.includes(k)) td.appendChild(nm('פורסם')); return td; });
+    const tv = el('td', 'n');
+    if (r.views == null) tv.appendChild(nm('אין נתונים')); else { const vb = el('span', 'z-vb'), f = el('i'); f.style.width = (r.views / max * 100).toFixed(1) + '%'; vb.appendChild(f); tv.append(Z.n(r.views), vb); }
+    const tc = el('td', 'n'); if (r.comments == null) tc.appendChild(nm('—')); else tc.textContent = Z.n(r.comments);
+    tr.append(t, tl, ...cells, tv, tc);
+    return tr;
+  }));
+}
+
+function drawMarketing() {
+  Z.fill('paid_kpi', { spend: Z.ils, google: Z.ils, meta: Z.ils, per_contact: Z.ils, voucher_spent: Z.ils, voucher_left: Z.ils, voucher_pace: Z.ils });
+  Z.fill('site_kpi', {});
+  Z.fill('search_totals', { position: v => v == null ? '—' : v.toFixed(1) });
+  Z.fill('follow_kpi', { per_1k: v => v == null ? '—' : v.toFixed(1) });
+  const pk = Z.row0('paid_kpi'), vb = Z.$('voucher-bar').firstElementChild;
+  vb.style.width = pk ? (pk.voucher_share * 100).toFixed(1) + '%' : '0';
+  vb.style.background = C[0];
+  Z.legend(Z.$('lg-paid'), [['גוגל', C[0]], ['מטא', C[1]]]);
+  Z.legend(Z.$('lg-search'), [['הופעות בתוצאות', C[0]], ['קליקים', C[1], 1]]);
+  drawPaid(); drawSearch();
+  Z.table('t-sources', 'site_sources', [{ k: 'source' }, { k: 'sessions', n: 1, f: Z.n }, { k: 'contacts', n: 1, f: Z.n }], { key: r => r.source });
+  Z.table('t-pages', 'search_pages', [{ k: 'page', txt: 1, title: 1, f: v => v === '/' ? 'דף הבית' : v }, { k: 'impressions', n: 1, f: Z.n }, { k: 'clicks', n: 1, f: Z.n }, { k: 'position', n: 1, f: v => v.toFixed(1) }],
+    { key: r => r.page, rows: rs => rs.slice().sort((a, b) => b.impressions - a.impressions).slice(0, 10) });
+  Z.table('t-social', 'social_week', [{ k: 'platform', f: v => Z.NET[v] || v }, { k: 'metric', f: v => Z.METRIC[v] || v }, { k: 'week', n: 1, f: Z.n },
+    { k: 'change', n: 1, f: v => { const s = document.createElement('span'); s.textContent = v == null ? '—' : Z.pct(v); s.className = v > 0 ? 'up' : v < 0 ? 'down' : ''; return s; } }], { key: r => r.platform });
+  const nm = v => { if (v != null) return Z.n(v); const s = document.createElement('span'); s.className = 'nm'; s.textContent = 'לא נמדד'; return s; };
+  Z.table('t-followers', 'followers_week', [{ k: 'network', f: v => v === 'reviews' ? 'ביקורות בגוגל' : Z.NET[v] || v }, { k: 'fresh', n: 1, f: nm }, { k: 'total', n: 1, f: nm },
+    { k: 'goal_nov', n: 1, f: v => '\u2066' + v + '\u2069' }, { k: 'goal_jan', n: 1, f: v => '\u2066' + v + '\u2069' }], { key: r => r.network });
+  Z.fill('post_kpi', { asof: v => v ? Z.dm(v.slice(0, 10)) + ' בשעה ' + v.slice(11, 16) : '—', top_title: v => v ? v.replace(/\s+/g, ' ') : '—', top_day: v => Z.dm(v),
+    top_where: v => v ? v.split(',').map(k => GNET[k]).join(', ') : '' });
+  const pk0 = Z.row0('post_kpi');
+  Z.$('posts-stale').hidden = !(pk0 && pk0.stale);
+  drawGantt();
+}
+
+/* ---- leads and customer-service tabs ---- */
+const CHAN = { whatsapp: 'וואטסאפ', phone: 'טלפון', site_form: 'האתר', instagram: 'אינסטגרם', facebook: 'פייסבוק', tiktok: 'טיקטוק', google_ads: 'מודעות גוגל', meta_ads: 'מודעות מטא', social: 'פוסט ברשתות', gbp: 'גוגל עסקים', walk_in: 'הגיעו לאולם', other: 'אחר' };
+const CHAN_ORDER = Object.keys(CHAN);
+const STAGE = { new: 'חדש', answered: 'נענה', visited: 'ביקר באולם', quoted: 'קיבל הצעה', won: 'נסגר', lost: 'אבד' };
+const CAT = { keyword: 'מילת מפתח', compliment: 'מחמאה', price: 'שאלת מחיר', question: 'שאלה', negative: 'שלילית', unclear: 'לא ברור', tag: 'תיוג', emoji: 'אימוג׳י', repeat: 'חוזרת' };
+const chanColor = c => C[Math.max(0, CHAN_ORDER.indexOf(c)) % C.length];
+const tail9 = p => { const d = String(p || '').replace(/\D/g, ''); return d.length >= 9 ? d.slice(-9) : ''; };
+const fmtPhone = t => t ? '0' + t.slice(0, 2) + '-' + t.slice(2, 5) + '-' + t.slice(5) : '—';
+const waLink = p => {
+  const t = tail9(p);
+  if (!t) return '—';
+  const a = document.createElement('a'); a.href = 'https://wa.me/972' + t; a.target = '_blank'; a.rel = 'noopener'; a.className = 'z-wa'; a.textContent = fmtPhone(t);
+  return a;
+};
+const whenTxt = v => { if (!v) return '—'; const d = v.slice(0, 10), t = v.slice(11, 16); const w = d === ilDay(Date.now()) ? 'היום' : d === ilDay(Date.now() - 864e5) ? 'אתמול' : ''; return w ? w + (t ? ' ' + t : '') : '\u2066' + Z.dm(d) + (t ? ' ' + t : '') + '\u2069'; };
+const ltr = v => v ? '\u2066' + v + '\u2069' : '—';
+const WATYPE = { text: '', image: 'תמונה', video: 'וידאו', audio: 'הקלטה', voice: 'הקלטה', document: 'קובץ', sticker: 'מדבקה', location: 'מיקום', contacts: 'איש קשר', reaction: 'תגובה', interactive: 'לחצן', button: 'לחצן' };
+const hoursTxt = h => h == null ? '—' : h < 1 ? Math.round(h * 60) + ' דק׳' : h < 48 ? String(Math.round(h * 10) / 10) + ' שע׳' : Math.round(h / 24) + ' ימים';
+const minTxt = m => m == null ? '—' : m < 60 ? Math.round(m) + ' דק׳' : m < 1440 ? (m / 60).toFixed(1).replace(/\.0$/, '') + ' שע׳' : Math.round(m / 1440) + ' ימים';
+const txt = v => v || '—';
+const pctTxt = v => v == null ? 'אין נתון' : Math.round(v) + '%';
+// opening-hours minutes stay in hours: days would read as calendar days
+const bizTxt = m => m == null ? '—' : m < 60 ? Math.round(m) + ' דק׳' : (m < 600 ? (m / 60).toFixed(1).replace(/\.0$/, '') : Math.round(m / 60)) + ' שע׳';
+const pageName = v => v === '/' ? 'דף הבית' : v ? ltr(v) : '—';
+
+function drawLeadsDaily() {
+  const box = Z.$('ch-leads');
+  if (Z.bad('leads_daily')) return Z.fail(box);
+  box.replaceChildren(); Z.skel(box, !Z.ok('leads_daily'));
+  if (!Z.ok('leads_daily')) return;
+  const rows = Z.rows('leads_daily');
+  const days = d3.range(27, -1, -1).map(n => ilDay(Date.now() - n * 864e5));
+  const seen = [...new Set(rows.map(r => r.channel))];
+  const chans = CHAN_ORDER.filter(c => seen.includes(c)).concat(seen.filter(c => !CHAN[c]));
+  Z.legend(Z.$('lg-leads'), chans.map(c => [CHAN[c] || c, chanColor(c)]));
+  if (!rows.length) { const d = document.createElement('div'); d.className = 'z-empty'; d.textContent = 'עדיין אין לידים ב-28 הימים האחרונים.'; box.appendChild(d); return; }
+  const byDay = {}; days.forEach(d => { byDay[d] = { day: d }; });
+  rows.forEach(r => { if (byDay[r.day]) byDay[r.day][r.channel] = (byDay[r.day][r.channel] || 0) + r.n; });
+  const data = days.map(d => byDay[d]);
+  const W = box.clientWidth || 600, H = 180, m = { t: 10, r: 8, b: 24, l: 8 };
+  const series = d3.stack().keys(chans).value((d, k) => d[k] || 0)(data);
+  const top = d3.max(series[series.length - 1], d => d[1]) || 1;
+  const y = d3.scaleLinear([0, top], [H - m.b, m.t]).nice(3);
+  const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', 'לידים חדשים לפי יום וערוץ');
+  const ticks = y.ticks(3).filter(Number.isInteger), tg = svg.append('g');
+  const lab = tg.selectAll('text').data(ticks).join('text').attr('x', 0).attr('y', d => y(d) + 4).text(d => d);
+  m.l = d3.max(lab.nodes(), n => n.getComputedTextLength()) + 10;
+  tg.selectAll('line').data(ticks).join('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', d => y(d)).attr('y2', d => y(d)).attr('stroke', d => d === 0 ? 'var(--cds-chart-axis)' : 'var(--cds-chart-grid)');
+  const x = d3.scaleBand(days, [m.l, W - m.r]).padding(0.3);
+  const bw = Math.min(28, x.bandwidth()), off = (x.bandwidth() - bw) / 2;
+  svg.append('g').selectAll('g').data(series).join('g').attr('fill', s => chanColor(s.key)).selectAll('rect').data(s => s).join('rect')
+    .attr('x', d => x(d.data.day) + off).attr('width', bw).attr('y', d => y(d[1])).attr('height', d => Math.max(0, y(d[0]) - y(d[1]) - (d[1] > d[0] ? 1 : 0))).attr('rx', 2);
+  const every = Math.ceil(days.length / Math.max(1, Math.floor((W - m.l) / 46)));
+  svg.append('g').selectAll('text').data(days.filter((d, i) => i % every === 0)).join('text').attr('x', d => x(d) + x.bandwidth() / 2).attr('y', H - 6).attr('text-anchor', 'middle').text(d => Z.dm(d));
+  const t = Z.tip(box);
+  svg.append('g').selectAll('rect').data(data).join('rect').attr('x', d => x(d.day) - x.step() * 0.15).attr('width', x.step()).attr('y', 0).attr('height', H).attr('fill', 'transparent')
+    .on('mousemove', (e, d) => { const [px, py] = d3.pointer(e, box); const lines = chans.filter(c => d[c]).map(c => ({ t: (CHAN[c] || c) + ' ' + d[c], c: chanColor(c) })); Z.showTip(box, t, [{ t: dayName(d.day) + (lines.length ? '' : ' · אין לידים') }].concat(lines), px, py); })
+    .on('mouseleave', () => { t.hidden = true; });
+}
+
+function drawLeads() {
+  Z.fill('attention', {});
+  Z.fill('leads_kpi', { median_answer_min_7d: minTxt, won_amount_30d: Z.ils, last_lead_at: whenTxt, queried_at: whenTxt });
+  const k = Z.row0('leads_kpi'), chg = Z.$('leads-week-chg');
+  chg.textContent = k && k.prev7 ? ltr(Z.pct(k.last7 / k.prev7 - 1)) : '';
+  chg.className = k && k.prev7 ? (k.last7 > k.prev7 ? 'up' : k.last7 < k.prev7 ? 'down' : '') : '';
+  Z.table('t-leads-open', 'leads_open', [
+    { k: 'created', f: whenTxt }, { k: 'channel', f: v => CHAN[v] || v }, { k: 'name', txt: 1, f: txt }, { k: 'phone', f: waLink },
+    { k: 'first_message', txt: 1, title: 1, f: txt }, { k: 'stage', f: v => STAGE[v] || v }, { k: 'hours_open', n: 1, f: hoursTxt }
+  ], { key: r => String(r.id) });
+  emptyRow('t-leads-open', 'אין לידים פתוחים. פנייה חדשה מהבוט באתר, מוואטסאפ, משיחה שלא נענתה או מהרשתות תופיע כאן.');
+  Z.table('t-leads-channels', 'leads_channels', [{ k: 'channel', f: v => CHAN[v] || v }, { k: 'n', n: 1, f: Z.n }, { k: 'new_n', n: 1, f: Z.n }, { k: 'active_n', n: 1, f: Z.n }, { k: 'won_n', n: 1, f: Z.n }, { k: 'lost_n', n: 1, f: Z.n }], { key: r => r.channel });
+  emptyRow('t-leads-channels', 'עדיין אין לידים ב-30 הימים האחרונים.');
+  Z.bars('bars-clicks', 'contact_clicks_week', 'label', 'week', Z.n, C[0]);
+  drawLeadsDaily();
+}
+
+function drawService() {
+  Z.fill('attention', {});
+  Z.fill('chat_kpi', { last_at: whenTxt });
+  Z.fill('wa_kpi', { last_at: whenTxt });
+  Z.fill('comments_kpi', { last_at: whenTxt });
+  Z.fill('leads_kpi', { median_answer_min_7d: minTxt, won_amount_30d: Z.ils, last_lead_at: whenTxt, queried_at: whenTxt });
+  // WhatsApp response goal (strategy approved 28.10): green from 80% within 15 minutes, red under 50%
+  Z.fill('wa_sla', { pct7: pctTxt, pct_prev: v => v == null ? '—' : Math.round(v) + '%', queried_at: whenTxt });
+  const sla = Z.row0('wa_sla'), lvl = sla && sla.pct7 != null ? (sla.pct7 >= 80 ? 'green' : sla.pct7 >= 50 ? 'yellow' : 'red') : null;
+  Z.$('sla-st').hidden = !lvl;
+  if (lvl) { Z.$('k-sla').style.setProperty('--z-st', TGCOLOR[lvl]); Z.$('sla-st').lastChild.textContent = TGWORD[lvl]; }
+  Z.table('t-wa', 'wa_open', [{ k: 'name', txt: 1, f: txt }, { k: 'phone', f: waLink }, { k: 'text', txt: 1, title: 1, f: (v, r) => v || (r.type && WATYPE[r.type] !== '' ? '(' + (WATYPE[r.type] || r.type) + ')' : '—') }, { k: 'last_at', f: whenTxt },
+    { k: 'biz_min', n: 1, f: (v, r) => bizTxt(v) + (r.late ? ' · באיחור' : '') }], { key: r => r.phone, cls: r => r.late ? 'late' : '' });
+  emptyRow('t-wa', 'אין פניות פתוחות בוואטסאפ.');
+  Z.table('t-quotes', 'wa_quotes', [{ k: 'name', txt: 1, f: txt }, { k: 'phone', f: waLink }, { k: 'text', txt: 1, title: 1, f: txt }, { k: 'quote_at', f: whenTxt }, { k: 'hours_since', n: 1, f: hoursTxt }], { key: r => r.phone });
+  emptyRow('t-quotes', 'אין הצעות מחיר מ-48 השעות האחרונות שמחכות לתשובה.');
+  Z.table('t-chat', 'chat_recent', [{ k: 'started', f: whenTxt }, { k: 'page', txt: 1, f: pageName }, { k: 'message_count', n: 1, f: Z.n }, { k: 'first_question', txt: 1, title: 1, f: txt }, { k: 'became_lead', f: v => v ? 'כן' : '' }], { key: r => r.id });
+  emptyRow('t-chat', 'עדיין אין שיחות עם הבוט באתר.');
+  Z.bars('bars-chat-pages', 'chat_pages', r => pageName(r.page), 'sessions', Z.n, C[2]);
+  if (Z.ok('chat_pages') && !Z.rows('chat_pages').length) { const d = document.createElement('div'); d.className = 'z-empty'; d.textContent = 'עדיין אין שיחות ב-30 הימים האחרונים.'; Z.$('bars-chat-pages').appendChild(d); }
+  Z.table('t-review', 'review_queue', [{ k: 'received', f: whenTxt }, { k: 'platform', f: v => Z.NET[v] || v }, { k: 'username', txt: 1, f: txt }, { k: 'text', txt: 1, title: 1, f: txt }, { k: 'category', f: v => CAT[v] || v }], { key: r => r.comment_id });
+  emptyRow('t-review', 'אין תגובות שממתינות לבדיקה.');
+  Z.bars('bars-cats', 'comments_categories', r => CAT[r.category] || r.category, 'n', Z.n, C[3]);
+  if (Z.ok('comments_categories') && !Z.rows('comments_categories').length) { const d = document.createElement('div'); d.className = 'z-empty'; d.textContent = 'עדיין אין תגובות ב-30 הימים האחרונים.'; Z.$('bars-cats').appendChild(d); }
+}
+
+const TABS = { business: drawBusiness, marketing: drawMarketing, leads: drawLeads, service: drawService };
+function show(name) {
+  tab = TABS[name] ? name : 'business';
+  document.querySelectorAll('.z-tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
+  Object.keys(TABS).forEach(t => { Z.$(t).hidden = tab !== t; });
+  Z.$('take-biz').hidden = tab !== 'business';
+  dash.setLink(tab);
+  draw();
+}
+function draw() { TABS[tab](); if (tab === 'service') drawLeads(); }
+document.querySelectorAll('.z-tab').forEach(b => b.addEventListener('click', () => show(b.dataset.tab)));
+const start = location.hash.slice(1);
+show(['business', 'service'].indexOf(start) >= 0 ? start : 'service');
+dash.onData(draw);
+}
+</script>
+</div>
+<script>
+/* team layout: "ממתין לטיפול" first, with the waiting leads next to the open WhatsApp chats */
+(function () {
+  var tabs = document.querySelector('#ziso .z-tabs'), svc = document.getElementById('tab-service');
+  if (tabs && svc) tabs.insertBefore(svc, tabs.firstChild);
+  var leads = document.getElementById('c-leads-open'), quotes = document.getElementById('c-quotes');
+  if (leads && quotes) quotes.after(leads);
+})();
+</script>
+</div>
+</body>
+</html>
