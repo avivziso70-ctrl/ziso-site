@@ -513,13 +513,13 @@ def build():
 <p class="lede">מזינים את מידות החדר וגודל האריח, ומקבלים מ"ר להזמנה, מספר אריחים וקרטונים, כולל פחת.</p></div></div>
 <div data-reveal>{calc}</div>
 </div></section>
-<section id="family" data-sc-act="flow"><div class="wrap family">
+<section id="family"><div class="wrap family">
 <blockquote>אצלנו אתם לא מספר הזמנה. אתם המשפחה שאנחנו עוזרים לה לבנות בית.</blockquote>
 <div><h2>זיסו קרמיקה</h2>
 <p>עסק משפחתי מטירת כרמל, שמלווה משפחות, קבלנים ואדריכלים מחיפה, הקריות וכל אזור הכרמל בבחירת ריצוף, חיפוי ואמבטיה. אילת ושיר הן מעצבות פנים עם דיפלומה, והייעוץ והעיצוב באולם הם בחינם. את מה שבאולם בחרנו בעצמנו, ואנחנו שם גם אחרי הקנייה כשצריך עוד קרטון, החלפה או עצה.</p>
 <p class="since">מאז 1985 · 4.3 בגוגל על 85 ביקורות</p>
 <div class="names"><span>משה</span><span>אילת</span><span>שיר</span><span>אביב</span></div></div>
-<div class="portraits" aria-label="משפחת זיסו"><figure data-sc-parallax="-30"><img src="img/family-1.jpg" alt="משה זיסו" loading="lazy" width="693" height="653"><figcaption>משה זיסו</figcaption></figure><figure data-sc-parallax="30"><img src="img/family-2.jpg" alt="אילת זיסו" loading="lazy" width="312" height="369"><figcaption>אילת זיסו<small>מעצבת פנים</small></figcaption></figure><figure data-sc-parallax="-30"><img src="img/family-3.jpg" alt="שיר זיסו" loading="lazy" width="720" height="720"><figcaption>שיר זיסו<small>מעצבת פנים</small></figcaption></figure><figure data-sc-parallax="30"><img src="img/family-4.jpg" alt="אביב זיסו" loading="lazy" width="609" height="533"><figcaption>אביב זיסו</figcaption></figure></div>
+<div class="portraits" aria-label="משפחת זיסו"><figure><img src="img/family-1.jpg" alt="משה זיסו" loading="lazy" width="693" height="653"><figcaption>משה זיסו</figcaption></figure><figure><img src="img/family-2.jpg" alt="אילת זיסו" loading="lazy" width="312" height="369"><figcaption>אילת זיסו<small>מעצבת פנים</small></figcaption></figure><figure><img src="img/family-3.jpg" alt="שיר זיסו" loading="lazy" width="720" height="720"><figcaption>שיר זיסו<small>מעצבת פנים</small></figcaption></figure><figure><img src="img/family-4.jpg" alt="אביב זיסו" loading="lazy" width="609" height="533"><figcaption>אביב זיסו</figcaption></figure></div>
 </div></section>
 {gallery}{client}<section id="faq"><div class="wrap">
 <div class="head" data-reveal><div><h2>מה שואלים אותנו הכי הרבה</h2></div></div>
