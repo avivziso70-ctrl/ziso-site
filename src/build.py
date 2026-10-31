@@ -415,7 +415,7 @@ def tiles_html():
     sz = '<small>%s</small>' % c["sizes"] if c["sizes"] else ""
     ph = CAT_PHOTOS.get(c["slug"])
     if ph and os.path.exists(os.path.join(GALLERY_DIR, ph)):
-      sw = '<div class="sw photo"><img src="img/gallery/%s" alt="%s" loading="lazy" width="1200" height="900">%s</div>' % (ph, c["name"], sz)
+      sw = '<div class="sw photo" data-sc-tilt="3"><img src="img/gallery/%s" alt="%s" loading="lazy" width="1200" height="900">%s</div>' % (ph, c["name"], sz)
     else:
       sw = '<div class="sw %s">%s</div>' % (c["sw"], sz)
     out.append('<article class="tile%s">%s<div class="tx"><h3><a href="%s.html">%s</a></h3><p>%s</p></div></article>'
@@ -468,7 +468,7 @@ def sidebar(name):
 def build():
   if os.path.exists(DIST): shutil.rmtree(DIST)
   os.makedirs(DIST)
-  shutil.copy(os.path.join(HERE, "styles.css"), DIST); shutil.copy(os.path.join(HERE, "site.js"), DIST); shutil.copy(os.path.join(HERE, "fonts.css"), DIST); shutil.copytree(os.path.join(HERE, "fonts"), os.path.join(DIST, "fonts")); shutil.copytree(os.path.join(HERE, "img"), os.path.join(DIST, "img"))
+  shutil.copy(os.path.join(HERE, "styles.css"), DIST); shutil.copy(os.path.join(HERE, "site.js"), DIST); shutil.copy(os.path.join(HERE, "scrollcraft.js"), DIST); shutil.copy(os.path.join(HERE, "scroll.js"), DIST); shutil.copy(os.path.join(HERE, "fonts.css"), DIST); shutil.copytree(os.path.join(HERE, "fonts"), os.path.join(DIST, "fonts")); shutil.copytree(os.path.join(HERE, "img"), os.path.join(DIST, "img"))
   # Files published verbatim, unlinked and outside the sitemap (sources of truth in /mnt/project-files):
   #   wa-connect.html     <- whatsapp/connect.html (WhatsApp Embedded Signup, noindex)
   #   social-connect.html <- whatsapp/social-connect.html (Instagram/Facebook comment auto-reply onboarding, noindex)
@@ -482,8 +482,8 @@ def build():
   # Home
   video = ('<video class="herovid" autoplay muted loop playsinline preload="auto" poster="img/video/hero.jpg" data-hero aria-hidden="true"><source src="%s" type="video/mp4"></video>' % HERO_CLIP) if HERO_CLIP else ''
   home = header() + '''
-<div class="wall live" id="top"><canvas class="tilewall" aria-hidden="true"></canvas>{video}<div class="wrap hero home live">
-<div>
+<div class="wall live" id="top" data-sc-act="flow"><canvas class="tilewall" aria-hidden="true"></canvas>{video}<div class="wrap hero home live">
+<div data-sc-parallax="-50">
 <h1>תרגיש בבית<br>לעצב את <em>הבית</em></h1>
 <p>אולם תצוגה לריצוף ואמבטיה בטירת כרמל: גרניט פורצלן, כלים סניטריים, ארונות אמבטיה, מקלחונים וברזים, עם מעצבות פנים מוסמכות שעוזרות לכם לבחור. פגישת ייעוץ ועיצוב באולם בחינם, דקות מחיפה.</p>
 <div class="actions"><a class="btn brass" href="{wa}" target="_blank" rel="noopener">לפגישת ייעוץ חינם בוואטסאפ</a><a class="btn ghost" href="#products">מה יש באולם</a></div>
@@ -513,13 +513,13 @@ def build():
 <p class="lede">מזינים את מידות החדר וגודל האריח, ומקבלים מ"ר להזמנה, מספר אריחים וקרטונים, כולל פחת.</p></div></div>
 <div data-reveal>{calc}</div>
 </div></section>
-<section id="family"><div class="wrap family">
+<section id="family" data-sc-act="flow"><div class="wrap family">
 <blockquote>אצלנו אתם לא מספר הזמנה. אתם המשפחה שאנחנו עוזרים לה לבנות בית.</blockquote>
 <div><h2>זיסו קרמיקה</h2>
 <p>עסק משפחתי מטירת כרמל, שמלווה משפחות, קבלנים ואדריכלים מחיפה, הקריות וכל אזור הכרמל בבחירת ריצוף, חיפוי ואמבטיה. אילת ושיר הן מעצבות פנים עם דיפלומה, והייעוץ והעיצוב באולם הם בחינם. את מה שבאולם בחרנו בעצמנו, ואנחנו שם גם אחרי הקנייה כשצריך עוד קרטון, החלפה או עצה.</p>
 <p class="since">מאז 1985 · 4.3 בגוגל על 85 ביקורות</p>
 <div class="names"><span>משה</span><span>אילת</span><span>שיר</span><span>אביב</span></div></div>
-<div class="portraits" aria-label="משפחת זיסו"><figure><img src="img/family-1.jpg" alt="משה זיסו" loading="lazy" width="693" height="653"><figcaption>משה זיסו</figcaption></figure><figure><img src="img/family-2.jpg" alt="אילת זיסו" loading="lazy" width="312" height="369"><figcaption>אילת זיסו<small>מעצבת פנים</small></figcaption></figure><figure><img src="img/family-3.jpg" alt="שיר זיסו" loading="lazy" width="720" height="720"><figcaption>שיר זיסו<small>מעצבת פנים</small></figcaption></figure><figure><img src="img/family-4.jpg" alt="אביב זיסו" loading="lazy" width="609" height="533"><figcaption>אביב זיסו</figcaption></figure></div>
+<div class="portraits" aria-label="משפחת זיסו"><figure data-sc-parallax="-30"><img src="img/family-1.jpg" alt="משה זיסו" loading="lazy" width="693" height="653"><figcaption>משה זיסו</figcaption></figure><figure data-sc-parallax="30"><img src="img/family-2.jpg" alt="אילת זיסו" loading="lazy" width="312" height="369"><figcaption>אילת זיסו<small>מעצבת פנים</small></figcaption></figure><figure data-sc-parallax="-30"><img src="img/family-3.jpg" alt="שיר זיסו" loading="lazy" width="720" height="720"><figcaption>שיר זיסו<small>מעצבת פנים</small></figcaption></figure><figure data-sc-parallax="30"><img src="img/family-4.jpg" alt="אביב זיסו" loading="lazy" width="609" height="533"><figcaption>אביב זיסו</figcaption></figure></div>
 </div></section>
 {gallery}{client}<section id="faq"><div class="wrap">
 <div class="head" data-reveal><div><h2>מה שואלים אותנו הכי הרבה</h2></div></div>
@@ -538,6 +538,7 @@ def build():
 <a class="btn ghost" href="https://www.google.com/maps/search/?api=1&query={addr}" target="_blank" rel="noopener">Google Maps</a></div></div>
 </div></section>
 </main>
+<script src="scrollcraft.js" defer></script><script src="scroll.js" defer></script>
 '''.format(wa=WA_VISIT, phone=PHONE, phone_intl=PHONE_INTL, email=EMAIL, hours=HOURS_HTML, video=video, reel=reel_html(), gallery=('<section id="works"><div class="wrap"><div class="head" data-reveal><div><h2>עבודות אחרונות</h2></div><a class="btn ghost" href="gallery.html">לכל העבודות</a></div>' + gallery_html(GALLERY[:6]) + '</div></section>') if GALLERY else '', strip=''.join('<span>%s</span>' % c['name'] for c in CATS), tiles=tiles_html(),
            calc=CALC, step4=STEP4, client=client_section(), faq=faq_html(HOME_FAQ), areas="".join("<li>%s</li>" % a for a in AREAS), addr=ADDR_Q) + FOOTER
   h, b = write("index.html", "זיסו קרמיקה | ריצוף, גרניט פורצלן ואמבטיה בטירת כרמל ליד חיפה",
