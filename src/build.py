@@ -402,7 +402,7 @@ def gads_js():
 def write(name, title, desc, body, schemas, canon=None, body_attrs=""):
   canon = canon or SITE + ("" if name == "index.html" else name)
   h = head(title, desc, canon, schemas)
-  noindex = '<meta name="robots" content="noindex">\n' if name in ("toda.html", "404.html") else ""
+  noindex = '<meta name="robots" content="noindex">\n' if name in ("toda.html", "404.html", "showroom.html") else ""
   body = body.replace('<div class="wall', '<div role="region" aria-label="פתיח" class="wall', 1).replace('<main>', '<main id="main">', 1)
   if '<main' not in body: body = body.replace('<footer>', '<main id="main"></main>\n<footer>', 1)
   full = '<!doctype html>\n<html lang="he" dir="rtl">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n<script>window.ZISO_GTM_ID=%s;window.ZISO_GA_ID=%s%s</script>\n%s%s</head>\n<body%s>\n%s\n</body>\n</html>\n' % (json.dumps(GTM_ID), json.dumps(GA_ID), gads_js(), noindex, h, body_attrs, body)
@@ -468,7 +468,7 @@ def sidebar(name):
 def build():
   if os.path.exists(DIST): shutil.rmtree(DIST)
   os.makedirs(DIST)
-  shutil.copy(os.path.join(HERE, "styles.css"), DIST); shutil.copy(os.path.join(HERE, "site.js"), DIST); shutil.copy(os.path.join(HERE, "scrollcraft.js"), DIST); shutil.copy(os.path.join(HERE, "scroll.js"), DIST); shutil.copy(os.path.join(HERE, "fonts.css"), DIST); shutil.copytree(os.path.join(HERE, "fonts"), os.path.join(DIST, "fonts")); shutil.copytree(os.path.join(HERE, "img"), os.path.join(DIST, "img"))
+  shutil.copy(os.path.join(HERE, "styles.css"), DIST); shutil.copy(os.path.join(HERE, "site.js"), DIST); shutil.copy(os.path.join(HERE, "scrollcraft.js"), DIST); shutil.copy(os.path.join(HERE, "scroll.js"), DIST); shutil.copy(os.path.join(HERE, "lp.css"), DIST); shutil.copy(os.path.join(HERE, "fonts.css"), DIST); shutil.copytree(os.path.join(HERE, "fonts"), os.path.join(DIST, "fonts")); shutil.copytree(os.path.join(HERE, "img"), os.path.join(DIST, "img"))
   # Files published verbatim, unlinked and outside the sitemap (sources of truth in /mnt/project-files):
   #   wa-connect.html     <- whatsapp/connect.html (WhatsApp Embedded Signup, noindex)
   #   social-connect.html <- whatsapp/social-connect.html (Instagram/Facebook comment auto-reply onboarding, noindex)
@@ -722,6 +722,11 @@ def build():
 <h1>%s</h1><p>%s</p></div></div></div>
 <main id="main"><section><div class="wrap article"><article class="prose legal">%s</article>%s</div></section></main>
 ''' % (title, h1, lede, body, sidebar("כל המוצרים")) + FOOTER, [crumbs_schema(title, name[:-5])])
+  # Marketing landing page for ad traffic (noindex, not in the sitemap or nav)
+  from landing import landing_body
+  write("showroom.html", "זיסו קרמיקה | פגישת עיצוב חינם עם מעצבת פנים באולם בטירת כרמל",
+    "חדר רחצה שנבחר עם מעצבת פנים מוסמכת, לא עם איש מכירות. אולם תצוגה לריצוף ואמבטיה בטירת כרמל מאז 1985. פגישת ייעוץ ועיצוב באולם בחינם.",
+    header() + landing_body(WA_VISIT, PHONE, PHONE_INTL, HOURS_HTML, ADDR_Q, GALLERY) + FOOTER, [BUSINESS])
   urls = ["", "about.html", "contact.html", "calculator.html", "tik-lakoach.html", "accessibility.html", "privacy.html", "terms.html", "data-deletion.html"] + [a["slug"] + ".html" for a in AREA_PAGES] + [g["slug"] + ".html" for g in GUIDE_PAGES] + (["gallery.html"] if GALLERY else []) + [c["slug"] + ".html" for c in CATS]
   open(os.path.join(DIST, "sitemap.xml"), "w").write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n%s</urlset>\n' %
     "".join("  <url><loc>%s%s</loc><lastmod>%s</lastmod></url>\n" % (SITE, u, TODAY) for u in urls))
