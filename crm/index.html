@@ -111,6 +111,23 @@ ul.list .meta{grid-column:2 / span 2;display:flex;gap:6px;flex-wrap:wrap;font-si
 .msg .file{display:inline-flex;gap:8px;align-items:center}
 .compose{position:sticky;bottom:0;background:var(--wall);border-top:1px solid var(--line);padding:10px var(--pad);display:grid;gap:8px}
 .compose .quick{display:flex;gap:8px;overflow:auto}
+.compose .quick.closed button[data-i]{display:none}
+.compose .quick .qt{color:var(--brass);border-color:var(--brass)}
+/* "טופל": one tap closes the conversation until the customer writes again */
+.btn.done{background:var(--green);color:#0f1a13;border-color:var(--green)}
+.btn.done.on{background:var(--green-soft);color:var(--green)}
+ul.list li{position:relative}
+ul.list li.can-done > button:first-child{padding-inline-end:72px}
+ul.list li .ldone{position:absolute;inset-inline-end:10px;top:50%;transform:translateY(-50%);width:52px;height:52px;border-radius:50%;border:1px solid var(--green);background:var(--green-soft);color:var(--green);font-size:20px;font-weight:700;line-height:1;cursor:pointer;display:grid;place-content:center;gap:2px;padding:0}
+ul.list li .ldone small{font-size:11px;font-weight:600}
+.menu{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:45;display:flex;align-items:flex-end;justify-content:center}
+.menu .box{width:min(480px,100%);background:var(--surface);border:1px solid var(--line);border-radius:20px 20px 0 0;padding:10px 10px calc(14px + env(safe-area-inset-bottom));display:grid;gap:4px}
+.menu .box b{font-family:var(--display);font-weight:400;font-size:20px;padding:8px 12px}
+.menu .box button{min-height:52px;text-align:start;padding:0 16px;border:0;border-radius:12px;background:none;font-size:17px;cursor:pointer;display:flex;align-items:center;gap:12px}
+.menu .box button:hover,.menu .box button:focus-visible{background:var(--graphite)}
+.menu .box button[aria-pressed="true"]::after{content:"✓";margin-inline-start:auto;color:var(--brass);font-weight:700}
+.menu .box button.cancel{justify-content:center;color:var(--mute)}
+@media (min-width:1024px){.menu{align-items:center}.menu .box{border-radius:20px}}
 .compose .quick button.pay{border-color:var(--brass);color:var(--brass)}
 .compose .quick button{min-height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:14px;cursor:pointer;white-space:nowrap}
 .compose .row textarea{min-height:48px;max-height:140px}
@@ -132,6 +149,8 @@ table.t th,table.t td{text-align:start;padding:6px 4px;border-bottom:1px solid v
 table.t th{color:var(--mute);font-weight:600}
 table.t td.num,table.t th.num{text-align:end;font-variant-numeric:tabular-nums;white-space:nowrap}
 details summary{cursor:pointer;color:var(--brass);font-size:14px}
+details.sect > summary{font-family:var(--display);font-size:20px;color:var(--ink);list-style-position:inside}
+details.sect:not([open]){gap:0}
 .note{padding:8px 0;border-bottom:1px solid var(--grout)}
 .note:last-child{border:0}
 .note .who{font-size:13px;color:var(--mute)}
@@ -253,7 +272,6 @@ details summary{cursor:pointer;color:var(--brass);font-size:14px}
           <button data-f="waiting" aria-pressed="true">ממתינים</button>
           <button data-f="mine" aria-pressed="false">שלי</button>
           <button data-f="all" aria-pressed="false">הכל</button>
-          <button data-f="nc" aria-pressed="false">לא לקוחות</button>
         </div>
       </div>
       <ul class="list" id="convList"></ul>
@@ -266,14 +284,8 @@ details summary{cursor:pointer;color:var(--brass);font-size:14px}
         <div class="row">
           <button class="btn icon small back" id="backFromChat" aria-label="חזרה">→</button>
           <div class="who grow"><div class="name ellip" id="chatName">בחרו שיחה</div><div class="small muted ellip" id="chatSub"></div></div>
-          <button class="btn small" id="openCard">כרטיס</button>
-          <button class="btn small" id="claimBtn">אני מטפלת</button>
-        </div>
-        <div class="acts hidden" id="chatActs" role="group" aria-label="סימון מהיר">
-          <span id="chatState" class="row" style="gap:6px;flex-wrap:nowrap"></span>
-          <button type="button" data-act="quote" aria-pressed="false">נשלחה הצעה</button>
-          <button type="button" data-act="won" aria-pressed="false">נסגר ✓</button>
-          <button type="button" data-act="nc" aria-pressed="false">לא לקוח</button>
+          <button class="btn small done hidden" id="doneBtn">טופל ✓</button>
+          <button class="btn icon small" id="menuBtn" aria-label="עוד פעולות" title="עוד פעולות">⋯</button>
         </div>
       </div>
       <div class="msgs" id="msgs"><div class="empty">בחרו שיחה מהרשימה</div></div>
@@ -295,6 +307,7 @@ details summary{cursor:pointer;color:var(--brass);font-size:14px}
         <div class="row">
           <button class="btn icon small back" id="backFromCard" aria-label="חזרה">→</button>
           <h2 class="grow ellip" id="cardName">כרטיס לקוח</h2>
+          <button class="btn small done hidden" id="cardDone">טופל ✓</button>
           <button class="btn small" id="cardChat">לשיחה</button>
         </div>
       </div>
@@ -441,7 +454,6 @@ $('deskToday').addEventListener('click', function () { go('today'); });
 $('deskChats').addEventListener('click', function () { go(cur ? 'chat' : 'chats', cur); });
 $('backFromChat').addEventListener('click', function () { go('chats'); });
 $('backFromCard').addEventListener('click', function () { go(cur ? 'chat' : 'search', cur); });
-$('openCard').addEventListener('click', function () { if (curTail) go('card', curTail); else toast('למספר הזה אין 9 ספרות לזיהוי'); });
 $('cardChat').addEventListener('click', function () { if (card && card.contact && card.contact.phone) go('chat', card.contact.phone); else if (cur) go('chat', cur); else toast('אין שיחת וואטסאפ עם הלקוח הזה'); });
 
 /* ---------- conversations ---------- */
@@ -455,11 +467,14 @@ function loadConvs(quiet) {
   var q = $('q').value.trim();
   sb.rpc('crm_inbox', { p_search: q || null, p_limit: 300 }).then(function (r) {
     if (r.error) { if (!quiet) toast('שגיאה בטעינת השיחות'); return; }
-    convs = r.data || []; renderConvs();
-    var w = convs.filter(needsHuman).length;
-    $('waitBadge').textContent = w; $('waitBadge').classList.toggle('hidden', !w);
-    document.title = (w ? '(' + w + ') ' : '') + 'זיסו צוות';
+    convs = r.data || []; renderConvs(); updateBadge();
+    if (cur) updateActs(convOf(cur));
   });
+}
+function updateBadge() {
+  var w = convs.filter(needsHuman).length;
+  $('waitBadge').textContent = w; $('waitBadge').classList.toggle('hidden', !w);
+  document.title = (w ? '(' + w + ') ' : '') + 'זיסו צוות';
 }
 function renderConvs() {
   var list = convs.filter(function (c) {
@@ -476,17 +491,17 @@ function renderConvs() {
     var flag = c.flag ? '<span class="pill flag">רגיש: לבדוק</span>' : '';
     var quote = c.quote_at && !/won|lost/.test(c.lead_stage || '') ? '<span class="pill bot">הצעה נשלחה ' + esc(ago(c.quote_at)) + '</span>' : '';
     var who = c.claimed_by ? '<span class="pill">' + esc(nameOf(c.claimed_by)) + '</span>' : '';
-    var lead = c.lead_stage && !(quote && c.lead_stage === 'quoted') ? '<span class="pill">' + esc(stageLabel(c.lead_stage)) + '</span>' : '';
-    var pc = c.cust_no ? '<span class="pill ok">לקוח בפריוריטי</span>' : '';
-    return '<li><button data-phone="' + esc(c.phone) + '" aria-current="' + (c.phone === cur) + '">' +
+    var canDone = needsHuman(c) && c.tail9;
+    return '<li' + (canDone ? ' class="can-done"' : '') + '><button data-phone="' + esc(c.phone) + '" aria-current="' + (c.phone === cur) + '">' +
       '<span class="dot ' + st + '"></span>' +
       '<span class="name ellip">' + esc(c.name || localPhone(c.phone)) + '</span>' +
       '<span class="when">' + esc(ago(c.last_ts)) + '</span>' +
       '<span class="last ellip">' + (c.last_dir === 'out' ? '↩ ' : '') + esc(c.last_text || '') + '</span>' +
-      (wait || flag || quote || who || lead || pc ? '<span class="meta">' + flag + wait + quote + who + lead + pc + '</span>' : '') +
-      '</button></li>';
+      (wait || flag || quote || who ? '<span class="meta">' + flag + wait + quote + who + '</span>' : '') +
+      '</button>' + (canDone ? '<button class="ldone" type="button" data-done="' + esc(c.tail9) + '" data-dphone="' + esc(c.phone) + '" aria-label="טופל" title="טופל: יורד מהממתינים עד שהלקוח יכתוב שוב">✓<small>טופל</small></button>' : '') + '</li>';
   }).join('');
-  $('convList').querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () { go('chat', b.dataset.phone); }); });
+  $('convList').querySelectorAll('button[data-phone]').forEach(function (b) { b.addEventListener('click', function () { go('chat', b.dataset.phone); }); });
+  $('convList').querySelectorAll('button[data-done]').forEach(function (b) { b.addEventListener('click', function () { b.disabled = true; markDone(b.dataset.done, b.dataset.dphone); }); });
 }
 function needsHuman(c) { return !c.nc && (c.state === 'waiting' || c.state === 'bot') && !!c.waiting_since; }
 function bizLabel(m) { m = Math.round(m || 0); return m < 60 ? m + ' דק׳' : m < 600 ? Math.floor(m / 60) + ' ש׳ ' + (m % 60 ? (m % 60) + ' דק׳' : '') : Math.round(m / 60) + ' ש׳'; }
@@ -502,53 +517,86 @@ function openChat(phone) {
   $('chatSub').innerHTML = '<span class="ltr">' + esc(localPhone(phone)) + '</span>' + (c && c.cust_no ? ' · לקוח ' + esc(c.cust_no) : '');
   $('compose').classList.remove('hidden');
   renderQuick();
-  updateClaimBtn(c);
   updateActs(c);
   renderConvs();
   loadChat(phone);
 }
-function updateClaimBtn(c) {
-  var mine = c && c.claimed_by && c.claimed_by.toLowerCase() === me.email.toLowerCase();
-  $('claimBtn').textContent = mine ? 'אני מטפלת ✓' : c && c.claimed_by ? nameOf(c.claimed_by) + ' מטפלת' : 'אני מטפלת';
-  $('claimBtn').classList.toggle('brass', !!mine);
-}
+function convOf(phone) { return convs.filter(function (x) { return x.phone === phone; })[0]; }
+function isMine(c) { return !!(c && c.claimed_by && c.claimed_by.toLowerCase() === me.email.toLowerCase()); }
 function updateActs(c) {
-  $('chatActs').classList.toggle('hidden', !curTail);
-  var on = { quote: !!(c && c.quote_at && Date.now() - new Date(c.quote_at) < 14 * 86400000), won: !!(c && c.lead_stage === 'won'), nc: !!(c && c.nc) };
-  $('chatActs').querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', on[b.dataset.act] ? 'true' : 'false'); });
-  $('chatState').innerHTML = c ? (c.flag ? '<span class="pill flag">רגיש: לבדוק</span>' : '') + (needsHuman(c) ? waitPill(c) : '') : '';
+  var sub = '<span class="ltr">' + esc(localPhone(cur)) + '</span>' + (c && c.cust_no ? ' · לקוח ' + esc(c.cust_no) : '');
+  if (c && c.flag) sub += ' <span class="pill flag">רגיש: לבדוק</span>';
+  if (c && needsHuman(c)) sub += ' ' + waitPill(c);
+  $('chatSub').innerHTML = sub;
+  $('doneBtn').classList.toggle('hidden', !curTail || !c || !needsHuman(c));
 }
-$('chatActs').querySelectorAll('button').forEach(function (b) {
-  b.addEventListener('click', function () {
-    if (!curTail) return;
-    var c = convs.filter(function (x) { return x.phone === cur; })[0];
-    var pressed = b.getAttribute('aria-pressed') === 'true', act = b.dataset.act, args;
-    if (act === 'quote') args = { p_what: pressed ? 'unquote' : 'quote' };
-    else if (act === 'won') {
-      if (pressed) args = { p_what: 'stage', p_value: 'quoted' };
-      else { var a = prompt('נסגר! סכום העסקה לפני מע"מ (לא חובה):'); if (a === null) return; args = { p_what: 'stage', p_value: 'won', p_detail: { amount: (a || '').replace(/[^\d.]/g, '') } }; }
-    } else {
-      if (!pressed && !confirm('לסמן כ"לא לקוח"? השיחה תרד מהתור ומהמדדים, ותופיע תחת "לא לקוחות".')) return;
-      args = { p_what: 'kind', p_value: pressed ? null : 'not_customer' };
-    }
-    mark(args, { quote: 'סומן: נשלחה הצעה', unquote: 'הסימון הוסר', won: 'סומן כנסגר', quoted: 'חזר לשלב הצעה', not_customer: 'סומן כלא לקוח', kind: 'חזר לרשימת הלקוחות' }[args.p_value || args.p_what] || 'נשמר');
+/* "טופל": the staff member dealt with it (often by phone). Leaves the queue until the customer writes again. */
+function markDone(t9, phone) {
+  return sb.rpc('crm_mark', { p_tail9: t9, p_what: 'done' }).then(function (r) {
+    if (r.error) { toast('לא נשמר: ' + r.error.message); return false; }
+    convs.forEach(function (c) { if (c.phone === phone) { c.state = 'closed'; c.waiting_since = null; } });
+    renderConvs(); updateBadge(); undoToast(t9);
+    setTimeout(function () { loadConvs(true); }, 600);
+    return true;
   });
+}
+function undoToast(t9) {
+  var el = document.createElement('div'); el.className = 'toast row'; el.innerHTML = '<span class="grow">סומן טופל ✓</span><button class="btn small" type="button">ביטול</button>';
+  el.querySelector('button').addEventListener('click', function () { el.remove(); sb.rpc('crm_mark', { p_tail9: t9, p_what: 'undone' }).then(function () { loadConvs(true); toast('חזר לממתינים'); }); });
+  document.body.appendChild(el); setTimeout(function () { el.remove(); }, 6000);
+}
+$('doneBtn').addEventListener('click', function () {
+  if (!curTail) return;
+  var phone = cur;
+  markDone(curTail, phone).then(function (ok) { if (ok) { $('doneBtn').classList.add('hidden'); if (window.innerWidth < 1024) go('chats'); else updateActs(convOf(phone)); } });
+});
+/* Everything else lives in one menu, so the screen keeps only reply + "טופל". */
+function openMenu(title, items) {
+  var m = document.createElement('div'); m.className = 'menu'; m.setAttribute('role', 'dialog');
+  m.innerHTML = '<div class="box"><b>' + esc(title) + '</b>' + items.map(function (it, i) { return '<button type="button" data-i="' + i + '"' + (it.on != null ? ' aria-pressed="' + !!it.on + '"' : '') + '>' + esc(it.label) + '</button>'; }).join('') + '<button type="button" class="cancel">סגירה</button></div>';
+  m.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (e.target === m || (b && b.classList.contains('cancel'))) { m.remove(); return; }
+    if (b && b.dataset.i) { m.remove(); items[b.dataset.i].run(); }
+  });
+  document.body.appendChild(m); var f = m.querySelector('button'); if (f) f.focus();
+}
+$('menuBtn').addEventListener('click', function () {
+  if (!cur) return;
+  var c = convOf(cur), items = [];
+  if (curTail) items.push({ label: 'כרטיס לקוח', run: function () { go('card', curTail); } });
+  items.push({ label: isMine(c) ? 'אני מטפלת (לבטל)' : c && c.claimed_by ? nameOf(c.claimed_by) + ' מטפלת · לקחת אליי' : 'אני מטפלת', on: isMine(c), run: toggleClaim });
+  if (curTail) {
+    if (c && !needsHuman(c)) items.push({ label: 'להחזיר לממתינים', run: function () { sb.rpc('crm_mark', { p_tail9: curTail, p_what: 'undone' }).then(function () { loadConvs(true); toast('חזר לממתינים'); }); } });
+    var quoted = !!(c && c.quote_at && Date.now() - new Date(c.quote_at) < 14 * 86400000), won = !!(c && c.lead_stage === 'won');
+    items.push({ label: 'נשלחה הצעת מחיר', on: quoted, run: function () { mark({ p_what: quoted ? 'unquote' : 'quote' }, quoted ? 'הסימון הוסר' : 'סומן: נשלחה הצעה'); } });
+    items.push({ label: 'נסגרה עסקה', on: won, run: function () {
+      if (won) { mark({ p_what: 'stage', p_value: 'quoted' }, 'חזר לשלב הצעה'); return; }
+      var a = prompt('נסגר! סכום העסקה לפני מע"מ (לא חובה):'); if (a === null) return;
+      mark({ p_what: 'stage', p_value: 'won', p_detail: { amount: (a || '').replace(/[^\d.]/g, '') } }, 'סומן כנסגר');
+    } });
+    if (payLink) items.push({ label: 'לינק לתשלום', run: function () { payDraft(null); } });
+    items.push({ label: 'לא לקוח (ספק, טעות וכו׳)', on: !!(c && c.nc), run: function () {
+      if (!(c && c.nc) && !confirm('לסמן כ"לא לקוח"? השיחה תרד מהתור ומהמדדים, ותופיע תחת "לא לקוחות".')) return;
+      mark({ p_what: 'kind', p_value: c && c.nc ? null : 'not_customer' }, c && c.nc ? 'חזר לרשימת הלקוחות' : 'סומן כלא לקוח');
+    } });
+  }
+  openMenu((c && c.name) || localPhone(cur), items);
 });
 function mark(args, msg, after) {
   return sb.rpc('crm_mark', Object.assign({ p_tail9: curTail }, args)).then(function (r) {
     if (r.error) { toast('לא נשמר: ' + r.error.message); return; }
     toast(msg || 'נשמר'); loadConvs(true);
-    setTimeout(function () { var c = convs.filter(function (x) { return x.phone === cur; })[0]; updateActs(c); }, 700);
+    setTimeout(function () { updateActs(convOf(cur)); }, 700);
     if (after) after();
   });
 }
-$('claimBtn').addEventListener('click', function () {
+function toggleClaim() {
   if (!curTail) { toast('למספר הזה אין 9 ספרות לזיהוי'); return; }
   var c = convs.filter(function (x) { return x.phone === cur; })[0];
   var mine = c && c.claimed_by && c.claimed_by.toLowerCase() === me.email.toLowerCase();
   var p = mine ? sb.from('crm_claims').delete().eq('tail9', curTail) : sb.from('crm_claims').upsert({ tail9: curTail, by: me.email, at: new Date().toISOString() });
-  p.then(function (r) { if (r.error) { toast('לא נשמר: ' + r.error.message); return; } sb.rpc('crm_log', { p_action: mine ? 'unclaim' : 'claim', p_tail9: curTail }); loadConvs(true); if (c) { c.claimed_by = mine ? null : me.email; updateClaimBtn(c); } });
-});
+  p.then(function (r) { if (r.error) { toast('לא נשמר: ' + r.error.message); return; } sb.rpc('crm_log', { p_action: mine ? 'unclaim' : 'claim', p_tail9: curTail }); loadConvs(true); if (c) c.claimed_by = mine ? null : me.email; toast(mine ? 'הוסר' : 'סומן: את מטפלת'); });
+}
 function loadChat(phone, quiet) {
   sb.from('wa_messages').select('id,ts,dir,type,text,name,source,raw').eq('phone', phone).neq('type', 'errors').not('id', 'like', 'wamid.TEST%').order('ts', { ascending: true }).limit(500).then(function (r) {
     if (r.error) { if (!quiet) toast('שגיאה בטעינת השיחה'); return; }
@@ -601,10 +649,11 @@ function loadMedia(el) {
 }
 /* quick replies + compose */
 function renderQuick() {
-  $('quick').innerHTML = '<button type="button" class="pay" id="payChip">לינק לתשלום</button>' + QUICK.map(function (q, i) { return '<button type="button" data-i="' + i + '">' + esc(q[0]) + '</button>'; }).join('');
+  $('quick').className = 'quick closed';
+  $('quick').innerHTML = '<button type="button" class="qt" id="quickToggle">תשובות מוכנות ▾</button>' + QUICK.map(function (q, i) { return '<button type="button" data-i="' + i + '">' + esc(q[0]) + '</button>'; }).join('');
   $('quick').querySelectorAll('button[data-i]').forEach(function (b) { b.addEventListener('click', function () { var d = $('draft'); d.value = (d.value ? d.value + '\n' : '') + QUICK[b.dataset.i][1]; d.focus(); autosize(); }); });
-  $('payChip').addEventListener('click', function () { payDraft(null); });
-  getPayLink().then(function (l) { $('payChip').classList.toggle('hidden', !l); });
+  $('quickToggle').addEventListener('click', function () { var q = $('quick'), c = q.classList.toggle('closed'); this.textContent = c ? 'תשובות מוכנות ▾' : 'סגירה ▴'; });
+  getPayLink();
 }
 /* Tranzila payment link: fixed link from crm_settings.pay_link, goes into the draft, staff send it */
 var payLink;  // {link} = fixed Tranzila page from crm_settings.pay_link, {api:true} = per-customer link via crm-pay
@@ -685,11 +734,14 @@ function openCard(t9) {
 function renderCard() {
   var c = card, crm = c.crm || {}, pr = c.priority || [], name = crm.name || (pr[0] && pr[0].name) || (c.contact && c.contact.name) || localPhone(c.contact && c.contact.phone || c.tail9);
   $('cardName').textContent = name;
+  var cv = convs.filter(function (x) { return x.tail9 === c.tail9; })[0];
+  $('cardDone').classList.toggle('hidden', !(cv && needsHuman(cv)));
+  $('cardDone').onclick = function () { markDone(c.tail9, cv.phone).then(function (ok) { if (ok) $('cardDone').classList.add('hidden'); }); };
   var lead = c.leads[0];
   var openOrders = c.orders.filter(function (o) { return !/נסגר/.test(o.status || ''); });
   var debt = c.aging.reduce(function (s, a) { return s + Number(a.total || 0); }, 0);
   var h = '';
-  h += '<div class="sect"><h3>פרטים</h3><dl class="kv">' +
+  h += '<details class="sect"><summary>פרטים <span class="small muted ltr">' + esc(localPhone(c.contact && c.contact.phone || (pr[0] && pr[0].phone) || c.tail9)) + '</span></summary><dl class="kv">' +
     '<dt>שם</dt><dd><input id="cName" value="' + esc(crm.name || name) + '" aria-label="שם"></dd>' +
     '<dt>טלפון</dt><dd class="ltr">' + esc(localPhone(c.contact && c.contact.phone || (pr[0] && pr[0].phone) || c.tail9)) + '</dd>' +
     '<dt>עיר</dt><dd><input id="cCity" value="' + esc(crm.city || (pr[0] && pr[0].city) || '') + '" aria-label="עיר"></dd>' +
@@ -697,12 +749,12 @@ function renderCard() {
     (pr.length ? '<dt>פריוריטי</dt><dd>' + pr.map(function (p) { return 'לקוח ' + esc(p.cust_no) + (p.name !== name ? ' (' + esc(p.name) + ')' : ''); }).join(', ') + '</dd>' : '<dt>פריוריטי</dt><dd class="muted">עדיין לא לקוח בפריוריטי</dd>') +
     '<dt>מאיפה הגיע</dt><dd><select id="cSource" aria-label="מאיפה הגיע"><option value="">לא ידוע, לשאול</option>' + SOURCES.map(function (k) { return '<option value="' + k[0] + '"' + (crm.source === k[0] ? ' selected' : '') + '>' + k[1] + '</option>'; }).join('') + '</select>' +
       (lead ? '<div class="small muted">פנייה ראשונה: ' + esc(channelLabel(lead.channel)) + (lead.source_detail ? ' · ' + esc(lead.source_detail) : '') + ' · ' + esc(fmtDate(lead.created_at)) + '</div>' : '') + '</dd>' +
-    '</dl><div class="row"><button class="btn small" id="saveCust">שמירת פרטים</button>' + (isOwner() && crm.tail9 ? '<button class="btn small" id="delCust">מחיקת הכרטיס</button>' : '') + '</div></div>';
+    '</dl><div class="row"><button class="btn small" id="saveCust">שמירת פרטים</button>' + (isOwner() && crm.tail9 ? '<button class="btn small" id="delCust">מחיקת הכרטיס</button>' : '') + '</div></details>';
   {
-    h += '<div class="sect"><h3>שלב בעסקה <span class="n">' + (lead ? 'פנייה מ-' + esc(fmtDate(lead.created_at)) : 'עוד אין פנייה רשומה') + '</span></h3><div class="stage">' + STAGES.map(function (s) { return '<button data-stage="' + s[0] + '" aria-pressed="' + (!!lead && lead.stage === s[0]) + '">' + s[1] + '</button>'; }).join('') + '</div>' +
+    h += '<details class="sect"><summary>שלב בעסקה: ' + esc(lead ? stageLabel(lead.stage) : 'עוד אין פנייה') + (crm.quote_at ? ' · הצעה נשלחה' : '') + '</summary><div class="stage">' + STAGES.map(function (s) { return '<button data-stage="' + s[0] + '" aria-pressed="' + (!!lead && lead.stage === s[0]) + '">' + s[1] + '</button>'; }).join('') + '</div>' +
       '<div class="row"><button class="btn small" id="quoteBtn">' + (crm.quote_at ? 'הצעה סומנה ' + esc(fmtDate(crm.quote_at)) + ' · הסרה' : 'נשלחה הצעת מחיר') + '</button><span class="small muted">גם כשההצעה נשלחה כתמונה או PDF</span></div>' +
       (lead && lead.first_message ? '<div class="small muted">"' + esc(lead.first_message) + '"</div>' : '') +
-      (lead && c.leads.length > 1 ? '<details><summary>' + (c.leads.length - 1) + ' פניות קודמות</summary><table class="t">' + c.leads.slice(1).map(function (l) { return '<tr><td>' + esc(fmtDate(l.created_at)) + '</td><td>' + esc(channelLabel(l.channel)) + '</td><td>' + esc(stageLabel(l.stage)) + '</td></tr>'; }).join('') + '</table></details>' : '') + '</div>';
+      (lead && c.leads.length > 1 ? '<details><summary>' + (c.leads.length - 1) + ' פניות קודמות</summary><table class="t">' + c.leads.slice(1).map(function (l) { return '<tr><td>' + esc(fmtDate(l.created_at)) + '</td><td>' + esc(channelLabel(l.channel)) + '</td><td>' + esc(stageLabel(l.stage)) + '</td></tr>'; }).join('') + '</table></details>' : '') + '</details>';
   }
   h += '<div class="sect"><h3>סיכום חכם</h3><div class="summary" id="summaryBox">' + (crm.summary ? esc(crm.summary) + '<div class="small muted">עודכן ' + esc(fmtDate(crm.summary_at)) + '</div>' : '<span class="muted">עדיין אין סיכום.</span>') + '</div><div class="row"><button class="btn small" id="sumBtn"' + (c.chat_n ? '' : ' disabled') + '>' + (crm.summary ? 'רענון הסיכום' : 'סיכום השיחה') + '</button><span class="small muted">' + (c.chat_n ? c.chat_n + ' הודעות בוואטסאפ' : 'אין שיחת וואטסאפ') + '</span></div></div>';
   h += '<div class="sect"><h3>הזמנות <span class="n">' + openOrders.length + ' פתוחות' + (debt ? ' · חוב ' + money(debt) : '') + '</span></h3>';
@@ -711,6 +763,7 @@ function renderCard() {
     return '<tr><td><details><summary>' + esc(o.so) + '</summary><table class="t">' + (o.lines || []).map(function (l) { return '<tr><td>' + esc(l.desc || l.item) + '</td><td class="num">' + esc(l.bal != null ? l.bal + '/' + l.qty : l.qty) + ' ' + esc(l.unit || '') + '</td><td class="num">' + (l.total != null ? money(l.total) : '') + '</td></tr>'; }).join('') + '</table><button class="btn small" type="button" data-doc="order" data-so="' + esc(o.so) + '">פירוט הזמנה כ-PDF</button></details></td><td>' + esc(fmtDate(o.date)) + '</td><td>' + esc(o.status || 'פתוחה') + '</td><td class="num">' + (o.open_total ? money(o.open_total) : '') + '</td></tr>';
   }).join('') + '</table>';
   h += '<div class="row">' + (c.orders.length || c.aging.length ? '<button class="btn small" type="button" data-doc="balance">דף יתרה כ-PDF</button>' : '') + '<button class="btn small" type="button" id="payBtn">לינק לתשלום</button></div>';
+  h += '<div id="payList"></div>';
   if (c.aging.length) h += '<div class="small">יתרת חוב: ' + c.aging.map(function (a) { return money(a.total) + (a.d90p ? ' (מעל 90 יום: ' + money(a.d90p) + ')' : ''); }).join(', ') + '</div>';
   if (c.invoices.length || c.receipts.length) h += '<details><summary>חשבוניות וקבלות השנה</summary><table class="t">' + c.invoices.slice(0, 10).map(function (i) { return '<tr><td>חשבונית ' + esc(i.doc) + '</td><td>' + esc(fmtDate(i.date)) + '</td><td class="num">' + money(i.amount) + '</td></tr>'; }).join('') + c.receipts.slice(0, 10).map(function (i) { return '<tr><td>קבלה ' + esc(i.doc) + (i.method ? ' · ' + esc(i.method) : '') + '</td><td>' + esc(fmtDate(i.date)) + '</td><td class="num">' + money(i.amount) + '</td></tr>'; }).join('') + '</table></details>';
   h += '</div>';
@@ -726,6 +779,7 @@ function renderCard() {
   $('sumBtn').addEventListener('click', summarize);
   $('cardBody').querySelectorAll('[data-doc]').forEach(function (b) { b.addEventListener('click', function () { openDoc(b.dataset.doc, b.dataset.so); }); });
   getPayLink().then(function (l) { if (!l && $('payBtn')) $('payBtn').classList.add('hidden'); });
+  loadPays(card.tail9);
   $('payBtn').addEventListener('click', function () {
     var phone = card.contact && card.contact.phone, owner = me.email.toLowerCase() === 'avivziso70@gmail.com';
     if (!owner && (!phone || tail9(phone) !== card.tail9)) { toast('אין שיחת וואטסאפ עם הלקוח הזה'); return; }
@@ -739,6 +793,15 @@ function renderCard() {
   $('quoteBtn').addEventListener('click', function () { curTail = card.tail9; mark({ p_what: crm.quote_at ? 'unquote' : 'quote' }, crm.quote_at ? 'הסימון הוסר' : 'סומן: נשלחה הצעה', function () { openCard(card.tail9); }); });
   $('cardBody').querySelectorAll('[data-done]').forEach(function (cb) { cb.addEventListener('change', function () { doneTask(cb.dataset.done, cb.checked); }); });
   $('cardBody').querySelectorAll('[data-delnote]').forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); delNote(a.dataset.delnote); }); });
+}
+// Payment links sent from the card; Tranzila's notify marks them paid once the payment is confirmed.
+function loadPays(t9) {
+  sb.from('crm_pay_requests').select('amount, status, test, created_at, paid_at').eq('tail9', t9).in('status', ['created', 'paid']).not('pr_link', 'is', null).order('created_at', { ascending: false }).limit(10).then(function (r) {
+    if (r.error || !r.data || !r.data.length || !$('payList') || curTail !== t9) return;
+    $('payList').innerHTML = '<table class="t"><tr><th>לינק לתשלום</th><th>נשלח</th><th>סטטוס</th></tr>' + r.data.map(function (p) {
+      return '<tr><td class="num">' + money(p.amount) + (p.test ? ' <span class="small muted">בדיקה</span>' : '') + '</td><td>' + esc(fmtDate(p.created_at)) + '</td><td>' + (p.status === 'paid' ? '<b>שולם</b> ' + esc(fmtDate(p.paid_at)) : '<span class="muted">ממתין</span>') + '</td></tr>';
+    }).join('') + '</table>';
+  });
 }
 function taskRow(t) {
   var late = t.due && !t.done_at && new Date(t.due) < new Date();
