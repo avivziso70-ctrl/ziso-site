@@ -114,12 +114,13 @@ ul.list .meta{grid-column:2 / span 2;display:flex;gap:6px;flex-wrap:wrap;font-si
 .compose .quick.closed button[data-i]{display:none}
 .compose .quick .qt{color:var(--brass);border-color:var(--brass)}
 /* "טופל": one tap closes the conversation until the customer writes again */
-.btn.done{background:var(--green);color:#0f1a13;border-color:var(--green)}
-.btn.done.on{background:var(--green-soft);color:var(--green)}
+.btn.done{background:transparent;color:var(--ink);border:1.5px solid var(--mute)}
+.btn.done:hover,.btn.done:active{border-color:var(--green);color:var(--green)}
 ul.list li{position:relative}
 ul.list li.can-done > button:first-child{padding-inline-end:72px}
-ul.list li .ldone{position:absolute;inset-inline-end:10px;top:50%;transform:translateY(-50%);width:52px;height:52px;border-radius:50%;border:1px solid var(--green);background:var(--green-soft);color:var(--green);font-size:20px;font-weight:700;line-height:1;cursor:pointer;display:grid;place-content:center;gap:2px;padding:0}
-ul.list li .ldone small{font-size:11px;font-weight:600}
+ul.list li .ldone{position:absolute;inset-inline-end:10px;top:50%;transform:translateY(-50%);width:60px;height:46px;border-radius:10px;border:1.5px solid var(--mute);background:transparent;color:var(--ink);font-size:12px;font-weight:600;line-height:1.15;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 4px;text-align:center}
+ul.list li .ldone:hover,ul.list li .ldone:active{border-color:var(--green);color:var(--green)}
+ul.list li .ldone small{display:block;font-size:12px;font-weight:600}
 .menu{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:45;display:flex;align-items:flex-end;justify-content:center}
 .menu .box{width:min(480px,100%);background:var(--surface);border:1px solid var(--line);border-radius:20px 20px 0 0;padding:10px 10px calc(14px + env(safe-area-inset-bottom));display:grid;gap:4px}
 .menu .box b{font-family:var(--display);font-weight:400;font-size:20px;padding:8px 12px}
@@ -284,7 +285,7 @@ details.sect:not([open]){gap:0}
         <div class="row">
           <button class="btn icon small back" id="backFromChat" aria-label="חזרה">→</button>
           <div class="who grow"><div class="name ellip" id="chatName">בחרו שיחה</div><div class="small muted ellip" id="chatSub"></div></div>
-          <button class="btn small done hidden" id="doneBtn">טופל ✓</button>
+          <button class="btn small done hidden" id="doneBtn">סמן כטופל</button>
           <button class="btn icon small" id="menuBtn" aria-label="עוד פעולות" title="עוד פעולות">⋯</button>
         </div>
       </div>
@@ -307,7 +308,7 @@ details.sect:not([open]){gap:0}
         <div class="row">
           <button class="btn icon small back" id="backFromCard" aria-label="חזרה">→</button>
           <h2 class="grow ellip" id="cardName">כרטיס לקוח</h2>
-          <button class="btn small done hidden" id="cardDone">טופל ✓</button>
+          <button class="btn small done hidden" id="cardDone">סמן כטופל</button>
           <button class="btn small" id="cardChat">לשיחה</button>
         </div>
       </div>
@@ -498,7 +499,7 @@ function renderConvs() {
       '<span class="when">' + esc(ago(c.last_ts)) + '</span>' +
       '<span class="last ellip">' + (c.last_dir === 'out' ? '↩ ' : '') + esc(c.last_text || '') + '</span>' +
       (wait || flag || quote || who ? '<span class="meta">' + flag + wait + quote + who + '</span>' : '') +
-      '</button>' + (canDone ? '<button class="ldone" type="button" data-done="' + esc(c.tail9) + '" data-dphone="' + esc(c.phone) + '" aria-label="טופל" title="טופל: יורד מהממתינים עד שהלקוח יכתוב שוב">✓<small>טופל</small></button>' : '') + '</li>';
+      '</button>' + (canDone ? '<button class="ldone" type="button" data-done="' + esc(c.tail9) + '" data-dphone="' + esc(c.phone) + '" aria-label="סמן כטופל" title="סמן כטופל: יורד מהממתינים עד שהלקוח יכתוב שוב">סמן<small>כטופל</small></button>' : '') + '</li>';
   }).join('');
   $('convList').querySelectorAll('button[data-phone]').forEach(function (b) { b.addEventListener('click', function () { go('chat', b.dataset.phone); }); });
   $('convList').querySelectorAll('button[data-done]').forEach(function (b) { b.addEventListener('click', function () { b.disabled = true; markDone(b.dataset.done, b.dataset.dphone); }); });
