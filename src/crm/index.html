@@ -982,7 +982,7 @@ $('prioFile').addEventListener('change', function () {
   sb.storage.from('priority-docs').upload(path, f, { contentType: 'application/pdf', upsert: true }).then(function (r) {
     if (r.error) throw new Error(r.error.message);
     var pr = card.priority[0] || {};
-    return sb.from('crm_docs').upsert({ doc: p.doc, kind: p.kind, cust_no: pr.cust_no || null, path: path, source: 'staff', label: 'העתק', created_by: me.email }, { onConflict: 'doc' });
+    return sb.from('crm_docs').upsert({ doc: p.doc, kind: p.kind, cust_no: pr.cust_no || null, path: path, source: 'staff', label: 'העתק' }, { onConflict: 'doc' });
   }).then(function (r) {
     if (r.error) throw new Error(r.error.message);
     sb.rpc('crm_log', { p_action: 'doc_attach', p_tail9: card.tail9, p_detail: { doc: p.doc, kind: p.kind } });
