@@ -177,6 +177,7 @@ details.sect:not([open]){gap:0}
 .sheet h2{font-size:24px}.sheet .row{justify-content:flex-start;flex-wrap:wrap}
 .sheet form.docform{grid-template-columns:minmax(0,1fr);width:min(640px,100%);max-height:calc(100vh - 48px);overflow:auto}
 .docprev{background:#e9e6e0;border-radius:12px;padding:10px;overflow:hidden auto;max-height:55vh;min-width:0;position:relative}
+.docprev canvas{display:block;margin:10px auto;max-width:calc(100% - 20px);height:auto;box-shadow:0 1px 6px rgba(0,0,0,.25)}
 .docprev .zdoc{transform-origin:top right;position:absolute;top:10px;right:10px}
 .zdoc{width:794px;min-height:600px;background:#fff;color:#1b1b1b;direction:rtl;font-family:var(--body);padding:56px 60px;box-sizing:border-box;font-size:15px;line-height:1.5}
 .zdoc header{display:flex;align-items:center;gap:16px;border-bottom:2px solid #b08d57;padding-bottom:16px;margin-bottom:22px}
@@ -236,7 +237,9 @@ details.sect:not([open]){gap:0}
     <h2 id="docTitle">מסמך ללקוח</h2>
     <div id="docPreview" class="docprev"></div>
     <p class="small muted" id="docNote"></p>
-    <div class="row"><button class="btn brass" type="button" id="docSend">שליחה ללקוח בוואטסאפ</button><button class="btn" type="button" id="docDl">הורדה</button><button class="btn" type="button" id="docClose">סגירה</button></div>
+    <div class="row hidden" id="docAct"></div>
+    <input type="file" id="prioFile" class="hidden" accept="application/pdf">
+    <div class="row" id="docBtns"><button class="btn brass" type="button" id="docSend">שליחה ללקוח בוואטסאפ</button><button class="btn" type="button" id="docDl">הורדה</button><button class="btn" type="button" id="docClose">סגירה</button></div>
   </form>
 </div>
 <div id="pwSheet" class="sheet hidden" role="dialog" aria-labelledby="pwTitle">
@@ -766,7 +769,7 @@ function renderCard() {
   h += '<div class="row">' + (c.orders.length || c.aging.length ? '<button class="btn small" type="button" data-doc="balance">דף יתרה כ-PDF</button>' : '') + '<button class="btn small" type="button" id="payBtn">לינק לתשלום</button></div>';
   h += '<div id="payList"></div>';
   if (c.aging.length) h += '<div class="small">יתרת חוב: ' + c.aging.map(function (a) { return money(a.total) + (a.d90p ? ' (מעל 90 יום: ' + money(a.d90p) + ')' : ''); }).join(', ') + '</div>';
-  if (c.invoices.length || c.receipts.length) h += '<details><summary>חשבוניות וקבלות השנה</summary><table class="t">' + c.invoices.slice(0, 10).map(function (i) { return '<tr><td>חשבונית ' + esc(i.doc) + '</td><td>' + esc(fmtDate(i.date)) + '</td><td class="num">' + money(i.amount) + '</td></tr>'; }).join('') + c.receipts.slice(0, 10).map(function (i) { return '<tr><td>קבלה ' + esc(i.doc) + (i.method ? ' · ' + esc(i.method) : '') + '</td><td>' + esc(fmtDate(i.date)) + '</td><td class="num">' + money(i.amount) + '</td></tr>'; }).join('') + '</table></details>';
+  if (c.invoices.length || c.receipts.length) h += '<details><summary>קבלות וחשבוניות השנה · שליחת העתק בוואטסאפ</summary><table class="t">' + c.receipts.slice(0, 10).map(function (i) { return '<tr><td>קבלה ' + esc(i.doc) + (i.method ? ' · ' + esc(i.method) : '') + '</td><td>' + esc(fmtDate(i.date)) + '</td><td class="num">' + money(i.amount) + '</td><td><button class="btn small" type="button" data-pdoc="' + esc(i.doc) + '" data-pkind="receipt">שליחה</button></td></tr>'; }).join('') + c.invoices.slice(0, 10).map(function (i) { return '<tr><td>חשבונית ' + esc(i.doc) + '</td><td>' + esc(fmtDate(i.date)) + '</td><td class="num">' + money(i.amount) + '</td><td><button class="btn small" type="button" data-pdoc="' + esc(i.doc) + '" data-pkind="invoice">שליחה</button></td></tr>'; }).join('') + '</table></details>';
   h += '</div>';
   h += '<div class="sect"><h3>משימות <span class="n">' + c.tasks.filter(function (t) { return !t.done_at; }).length + ' פתוחות</span></h3><div id="taskList">' + c.tasks.map(taskRow).join('') + '</div>' +
     '<div class="addrow"><input id="taskText" placeholder="משימה חדשה, למשל: לחזור עם הצעת מחיר" aria-label="משימה חדשה"></div><div class="addrow"><input type="datetime-local" id="taskDue" aria-label="מועד"><button class="btn small" id="addTask">הוספה</button></div></div>';
@@ -779,6 +782,7 @@ function renderCard() {
   $('addNote').addEventListener('click', addNote);
   $('sumBtn').addEventListener('click', summarize);
   $('cardBody').querySelectorAll('[data-doc]').forEach(function (b) { b.addEventListener('click', function () { openDoc(b.dataset.doc, b.dataset.so); }); });
+  $('cardBody').querySelectorAll('[data-pdoc]').forEach(function (b) { b.addEventListener('click', function () { openPrioDoc(b.dataset.pkind, b.dataset.pdoc); }); });
   getPayLink().then(function (l) { if (!l && $('payBtn')) $('payBtn').classList.add('hidden'); });
   loadPays(card.tail9);
   $('payBtn').addEventListener('click', function () {
@@ -877,7 +881,7 @@ function docHtml(kind, so) {
 }
 function openDoc(kind, so) {
   var html = docHtml(kind, so); if (!html) { toast('לא נמצא'); return; }
-  docBlob = null;
+  docBlob = null; $('docAct').classList.add('hidden'); $('docBtns').classList.remove('hidden');
   var phone = card.contact && card.contact.phone;
   $('docTitle').textContent = docCaption;
   $('docPreview').innerHTML = '<div class="zdoc" id="zdoc">' + html + '</div>';
@@ -922,6 +926,99 @@ $('docSend').addEventListener('click', function () {
     return callSend(fd);
   }).then(function () { toast('נשלח'); $('docSheet').classList.add('hidden'); sb.rpc('crm_log', { p_action: 'doc_send', p_tail9: card.tail9, p_detail: { file: docName } }); }).catch(function (e) { toast('לא נשלח: ' + e.message, 6000); }).then(function () { $('docSend').disabled = false; });
 });
+
+/* ---------- Priority receipts / invoices: the real PDF printed from Priority, sent as is ----------
+   The CRM never builds a tax document itself. A copy (העתק) printed from Priority is attached once per document
+   (staff upload, or the office robot in its quiet window when crm_settings.doc_robot is on), kept in the private
+   bucket priority-docs, and sent through wa-send to the card's own WhatsApp number after a preview and a confirm. */
+var PKIND = { receipt: 'קבלה', invoice: 'חשבונית מס' }, pdoc = null;
+function prioRow(kind, doc) { var list = kind === 'receipt' ? card.receipts : card.invoices; return list.filter(function (x) { return x.doc === doc; })[0] || { doc: doc }; }
+function openPrioDoc(kind, doc) {
+  var row = prioRow(kind, doc), phone = card.contact && card.contact.phone;
+  pdoc = { kind: kind, doc: doc, row: row };
+  docBlob = null; docName = 'zisoceramics-' + (kind === 'receipt' ? 'receipt' : 'invoice') + '-' + doc + '.pdf';
+  docCaption = 'העתק ' + PKIND[kind] + ' מס׳ ' + doc + ' מזיסו קרמיקה';
+  $('docTitle').textContent = PKIND[kind] + ' ' + doc;
+  $('docPreview').style.height = ''; $('docPreview').innerHTML = '<div class="empty">טוען…</div>';
+  $('docAct').classList.add('hidden'); $('docBtns').classList.add('hidden');
+  $('docNote').textContent = '';
+  $('docSheet').classList.remove('hidden');
+  Promise.all([
+    sb.from('crm_docs').select('doc,path,source,label,created_at,created_by').eq('doc', doc).maybeSingle(),
+    sb.from('crm_doc_requests').select('status,requested_at,note').eq('doc', doc).order('requested_at', { ascending: false }).limit(1),
+    sb.from('crm_settings').select('doc_robot').eq('id', 1).maybeSingle()
+  ]).then(function (rs) {
+    if (rs[0].error) throw new Error(rs[0].error.message);
+    var d = rs[0].data, req = (rs[1].data || [])[0], robot = !!(rs[2].data && rs[2].data.doc_robot);
+    if (d) return showPrioPdf(d, phone);
+    var msg = 'עדיין אין במערכת העתק של ה' + PKIND[kind] + ' הזו מפריוריטי.';
+    if (req && req.status === 'queued') msg += ' ביקשנו העתק מהרובוט ב-' + fmtDate(req.requested_at) + '. הוא מדפיס בערב, אחרי 20:00, ויהיה כאן מחר בבוקר.';
+    else if (req && req.status === 'skipped') msg += ' הרובוט דילג: ' + (req.note || 'המסמך עוד לא הודפס בפריוריטי, ולכן העתק ראשון ייצא "מקור". צריך להדפיס אותו בפריוריטי ולצרף כאן.');
+    $('docPreview').innerHTML = '<div class="empty">' + esc(msg) + '</div>';
+    $('docNote').textContent = 'איך מצרפים: בפריוריטי פותחים את ה' + PKIND[kind] + ' ' + doc + ', מדפיסים העתק ל-PDF, ומצרפים כאן. הקובץ נשמר בכרטיס ואפשר לשלוח אותו שוב בהמשך.';
+    $('docAct').innerHTML = '<button class="btn brass" type="button" id="prioAttach">צירוף PDF מפריוריטי</button>' +
+      (robot && !(req && req.status === 'queued') ? '<button class="btn" type="button" id="prioReq">לבקש העתק מהרובוט (מחר בבוקר)</button>' : '') +
+      '<button class="btn" type="button" id="prioClose">סגירה</button>';
+    $('docAct').classList.remove('hidden');
+    $('prioAttach').onclick = function () { $('prioFile').click(); };
+    $('prioClose').onclick = function () { $('docSheet').classList.add('hidden'); };
+    if ($('prioReq')) $('prioReq').onclick = function () {
+      this.disabled = true;
+      sb.from('crm_doc_requests').insert({ doc: doc, kind: kind, tail9: card.tail9 }).then(function (r) {
+        if (r.error && !/duplicate/.test(r.error.message)) { toast('הבקשה לא נשמרה: ' + r.error.message); return; }
+        sb.rpc('crm_log', { p_action: 'doc_request', p_tail9: card.tail9, p_detail: { doc: doc, kind: kind } });
+        toast('נשמר. ההעתק יהיה כאן מחר בבוקר'); openPrioDoc(kind, doc);
+      });
+    };
+  }).catch(function (e) { $('docPreview').innerHTML = '<div class="empty">לא נטען: ' + esc(e.message) + '</div>'; });
+}
+$('prioFile').addEventListener('change', function () {
+  var f = this.files[0]; this.value = ''; if (!f || !pdoc) return;
+  if (f.type !== 'application/pdf') { toast('רק קובץ PDF'); return; }
+  if (f.size > 5 * 1024 * 1024) { toast('הקובץ גדול מ-5MB'); return; }
+  if (!confirm('לצרף את הקובץ "' + f.name + '" כהעתק של ' + PKIND[pdoc.kind] + ' ' + pdoc.doc + '?\nלוודא שזה המסמך הנכון: מספר, שם הלקוח וסכום ' + money(pdoc.row.amount) + '.')) return;
+  var p = pdoc, path = p.kind + '/' + p.doc + '.pdf';
+  toast('מעלה…', 1500);
+  sb.storage.from('priority-docs').upload(path, f, { contentType: 'application/pdf', upsert: true }).then(function (r) {
+    if (r.error) throw new Error(r.error.message);
+    var pr = card.priority[0] || {};
+    return sb.from('crm_docs').upsert({ doc: p.doc, kind: p.kind, cust_no: pr.cust_no || null, path: path, source: 'staff', label: 'העתק', created_by: me.email }, { onConflict: 'doc' });
+  }).then(function (r) {
+    if (r.error) throw new Error(r.error.message);
+    sb.rpc('crm_log', { p_action: 'doc_attach', p_tail9: card.tail9, p_detail: { doc: p.doc, kind: p.kind } });
+    openPrioDoc(p.kind, p.doc);
+  }).catch(function (e) { toast('לא נשמר: ' + e.message, 5000); });
+});
+function showPrioPdf(d, phone) {
+  return sb.storage.from('priority-docs').download(d.path).then(function (r) {
+    if (r.error) throw new Error(r.error.message);
+    docBlob = r.data.type === 'application/pdf' ? r.data : new Blob([r.data], { type: 'application/pdf' });
+    $('docBtns').classList.remove('hidden');
+    $('docSend').disabled = !phone;
+    $('docNote').textContent = PKIND[pdoc.kind] + ' מ-' + fmtDate(pdoc.row.date) + ' על ' + money(pdoc.row.amount) + ' בפריוריטי. ' + (phone ? 'יישלח רק למספר של הלקוח הזה: ' + localPhone(phone) + ', עם השורה "' + docCaption + '". ' : 'ללקוח הזה אין שיחת וואטסאפ. אפשר להוריד את הקובץ. ') +
+      'הקובץ הוא ההעתק מפריוריטי, צורף ' + fmtDate(d.created_at) + (d.source === 'robot' ? ' ע״י הרובוט' : ' ע״י ' + nameOf(d.created_by)) + '. לבדוק מספר, שם וסכום לפני השליחה.';
+    sb.rpc('crm_log', { p_action: 'doc_view', p_tail9: card.tail9, p_detail: { doc: d.doc } });
+    return renderPdf(docBlob);
+  });
+}
+function renderPdf(blob) {
+  var pv = $('docPreview');
+  return loadLib('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', function () { return !!window.pdfjsLib; }).then(function () {
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    return blob.arrayBuffer();
+  }).then(function (buf) { return window.pdfjsLib.getDocument({ data: buf, cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/', cMapPacked: true, standardFontDataUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/standard_fonts/' }).promise; }).then(function (pdf) {
+    pv.innerHTML = ''; pv.style.height = 'auto'; pv.style.maxHeight = Math.round(window.innerHeight * 0.55) + 'px'; pv.style.overflow = 'auto';
+    var chain = Promise.resolve();
+    for (var i = 1; i <= Math.min(pdf.numPages, 3); i++) (function (n) {
+      chain = chain.then(function () { return pdf.getPage(n); }).then(function (pg) {
+        var w = pv.clientWidth - 20, vp1 = pg.getViewport({ scale: 1 }), sc = Math.max(0.5, w / vp1.width) * (window.devicePixelRatio || 1), vp = pg.getViewport({ scale: sc });
+        var cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height; pv.appendChild(cv);
+        return pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+      });
+    })(i);
+    return chain;
+  }).catch(function () { pv.innerHTML = '<div class="empty">אין תצוגה מקדימה בדפדפן הזה. אפשר ללחוץ "הורדה" ולפתוח.</div>'; });
+}
 
 /* ---------- search ---------- */
 var q2Timer = null;
