@@ -266,7 +266,7 @@ def head(title, desc, canon, schemas):
 # Legal pages required or expected in Israel: accessibility statement (תקנות שוויון זכויות לאנשים עם מוגבלות, התאמות נגישות לשירות, תקן 5568 / WCAG 2.0 AA),
 # privacy policy incl. cookies (חוק הגנת הפרטיות ותיקון 13), terms of use. Written in content; edit here.
 A11Y_DATE = "7 באוקטובר 2026"
-PRIVACY_DATE = "27 באוקטובר 2026"
+PRIVACY_DATE = "3 בנובמבר 2026"
 LEGAL_PAGES = [
   ("accessibility.html", "הצהרת נגישות", "הצהרת הנגישות של אתר זיסו קרמיקה: רמת הנגישות, ההתאמות שבוצעו, פרטי רכז הנגישות ודרכי פנייה.", "הצהרת נגישות",
    "אנחנו רואים בנגישות חלק מהשירות, באולם ובאתר. העמוד מפרט מה נעשה באתר, איך משתמשים בכלי הנגישות ולמי פונים אם משהו לא עובד.", '''
@@ -320,18 +320,18 @@ LEGAL_PAGES = [
 <h2>קישורים חיצוניים</h2>
 <p>האתר מקשר לשירותים כמו Waze, Google Maps, Instagram ו-Facebook. השימוש בהם כפוף למדיניות הפרטיות שלהם.</p>
 <h2>וואטסאפ עסקי</h2>
-<p>אנחנו מקבלים פניות גם דרך WhatsApp Business Platform של Meta. ההודעות שאתם שולחים למספר העסקי שלנו ותשובותינו, מספר הטלפון ושם הפרופיל שלכם, ופרטי ההזמנה שמסרתם, נשמרים בחשבונות העסקיים של זיסו קרמיקה (Google Workspace / Google Drive) ובמערכת ניהול העסק שלנו, עם גישה לצוות העסק בלבד. המידע משמש למענה, להצעות מחיר ולטיפול בהזמנות; איננו מוכרים אותו ואיננו משתמשים בו לפרסום. חלק מההודעות בוואטסאפ עשויות להיענות על ידי "העוזר של זיסו", עוזר אוטומטי מבוסס בינה מלאכותית ולא נציג אנושי, שמציג את עצמו ככזה; אפשר לבקש בכל שלב לדבר עם אדם מהצוות. במקרה כזה תוכן ההודעות מועבר לעיבוד אצל ספק מודל השפה שלנו, Anthropic (ארה"ב), שלפי תנאיו אינו משתמש בתוכן לאימון מודלים. שיחות וואטסאפ עם העסק נשמרות אצלנו (Supabase) כרשומה עסקית, כפי שהן נשמרות ממילא באפליקציית הוואטסאפ של העסק, ואפשר לבקש את מחיקתן בכל עת דרך דף מחיקת המידע. כלי בינה מלאכותית עשויים גם לסכם שיחות לצוות. אל תשלחו בוואטסאפ מידע רגיש. למחיקת המידע ראו <a href="data-deletion.html">הוראות מחיקת מידע</a>.</p>
+<p>אנחנו מקבלים פניות גם דרך WhatsApp Business Platform של Meta. ההודעות שאתם שולחים למספר העסקי שלנו ותשובותינו, מספר הטלפון ושם הפרופיל שלכם, ופרטי ההזמנה שמסרתם, נשמרים בחשבונות העסקיים של זיסו קרמיקה (Google Workspace / Google Drive) ובמערכת ניהול העסק שלנו, עם גישה לצוות העסק בלבד. המידע משמש למענה, להצעות מחיר ולטיפול בהזמנות; איננו מוכרים אותו ואיננו משתמשים בו לפרסום. חלק מההודעות בוואטסאפ עשויות להיענות על ידי "העוזר של זיסו", עוזר אוטומטי מבוסס בינה מלאכותית ולא נציג אנושי, שמציג את עצמו ככזה; אפשר לבקש בכל שלב לדבר עם אדם מהצוות. במקרה כזה תוכן ההודעות מועבר לעיבוד אצל ספק מודל השפה שלנו, Anthropic (ארה"ב), שלפי תנאיו אינו משתמש בתוכן לאימון מודלים. כך גם תמונות שאתם שולחים בוואטסאפ: העוזר מסתכל עליהן כדי להגיב עליהן, והן מועברות לאותו ספק לצורך העיבוד. מומלץ לא לשלוח תמונות שבהן אנשים או פרטים אישיים. שיחות וואטסאפ עם העסק נשמרות אצלנו (Supabase) כרשומה עסקית, כפי שהן נשמרות ממילא באפליקציית הוואטסאפ של העסק, ואפשר לבקש את מחיקתן בכל עת דרך דף מחיקת המידע. כלי בינה מלאכותית עשויים גם לסכם שיחות לצוות. אל תשלחו בוואטסאפ מידע רגיש. למחיקת המידע ראו <a href="data-deletion.html">הוראות מחיקת מידע</a>.</p>
 <h2>עדכונים</h2>
 <p>נעדכן את המדיניות כשיהיה צורך, ותאריך העדכון יופיע כאן. עודכן לאחרונה ב-%s.</p>
 <section class="en" lang="en" dir="ltr">
 <h2>Privacy Policy (English summary, WhatsApp)</h2>
-<p>This section describes how ZISO CERAMICS LTD (company no. %s), Otzma 5, Tirat Carmel, Israel ("Ziso Ceramics", "we") handles information when customers contact us on WhatsApp and when we use our WhatsApp Business integration (Meta app "Ziso Ceramics"). Last updated: October 27, 2026.</p>
+<p>This section describes how ZISO CERAMICS LTD (company no. %s), Otzma 5, Tirat Carmel, Israel ("Ziso Ceramics", "we") handles information when customers contact us on WhatsApp and when we use our WhatsApp Business integration (Meta app "Ziso Ceramics"). Last updated: November 3, 2026.</p>
 <h3>What we collect</h3>
 <p>Messages you send to our WhatsApp business number and our replies, your phone number and WhatsApp profile name, and order details you share with us (for example product choices, quantities and delivery address).</p>
 <h3>Why we use it</h3>
 <p>To answer your questions, prepare quotes, process and track your orders, provide customer service, and improve our service internally. We do not use your data for advertising profiles and we do not sell it.</p>
 <h3>Where it is stored</h3>
-<p>Messages are received through the WhatsApp Business Platform (Meta) and stored in Ziso Ceramics' own business accounts (Google Workspace / Google Drive and our business software), accessible only to Ziso Ceramics staff. Some WhatsApp messages may be answered by "Ziso's assistant", an automated AI assistant (not a human) that identifies itself as such; you can ask for a staff member at any time. In that case message content is processed by our language-model provider, Anthropic (USA), which under its terms does not use it to train models. WhatsApp conversations with the business are kept in our database (Supabase) as business records, just as they are kept in the business's WhatsApp app, and you can ask us to delete them at any time via our data deletion page. AI tools may also summarize conversations for staff. Please do not send sensitive information over WhatsApp.</p>
+<p>Messages are received through the WhatsApp Business Platform (Meta) and stored in Ziso Ceramics' own business accounts (Google Workspace / Google Drive and our business software), accessible only to Ziso Ceramics staff. Some WhatsApp messages may be answered by "Ziso's assistant", an automated AI assistant (not a human) that identifies itself as such; you can ask for a staff member at any time. In that case message content is processed by our language-model provider, Anthropic (USA), which under its terms does not use it to train models. The same applies to photos you send on WhatsApp: the assistant looks at them in order to respond, and they are passed to that provider for processing. Please avoid sending photos that show people or personal details. WhatsApp conversations with the business are kept in our database (Supabase) as business records, just as they are kept in the business's WhatsApp app, and you can ask us to delete them at any time via our data deletion page. AI tools may also summarize conversations for staff. Please do not send sensitive information over WhatsApp.</p>
 <h3>Sharing</h3>
 <p>We share information only with service providers that run our systems for us (Meta/WhatsApp, Google, Anthropic, Supabase, our hosting provider, our ERP), or when required by law.</p>
 <h3>Retention</h3>
@@ -402,7 +402,7 @@ def gads_js():
 def write(name, title, desc, body, schemas, canon=None, body_attrs=""):
   canon = canon or SITE + ("" if name == "index.html" else name)
   h = head(title, desc, canon, schemas)
-  noindex = '<meta name="robots" content="noindex">\n' if name in ("toda.html", "404.html") else ""
+  noindex = '<meta name="robots" content="noindex">\n' if name in ("toda.html", "404.html", "showroom.html") else ""
   body = body.replace('<div class="wall', '<div role="region" aria-label="פתיח" class="wall', 1).replace('<main>', '<main id="main">', 1)
   if '<main' not in body: body = body.replace('<footer>', '<main id="main"></main>\n<footer>', 1)
   full = '<!doctype html>\n<html lang="he" dir="rtl">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n<script>window.ZISO_GTM_ID=%s;window.ZISO_GA_ID=%s%s</script>\n%s%s</head>\n<body%s>\n%s\n</body>\n</html>\n' % (json.dumps(GTM_ID), json.dumps(GA_ID), gads_js(), noindex, h, body_attrs, body)
@@ -415,7 +415,7 @@ def tiles_html():
     sz = '<small>%s</small>' % c["sizes"] if c["sizes"] else ""
     ph = CAT_PHOTOS.get(c["slug"])
     if ph and os.path.exists(os.path.join(GALLERY_DIR, ph)):
-      sw = '<div class="sw photo"><img src="img/gallery/%s" alt="%s" loading="lazy" width="1200" height="900">%s</div>' % (ph, c["name"], sz)
+      sw = '<div class="sw photo" data-sc-tilt="3"><img src="img/gallery/%s" alt="%s" loading="lazy" width="1200" height="900">%s</div>' % (ph, c["name"], sz)
     else:
       sw = '<div class="sw %s">%s</div>' % (c["sw"], sz)
     out.append('<article class="tile%s">%s<div class="tx"><h3><a href="%s.html">%s</a></h3><p>%s</p></div></article>'
@@ -468,7 +468,7 @@ def sidebar(name):
 def build():
   if os.path.exists(DIST): shutil.rmtree(DIST)
   os.makedirs(DIST)
-  shutil.copy(os.path.join(HERE, "styles.css"), DIST); shutil.copy(os.path.join(HERE, "site.js"), DIST); shutil.copy(os.path.join(HERE, "fonts.css"), DIST); shutil.copytree(os.path.join(HERE, "fonts"), os.path.join(DIST, "fonts")); shutil.copytree(os.path.join(HERE, "img"), os.path.join(DIST, "img"))
+  shutil.copy(os.path.join(HERE, "styles.css"), DIST); shutil.copy(os.path.join(HERE, "site.js"), DIST); shutil.copy(os.path.join(HERE, "scrollcraft.js"), DIST); shutil.copy(os.path.join(HERE, "scroll.js"), DIST); shutil.copy(os.path.join(HERE, "lp.css"), DIST); shutil.copy(os.path.join(HERE, "fonts.css"), DIST); shutil.copytree(os.path.join(HERE, "fonts"), os.path.join(DIST, "fonts")); shutil.copytree(os.path.join(HERE, "img"), os.path.join(DIST, "img"))
   # Files published verbatim, unlinked and outside the sitemap (sources of truth in /mnt/project-files):
   #   wa-connect.html     <- whatsapp/connect.html (WhatsApp Embedded Signup, noindex)
   #   social-connect.html <- whatsapp/social-connect.html (Instagram/Facebook comment auto-reply onboarding, noindex)
@@ -482,8 +482,8 @@ def build():
   # Home
   video = ('<video class="herovid" autoplay muted loop playsinline preload="auto" poster="img/video/hero.jpg" data-hero aria-hidden="true"><source src="%s" type="video/mp4"></video>' % HERO_CLIP) if HERO_CLIP else ''
   home = header() + '''
-<div class="wall live" id="top"><canvas class="tilewall" aria-hidden="true"></canvas>{video}<div class="wrap hero home live">
-<div>
+<div class="wall live" id="top" data-sc-act="flow"><canvas class="tilewall" aria-hidden="true"></canvas>{video}<div class="wrap hero home live">
+<div data-sc-parallax="-50">
 <h1>תרגיש בבית<br>לעצב את <em>הבית</em></h1>
 <p>אולם תצוגה לריצוף ואמבטיה בטירת כרמל: גרניט פורצלן, כלים סניטריים, ארונות אמבטיה, מקלחונים וברזים, עם מעצבות פנים מוסמכות שעוזרות לכם לבחור. פגישת ייעוץ ועיצוב באולם בחינם, דקות מחיפה.</p>
 <div class="actions"><a class="btn brass" href="{wa}" target="_blank" rel="noopener">לפגישת ייעוץ חינם בוואטסאפ</a><a class="btn ghost" href="#products">מה יש באולם</a></div>
@@ -538,6 +538,7 @@ def build():
 <a class="btn ghost" href="https://www.google.com/maps/search/?api=1&query={addr}" target="_blank" rel="noopener">Google Maps</a></div></div>
 </div></section>
 </main>
+<script src="scrollcraft.js" defer></script><script src="scroll.js" defer></script>
 '''.format(wa=WA_VISIT, phone=PHONE, phone_intl=PHONE_INTL, email=EMAIL, hours=HOURS_HTML, video=video, reel=reel_html(), gallery=('<section id="works"><div class="wrap"><div class="head" data-reveal><div><h2>עבודות אחרונות</h2></div><a class="btn ghost" href="gallery.html">לכל העבודות</a></div>' + gallery_html(GALLERY[:6]) + '</div></section>') if GALLERY else '', strip=''.join('<span>%s</span>' % c['name'] for c in CATS), tiles=tiles_html(),
            calc=CALC, step4=STEP4, client=client_section(), faq=faq_html(HOME_FAQ), areas="".join("<li>%s</li>" % a for a in AREAS), addr=ADDR_Q) + FOOTER
   h, b = write("index.html", "זיסו קרמיקה | ריצוף, גרניט פורצלן ואמבטיה בטירת כרמל ליד חיפה",
@@ -721,6 +722,11 @@ def build():
 <h1>%s</h1><p>%s</p></div></div></div>
 <main id="main"><section><div class="wrap article"><article class="prose legal">%s</article>%s</div></section></main>
 ''' % (title, h1, lede, body, sidebar("כל המוצרים")) + FOOTER, [crumbs_schema(title, name[:-5])])
+  # Marketing landing page for ad traffic (noindex, not in the sitemap or nav)
+  from landing import landing_body
+  write("showroom.html", "זיסו קרמיקה | פגישת עיצוב חינם עם מעצבת פנים באולם בטירת כרמל",
+    "חדר רחצה שנבחר עם מעצבת פנים מוסמכת, לא עם איש מכירות. אולם תצוגה לריצוף ואמבטיה בטירת כרמל מאז 1985. פגישת ייעוץ ועיצוב באולם בחינם.",
+    header() + landing_body(WA_VISIT, PHONE, PHONE_INTL, HOURS_HTML, ADDR_Q, GALLERY) + FOOTER, [BUSINESS])
   urls = ["", "about.html", "contact.html", "calculator.html", "tik-lakoach.html", "accessibility.html", "privacy.html", "terms.html", "data-deletion.html"] + [a["slug"] + ".html" for a in AREA_PAGES] + [g["slug"] + ".html" for g in GUIDE_PAGES] + (["gallery.html"] if GALLERY else []) + [c["slug"] + ".html" for c in CATS]
   open(os.path.join(DIST, "sitemap.xml"), "w").write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n%s</urlset>\n' %
     "".join("  <url><loc>%s%s</loc><lastmod>%s</lastmod></url>\n" % (SITE, u, TODAY) for u in urls))
