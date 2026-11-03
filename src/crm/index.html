@@ -857,7 +857,7 @@ function summarize() {
 }
 
 /* ---------- customer documents (order detail, balance) ---------- */
-var docBlob = null, docName = '', docCaption = '';
+var docBlob = null, docName = '', docCaption = '', docIsPrio = false;
 function loadLib(src, test) { return test() ? Promise.resolve() : new Promise(function (ok, bad) { var x = document.createElement('script'); x.src = src; x.crossOrigin = 'anonymous'; x.onload = ok; x.onerror = function () { bad(new Error('הטעינה נכשלה')); }; document.head.appendChild(x); }); }
 function docHtml(kind, so) {
   var c = card, crm = c.crm || {}, pr = c.priority[0] || {}, name = crm.name || pr.name || (c.contact && c.contact.name) || '';
@@ -881,7 +881,7 @@ function docHtml(kind, so) {
 }
 function openDoc(kind, so) {
   var html = docHtml(kind, so); if (!html) { toast('לא נמצא'); return; }
-  docBlob = null; $('docAct').classList.add('hidden'); $('docBtns').classList.remove('hidden');
+  docBlob = null; docIsPrio = false; $('docAct').classList.add('hidden'); $('docBtns').classList.remove('hidden');
   var phone = card.contact && card.contact.phone;
   $('docTitle').textContent = docCaption;
   $('docPreview').innerHTML = '<div class="zdoc" id="zdoc">' + html + '</div>';
@@ -922,7 +922,9 @@ $('docSend').addEventListener('click', function () {
   if (!confirm('לשלוח את "' + docCaption + '" ל-' + localPhone(phone) + '?')) return;
   $('docSend').disabled = true;
   makePdf().then(function (b) {
-    var fd = new FormData(); fd.append('phone', phone); fd.append('caption', docCaption + ' מזיסו קרמיקה'); fd.append('file', new File([b], docName, { type: 'application/pdf' }));
+    var fd = new FormData(); fd.append('phone', phone); fd.append('caption', docIsPrio ? docCaption : docCaption + ' מזיסו קרמיקה'); fd.append('file', new File([b], docName, { type: 'application/pdf' }));
+    // Priority copies may go out as the approved UTILITY template ziso_document when the 24h window is closed (wa-send decides).
+    if (docIsPrio && pdoc) { fd.append('doc_label', PKIND[pdoc.kind] + ' מספר ' + pdoc.doc); var cr = card.crm || {}, pr0 = card.priority[0] || {}; fd.append('cust_name', (cr.name || pr0.name || (card.contact && card.contact.name) || '').split(/\s+/)[0] || ''); }
     return callSend(fd);
   }).then(function () { toast('נשלח'); $('docSheet').classList.add('hidden'); sb.rpc('crm_log', { p_action: 'doc_send', p_tail9: card.tail9, p_detail: { file: docName } }); }).catch(function (e) { toast('לא נשלח: ' + e.message, 6000); }).then(function () { $('docSend').disabled = false; });
 });
@@ -935,7 +937,7 @@ var PKIND = { receipt: 'קבלה', invoice: 'חשבונית מס' }, pdoc = null
 function prioRow(kind, doc) { var list = kind === 'receipt' ? card.receipts : card.invoices; return list.filter(function (x) { return x.doc === doc; })[0] || { doc: doc }; }
 function openPrioDoc(kind, doc) {
   var row = prioRow(kind, doc), phone = card.contact && card.contact.phone;
-  pdoc = { kind: kind, doc: doc, row: row };
+  pdoc = { kind: kind, doc: doc, row: row }; docIsPrio = true;
   docBlob = null; docName = 'zisoceramics-' + (kind === 'receipt' ? 'receipt' : 'invoice') + '-' + doc + '.pdf';
   docCaption = 'העתק ' + PKIND[kind] + ' מס׳ ' + doc + ' מזיסו קרמיקה';
   $('docTitle').textContent = PKIND[kind] + ' ' + doc;
