@@ -67,7 +67,8 @@ input::placeholder,textarea::placeholder{color:var(--mute)}
 #login .err{color:var(--red);min-height:1.4em}
 
 /* App shell */
-#app{height:100%;display:grid;grid-template-rows:auto 1fr auto}
+#app{height:100%;display:grid;grid-template-rows:auto auto 1fr auto}
+#app > header.top{grid-row:1} #app > .pushbar{grid-row:2} #app > main{grid-row:3} #app > nav.tabs{grid-row:4}
 header.top{display:flex;align-items:center;gap:12px;padding:10px var(--pad);border-bottom:1px solid var(--line);background:var(--surface);min-height:60px}
 header.top .logo{width:34px;height:34px;border-radius:50%;object-fit:cover}
 header.top h1{font-size:24px}
@@ -114,6 +115,11 @@ ul.list .meta{grid-column:2 / span 2;display:flex;gap:6px;flex-wrap:wrap;font-si
 .compose .quick.closed button[data-i]{display:none}
 .compose .quick .qt{color:var(--brass);border-color:var(--brass)}
 /* "טופל": one tap closes the conversation until the customer writes again */
+/* Push alerts: one line under the header until this device is subscribed */
+.pushbar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--brass-soft);border-bottom:1px solid var(--line);font-size:14px}
+.pushbar.hidden{display:none}
+a.btn.call{text-decoration:none;color:var(--ink)} .head > .row{min-width:0}
+@media (max-width:599px){a.btn.call{padding:0;width:44px} a.btn.call .lbl{display:none}}
 .btn.done{background:transparent;color:var(--ink);border:1.5px solid var(--mute)}
 .btn.done:hover,.btn.done:active{border-color:var(--green);color:var(--green)}
 ul.list li{position:relative}
@@ -266,6 +272,7 @@ details.sect:not([open]){gap:0}
     <button class="btn small" id="meBtn" title="החשבון שלי"></button>
   </header>
 
+  <div class="pushbar hidden" id="pushBar" role="region" aria-label="התראות"><span class="grow">לקבל התראה בטלפון על כל הודעה חדשה?</span><button class="btn small brass" id="pushOn" type="button">להפעיל</button><button class="btn icon small" id="pushX" type="button" aria-label="לא עכשיו">✕</button></div>
   <main data-view="chats">
     <!-- Conversations -->
     <section class="pane" id="chats" aria-label="שיחות">
@@ -288,6 +295,7 @@ details.sect:not([open]){gap:0}
         <div class="row">
           <button class="btn icon small back" id="backFromChat" aria-label="חזרה">→</button>
           <div class="who grow"><div class="name ellip" id="chatName">בחרו שיחה</div><div class="small muted ellip" id="chatSub"></div></div>
+          <a class="btn small call hidden" id="callBtn" href="#" aria-label="להתקשר ללקוח" title="להתקשר ללקוח">📞<span class="lbl">להתקשר</span></a>
           <button class="btn small done hidden" id="doneBtn">סמן כטופל</button>
           <button class="btn icon small" id="menuBtn" aria-label="עוד פעולות" title="עוד פעולות">⋯</button>
         </div>
@@ -311,6 +319,7 @@ details.sect:not([open]){gap:0}
         <div class="row">
           <button class="btn icon small back" id="backFromCard" aria-label="חזרה">→</button>
           <h2 class="grow ellip" id="cardName">כרטיס לקוח</h2>
+          <a class="btn small call hidden" id="cardCall" href="#" aria-label="להתקשר ללקוח" title="להתקשר ללקוח">📞<span class="lbl">להתקשר</span></a>
           <button class="btn small done hidden" id="cardDone">סמן כטופל</button>
           <button class="btn small" id="cardChat">לשיחה</button>
         </div>
@@ -426,7 +435,7 @@ function start() {
     $('meBtn').textContent = mine.name;
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
     sb.rpc('crm_log', { p_action: 'login' });
-    route(); loadConvs(); loadSync();
+    route(); loadConvs(); loadSync(); pushCheck();
     if (!(me.user_metadata && me.user_metadata.pw_changed_at)) openPw(true);
     if (timer) clearInterval(timer);
     timer = setInterval(function () { if (document.visibilityState === 'visible') { loadConvs(true); if (cur) loadChat(cur, true); } }, 20000);
@@ -527,12 +536,16 @@ function openChat(phone) {
 }
 function convOf(phone) { return convs.filter(function (x) { return x.phone === phone; })[0]; }
 function isMine(c) { return !!(c && c.claimed_by && c.claimed_by.toLowerCase() === me.email.toLowerCase()); }
+/* tel: link for the call button; empty when the number can't be dialled */
+function telOf(p) { p = String(p || '').replace(/\D/g, ''); if (/^972/.test(p)) p = '0' + p.slice(3); if (p.length === 9 && p[0] !== '0') p = '0' + p; return /^0\d{8,9}$/.test(p) ? 'tel:' + p : ''; }
+function setCall(id, phone) { var t = telOf(phone), a = $(id); a.classList.toggle('hidden', !t); if (t) a.href = t; else a.removeAttribute('href'); }
 function updateActs(c) {
   var sub = '<span class="ltr">' + esc(localPhone(cur)) + '</span>' + (c && c.cust_no ? ' · לקוח ' + esc(c.cust_no) : '');
   if (c && c.flag) sub += ' <span class="pill flag">רגיש: לבדוק</span>';
   if (c && needsHuman(c)) sub += ' ' + waitPill(c);
   $('chatSub').innerHTML = sub;
   $('doneBtn').classList.toggle('hidden', !curTail || !c || !needsHuman(c));
+  setCall('callBtn', cur);
 }
 /* "טופל": the staff member dealt with it (often by phone). Leaves the queue until the customer writes again. */
 function markDone(t9, phone) {
@@ -739,6 +752,7 @@ function renderCard() {
   var c = card, crm = c.crm || {}, pr = c.priority || [], name = crm.name || (pr[0] && pr[0].name) || (c.contact && c.contact.name) || localPhone(c.contact && c.contact.phone || c.tail9);
   $('cardName').textContent = name;
   var cv = convs.filter(function (x) { return x.tail9 === c.tail9; })[0];
+  setCall('cardCall', cv && cv.phone || c.contact && c.contact.phone || c.tail9);
   $('cardDone').classList.toggle('hidden', !(cv && needsHuman(cv)));
   $('cardDone').onclick = function () { markDone(c.tail9, cv.phone).then(function (ok) { if (ok) $('cardDone').classList.add('hidden'); }); };
   var lead = c.leads[0];
@@ -1066,6 +1080,34 @@ function loadToday() {
     $('todayBody').querySelectorAll('[data-done]').forEach(function (cb) { cb.addEventListener('change', function () { sb.from('crm_tasks').update({ done_at: new Date().toISOString(), done_by: me.email }).eq('id', cb.dataset.done).then(loadToday); }); });
   });
 }
+
+/* ---------- Push alerts (crm-push sends one per incoming WhatsApp message to every subscribed device) ---------- */
+function pushFn(body) {
+  return sb.auth.getSession().then(function (s) {
+    return fetch(FN + 'crm-push', { method: 'POST', headers: { authorization: 'Bearer ' + s.data.session.access_token, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  }).then(function (r) { return r.json(); });
+}
+function pushOk() { return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+function pushSave(sub) { return pushFn({ action: 'subscribe', sub: sub.toJSON(), ua: navigator.userAgent }); }
+function pushKey(k) { var s = atob(k.replace(/-/g, '+').replace(/_/g, '/')); var a = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; }
+function pushCheck() {
+  if (!pushOk() || Notification.permission === 'denied') return;
+  navigator.serviceWorker.ready.then(function (reg) { return reg.pushManager.getSubscription(); }).then(function (sub) {
+    if (sub && Notification.permission === 'granted') return pushSave(sub);  // keeps this device's row fresh
+    var later = ''; try { later = localStorage.getItem('pushLater') || ''; } catch (e) {}
+    if (later !== new Date().toDateString()) $('pushBar').classList.remove('hidden');
+  }).catch(function () {});
+}
+$('pushOn').addEventListener('click', function () {
+  $('pushBar').classList.add('hidden');
+  Notification.requestPermission().then(function (p) {
+    if (p !== 'granted') { toast('ההתראות חסומות. אפשר לאשר אותן בהגדרות הטלפון'); return; }
+    return pushFn({ action: 'key' }).then(function (j) {
+      return navigator.serviceWorker.ready.then(function (reg) { return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: pushKey(j.key) }); });
+    }).then(pushSave).then(function () { toast('ההתראות הופעלו ✓'); return pushFn({ action: 'test' }); });
+  }).catch(function () { toast('לא הצלחתי להפעיל התראות. נסו שוב'); $('pushBar').classList.remove('hidden'); });
+});
+$('pushX').addEventListener('click', function () { $('pushBar').classList.add('hidden'); try { localStorage.setItem('pushLater', new Date().toDateString()); } catch (e) {} });
 
 /* ---------- PWA ---------- */
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
