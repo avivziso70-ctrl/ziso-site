@@ -923,8 +923,6 @@ $('docSend').addEventListener('click', function () {
   $('docSend').disabled = true;
   makePdf().then(function (b) {
     var fd = new FormData(); fd.append('phone', phone); fd.append('caption', docIsPrio ? docCaption : docCaption + ' מזיסו קרמיקה'); fd.append('file', new File([b], docName, { type: 'application/pdf' }));
-    // Priority copies may go out as the approved UTILITY template ziso_document when the 24h window is closed (wa-send decides).
-    if (docIsPrio && pdoc) { fd.append('doc_label', PKIND[pdoc.kind] + ' מספר ' + pdoc.doc); var cr = card.crm || {}, pr0 = card.priority[0] || {}; fd.append('cust_name', (cr.name || pr0.name || (card.contact && card.contact.name) || '').split(/\s+/)[0] || ''); }
     return callSend(fd);
   }).then(function () { toast('נשלח'); $('docSheet').classList.add('hidden'); sb.rpc('crm_log', { p_action: 'doc_send', p_tail9: card.tail9, p_detail: { file: docName } }); }).catch(function (e) { toast('לא נשלח: ' + e.message, 6000); }).then(function () { $('docSend').disabled = false; });
 });
