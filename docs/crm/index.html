@@ -966,7 +966,7 @@ function makePdf() {
       });
     });
 }
-$('docClose').addEventListener('click', function () { $('docSheet').classList.add('hidden'); });
+$('docClose').addEventListener('click', function () { $('docSheet').classList.add('hidden'); clearTimeout(prioPoll); });
 $('docDl').addEventListener('click', function () {
   makePdf().then(function (b) { var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = docName; document.body.appendChild(a); a.click(); a.remove(); sb.rpc('crm_log', { p_action: 'doc_download', p_tail9: card.tail9, p_detail: { file: docName } }); }).catch(function (e) { toast('לא נוצר קובץ: ' + e.message); });
 });
@@ -984,7 +984,7 @@ $('docSend').addEventListener('click', function () {
    The CRM never builds a tax document itself. A copy (העתק) printed from Priority is attached once per document
    (staff upload, or the office robot in its quiet window when crm_settings.doc_robot is on), kept in the private
    bucket priority-docs, and sent through wa-send to the card's own WhatsApp number after a preview and a confirm. */
-var PKIND = { receipt: 'קבלה', invoice: 'חשבונית מס' }, pdoc = null;
+var PKIND = { receipt: 'קבלה', invoice: 'חשבונית מס' }, pdoc = null, prioPoll = null;
 function prioRow(kind, doc) { var list = kind === 'receipt' ? card.receipts : card.invoices; return list.filter(function (x) { return x.doc === doc; })[0] || { doc: doc }; }
 function openPrioDoc(kind, doc) {
   var row = prioRow(kind, doc), phone = card.contact && card.contact.phone;
@@ -1005,22 +1005,26 @@ function openPrioDoc(kind, doc) {
     var d = rs[0].data, req = (rs[1].data || [])[0], robot = !!(rs[2].data && rs[2].data.doc_robot);
     if (d) return showPrioPdf(d, phone);
     var msg = 'עדיין אין במערכת העתק של ה' + PKIND[kind] + ' הזו מפריוריטי.';
-    if (req && req.status === 'queued') msg += ' ביקשנו העתק מהרובוט ב-' + fmtDate(req.requested_at) + '. הוא מדפיס בערב, אחרי 20:00, ויהיה כאן מחר בבוקר.';
-    else if (req && req.status === 'skipped') msg += ' הרובוט דילג: ' + (req.note || 'המסמך עוד לא הודפס בפריוריטי, ולכן העתק ראשון ייצא "מקור". צריך להדפיס אותו בפריוריטי ולצרף כאן.');
+    if (req && req.status === 'queued') {
+      msg += ' ביקשנו העתק מהרובוט ב-' + fmtTime(req.requested_at) + '. בדרך כלל זה לוקח כמה דקות; כשמישהו עובד בפריוריטי זה יכול לקחת קצת יותר. החלון יתעדכן לבד.';
+      clearTimeout(prioPoll); prioPoll = setTimeout(function () { if (pdoc && pdoc.doc === doc && !$('docSheet').classList.contains('hidden')) openPrioDoc(kind, doc); }, 15000);
+    }
+    else if (req && req.status === 'skipped') msg += ' הרובוט לא הדפיס: ' + (req.note || 'המסמך עוד לא הודפס בפריוריטי, ולכן הדפסה ראשונה תצא "מקור".') + ' אפשר להדפיס אותו בפריוריטי ולצרף כאן.';
+    else if (req && req.status === 'failed') msg += ' הבקשה הקודמת לרובוט נכשלה' + (req.note ? ': ' + req.note : '') + '. אפשר לבקש שוב.';
     $('docPreview').innerHTML = '<div class="empty">' + esc(msg) + '</div>';
-    $('docNote').textContent = 'איך מצרפים: בפריוריטי פותחים את ה' + PKIND[kind] + ' ' + doc + ', מדפיסים העתק ל-PDF, ומצרפים כאן. הקובץ נשמר בכרטיס ואפשר לשלוח אותו שוב בהמשך.';
-    $('docAct').innerHTML = '<button class="btn brass" type="button" id="prioAttach">צירוף PDF מפריוריטי</button>' +
-      (robot && !(req && req.status === 'queued') ? '<button class="btn" type="button" id="prioReq">לבקש העתק מהרובוט (מחר בבוקר)</button>' : '') +
+    $('docNote').textContent = (robot ? 'הרובוט במשרד מוציא העתק מפריוריטי לבד. אפשר גם ידנית: ' : 'איך מצרפים: ') + 'בפריוריטי פותחים את ה' + PKIND[kind] + ' ' + doc + ', מדפיסים העתק ל-PDF, ומצרפים כאן. הקובץ נשמר בכרטיס ואפשר לשלוח אותו שוב בהמשך.';
+    $('docAct').innerHTML = (robot && !(req && req.status === 'queued') ? '<button class="btn brass" type="button" id="prioReq">לבקש העתק מפריוריטי (כמה דקות)</button>' : '') +
+      '<button class="btn' + (robot ? '' : ' brass') + '" type="button" id="prioAttach">צירוף PDF ידני</button>' +
       '<button class="btn" type="button" id="prioClose">סגירה</button>';
     $('docAct').classList.remove('hidden');
     $('prioAttach').onclick = function () { $('prioFile').click(); };
-    $('prioClose').onclick = function () { $('docSheet').classList.add('hidden'); };
+    $('prioClose').onclick = function () { $('docSheet').classList.add('hidden'); clearTimeout(prioPoll); };
     if ($('prioReq')) $('prioReq').onclick = function () {
       this.disabled = true;
       sb.from('crm_doc_requests').insert({ doc: doc, kind: kind, tail9: card.tail9 }).then(function (r) {
         if (r.error && !/duplicate/.test(r.error.message)) { toast('הבקשה לא נשמרה: ' + r.error.message); return; }
         sb.rpc('crm_log', { p_action: 'doc_request', p_tail9: card.tail9, p_detail: { doc: doc, kind: kind } });
-        toast('נשמר. ההעתק יהיה כאן מחר בבוקר'); openPrioDoc(kind, doc);
+        toast('נשלח לרובוט. ההעתק יופיע כאן בעוד כמה דקות'); openPrioDoc(kind, doc);
       });
     };
   }).catch(function (e) { $('docPreview').innerHTML = '<div class="empty">לא נטען: ' + esc(e.message) + '</div>'; });
@@ -1049,7 +1053,7 @@ function showPrioPdf(d, phone) {
     $('docBtns').classList.remove('hidden');
     $('docSend').disabled = !phone;
     $('docNote').textContent = PKIND[pdoc.kind] + ' מ-' + fmtDate(pdoc.row.date) + ' על ' + money(pdoc.row.amount) + ' בפריוריטי. ' + (phone ? 'יישלח רק למספר של הלקוח הזה: ' + localPhone(phone) + ', עם השורה "' + docCaption + '". ' : 'ללקוח הזה אין שיחת וואטסאפ. אפשר להוריד את הקובץ. ') +
-      'הקובץ הוא ההעתק מפריוריטי, צורף ' + fmtDate(d.created_at) + (d.source === 'robot' ? ' ע״י הרובוט' : ' ע״י ' + nameOf(d.created_by)) + '. לבדוק מספר, שם וסכום לפני השליחה.';
+      'הקובץ הוא ההעתק מפריוריטי, צורף ' + fmtDate(d.created_at) + (d.source === 'robot' ? ' אוטומטית מפריוריטי' : ' ע״י ' + nameOf(d.created_by)) + '. לבדוק מספר, שם וסכום לפני השליחה.';
     sb.rpc('crm_log', { p_action: 'doc_view', p_tail9: card.tail9, p_detail: { doc: d.doc } });
     return renderPdf(docBlob);
   });
