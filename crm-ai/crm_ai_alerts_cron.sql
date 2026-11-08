@@ -1,0 +1,3 @@
+-- 8.11.2026: proactive staff push alerts (crm-ai-triage mode 'alerts'), every 10 min; the function itself only acts in business hours (Israel).
+select cron.schedule($n$crm-ai-alerts$n$, $s$*/10 5-16 * * 0-5$s$, $c$select net.http_post(url := $u$https://ppnjosyraosrdephsksu.supabase.co/functions/v1/crm-ai-triage$u$, headers := jsonb_build_object($h$content-type$h$, $h$application/json$h$, $h$x-hook-token$h$, (select hook_token from public.crm_push_keys where id=1)), body := $b${"mode":"alerts"}$b$::jsonb, timeout_milliseconds := 60000)$c$);
+-- to stop: select cron.unschedule($n$crm-ai-alerts$n$);

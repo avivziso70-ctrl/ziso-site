@@ -11,6 +11,7 @@
 // Daily cap: crm_ai_settings.daily_cap analyses per Israel day (counted in crm_audit action 'ai_triage').
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.90.0";
+import webpush from "npm:web-push@3.6.7";
 
 const url = Deno.env.get("SUPABASE_URL")!, service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const admin = createClient(url, service, { auth: { autoRefreshToken: false, persistSession: false } });
@@ -210,6 +211,140 @@ async function weekly(client: Anthropic, who: string) {
   return { ok: true, chars: body.length };
 }
 
+// ---------- proactive staff alerts (no model calls): push to active staff phones when something is stuck ----------
+// Content stays minimal (name + short reason, no amounts) because it shows on lock screens.
+const IL = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Jerusalem", weekday: "short", hour: "numeric", minute: "numeric", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit" });
+function ilParts(t: number) {
+  const o: Record<string, string> = {};
+  for (const p of IL.formatToParts(new Date(t))) o[p.type] = p.value;
+  return { wd: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(o.weekday), min: Number(o.hour) * 60 + Number(o.minute), day: `${o.year}-${o.month}-${o.day}` };
+}
+// business hours: Sun–Thu 08:00–18:00, Fri 08:00–13:30, Saturday closed
+const openAt = (t: number) => { const p = ilParts(t); return p.wd >= 0 && p.wd <= 4 ? p.min >= 480 && p.min < 1080 : p.wd === 5 ? p.min >= 480 && p.min < 810 : false; };
+function bizMinutes(from: number, to: number) {
+  let n = 0;
+  for (let t = Math.max(from, to - 7 * 864e5); t < to; t += 5 * 6e4) if (openAt(t)) n += 5;
+  return n;
+}
+const VIP_MIN = 15, STUCK_MIN = 60; // business minutes without a human reply
+const noMoney = (s: string) => s.replace(/(ה-)?(₪\s?[\d,.]+|[\d,.]+\s?(₪|ש"ח|שקל\S*))/g, "הסכום").replace(/\s{2,}/g, " ").trim();
+async function nameFor(t9: string, fallback?: string) {
+  const { data: c } = await admin.from("crm_customers").select("name").eq("tail9", t9).maybeSingle();
+  if (c?.name) return c.name;
+  if (fallback) return fallback;
+  const { data: p } = await admin.from("priority_customers").select("name").eq("tail9", t9).limit(1);
+  if (p?.[0]?.name) return p[0].name;
+  const { data: w } = await admin.from("wa_messages").select("name").like("phone", "%" + t9).eq("dir", "in").not("name", "is", null).order("ts", { ascending: false }).limit(1);
+  return w?.[0]?.name || "לקוח";
+}
+
+async function pushStaff(payload: Record<string, unknown>) {
+  const { data: k } = await admin.from("crm_push_keys").select("public_key, private_key").eq("id", 1).maybeSingle();
+  if (!k?.public_key || !k?.private_key) return 0;
+  webpush.setVapidDetails("mailto:info@zisoceramics.com", k.public_key, k.private_key);
+  const { data: staff } = await admin.from("crm_staff").select("email").eq("active", true);
+  const active = new Set((staff || []).map((s: any) => String(s.email).toLowerCase()));
+  const { data: subs } = await admin.from("crm_push_subs").select("endpoint, p256dh, auth, staff_email");
+  let ok = 0;
+  for (const s of (subs || []).filter((x: any) => active.has(String(x.staff_email || "").toLowerCase()))) {
+    try {
+      await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify(payload), { TTL: 3600, urgency: "high" });
+      ok++;
+      await admin.from("crm_push_subs").update({ last_ok_at: new Date().toISOString() }).eq("endpoint", s.endpoint);
+    } catch (e) {
+      const code = (e as { statusCode?: number }).statusCode;
+      if (code === 404 || code === 410) await admin.from("crm_push_subs").delete().eq("endpoint", s.endpoint);
+    }
+  }
+  return ok;
+}
+
+async function alerts(opts: { dry?: boolean } = {}) {
+  const now = Date.now();
+  if (!openAt(now) && !opts.dry) return { ok: true, skipped: "closed" };
+  const today = ilParts(now).day;
+  // what was already alerted (dedupe)
+  const { data: past } = await admin.from("crm_audit").select("detail").eq("action", "ai_alert").gte("at", new Date(now - 8 * 864e5).toISOString());
+  const sent = new Set((past || []).map((r: any) => r.detail?.key).filter(Boolean));
+
+  // conversations from the last 7 days
+  const { data: msgs } = await admin.from("wa_messages").select("ts, phone, dir, source, name").gte("ts", new Date(now - 7 * 864e5).toISOString()).order("ts", { ascending: false }).limit(3000);
+  (msgs || []).reverse();
+  const byT9 = new Map<string, { phone: string; name: string; lastHuman: number; firstOpen: number; lastIn: number; staff: boolean }>();
+  for (const m of msgs || []) {
+    const t9 = String(m.phone || "").replace(/\D/g, "").slice(-9);
+    if (t9.length !== 9) continue;
+    const c = byT9.get(t9) || { phone: m.phone, name: "", lastHuman: 0, firstOpen: 0, lastIn: 0, staff: false };
+    const t = new Date(m.ts).getTime();
+    if (m.dir === "in" && m.source === "live") {
+      c.lastIn = t; if (!c.firstOpen) c.firstOpen = t; if (m.name) c.name = m.name;
+    } else if (m.dir === "out" && (m.source === "phone-app" || m.source === "crm")) {
+      c.lastHuman = t; c.firstOpen = 0;
+    } else if (m.dir === "out" && (m.source === "brief" || m.source === "staff-ask")) c.staff = true; // internal staff numbers
+    byT9.set(t9, c);
+  }
+  const open = [...byT9.entries()].filter(([, c]) => c.firstOpen && !c.staff);
+  const t9s = open.map(([t9]) => t9);
+  const [custR, aiR] = await Promise.all([
+    t9s.length ? admin.from("crm_customers").select("tail9, name, kind, priority_cust_no, handled_at, deleted_at").in("tail9", t9s) : Promise.resolve({ data: [] as any[] }),
+    t9s.length ? admin.from("crm_ai").select("tail9, temp, score, risk, next_action").in("tail9", t9s) : Promise.resolve({ data: [] as any[] }),
+  ]);
+  const cust = new Map((custR.data || []).map((r: any) => [r.tail9, r]));
+  const ai = new Map((aiR.data || []).map((r: any) => [r.tail9, r]));
+  const out: any[] = [];
+  for (const [t9, c] of open) {
+    const cu: any = cust.get(t9), a: any = ai.get(t9);
+    if (cu?.deleted_at || cu?.kind === "supplier" || cu?.kind === "not_customer") continue;
+    if (cu?.handled_at && new Date(cu.handled_at).getTime() >= c.lastIn) continue;
+    if (a?.temp === "none") continue;
+    if (now - c.lastIn > 2 * 864e5) continue; // older silences belong to the daily lists, not to a ping
+    const waited = bizMinutes(c.firstOpen, now);
+    const vip = !!a && (a.score >= 70 || a.temp === "hot" || (!!a.risk && a.score >= 50));
+    const kind = vip && waited >= VIP_MIN ? "vip" : waited >= STUCK_MIN ? "stuck" : "";
+    if (!kind) continue;
+    const key = `${kind}:${t9}:${c.firstOpen}`;
+    if (sent.has(key) || (kind === "stuck" && sent.has(`vip:${t9}:${c.firstOpen}`))) continue;
+    const name = cu?.name || c.name || await nameFor(t9);
+    const h = waited >= 120 ? `${Math.round(waited / 60)} שעות` : `${waited} דקות`;
+    out.push({ key, tail9: t9, rank: (kind === "vip" ? 1000 : 0) + (a?.score || 0), payload: {
+      title: kind === "vip" ? `לקוח חשוב מחכה: ${name}` : `שיחה תקועה: ${name}`,
+      body: (kind === "vip" ? `מחכה לתשובה כבר ${h} (שעות עבודה).` : `אין תשובה של הצוות כבר ${h} (שעות עבודה).`) + (a?.next_action ? " " + noMoney(String(a.next_action)).slice(0, 80) : ""),
+      tag: "ai-" + kind + "-" + t9, renotify: true, url: "./#chat/" + encodeURIComponent(c.phone),
+    } });
+  }
+  // newly hot customers from the hourly analysis (once a day each)
+  const { data: hot } = await admin.from("crm_ai").select("tail9, score, next_action, at").eq("temp", "hot").is("done_at", null).gte("at", new Date(now - 3 * 36e5).toISOString());
+  for (const h of hot || []) {
+    const key = `hot:${h.tail9}:${today}`;
+    if (sent.has(key) || out.some((o) => o.tail9 === h.tail9)) continue;
+    const conv = byT9.get(h.tail9);
+    if (conv && conv.lastHuman > new Date(h.at).getTime()) continue; // staff already answered after the analysis
+    out.push({ key, tail9: h.tail9, rank: 500 + h.score, payload: { title: `ליד חם: ${await nameFor(h.tail9, conv?.name)}`, body: noMoney(String(h.next_action || "כדאי לחזור אליו היום")).slice(0, 110), tag: "ai-hot-" + h.tail9, url: "./#card/" + h.tail9 } });
+  }
+  // one morning digest: overdue AI tasks + stalled quotes with ready drafts
+  const dkey = `digest:${today}`;
+  if (!sent.has(dkey) && ilParts(now).min >= 510) {
+    const { count: overdue } = await admin.from("crm_ai").select("*", { count: "exact", head: true }).is("done_at", null).gte("score", 60).neq("temp", "none").lt("next_due", today);
+    const { data: sq } = await admin.rpc("crm_stalled_quotes");
+    const quotes = (sq || []).filter((q: any) => q.draft && (!q.fu_status || q.fu_status === "open")).length;
+    if ((overdue || 0) + quotes > 0) {
+      const parts = [];
+      if (overdue) parts.push(`${overdue} לקוחות שהמעקב שלהם באיחור`);
+      if (quotes) parts.push(`${quotes} הצעות מחיר תקועות עם טיוטת מעקב מוכנה`);
+      out.push({ key: dkey, tail9: null, rank: 1, payload: { title: "מה תקוע היום", body: parts.join(" · ") + ". הכל בלשונית היום.", tag: "ai-digest", url: "./#today" } });
+    }
+  }
+  out.sort((a, b) => b.rank - a.rank);
+  const batch = out.slice(0, 4);
+  const res: any[] = [];
+  for (const o of batch) {
+    const n = opts.dry ? 0 : await pushStaff(o.payload);
+    if (!opts.dry) await admin.from("crm_audit").insert({ who: "agent:crm-ai-alerts", action: "ai_alert", tail9: o.tail9, detail: { key: o.key, title: o.payload.title, devices: n } });
+    res.push({ key: o.key, title: o.payload.title, body: o.payload.body, devices: n });
+  }
+  return { ok: true, candidates: out.length, sent: res };
+}
+
 async function usedToday() {
   const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }));
   const offset = new Date().getTime() - d.getTime();
@@ -223,6 +358,13 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json(req, { ok: false, error: "POST only" }, 405);
   if (!Deno.env.get("ANTHROPIC_API_KEY")) return json(req, { ok: false, error: "אין מפתח API בסביבה" }, 503);
   const body = await req.json().catch(() => ({}));
+  if (body.mode === "alerts") {
+    const hook = req.headers.get("x-hook-token");
+    const { data: k } = await admin.from("crm_push_keys").select("hook_token").eq("id", 1).maybeSingle();
+    if (!hook || !k?.hook_token || k.hook_token !== hook) return json(req, { ok: false, error: "bad token" }, 401);
+    try { return json(req, await alerts({ dry: !!body.dry })); }
+    catch (e) { return json(req, { ok: false, error: String((e as any)?.message || e).slice(0, 300) }, 500); }
+  }
   const { data: st } = await admin.from("crm_ai_settings").select("enabled,daily_cap").eq("id", 1).maybeSingle();
   const cap = st?.daily_cap ?? 60;
 
