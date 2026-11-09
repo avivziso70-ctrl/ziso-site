@@ -49,6 +49,9 @@ input::placeholder,textarea::placeholder{color:var(--mute)}
 .pill.ok{background:var(--green-soft);color:var(--green)}
 .pill.late{background:var(--red);color:#fff}
 .pill.flag{background:var(--red-soft);color:var(--red);border:1px solid var(--red)}
+.pill.hot{background:var(--red);color:#fff}.pill.warm{background:var(--brass-soft);color:var(--brass)}.pill.cold{background:var(--graphite);color:var(--mute)}
+.ai{border-inline-start:3px solid var(--brass);padding-inline-start:12px;margin:8px 0 12px}.ai .next{font-weight:600;margin:6px 0}.ai .risk{color:var(--red);font-size:14px}
+.airow{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:start;padding:10px 0;border-bottom:1px solid var(--grout)}.airow .txt{font-size:15px}.airow .sub{font-size:13px;color:var(--mute)}
 #chat .acts{display:flex;gap:6px;overflow:auto;padding-bottom:2px;align-items:center}
 #chat .acts > *,#chat .acts .pill{flex-shrink:0;white-space:nowrap}
 #chat .acts button{min-height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--graphite);font-size:13px;cursor:pointer;white-space:nowrap}
@@ -779,7 +782,7 @@ function renderCard() {
       (lead && c.leads.length > 1 ? '<details><summary>' + (c.leads.length - 1) + ' פניות קודמות</summary><table class="t">' + c.leads.slice(1).map(function (l) { return '<tr><td>' + esc(fmtDate(l.created_at)) + '</td><td>' + esc(channelLabel(l.channel)) + '</td><td>' + esc(stageLabel(l.stage)) + '</td></tr>'; }).join('') + '</table></details>' : '') + '</details>';
   }
   h += '<div class="sect"><h3>פגישה באולם</h3><div id="visitBox"><span class="small muted">טוען…</span></div><div class="addrow"><input type="datetime-local" id="visitAt" aria-label="מועד הפגישה"><button class="btn small" id="addVisit">קביעה</button></div></div>';
-  h += '<div class="sect"><h3>סיכום חכם</h3><div class="summary" id="summaryBox">' + (crm.summary ? esc(crm.summary) + '<div class="small muted">עודכן ' + esc(fmtDate(crm.summary_at)) + '</div>' : '<span class="muted">עדיין אין סיכום.</span>') + '</div><div class="row"><button class="btn small" id="sumBtn"' + (c.chat_n ? '' : ' disabled') + '>' + (crm.summary ? 'רענון הסיכום' : 'סיכום השיחה') + '</button><span class="small muted">' + (c.chat_n ? c.chat_n + ' הודעות בוואטסאפ' : 'אין שיחת וואטסאפ') + '</span></div></div>';
+  h += '<div class="sect"><h3>סיכום חכם</h3><div id="aiBox"></div><div class="summary" id="summaryBox">' + (crm.summary ? esc(crm.summary) + '<div class="small muted">עודכן ' + esc(fmtDate(crm.summary_at)) + '</div>' : '<span class="muted">עדיין אין סיכום.</span>') + '</div><div class="row"><button class="btn small" id="sumBtn"' + (c.chat_n ? '' : ' disabled') + '>' + (crm.summary ? 'ניתוח מחדש' : 'ניתוח השיחה') + '</button><span class="small muted">' + (c.chat_n ? c.chat_n + ' הודעות בוואטסאפ' : 'אין שיחת וואטסאפ') + '</span></div></div>';
   h += '<div class="sect"><h3>הזמנות <span class="n">' + openOrders.length + ' פתוחות' + (debt ? ' · חוב ' + money(debt) : '') + '</span></h3>';
   if (!c.orders.length) h += '<div class="small muted">אין הזמנות בפריוריטי</div>';
   else h += '<table class="t"><tr><th>הזמנה</th><th>תאריך</th><th>סטטוס</th><th class="num">פתוח</th></tr>' + c.orders.slice(0, 12).map(function (o) {
@@ -801,6 +804,7 @@ function renderCard() {
   $('addNote').addEventListener('click', addNote);
   $('addVisit').addEventListener('click', addVisit);
   loadVisits();
+  loadAi(card.tail9);
   $('sumBtn').addEventListener('click', summarize);
   $('cardBody').querySelectorAll('[data-doc]').forEach(function (b) { b.addEventListener('click', function () { openDoc(b.dataset.doc, b.dataset.so); }); });
   $('cardBody').querySelectorAll('[data-pdoc]').forEach(function (b) { b.addEventListener('click', function () { openPrioDoc(b.dataset.pkind, b.dataset.pdoc); }); });
@@ -903,10 +907,40 @@ function delNote(id) {
   sb.from('crm_notes').update({ deleted_at: new Date().toISOString() }).eq('id', id).then(function (r) { if (r.error) toast('לא נמחק'); else { sb.rpc('crm_log', { p_action: 'note_delete', p_tail9: card.tail9, p_detail: { id: id } }); openCard(card.tail9); } });
 }
 function summarize() {
-  $('sumBtn').disabled = true; $('summaryBox').innerHTML = '<span class="muted">מסכם…</span>';
-  sb.auth.getSession().then(function (s) {
-    return fetch(FN + 'crm-summary', { method: 'POST', headers: { authorization: 'Bearer ' + s.data.session.access_token, 'content-type': 'application/json' }, body: JSON.stringify({ tail9: card.tail9 }) });
-  }).then(function (r) { return r.json(); }).then(function (j) { if (!j.ok) throw new Error(j.error || 'שגיאה'); openCard(card.tail9); }).catch(function (e) { toast('הסיכום נכשל: ' + e.message); $('sumBtn').disabled = false; });
+  $('sumBtn').disabled = true; $('summaryBox').innerHTML = '<span class="muted">מנתח…</span>';
+  var t9 = card.tail9;
+  aiFn({ tail9: t9 }).then(function (j) {
+    if (!j.ok || !j.result || !j.result.ok) return aiFn({ tail9: t9 }, 'crm-summary').then(function (k) { if (!k.ok) throw new Error(k.error || 'שגיאה'); });
+  }).then(function () { openCard(t9); }).catch(function (e) { toast('הניתוח נכשל: ' + e.message); $('sumBtn').disabled = false; });
+}
+function aiFn(body, fn) {
+  return sb.auth.getSession().then(function (s) {
+    return fetch(FN + (fn || 'crm-ai-triage'), { method: 'POST', headers: { authorization: 'Bearer ' + s.data.session.access_token, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  }).then(function (r) { return r.json(); });
+}
+/* ---------- AI analyst (crm-ai-triage writes crm_ai; staff only read it and mark "done") ---------- */
+var TEMP = { hot: 'חם', warm: 'פושר', cold: 'קר', none: 'לא לקוח' };
+var STAGE_AI = { new: 'פנייה חדשה', talking: 'בשיחה', visit: 'ביקור באולם', quote: 'קיבל הצעה', order: 'הזמין', done: 'נסגר', lost: 'אבד' };
+function dueLabel(d) {
+  if (!d) return '';
+  var t = new Date(); t.setHours(0, 0, 0, 0); var x = new Date(d + 'T00:00:00'), days = Math.round((x - t) / 86400000);
+  return days < 0 ? 'באיחור' : days === 0 ? 'היום' : days === 1 ? 'מחר' : fmtDate(d);
+}
+function mdLite(t) { return esc(t || '').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>'); }
+function noAction(a) { return !a || /^אין צורך/.test(a); }
+function loadAi(t9) {
+  sb.from('crm_ai').select('*').eq('tail9', t9).maybeSingle().then(function (r) {
+    var a = r.data; if (r.error || !a || !$('aiBox') || curTail !== t9) return;
+    $('aiBox').innerHTML = '<div class="ai"><div class="row"><span class="pill ' + esc(a.temp) + '">' + esc(TEMP[a.temp] || a.temp) + ' · ' + a.score + '</span>' + (a.stage_guess ? '<span class="pill">' + esc(STAGE_AI[a.stage_guess] || a.stage_guess) + '</span>' : '') + '</div>' +
+      (a.intent ? '<div class="small">מחפש: ' + esc(a.intent) + '</div>' : '') +
+      (noAction(a.next_action) ? '' : '<div class="next">הצעד הבא' + (a.next_due ? ' (' + esc(dueLabel(a.next_due)) + ')' : '') + ': ' + esc(a.next_action) + (a.done_at ? ' <span class="pill ok">בוצע</span>' : ' <button class="btn small" id="aiDone">בוצע</button>') + '</div>') +
+      (a.risk ? '<div class="risk">⚠ ' + esc(a.risk) + '</div>' : '') +
+      '<div class="small muted">' + esc(a.reason || '') + ' · ניתוח אוטומטי ' + esc(fmtDate(a.at)) + ' ' + esc(fmtTime(a.at)) + '</div></div>';
+    if ($('aiDone')) $('aiDone').addEventListener('click', function () { aiDone(t9, function () { loadAi(t9); }); });
+  });
+}
+function aiDone(t9, then) {
+  sb.from('crm_ai').update({ done_at: new Date().toISOString(), done_by: me.email }).eq('tail9', t9).then(function (r) { if (r.error) toast('לא נשמר'); else { sb.rpc('crm_log', { p_action: 'ai_done', p_tail9: t9 }); then(); } });
 }
 
 /* ---------- customer documents (order detail, balance) ---------- */
@@ -966,7 +1000,7 @@ function makePdf() {
       });
     });
 }
-$('docClose').addEventListener('click', function () { $('docSheet').classList.add('hidden'); });
+$('docClose').addEventListener('click', function () { $('docSheet').classList.add('hidden'); clearTimeout(prioPoll); });
 $('docDl').addEventListener('click', function () {
   makePdf().then(function (b) { var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = docName; document.body.appendChild(a); a.click(); a.remove(); sb.rpc('crm_log', { p_action: 'doc_download', p_tail9: card.tail9, p_detail: { file: docName } }); }).catch(function (e) { toast('לא נוצר קובץ: ' + e.message); });
 });
@@ -984,7 +1018,7 @@ $('docSend').addEventListener('click', function () {
    The CRM never builds a tax document itself. A copy (העתק) printed from Priority is attached once per document
    (staff upload, or the office robot in its quiet window when crm_settings.doc_robot is on), kept in the private
    bucket priority-docs, and sent through wa-send to the card's own WhatsApp number after a preview and a confirm. */
-var PKIND = { receipt: 'קבלה', invoice: 'חשבונית מס' }, pdoc = null;
+var PKIND = { receipt: 'קבלה', invoice: 'חשבונית מס' }, pdoc = null, prioPoll = null;
 function prioRow(kind, doc) { var list = kind === 'receipt' ? card.receipts : card.invoices; return list.filter(function (x) { return x.doc === doc; })[0] || { doc: doc }; }
 function openPrioDoc(kind, doc) {
   var row = prioRow(kind, doc), phone = card.contact && card.contact.phone;
@@ -1005,22 +1039,26 @@ function openPrioDoc(kind, doc) {
     var d = rs[0].data, req = (rs[1].data || [])[0], robot = !!(rs[2].data && rs[2].data.doc_robot);
     if (d) return showPrioPdf(d, phone);
     var msg = 'עדיין אין במערכת העתק של ה' + PKIND[kind] + ' הזו מפריוריטי.';
-    if (req && req.status === 'queued') msg += ' ביקשנו העתק מהרובוט ב-' + fmtDate(req.requested_at) + '. הוא מדפיס בערב, אחרי 20:00, ויהיה כאן מחר בבוקר.';
-    else if (req && req.status === 'skipped') msg += ' הרובוט דילג: ' + (req.note || 'המסמך עוד לא הודפס בפריוריטי, ולכן העתק ראשון ייצא "מקור". צריך להדפיס אותו בפריוריטי ולצרף כאן.');
+    if (req && req.status === 'queued') {
+      msg += ' ביקשנו העתק מהרובוט ב-' + fmtTime(req.requested_at) + '. בדרך כלל זה לוקח כמה דקות; כשמישהו עובד בפריוריטי זה יכול לקחת קצת יותר. החלון יתעדכן לבד.';
+      clearTimeout(prioPoll); prioPoll = setTimeout(function () { if (pdoc && pdoc.doc === doc && !$('docSheet').classList.contains('hidden')) openPrioDoc(kind, doc); }, 15000);
+    }
+    else if (req && req.status === 'skipped') msg += ' הרובוט לא הדפיס: ' + (req.note || 'המסמך עוד לא הודפס בפריוריטי, ולכן הדפסה ראשונה תצא "מקור".') + ' אפשר להדפיס אותו בפריוריטי ולצרף כאן.';
+    else if (req && req.status === 'failed') msg += ' הבקשה הקודמת לרובוט נכשלה' + (req.note ? ': ' + req.note : '') + '. אפשר לבקש שוב.';
     $('docPreview').innerHTML = '<div class="empty">' + esc(msg) + '</div>';
-    $('docNote').textContent = 'איך מצרפים: בפריוריטי פותחים את ה' + PKIND[kind] + ' ' + doc + ', מדפיסים העתק ל-PDF, ומצרפים כאן. הקובץ נשמר בכרטיס ואפשר לשלוח אותו שוב בהמשך.';
-    $('docAct').innerHTML = '<button class="btn brass" type="button" id="prioAttach">צירוף PDF מפריוריטי</button>' +
-      (robot && !(req && req.status === 'queued') ? '<button class="btn" type="button" id="prioReq">לבקש העתק מהרובוט (מחר בבוקר)</button>' : '') +
+    $('docNote').textContent = (robot ? 'הרובוט במשרד מוציא העתק מפריוריטי לבד. אפשר גם ידנית: ' : 'איך מצרפים: ') + 'בפריוריטי פותחים את ה' + PKIND[kind] + ' ' + doc + ', מדפיסים העתק ל-PDF, ומצרפים כאן. הקובץ נשמר בכרטיס ואפשר לשלוח אותו שוב בהמשך.';
+    $('docAct').innerHTML = (robot && !(req && req.status === 'queued') ? '<button class="btn brass" type="button" id="prioReq">לבקש העתק מפריוריטי (כמה דקות)</button>' : '') +
+      '<button class="btn' + (robot ? '' : ' brass') + '" type="button" id="prioAttach">צירוף PDF ידני</button>' +
       '<button class="btn" type="button" id="prioClose">סגירה</button>';
     $('docAct').classList.remove('hidden');
     $('prioAttach').onclick = function () { $('prioFile').click(); };
-    $('prioClose').onclick = function () { $('docSheet').classList.add('hidden'); };
+    $('prioClose').onclick = function () { $('docSheet').classList.add('hidden'); clearTimeout(prioPoll); };
     if ($('prioReq')) $('prioReq').onclick = function () {
       this.disabled = true;
       sb.from('crm_doc_requests').insert({ doc: doc, kind: kind, tail9: card.tail9 }).then(function (r) {
         if (r.error && !/duplicate/.test(r.error.message)) { toast('הבקשה לא נשמרה: ' + r.error.message); return; }
         sb.rpc('crm_log', { p_action: 'doc_request', p_tail9: card.tail9, p_detail: { doc: doc, kind: kind } });
-        toast('נשמר. ההעתק יהיה כאן מחר בבוקר'); openPrioDoc(kind, doc);
+        toast('נשלח לרובוט. ההעתק יופיע כאן בעוד כמה דקות'); openPrioDoc(kind, doc);
       });
     };
   }).catch(function (e) { $('docPreview').innerHTML = '<div class="empty">לא נטען: ' + esc(e.message) + '</div>'; });
@@ -1049,7 +1087,7 @@ function showPrioPdf(d, phone) {
     $('docBtns').classList.remove('hidden');
     $('docSend').disabled = !phone;
     $('docNote').textContent = PKIND[pdoc.kind] + ' מ-' + fmtDate(pdoc.row.date) + ' על ' + money(pdoc.row.amount) + ' בפריוריטי. ' + (phone ? 'יישלח רק למספר של הלקוח הזה: ' + localPhone(phone) + ', עם השורה "' + docCaption + '". ' : 'ללקוח הזה אין שיחת וואטסאפ. אפשר להוריד את הקובץ. ') +
-      'הקובץ הוא ההעתק מפריוריטי, צורף ' + fmtDate(d.created_at) + (d.source === 'robot' ? ' ע״י הרובוט' : ' ע״י ' + nameOf(d.created_by)) + '. לבדוק מספר, שם וסכום לפני השליחה.';
+      'הקובץ הוא ההעתק מפריוריטי, צורף ' + fmtDate(d.created_at) + (d.source === 'robot' ? ' אוטומטית מפריוריטי' : ' ע״י ' + nameOf(d.created_by)) + '. לבדוק מספר, שם וסכום לפני השליחה.';
     sb.rpc('crm_log', { p_action: 'doc_view', p_tail9: card.tail9, p_detail: { doc: d.doc } });
     return renderPdf(docBlob);
   });
@@ -1100,7 +1138,21 @@ function loadToday() {
     sb.rpc('crm_kpi'),
     sb.rpc('crm_followups'),
     sb.from('crm_visits').select('id,tail9,phone,name,at,note,source,by').is('cancelled_at', null).gte('at', new Date(Date.now() - 2 * 3600000).toISOString()).lte('at', new Date(Date.now() + 7 * 86400000).toISOString()).order('at').limit(30),
-    isOwner() ? sb.rpc('crm_staff_stats', { p_days: statDays }) : Promise.resolve({})
+    isOwner() ? sb.rpc('crm_staff_stats', { p_days: statDays }) : Promise.resolve({}),
+    sb.from('crm_ai').select('tail9,temp,score,next_action,next_due,risk,intent,at').is('done_at', null).neq('temp', 'none').order('score', { ascending: false }).limit(40),
+    sb.rpc('crm_stalled_quotes'),
+    isOwner() ? sb.from('crm_insights').select('period_start,period_end,body,at').order('at', { ascending: false }).limit(1) : Promise.resolve({}),
+    // cash first (9.11): recent orders waiting for payment + open customer debt from Priority
+    sb.from('priority_orders_all').select('so,cust_no,cust_name,date,amount').eq('status', 'ממתין לתשלום').gte('date', new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10)).order('amount', { ascending: false }).limit(40).then(function (r) {
+      var rows = r.data || [], nos = rows.map(function (o) { return o.cust_no; });
+      if (!nos.length) return { data: rows };
+      return sb.from('priority_customers').select('cust_no,tail9,name').in('cust_no', nos).then(function (c) {
+        var m = {}; (c.data || []).forEach(function (x) { m[x.cust_no] = x; });
+        rows.forEach(function (o) { var x = m[o.cust_no]; if (x) { o.tail9 = x.tail9; o.cust_name = o.cust_name || x.name; } });
+        return { data: rows };
+      });
+    }),
+    sb.from('priority_aging').select('cust_no,name,tail9,total,d90p').gt('total', 500).order('total', { ascending: false }).limit(30)
   ]).then(function (rs) {
     var tasks = rs[0].data || [], leads = rs[1].data || [], k = rs[2].data || {}, fu = rs[3].data || [], visits = rs[4].data || [], ss = rs[5].data;
     var today = new Date().toDateString();
@@ -1111,6 +1163,37 @@ function loadToday() {
       '<div class="kpi' + (late ? ' bad' : waiting.length ? '' : ' good') + '"><b>' + waiting.length + '</b><span>ממתינים לאדם עכשיו</span><span class="sub">' + (late ? late + ' עברו 15 דק׳' : 'אף אחד לא באיחור') + '</span></div>' +
       '<div class="kpi"><b>' + (k.quotes7 || 0) + '</b><span>הצעות מחיר, 7 ימים</span><span class="sub">' + (k.open_quotes7 || 0) + ' בלי תשובה מהלקוח</span></div>' +
       '<div class="kpi"><b>' + (k.won7 || 0) + '</b><span>נסגרו, 7 ימים</span><span class="sub">מסמנים "נסגר" בשיחה</span></div></div>';
+    // money waiting per customer: unpaid recent orders + open debt + stalled quotes; used to put cash at the top
+    var pay = rs[9].data || [], debt = rs[10].data || [], cashOf = {};
+    var addCash = function (t9, n) { if (t9 && n > 0) cashOf[t9] = (cashOf[t9] || 0) + Number(n); };
+    pay.forEach(function (o) { addCash(o.tail9, o.amount); });
+    debt.forEach(function (d) { addCash(d.tail9, d.total); });
+    (rs[7].data || []).forEach(function (q) { addCash(q.tail9, q.total); });
+    var collect = pay.map(function (o) { return { t9: o.tail9, name: o.cust_name, amt: Number(o.amount), what: 'הזמנה ' + o.so + ' ממתינה לתשלום', since: o.date }; })
+      .concat(debt.map(function (d) { return { t9: d.tail9, name: d.name, amt: Number(d.total), what: 'יתרת חוב' + (Number(d.d90p) > 0 ? ' (חלקה מעל 90 יום)' : ''), since: null }; }))
+      .sort(function (a, b) { return b.amt - a.amt; });
+    if (rs[9].data || rs[10].data) {
+      var ctot = collect.reduce(function (s, c) { return s + c.amt; }, 0);
+      h += '<div class="sect"><h3>כסף שמחכה לגבייה <span class="n">' + collect.length + (ctot ? ' · ' + money(ctot) : '') + '</span></h3><div class="small muted">הזמנות מ-60 הימים האחרונים שממתינות לתשלום, ויתרות חוב פתוחות בפריוריטי. זה הכסף הכי קרוב לקופה: שיחה אחת או לינק לתשלום מהכרטיס.</div>' +
+        (collect.length ? collect.slice(0, 12).map(function (c) { return '<div class="airow"><span class="pill hot">' + money(c.amt) + '</span><div><div class="txt">' + (c.t9 ? '<a href="#card/' + esc(c.t9) + '">' + esc(c.name || 'לקוח') + '</a>' : esc(c.name || 'לקוח')) + '</div><div class="sub">' + esc(c.what) + (c.since ? ' · מ-' + esc(fmtDate(c.since)) : '') + '</div></div></div>'; }).join('') : '<div class="small muted">אין כרגע כסף פתוח לגבייה</div>') + '</div>';
+    }
+    var cashRank = function (a) { var c = cashOf[a.tail9] || 0; return a.score + (c > 0 ? 20 + Math.min(30, c / 1000) : 0); };
+    var ai = (rs[6].data || []).filter(function (a) { return !noAction(a.next_action) && a.score >= 30; }).sort(function (a, b) { return cashRank(b) - cashRank(a); }).slice(0, 15);
+    if (rs[6].data) {
+      var nm = {}; convs.forEach(function (c) { if (c.tail9) nm[c.tail9] = c.name || localPhone(c.phone); });
+      h += '<div class="sect"><h3>מה לעשות היום <span class="n">ניתוח אוטומטי · ' + ai.length + '</span></h3><div class="small muted">המערכת קוראת כל שיחה שהתחדשה וממיינת לפי מה שהכי קרוב לכסף: קודם לקוחות עם הזמנה שממתינה לתשלום, חוב פתוח או הצעה גדולה, ואחר כך לפי דחיפות. לוחצים על השם לכרטיס, "בוצע" מוריד מהרשימה עד שיקרה משהו חדש.</div>' +
+        (ai.length ? ai.map(function (a) { return '<div class="airow"><span class="pill ' + esc(a.temp) + '">' + esc(TEMP[a.temp] || a.temp) + ' ' + a.score + '</span><div><div class="txt"><a href="#card/' + esc(a.tail9) + '" data-ainame="' + esc(a.tail9) + '">' + esc(nm[a.tail9] || 'לקוח') + '</a>' + (cashOf[a.tail9] ? ' · <b>' + money(cashOf[a.tail9]) + ' על הפרק</b>' : '') + (a.next_due ? ' · <b>' + esc(dueLabel(a.next_due)) + '</b>' : '') + ': ' + esc(a.next_action) + '</div>' + (a.risk ? '<div class="sub" style="color:var(--red)">⚠ ' + esc(a.risk) + '</div>' : '') + (a.intent ? '<div class="sub">' + esc(a.intent) + '</div>' : '') + '<button class="btn small" data-aidone="' + esc(a.tail9) + '">בוצע</button></div></div>'; }).join('') : '<div class="small muted">אין כרגע משהו דחוף</div>') + '</div>';
+    }
+    var sq = (rs[7].data || []).slice().sort(function (x, y) { return Number(y.total || 0) - Number(x.total || 0); }), ins = rs[8].data && rs[8].data[0];
+    if (isOwner() && rs[8].data) {
+      h += '<div class="sect"><h3>תובנות השבוע <span class="n">רק אתה רואה את זה</span></h3>' + (ins ? '<div class="summary">' + mdLite(ins.body) + '</div><div class="small muted">' + esc(fmtDate(ins.period_start)) + '–' + esc(fmtDate(ins.period_end)) + ' · מתעדכן לבד בכל יום ראשון בבוקר</div>' : '<div class="small muted">הסיכום הראשון יגיע ביום ראשון בבוקר.</div>') + '<div class="row"><button class="btn small" id="insNow">הפקה עכשיו</button></div></div>';
+    }
+    if (rs[7].data) {
+      h += '<div class="sect"><h3>הצעות מחיר תקועות <span class="n">' + sq.length + (sq.length ? ' · ' + money(sq.reduce(function (s, q) { return s + Number(q.total || 0); }, 0)) : '') + '</span></h3><div class="small muted">הצעות מ-30 הימים האחרונים בלי הזמנה אחריהן (ישנות יותר כבר לא רלוונטיות). לכל אחת טיוטת מעקב שהמערכת כתבה לפי השיחה. שולחים ידנית, פעם אחת, ומסמנים "נשלח".</div>' +
+        (sq.length ? sq.slice(0, 20).map(function (q, i) { return '<div class="airow"><span class="pill ' + esc(q.temp || '') + '">' + q.days + ' ימים</span><div><div class="txt">' + (q.tail9 ? '<a href="#card/' + esc(q.tail9) + '">' + esc(q.name || 'לקוח ' + q.cust_no) + '</a>' : esc(q.name || 'לקוח ' + q.cust_no)) + ' · ' + esc(q.pq) + ' · ' + money(q.total) + '</div>' + (q.angle ? '<div class="sub">' + esc(q.angle) + '</div>' : '') +
+          (q.draft ? '<details><summary>טיוטת מעקב</summary><div class="summary">' + esc(q.draft) + '</div></details>' : '<div class="sub">הטיוטה תיכתב בריצה הבאה</div>') +
+          '<div class="row">' + (q.draft ? '<button class="btn small" data-qsend="' + i + '">לשיחה עם הטיוטה</button>' : '<button class="btn small" data-qdraft="' + i + '">כתיבת טיוטה</button>') + '<button class="btn small" data-qmark="' + i + '" data-st="sent">נשלח</button><button class="btn small" data-qmark="' + i + '" data-st="dismissed">לא רלוונטי</button></div></div></div>'; }).join('') : '<div class="small muted">אין הצעות תקועות</div>') + '</div>';
+    }
     var vToday = visits.filter(function (v) { return isToday(v.at); }).length;
     h += '<div class="sect"><h3>פגישות באולם <span class="n">' + vToday + ' היום · ' + visits.length + ' בשבוע הקרוב</span></h3>' + (visits.length ? visits.map(function (v) { return visitRow(v, true); }).join('') : '<div class="small muted">אין פגישות קבועות</div>') + '</div>';
     h += '<div class="sect"><h3>ממתינים עכשיו <span class="n">לפי זמן בשעות הפתיחה</span></h3>' + (waiting.length ? '<ul class="list" style="padding:0">' + waiting.slice(0, 20).map(function (c) { return '<li><button data-phone="' + esc(c.phone) + '"><span class="dot wait"></span><span class="name ellip">' + esc(c.name || localPhone(c.phone)) + '</span><span class="when">' + esc(ago(c.waiting_since || c.last_ts)) + '</span><span class="last ellip">' + esc(c.last_text || '') + '</span><span class="meta">' + (c.flag ? '<span class="pill flag">רגיש: לבדוק</span>' : '') + waitPill(c) + (c.claimed_by ? '<span class="pill">' + esc(nameOf(c.claimed_by)) + '</span>' : '<span class="pill">אין אחראית</span>') + '</span></button></li>'; }).join('') + '</ul>' : '<div class="small muted">כולם נענו</div>') + '</div>';
@@ -1128,6 +1211,21 @@ function loadToday() {
     }
     h += '<p class="fine">לשיפור השירות נמדדים זמני המענה ללקוחות וכמה פניות כל איש צוות מטפל בהן. רק מספרים, בלי תוכן ההודעות, ורק המנהל רואה אותם.</p>';
     $('todayBody').innerHTML = h;
+    if ($('insNow')) $('insNow').addEventListener('click', function () { this.disabled = true; toast('מפיק סיכום שבועי…', 4000); aiFn({ mode: 'weekly' }).then(function (j) { if (!j.ok) throw new Error(j.error || 'שגיאה'); loadToday(); }).catch(function (e) { toast('לא הופק: ' + e.message); }); });
+    $('todayBody').querySelectorAll('[data-qsend]').forEach(function (b) { b.addEventListener('click', function () {
+      var q = sq[Number(b.dataset.qsend)], cv = convs.filter(function (c) { return c.tail9 === q.tail9; })[0];
+      if (cv) { go('chat', cv.phone); setTimeout(function () { putDraft(q.draft); }, 400); }
+      else if (navigator.clipboard) navigator.clipboard.writeText(q.draft).then(function () { toast('אין שיחת וואטסאפ פתוחה. הטיוטה הועתקה: אפשר להדביק בוואטסאפ בטלפון או להתקשר.', 5000); });
+    }); });
+    $('todayBody').querySelectorAll('[data-qdraft]').forEach(function (b) { b.addEventListener('click', function () { var q = sq[Number(b.dataset.qdraft)]; b.disabled = true; aiFn({ mode: 'quote', pq: q.pq }).then(function (j) { if (!j.ok) throw new Error(j.error || 'שגיאה'); loadToday(); }).catch(function (e) { toast('לא נכתבה: ' + e.message); b.disabled = false; }); }); });
+    $('todayBody').querySelectorAll('[data-qmark]').forEach(function (b) { b.addEventListener('click', function () {
+      var q = sq[Number(b.dataset.qmark)];
+      if (!q.draft) { toast('אפשר לסמן אחרי שהטיוטה נכתבה'); return; }
+      sb.from('crm_quote_fu').update({ status: b.dataset.st, status_at: new Date().toISOString(), status_by: me.email }).eq('pq', q.pq).then(function (r) { if (r.error) toast('לא נשמר'); else { sb.rpc('crm_log', { p_action: 'quote_fu_' + b.dataset.st, p_tail9: q.tail9, p_detail: { pq: q.pq } }); loadToday(); } });
+    }); });
+    $('todayBody').querySelectorAll('[data-aidone]').forEach(function (b) { b.addEventListener('click', function () { aiDone(b.dataset.aidone, loadToday); }); });
+    var miss = ai.filter(function (a) { return !nm[a.tail9]; }).map(function (a) { return a.tail9; });
+    if (miss.length) sb.from('crm_customers').select('tail9,name').in('tail9', miss).then(function (r) { (r.data || []).forEach(function (c) { var el = $('todayBody').querySelector('[data-ainame="' + c.tail9 + '"]'); if (el && c.name) el.textContent = c.name; }); });
     $('todayBody').querySelectorAll('[data-days]').forEach(function (b) { b.addEventListener('click', function () { statDays = Number(b.dataset.days); loadToday(); }); });
     $('todayBody').querySelectorAll('[data-phone]').forEach(function (b) { b.addEventListener('click', function () { go('chat', b.dataset.phone); }); });
     $('todayBody').querySelectorAll('[data-done]').forEach(function (cb) { cb.addEventListener('change', function () { sb.from('crm_tasks').update({ done_at: new Date().toISOString(), done_by: me.email }).eq('id', cb.dataset.done).then(loadToday); }); });
