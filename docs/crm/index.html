@@ -782,11 +782,7 @@ function renderCard() {
       (lead && c.leads.length > 1 ? '<details><summary>' + (c.leads.length - 1) + ' פניות קודמות</summary><table class="t">' + c.leads.slice(1).map(function (l) { return '<tr><td>' + esc(fmtDate(l.created_at)) + '</td><td>' + esc(channelLabel(l.channel)) + '</td><td>' + esc(stageLabel(l.stage)) + '</td></tr>'; }).join('') + '</table></details>' : '') + '</details>';
   }
   h += '<div class="sect"><h3>פגישה באולם</h3><div id="visitBox"><span class="small muted">טוען…</span></div><div class="addrow"><input type="datetime-local" id="visitAt" aria-label="מועד הפגישה"><button class="btn small" id="addVisit">קביעה</button></div></div>';
-<<<<<<< HEAD
-  h += '<div class="sect"><h3>סיכום חכם</h3><div class="summary" id="summaryBox">' + (crm.summary ? esc(crm.summary) + '<div class="small muted">עודכן ' + esc(fmtDate(crm.summary_at)) + '</div>' : '<span class="muted">עדיין אין סיכום.</span>') + '</div><div class="row"><button class="btn small" id="sumBtn"' + (c.chat_n ? '' : ' disabled') + '>' + (crm.summary ? 'רענון הסיכום' : 'סיכום השיחה') + '</button><span class="small muted">' + (c.chat_n ? c.chat_n + ' הודעות בוואטסאפ' : 'אין שיחת וואטסאפ') + '</span></div></div>';
-=======
   h += '<div class="sect"><h3>סיכום חכם</h3><div id="aiBox"></div><div class="summary" id="summaryBox">' + (crm.summary ? esc(crm.summary) + '<div class="small muted">עודכן ' + esc(fmtDate(crm.summary_at)) + '</div>' : '<span class="muted">עדיין אין סיכום.</span>') + '</div><div class="row"><button class="btn small" id="sumBtn"' + (c.chat_n ? '' : ' disabled') + '>' + (crm.summary ? 'ניתוח מחדש' : 'ניתוח השיחה') + '</button><span class="small muted">' + (c.chat_n ? c.chat_n + ' הודעות בוואטסאפ' : 'אין שיחת וואטסאפ') + '</span></div></div>';
->>>>>>> origin/main
   h += '<div class="sect"><h3>הזמנות <span class="n">' + openOrders.length + ' פתוחות' + (debt ? ' · חוב ' + money(debt) : '') + '</span></h3>';
   if (!c.orders.length) h += '<div class="small muted">אין הזמנות בפריוריטי</div>';
   else h += '<table class="t"><tr><th>הזמנה</th><th>תאריך</th><th>סטטוס</th><th class="num">פתוח</th></tr>' + c.orders.slice(0, 12).map(function (o) {
@@ -808,10 +804,7 @@ function renderCard() {
   $('addNote').addEventListener('click', addNote);
   $('addVisit').addEventListener('click', addVisit);
   loadVisits();
-<<<<<<< HEAD
-=======
   loadAi(card.tail9);
->>>>>>> origin/main
   $('sumBtn').addEventListener('click', summarize);
   $('cardBody').querySelectorAll('[data-doc]').forEach(function (b) { b.addEventListener('click', function () { openDoc(b.dataset.doc, b.dataset.so); }); });
   $('cardBody').querySelectorAll('[data-pdoc]').forEach(function (b) { b.addEventListener('click', function () { openPrioDoc(b.dataset.pkind, b.dataset.pdoc); }); });
@@ -1145,9 +1138,6 @@ function loadToday() {
     sb.rpc('crm_kpi'),
     sb.rpc('crm_followups'),
     sb.from('crm_visits').select('id,tail9,phone,name,at,note,source,by').is('cancelled_at', null).gte('at', new Date(Date.now() - 2 * 3600000).toISOString()).lte('at', new Date(Date.now() + 7 * 86400000).toISOString()).order('at').limit(30),
-<<<<<<< HEAD
-    isOwner() ? sb.rpc('crm_staff_stats', { p_days: statDays }) : Promise.resolve({})
-=======
     isOwner() ? sb.rpc('crm_staff_stats', { p_days: statDays }) : Promise.resolve({}),
     sb.from('crm_ai').select('tail9,temp,score,next_action,next_due,risk,intent,at').is('done_at', null).neq('temp', 'none').order('score', { ascending: false }).limit(40),
     sb.rpc('crm_stalled_quotes'),
@@ -1163,7 +1153,6 @@ function loadToday() {
       });
     }),
     sb.from('priority_aging').select('cust_no,name,tail9,total,d90p').gt('total', 500).order('total', { ascending: false }).limit(30)
->>>>>>> origin/main
   ]).then(function (rs) {
     var tasks = rs[0].data || [], leads = rs[1].data || [], k = rs[2].data || {}, fu = rs[3].data || [], visits = rs[4].data || [], ss = rs[5].data;
     var today = new Date().toDateString();
@@ -1174,8 +1163,6 @@ function loadToday() {
       '<div class="kpi' + (late ? ' bad' : waiting.length ? '' : ' good') + '"><b>' + waiting.length + '</b><span>ממתינים לאדם עכשיו</span><span class="sub">' + (late ? late + ' עברו 15 דק׳' : 'אף אחד לא באיחור') + '</span></div>' +
       '<div class="kpi"><b>' + (k.quotes7 || 0) + '</b><span>הצעות מחיר, 7 ימים</span><span class="sub">' + (k.open_quotes7 || 0) + ' בלי תשובה מהלקוח</span></div>' +
       '<div class="kpi"><b>' + (k.won7 || 0) + '</b><span>נסגרו, 7 ימים</span><span class="sub">מסמנים "נסגר" בשיחה</span></div></div>';
-<<<<<<< HEAD
-=======
     // money waiting per customer: unpaid recent orders + open debt + stalled quotes; used to put cash at the top
     var pay = rs[9].data || [], debt = rs[10].data || [], cashOf = {};
     var addCash = function (t9, n) { if (t9 && n > 0) cashOf[t9] = (cashOf[t9] || 0) + Number(n); };
@@ -1207,7 +1194,6 @@ function loadToday() {
           (q.draft ? '<details><summary>טיוטת מעקב</summary><div class="summary">' + esc(q.draft) + '</div></details>' : '<div class="sub">הטיוטה תיכתב בריצה הבאה</div>') +
           '<div class="row">' + (q.draft ? '<button class="btn small" data-qsend="' + i + '">לשיחה עם הטיוטה</button>' : '<button class="btn small" data-qdraft="' + i + '">כתיבת טיוטה</button>') + '<button class="btn small" data-qmark="' + i + '" data-st="sent">נשלח</button><button class="btn small" data-qmark="' + i + '" data-st="dismissed">לא רלוונטי</button></div></div></div>'; }).join('') : '<div class="small muted">אין הצעות תקועות</div>') + '</div>';
     }
->>>>>>> origin/main
     var vToday = visits.filter(function (v) { return isToday(v.at); }).length;
     h += '<div class="sect"><h3>פגישות באולם <span class="n">' + vToday + ' היום · ' + visits.length + ' בשבוע הקרוב</span></h3>' + (visits.length ? visits.map(function (v) { return visitRow(v, true); }).join('') : '<div class="small muted">אין פגישות קבועות</div>') + '</div>';
     h += '<div class="sect"><h3>ממתינים עכשיו <span class="n">לפי זמן בשעות הפתיחה</span></h3>' + (waiting.length ? '<ul class="list" style="padding:0">' + waiting.slice(0, 20).map(function (c) { return '<li><button data-phone="' + esc(c.phone) + '"><span class="dot wait"></span><span class="name ellip">' + esc(c.name || localPhone(c.phone)) + '</span><span class="when">' + esc(ago(c.waiting_since || c.last_ts)) + '</span><span class="last ellip">' + esc(c.last_text || '') + '</span><span class="meta">' + (c.flag ? '<span class="pill flag">רגיש: לבדוק</span>' : '') + waitPill(c) + (c.claimed_by ? '<span class="pill">' + esc(nameOf(c.claimed_by)) + '</span>' : '<span class="pill">אין אחראית</span>') + '</span></button></li>'; }).join('') + '</ul>' : '<div class="small muted">כולם נענו</div>') + '</div>';
@@ -1225,8 +1211,6 @@ function loadToday() {
     }
     h += '<p class="fine">לשיפור השירות נמדדים זמני המענה ללקוחות וכמה פניות כל איש צוות מטפל בהן. רק מספרים, בלי תוכן ההודעות, ורק המנהל רואה אותם.</p>';
     $('todayBody').innerHTML = h;
-<<<<<<< HEAD
-=======
     if ($('insNow')) $('insNow').addEventListener('click', function () { this.disabled = true; toast('מפיק סיכום שבועי…', 4000); aiFn({ mode: 'weekly' }).then(function (j) { if (!j.ok) throw new Error(j.error || 'שגיאה'); loadToday(); }).catch(function (e) { toast('לא הופק: ' + e.message); }); });
     $('todayBody').querySelectorAll('[data-qsend]').forEach(function (b) { b.addEventListener('click', function () {
       var q = sq[Number(b.dataset.qsend)], cv = convs.filter(function (c) { return c.tail9 === q.tail9; })[0];
@@ -1242,7 +1226,6 @@ function loadToday() {
     $('todayBody').querySelectorAll('[data-aidone]').forEach(function (b) { b.addEventListener('click', function () { aiDone(b.dataset.aidone, loadToday); }); });
     var miss = ai.filter(function (a) { return !nm[a.tail9]; }).map(function (a) { return a.tail9; });
     if (miss.length) sb.from('crm_customers').select('tail9,name').in('tail9', miss).then(function (r) { (r.data || []).forEach(function (c) { var el = $('todayBody').querySelector('[data-ainame="' + c.tail9 + '"]'); if (el && c.name) el.textContent = c.name; }); });
->>>>>>> origin/main
     $('todayBody').querySelectorAll('[data-days]').forEach(function (b) { b.addEventListener('click', function () { statDays = Number(b.dataset.days); loadToday(); }); });
     $('todayBody').querySelectorAll('[data-phone]').forEach(function (b) { b.addEventListener('click', function () { go('chat', b.dataset.phone); }); });
     $('todayBody').querySelectorAll('[data-done]').forEach(function (cb) { cb.addEventListener('change', function () { sb.from('crm_tasks').update({ done_at: new Date().toISOString(), done_by: me.email }).eq('id', cb.dataset.done).then(loadToday); }); });
