@@ -64,7 +64,7 @@ function upd(){if(!sel.d||!sel.h){sum.textContent=sel.d?'בחרו שעה.':'בח
   var t='שלום, אשמח לקבוע פגישת ייעוץ ועיצוב באולם '+when+'.';if(sel.t)t+=' הפרויקט: '+sel.t+'.';var nm=nameI.value.trim();if(nm)t+=' שמי '+nm+'.';
   if(window.zisoAdCode)t+=' ('+window.zisoAdCode+')';
   go.setAttribute('href','https://wa.me/972504770040?text='+encodeURIComponent(t));go.removeAttribute('aria-disabled')}
-go.addEventListener('click',function(e){if(go.getAttribute('aria-disabled')==='true'){e.preventDefault();e.stopPropagation();sum.textContent=sel.d?'בחרו שעה כדי להמשיך.':'בחרו יום ושעה כדי להמשיך.';(sel.d?hours:days).querySelector('button')&&(sel.d?hours:days).querySelector('button').focus()}},true);
+go.addEventListener('click',function(e){if(go.getAttribute('aria-disabled')!=='true'&&window.zisoTrack)window.zisoTrack('booking_submit',{campaign:'booking',topic:sel.t});if(go.getAttribute('aria-disabled')==='true'){e.preventDefault();e.stopPropagation();sum.textContent=sel.d?'בחרו שעה כדי להמשיך.':'בחרו יום ושעה כדי להמשיך.';(sel.d?hours:days).querySelector('button')&&(sel.d?hours:days).querySelector('button').focus()}},true);
 })();
 </script>
 <footer><div class="wrap">
