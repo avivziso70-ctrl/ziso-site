@@ -1141,7 +1141,18 @@ function loadToday() {
     isOwner() ? sb.rpc('crm_staff_stats', { p_days: statDays }) : Promise.resolve({}),
     sb.from('crm_ai').select('tail9,temp,score,next_action,next_due,risk,intent,at').is('done_at', null).neq('temp', 'none').order('score', { ascending: false }).limit(40),
     sb.rpc('crm_stalled_quotes'),
-    isOwner() ? sb.from('crm_insights').select('period_start,period_end,body,at').order('at', { ascending: false }).limit(1) : Promise.resolve({})
+    isOwner() ? sb.from('crm_insights').select('period_start,period_end,body,at').order('at', { ascending: false }).limit(1) : Promise.resolve({}),
+    // cash first (9.11): recent orders waiting for payment + open customer debt from Priority
+    sb.from('priority_orders_all').select('so,cust_no,cust_name,date,amount').eq('status', 'ממתין לתשלום').gte('date', new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10)).order('amount', { ascending: false }).limit(40).then(function (r) {
+      var rows = r.data || [], nos = rows.map(function (o) { return o.cust_no; });
+      if (!nos.length) return { data: rows };
+      return sb.from('priority_customers').select('cust_no,tail9,name').in('cust_no', nos).then(function (c) {
+        var m = {}; (c.data || []).forEach(function (x) { m[x.cust_no] = x; });
+        rows.forEach(function (o) { var x = m[o.cust_no]; if (x) { o.tail9 = x.tail9; o.cust_name = o.cust_name || x.name; } });
+        return { data: rows };
+      });
+    }),
+    sb.from('priority_aging').select('cust_no,name,tail9,total,d90p').gt('total', 500).order('total', { ascending: false }).limit(30)
   ]).then(function (rs) {
     var tasks = rs[0].data || [], leads = rs[1].data || [], k = rs[2].data || {}, fu = rs[3].data || [], visits = rs[4].data || [], ss = rs[5].data;
     var today = new Date().toDateString();
@@ -1152,13 +1163,28 @@ function loadToday() {
       '<div class="kpi' + (late ? ' bad' : waiting.length ? '' : ' good') + '"><b>' + waiting.length + '</b><span>ממתינים לאדם עכשיו</span><span class="sub">' + (late ? late + ' עברו 15 דק׳' : 'אף אחד לא באיחור') + '</span></div>' +
       '<div class="kpi"><b>' + (k.quotes7 || 0) + '</b><span>הצעות מחיר, 7 ימים</span><span class="sub">' + (k.open_quotes7 || 0) + ' בלי תשובה מהלקוח</span></div>' +
       '<div class="kpi"><b>' + (k.won7 || 0) + '</b><span>נסגרו, 7 ימים</span><span class="sub">מסמנים "נסגר" בשיחה</span></div></div>';
-    var ai = (rs[6].data || []).filter(function (a) { return !noAction(a.next_action) && a.score >= 30; }).slice(0, 15);
+    // money waiting per customer: unpaid recent orders + open debt + stalled quotes; used to put cash at the top
+    var pay = rs[9].data || [], debt = rs[10].data || [], cashOf = {};
+    var addCash = function (t9, n) { if (t9 && n > 0) cashOf[t9] = (cashOf[t9] || 0) + Number(n); };
+    pay.forEach(function (o) { addCash(o.tail9, o.amount); });
+    debt.forEach(function (d) { addCash(d.tail9, d.total); });
+    (rs[7].data || []).forEach(function (q) { addCash(q.tail9, q.total); });
+    var collect = pay.map(function (o) { return { t9: o.tail9, name: o.cust_name, amt: Number(o.amount), what: 'הזמנה ' + o.so + ' ממתינה לתשלום', since: o.date }; })
+      .concat(debt.map(function (d) { return { t9: d.tail9, name: d.name, amt: Number(d.total), what: 'יתרת חוב' + (Number(d.d90p) > 0 ? ' (חלקה מעל 90 יום)' : ''), since: null }; }))
+      .sort(function (a, b) { return b.amt - a.amt; });
+    if (rs[9].data || rs[10].data) {
+      var ctot = collect.reduce(function (s, c) { return s + c.amt; }, 0);
+      h += '<div class="sect"><h3>כסף שמחכה לגבייה <span class="n">' + collect.length + (ctot ? ' · ' + money(ctot) : '') + '</span></h3><div class="small muted">הזמנות מ-60 הימים האחרונים שממתינות לתשלום, ויתרות חוב פתוחות בפריוריטי. זה הכסף הכי קרוב לקופה: שיחה אחת או לינק לתשלום מהכרטיס.</div>' +
+        (collect.length ? collect.slice(0, 12).map(function (c) { return '<div class="airow"><span class="pill hot">' + money(c.amt) + '</span><div><div class="txt">' + (c.t9 ? '<a href="#card/' + esc(c.t9) + '">' + esc(c.name || 'לקוח') + '</a>' : esc(c.name || 'לקוח')) + '</div><div class="sub">' + esc(c.what) + (c.since ? ' · מ-' + esc(fmtDate(c.since)) : '') + '</div></div></div>'; }).join('') : '<div class="small muted">אין כרגע כסף פתוח לגבייה</div>') + '</div>';
+    }
+    var cashRank = function (a) { var c = cashOf[a.tail9] || 0; return a.score + (c > 0 ? 20 + Math.min(30, c / 1000) : 0); };
+    var ai = (rs[6].data || []).filter(function (a) { return !noAction(a.next_action) && a.score >= 30; }).sort(function (a, b) { return cashRank(b) - cashRank(a); }).slice(0, 15);
     if (rs[6].data) {
       var nm = {}; convs.forEach(function (c) { if (c.tail9) nm[c.tail9] = c.name || localPhone(c.phone); });
-      h += '<div class="sect"><h3>מה לעשות היום <span class="n">ניתוח אוטומטי · ' + ai.length + '</span></h3><div class="small muted">המערכת קוראת כל שיחה שהתחדשה וממיינת לפי מה שהכי שווה לטפל בו עכשיו. לוחצים על השם לכרטיס, "בוצע" מוריד מהרשימה עד שיקרה משהו חדש.</div>' +
-        (ai.length ? ai.map(function (a) { return '<div class="airow"><span class="pill ' + esc(a.temp) + '">' + esc(TEMP[a.temp] || a.temp) + ' ' + a.score + '</span><div><div class="txt"><a href="#card/' + esc(a.tail9) + '" data-ainame="' + esc(a.tail9) + '">' + esc(nm[a.tail9] || 'לקוח') + '</a>' + (a.next_due ? ' · <b>' + esc(dueLabel(a.next_due)) + '</b>' : '') + ': ' + esc(a.next_action) + '</div>' + (a.risk ? '<div class="sub" style="color:var(--red)">⚠ ' + esc(a.risk) + '</div>' : '') + (a.intent ? '<div class="sub">' + esc(a.intent) + '</div>' : '') + '<button class="btn small" data-aidone="' + esc(a.tail9) + '">בוצע</button></div></div>'; }).join('') : '<div class="small muted">אין כרגע משהו דחוף</div>') + '</div>';
+      h += '<div class="sect"><h3>מה לעשות היום <span class="n">ניתוח אוטומטי · ' + ai.length + '</span></h3><div class="small muted">המערכת קוראת כל שיחה שהתחדשה וממיינת לפי מה שהכי קרוב לכסף: קודם לקוחות עם הזמנה שממתינה לתשלום, חוב פתוח או הצעה גדולה, ואחר כך לפי דחיפות. לוחצים על השם לכרטיס, "בוצע" מוריד מהרשימה עד שיקרה משהו חדש.</div>' +
+        (ai.length ? ai.map(function (a) { return '<div class="airow"><span class="pill ' + esc(a.temp) + '">' + esc(TEMP[a.temp] || a.temp) + ' ' + a.score + '</span><div><div class="txt"><a href="#card/' + esc(a.tail9) + '" data-ainame="' + esc(a.tail9) + '">' + esc(nm[a.tail9] || 'לקוח') + '</a>' + (cashOf[a.tail9] ? ' · <b>' + money(cashOf[a.tail9]) + ' על הפרק</b>' : '') + (a.next_due ? ' · <b>' + esc(dueLabel(a.next_due)) + '</b>' : '') + ': ' + esc(a.next_action) + '</div>' + (a.risk ? '<div class="sub" style="color:var(--red)">⚠ ' + esc(a.risk) + '</div>' : '') + (a.intent ? '<div class="sub">' + esc(a.intent) + '</div>' : '') + '<button class="btn small" data-aidone="' + esc(a.tail9) + '">בוצע</button></div></div>'; }).join('') : '<div class="small muted">אין כרגע משהו דחוף</div>') + '</div>';
     }
-    var sq = rs[7].data || [], ins = rs[8].data && rs[8].data[0];
+    var sq = (rs[7].data || []).slice().sort(function (x, y) { return Number(y.total || 0) - Number(x.total || 0); }), ins = rs[8].data && rs[8].data[0];
     if (isOwner() && rs[8].data) {
       h += '<div class="sect"><h3>תובנות השבוע <span class="n">רק אתה רואה את זה</span></h3>' + (ins ? '<div class="summary">' + mdLite(ins.body) + '</div><div class="small muted">' + esc(fmtDate(ins.period_start)) + '–' + esc(fmtDate(ins.period_end)) + ' · מתעדכן לבד בכל יום ראשון בבוקר</div>' : '<div class="small muted">הסיכום הראשון יגיע ביום ראשון בבוקר.</div>') + '<div class="row"><button class="btn small" id="insNow">הפקה עכשיו</button></div></div>';
     }
