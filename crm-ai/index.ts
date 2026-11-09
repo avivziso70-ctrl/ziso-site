@@ -226,7 +226,11 @@ function bizMinutes(from: number, to: number) {
   for (let t = Math.max(from, to - 7 * 864e5); t < to; t += 5 * 6e4) if (openAt(t)) n += 5;
   return n;
 }
-const VIP_MIN = 15, STUCK_MIN = 60; // business minutes without a human reply
+// 9.11 Aviv: "too many pushes". Every incoming WhatsApp already pushes (crm-push), so this pass only escalates what really matters:
+// a HOT customer (score >= 80) left without a human reply for 30+ business minutes, once per customer per day,
+// plus one morning digest. Hard cap: 3 pushes per day, 1 per run. Hot leads / stuck chats stay on the Today tab, not on the phone.
+const VIP_MIN = 30, VIP_SCORE = 80, DAY_CAP = 3;
+const TEST_T9 = new Set(["501234567"]);
 const noMoney = (s: string) => s.replace(/(ה-)?(₪\s?[\d,.]+|[\d,.]+\s?(₪|ש"ח|שקל\S*))/g, "הסכום").replace(/\s{2,}/g, " ").trim();
 async function nameFor(t9: string, fallback?: string) {
   const { data: c } = await admin.from("crm_customers").select("name").eq("tail9", t9).maybeSingle();
@@ -264,8 +268,10 @@ async function alerts(opts: { dry?: boolean } = {}) {
   if (!openAt(now) && !opts.dry) return { ok: true, skipped: "closed" };
   const today = ilParts(now).day;
   // what was already alerted (dedupe)
-  const { data: past } = await admin.from("crm_audit").select("detail").eq("action", "ai_alert").gte("at", new Date(now - 8 * 864e5).toISOString());
+  const { data: past } = await admin.from("crm_audit").select("detail, at").eq("action", "ai_alert").gte("at", new Date(now - 8 * 864e5).toISOString());
   const sent = new Set((past || []).map((r: any) => r.detail?.key).filter(Boolean));
+  const sentToday = (past || []).filter((r: any) => ilParts(new Date(r.at).getTime()).day === today).length;
+  if (sentToday >= DAY_CAP && !opts.dry) return { ok: true, skipped: "daily cap" };
 
   // conversations from the last 7 days
   const { data: msgs } = await admin.from("wa_messages").select("ts, phone, dir, source, name").gte("ts", new Date(now - 7 * 864e5).toISOString()).order("ts", { ascending: false }).limit(3000);
@@ -283,7 +289,7 @@ async function alerts(opts: { dry?: boolean } = {}) {
     } else if (m.dir === "out" && (m.source === "brief" || m.source === "staff-ask")) c.staff = true; // internal staff numbers
     byT9.set(t9, c);
   }
-  const open = [...byT9.entries()].filter(([, c]) => c.firstOpen && !c.staff);
+  const open = [...byT9.entries()].filter(([t9, c]) => c.firstOpen && !c.staff && !TEST_T9.has(t9));
   const t9s = open.map(([t9]) => t9);
   const [custR, aiR] = await Promise.all([
     t9s.length ? admin.from("crm_customers").select("tail9, name, kind, priority_cust_no, handled_at, deleted_at").in("tail9", t9s) : Promise.resolve({ data: [] as any[] }),
@@ -299,11 +305,10 @@ async function alerts(opts: { dry?: boolean } = {}) {
     if (a?.temp === "none") continue;
     if (now - c.lastIn > 2 * 864e5) continue; // older silences belong to the daily lists, not to a ping
     const waited = bizMinutes(c.firstOpen, now);
-    const vip = !!a && (a.score >= 70 || a.temp === "hot" || (!!a.risk && a.score >= 50));
-    const kind = vip && waited >= VIP_MIN ? "vip" : waited >= STUCK_MIN ? "stuck" : "";
-    if (!kind) continue;
-    const key = `${kind}:${t9}:${c.firstOpen}`;
-    if (sent.has(key) || (kind === "stuck" && sent.has(`vip:${t9}:${c.firstOpen}`))) continue;
+    if (!a || a.temp !== "hot" || a.score < VIP_SCORE || waited < VIP_MIN) continue;
+    const kind = "vip";
+    const key = `vip:${t9}:${today}`;
+    if (sent.has(key)) continue;
     const name = cu?.name || c.name || await nameFor(t9);
     const h = waited >= 120 ? `${Math.round(waited / 60)} שעות` : `${waited} דקות`;
     out.push({ key, tail9: t9, rank: (kind === "vip" ? 1000 : 0) + (a?.score || 0), payload: {
@@ -311,15 +316,6 @@ async function alerts(opts: { dry?: boolean } = {}) {
       body: (kind === "vip" ? `מחכה לתשובה כבר ${h} (שעות עבודה).` : `אין תשובה של הצוות כבר ${h} (שעות עבודה).`) + (a?.next_action ? " " + noMoney(String(a.next_action)).slice(0, 80) : ""),
       tag: "ai-" + kind + "-" + t9, renotify: true, url: "./#chat/" + encodeURIComponent(c.phone),
     } });
-  }
-  // newly hot customers from the hourly analysis (once a day each)
-  const { data: hot } = await admin.from("crm_ai").select("tail9, score, next_action, at").eq("temp", "hot").is("done_at", null).gte("at", new Date(now - 3 * 36e5).toISOString());
-  for (const h of hot || []) {
-    const key = `hot:${h.tail9}:${today}`;
-    if (sent.has(key) || out.some((o) => o.tail9 === h.tail9)) continue;
-    const conv = byT9.get(h.tail9);
-    if (conv && conv.lastHuman > new Date(h.at).getTime()) continue; // staff already answered after the analysis
-    out.push({ key, tail9: h.tail9, rank: 500 + h.score, payload: { title: `ליד חם: ${await nameFor(h.tail9, conv?.name)}`, body: noMoney(String(h.next_action || "כדאי לחזור אליו היום")).slice(0, 110), tag: "ai-hot-" + h.tail9, url: "./#card/" + h.tail9 } });
   }
   // one morning digest: overdue AI tasks + stalled quotes with ready drafts
   const dkey = `digest:${today}`;
@@ -335,7 +331,7 @@ async function alerts(opts: { dry?: boolean } = {}) {
     }
   }
   out.sort((a, b) => b.rank - a.rank);
-  const batch = out.slice(0, 4);
+  const batch = out.slice(0, opts.dry ? 10 : 1);
   const res: any[] = [];
   for (const o of batch) {
     const n = opts.dry ? 0 : await pushStaff(o.payload);
