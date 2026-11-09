@@ -391,7 +391,7 @@ META_PIXEL_ID = "774998039816486"
 GADS_ID = "AW-399978850"
 # >>> Google Ads conversion label for a booking sent from pegisha.html ("pegisha_booking"). Paste only the label part
 # (the text after "AW-399978850/"). Empty = the booking_submit event still goes to GA4, but no Ads conversion is sent.
-PEGISHA_BOOKING_LABEL = ""
+PEGISHA_BOOKING_LABEL = "ca-iCO3Xk7UdEOLi3L4B"
 GADS_LABELS = {"booking_submit": ("AW-399978850/" + PEGISHA_BOOKING_LABEL) if PEGISHA_BOOKING_LABEL else "",
                "whatsapp_click": "AW-399978850/7QD4CJSiypwdEOLi3L4B", "phone_click": "AW-399978850/CY6cCJeiypwdEOLi3L4B",
                "generate_lead": "AW-399978850/7QCDCP65wJwdEOLi3L4B", "directions_click": "AW-399978850/B1w8CIjOhZ0dEOLi3L4B"}  # empty label = no conversion sent
