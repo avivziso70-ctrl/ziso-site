@@ -238,14 +238,14 @@ FOOTER = '''<footer><div class="wrap">
 <a href="accessibility.html">הצהרת הנגישות של האתר</a></div>
 </aside>%s
 <div class="cookie" id="cookie" hidden role="region" aria-label="הודעת עוגיות"><p>האתר משתמש בעוגיות של מדידה כדי להבין איך משתמשים בו ולשפר אותו. אפשר להסכים או לדחות; האתר עובד גם בלי. <a href="privacy.html">למדיניות הפרטיות</a></p><div class="actions"><button class="btn brass" type="button" data-consent="yes">מסכים/ה</button><button class="btn line" type="button" data-consent="no">לא תודה</button></div></div>
-<a class="wa" href="https://wa.me/%s" target="_blank" rel="noopener" aria-label="שליחת הודעה בוואטסאפ">וואטסאפ</a>
+<a class="wa" href="%s" target="_blank" rel="noopener" aria-label="קביעת פגישת ייעוץ חינם בוואטסאפ">פגישת ייעוץ חינם</a>
 <dialog class="light" id="light" aria-label="תצוגה מוגדלת"><button class="x" type="button" aria-label="סגירה">×</button><div class="lightbody"></div></dialog>''' % (
   LEGAL, COMPANY_ID, PHONE, EMAIL, "".join('<a href="%s.html">%s</a>' % (c["slug"], c["name"]) for c in CATS[:4]),
   ('<a href="%s" target="_blank" rel="noopener">TikTok</a>' % TIKTOK) if TIKTOK else "",
   ('<a href="%s" target="_blank" rel="noopener">YouTube</a>' % YOUTUBE) if YOUTUBE else "",
   (('\n<nav class="areas-nav" aria-label="אזורי שירות"><span>אזורי שירות:</span>%s</nav>' % "".join('<a href="%s.html">%s</a>' % (a["slug"], a["city"]) for a in AREA_PAGES)) if AREA_PAGES else "") +
   (('\n<nav class="areas-nav" aria-label="מדריכים"><span>מדריכים:</span>%s</nav>' % "".join('<a href="%s.html">%s</a>' % (g["slug"], g["short"]) for g in GUIDE_PAGES)) if GUIDE_PAGES else ""),
-  CHAT_BTN if CHAT_URL else "", CHAT_PANEL if CHAT_URL else "", WA)
+  CHAT_BTN if CHAT_URL else "", CHAT_PANEL if CHAT_URL else "", WA_VISIT)
 
 def head(title, desc, canon, schemas):
   ld = "".join('<script type="application/ld+json">%s</script>\n' % json.dumps(s, ensure_ascii=False) for s in schemas)
