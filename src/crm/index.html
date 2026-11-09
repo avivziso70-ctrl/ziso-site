@@ -174,6 +174,7 @@ details.sect:not([open]){gap:0}
 .summary{white-space:pre-wrap;font-size:15px}
 .visit{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--grout)}
 .visit > *{min-width:0} .visit b{font-size:17px} .visit.today b{color:var(--brass)}
+.visit .att{font-size:13px;font-weight:600} .visit .att.yes{color:var(--ok,#2e7d32)} .visit .att.no{color:var(--muted)}
 .fine{font-size:13px;color:var(--mute);line-height:1.5}
 
 /* Today */
@@ -365,7 +366,7 @@ details.sect:not([open]){gap:0}
 var SB_URL = 'https://ppnjosyraosrdephsksu.supabase.co';
 var SB_KEY = 'sb_publishable_yjpTHQkvH5-l4v-HCcEj4w_ofAYpQmV';
 var FN = SB_URL + '/functions/v1/';
-var STAGES = [['new','חדש'],['answered','נענה'],['visited','ביקר'],['quoted','הצעה'],['won','נסגר'],['lost','אבד']];
+var STAGES = [['new','חדש'],['answered','נענה'],['meeting_booked','נקבעה פגישה'],['meeting_held','הגיע לפגישה'],['visited','ביקר'],['quoted','הצעה'],['won','נסגר'],['lost','אבד']];
 var KINDS = [['private','פרטי'],['contractor','קבלן'],['architect','אדריכל/ית'],['other','אחר'],['supplier','ספק (לא לקוח)'],['not_customer','לא לקוח: מתקין, נהג, משפחה']];
 var NC = ['supplier', 'not_customer'];
 var SOURCES = [['google','חיפוש או מפות בגוגל'],['google_ads','מודעה בגוגל'],['meta','פייסבוק או אינסטגרם'],['tiktok','טיקטוק'],['site','האתר'],['friend','המלצה של חבר'],['designer','מעצבת או איש מקצוע'],['passing','עבר ליד האולם'],['returning','לקוח חוזר'],['other','אחר']];
@@ -865,13 +866,34 @@ function isToday(d) { return new Date(d).toDateString() === new Date().toDateStr
 function visitRow(v, withName) {
   return '<div class="visit' + (isToday(v.at) ? ' today' : '') + '"><b>' + esc(visitWhen(v.at)) + '</b>' + (withName ? '<a href="#card/' + esc(v.tail9) + '">' + esc(v.name || localPhone(v.phone || v.tail9)) + '</a>' : '') +
     '<span class="small muted grow">' + (v.note ? esc(v.note) + ' · ' : '') + (v.source === 'auto' ? 'זוהה מהשיחה' : 'נקבע ע״י ' + esc(nameOf(v.by))) + '</span>' +
-    (withName ? '' : '<button class="btn small" data-vcancel="' + v.id + '">ביטול</button>') + '</div>';
+    visitAct(v, withName) + '</div>';
 }
+// A visit that already started gets "came / didn't come" (feeds the lead stage meeting_held); a future one can be cancelled from the card.
+function visitAct(v, withName) {
+  if (new Date(v.at).getTime() > Date.now() - 15 * 60000) return withName ? '' : '<button class="btn small" data-vcancel="' + v.id + '">ביטול</button>';
+  if (v.attended === true) return '<span class="att yes">הגיע ✓</span>';
+  if (v.attended === false) return '<span class="att no">לא הגיע</span>';
+  return '<button class="btn small" data-vatt="' + v.id + ':1">הגיע ✓</button><button class="btn small" data-vatt="' + v.id + ':0">לא הגיע</button>';
+}
+function markVisit(id, came) {
+  sb.from('crm_visits').update({ attended: came, attended_at: new Date().toISOString(), attended_by: me.email }).eq('id', id).then(function (r) {
+    if (r.error) { toast('לא נשמר: ' + r.error.message); return; }
+    toast(came ? 'סומן שהגיע ✓' : 'סומן שלא הגיע');
+    if (card && $('visitBox')) loadVisits();
+    if ($('todayBody') && $('todayBody').offsetParent) loadToday();
+  });
+}
+document.addEventListener('click', function (e) {
+  var b = e.target.closest && e.target.closest('[data-vatt]'); if (!b) return;
+  var a = b.dataset.vatt.split(':'); b.disabled = true; markVisit(Number(a[0]), a[1] === '1');
+});
 function loadVisits() {
   var t9 = card.tail9;
-  sb.from('crm_visits').select('id,tail9,phone,name,at,note,source,by').eq('tail9', t9).is('cancelled_at', null).gte('at', new Date(Date.now() - 2 * 3600000).toISOString()).order('at').limit(5).then(function (r) {
+  sb.from('crm_visits').select('id,tail9,phone,name,at,note,source,by,attended').eq('tail9', t9).is('cancelled_at', null).gte('at', new Date(Date.now() - 14 * 86400000).toISOString()).order('at').limit(8).then(function (r) {
     if (!card || card.tail9 !== t9 || !$('visitBox')) return;
-    var vs = r.data || []; visitNow = vs[0] || null;
+    var since = Date.now() - 2 * 3600000;
+    var vs = (r.data || []).filter(function (v) { return new Date(v.at).getTime() >= since || v.attended == null || new Date(v.at).getTime() >= Date.now() - 2 * 86400000; });
+    visitNow = vs.filter(function (v) { return new Date(v.at).getTime() >= since; })[0] || null;
     $('visitBox').innerHTML = vs.length ? vs.map(function (v) { return visitRow(v, false); }).join('') + '<div class="fine">כל הצוות יקבל תזכורת בטלפון שעה לפני.</div>' : '<div class="small muted">אין פגישה קבועה. כשלקוח כותב "אגיע מחר ב-17:00" היא נקבעת כאן לבד.</div>';
     $('addVisit').textContent = vs.length ? 'שינוי המועד' : 'קביעה';
     $('visitBox').querySelectorAll('[data-vcancel]').forEach(function (b) { b.addEventListener('click', function () { cancelVisit(b.dataset.vcancel); }); });
@@ -1137,7 +1159,7 @@ function loadToday() {
     sb.from('leads').select('id,created_at,channel,stage,name,phone_tail9').gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()).order('created_at', { ascending: false }).limit(200),
     sb.rpc('crm_kpi'),
     sb.rpc('crm_followups'),
-    sb.from('crm_visits').select('id,tail9,phone,name,at,note,source,by').is('cancelled_at', null).gte('at', new Date(Date.now() - 2 * 3600000).toISOString()).lte('at', new Date(Date.now() + 7 * 86400000).toISOString()).order('at').limit(30),
+    sb.from('crm_visits').select('id,tail9,phone,name,at,note,source,by,attended').is('cancelled_at', null).gte('at', new Date(Date.now() - 3 * 86400000).toISOString()).lte('at', new Date(Date.now() + 7 * 86400000).toISOString()).order('at').limit(40),
     isOwner() ? sb.rpc('crm_staff_stats', { p_days: statDays }) : Promise.resolve({}),
     sb.from('crm_ai').select('tail9,temp,score,next_action,next_due,risk,intent,at').is('done_at', null).neq('temp', 'none').order('score', { ascending: false }).limit(40),
     sb.rpc('crm_stalled_quotes'),
@@ -1154,7 +1176,7 @@ function loadToday() {
     }),
     sb.from('priority_aging').select('cust_no,name,tail9,total,d90p').gt('total', 500).order('total', { ascending: false }).limit(30)
   ]).then(function (rs) {
-    var tasks = rs[0].data || [], leads = rs[1].data || [], k = rs[2].data || {}, fu = rs[3].data || [], visits = rs[4].data || [], ss = rs[5].data;
+    var tasks = rs[0].data || [], leads = rs[1].data || [], k = rs[2].data || {}, fu = rs[3].data || [], visits = (rs[4].data || []).filter(function (v) { return new Date(v.at).getTime() >= Date.now() - 2 * 3600000 || v.attended == null; }), ss = rs[5].data;
     var today = new Date().toDateString();
     var leadsToday = leads.filter(function (l) { return new Date(l.created_at).toDateString() === today; });
     var pct = k.pct7 == null ? '—' : k.pct7 + '%';
@@ -1194,8 +1216,8 @@ function loadToday() {
           (q.draft ? '<details><summary>טיוטת מעקב</summary><div class="summary">' + esc(q.draft) + '</div></details>' : '<div class="sub">הטיוטה תיכתב בריצה הבאה</div>') +
           '<div class="row">' + (q.draft ? '<button class="btn small" data-qsend="' + i + '">לשיחה עם הטיוטה</button>' : '<button class="btn small" data-qdraft="' + i + '">כתיבת טיוטה</button>') + '<button class="btn small" data-qmark="' + i + '" data-st="sent">נשלח</button><button class="btn small" data-qmark="' + i + '" data-st="dismissed">לא רלוונטי</button></div></div></div>'; }).join('') : '<div class="small muted">אין הצעות תקועות</div>') + '</div>';
     }
-    var vToday = visits.filter(function (v) { return isToday(v.at); }).length;
-    h += '<div class="sect"><h3>פגישות באולם <span class="n">' + vToday + ' היום · ' + visits.length + ' בשבוע הקרוב</span></h3>' + (visits.length ? visits.map(function (v) { return visitRow(v, true); }).join('') : '<div class="small muted">אין פגישות קבועות</div>') + '</div>';
+    var vToday = visits.filter(function (v) { return isToday(v.at); }).length, vMark = visits.filter(function (v) { return v.attended == null && new Date(v.at).getTime() < Date.now() - 15 * 60000; }).length;
+    h += '<div class="sect"><h3>פגישות באולם <span class="n">' + vToday + ' היום · ' + visits.length + ' בשבוע' + (vMark ? ' · ' + vMark + ' לסמן אם הגיעו' : '') + '</span></h3>' + (visits.length ? visits.map(function (v) { return visitRow(v, true); }).join('') : '<div class="small muted">אין פגישות קבועות</div>') + '</div>';
     h += '<div class="sect"><h3>ממתינים עכשיו <span class="n">לפי זמן בשעות הפתיחה</span></h3>' + (waiting.length ? '<ul class="list" style="padding:0">' + waiting.slice(0, 20).map(function (c) { return '<li><button data-phone="' + esc(c.phone) + '"><span class="dot wait"></span><span class="name ellip">' + esc(c.name || localPhone(c.phone)) + '</span><span class="when">' + esc(ago(c.waiting_since || c.last_ts)) + '</span><span class="last ellip">' + esc(c.last_text || '') + '</span><span class="meta">' + (c.flag ? '<span class="pill flag">רגיש: לבדוק</span>' : '') + waitPill(c) + (c.claimed_by ? '<span class="pill">' + esc(nameOf(c.claimed_by)) + '</span>' : '<span class="pill">אין אחראית</span>') + '</span></button></li>'; }).join('') + '</ul>' : '<div class="small muted">כולם נענו</div>') + '</div>';
     h += '<div class="sect"><h3>מעקב הצעות של 16:30 <span class="n">' + fu.length + '</span></h3><div class="small muted">הצעות מה-48 שעות האחרונות שהלקוח לא ענה עליהן. שולחים פעם אחת, ידנית, רק למי שכתב לנו קודם. יש תשובה מוכנה "מעקב הצעה".</div>' +
       (fu.length ? '<ul class="list" style="padding:0">' + fu.map(function (f) { return '<li><button data-phone="' + esc(f.phone) + '"><span class="dot bot"></span><span class="name ellip">' + esc(f.name || localPhone(f.phone)) + '</span><span class="when">' + esc(ago(f.quote_at)) + '</span><span class="last ellip">' + (f.quote_text ? esc(f.quote_text) : f.manual ? 'הצעה סומנה ידנית' : '') + '</span></button></li>'; }).join('') + '</ul>' : '<div class="small muted">אין הצעות שמחכות למעקב</div>') + '</div>';
