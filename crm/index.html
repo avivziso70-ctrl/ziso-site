@@ -384,8 +384,16 @@ var QUICK = [
   ['העתק חשבונית', 'בשמחה. כדי למצוא את החשבונית נצטרך את השם שעליו נרשמה ההזמנה ואת החודש שבו קניתם.'],
   ['קריאת שירות', 'מצטערים לשמוע. כדי לפתוח קריאת שירות מול היצרן, שלחו בבקשה: תמונה מקרוב של התקלה, תמונה רחבה של המוצר, תמונה של המדבקה או החותמת של היצרן, ושנת הקנייה.'],
   ['מעקב הצעה', 'שלום, רצינו לבדוק אם ההצעה ששלחנו מתאימה לכם, ואם יש שאלות. נשמח לעזור.'],
-  ['ביקורת', 'תודה רבה! אם תרצו, ביקורת קצרה בגוגל עוזרת לנו מאוד: https://g.page/r/CewpRPPNS-JNEAE/review']
+  ['ביקורת', 'תודה רבה! אם תרצו, ביקורת קצרה בגוגל עוזרת לנו מאוד: https://g.page/r/CewpRPPNS-JNEAE/review'],
+  ['ההזמנה הגיעה', 'היי, כאן זיסו קרמיקה 🙂 ההזמנה שלך הגיעה. סחורה גדולה במחסן עד 15:00 (לא בשישי), פריטים קטנים באולם עד 18:00.\nאם יש לך דקה, ביקורת קצרה בגוגל עוזרת לנו מאוד (עסק משפחתי מ-1985): https://g.page/r/CewpRPPNS-JNEAE/review\nומכירים מישהו שמשפץ? תעבירו לו את זה: פגישת עיצוב חינם עם המעצבות שלנו, https://www.zisoceramics.com/pegisha.html\n(לא רוצים הודעות כאלה? כתבו "הסר")']
 ];
+var OUTREACH = 'review-2026-10';
+function outreachText(o) {
+  var first = o.kind === 'פרטי' && o.name ? String(o.name).trim().split(/\s+/)[0] : '';
+  return 'היי' + (first ? ' ' + first : '') + ', כאן זיסו קרמיקה 🙂 מקווים שהכל הגיע בשלום ושאתם נהנים. אם יש לכם דקה, ביקורת קצרה בגוגל עוזרת לנו מאוד (עסק משפחתי מ-1985): https://g.page/r/CewpRPPNS-JNEAE/review\n' +
+    'ומכירים מישהו שמשפץ? תעבירו לו את זה: פגישת עיצוב חינם עם המעצבות שלנו, https://www.zisoceramics.com/pegisha.html\n' +
+    '(לא רוצים הודעות כאלה? כתבו "הסר")\nאילת / שיר';
+}
 var sb = supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
 var me = null, staff = [], convs = [], filter = 'waiting', cur = null, curTail = null, card = null, timer = null, mediaUrls = {};
 var $ = function (id) { return document.getElementById(id); };
@@ -1174,7 +1182,8 @@ function loadToday() {
         return { data: rows };
       });
     }),
-    sb.from('priority_aging').select('cust_no,name,tail9,total,d90p').gt('total', 500).order('total', { ascending: false }).limit(30)
+    sb.from('priority_aging').select('cust_no,name,tail9,total,d90p').gt('total', 500).order('total', { ascending: false }).limit(30),
+    sb.rpc('crm_outreach_list', { p_campaign: OUTREACH })
   ]).then(function (rs) {
     var tasks = rs[0].data || [], leads = rs[1].data || [], k = rs[2].data || {}, fu = rs[3].data || [], visits = (rs[4].data || []).filter(function (v) { return new Date(v.at).getTime() >= Date.now() - 2 * 3600000 || v.attended == null; }), ss = rs[5].data;
     var today = new Date().toDateString();
@@ -1216,6 +1225,15 @@ function loadToday() {
           (q.draft ? '<details><summary>טיוטת מעקב</summary><div class="summary">' + esc(q.draft) + '</div></details>' : '<div class="sub">הטיוטה תיכתב בריצה הבאה</div>') +
           '<div class="row">' + (q.draft ? '<button class="btn small" data-qsend="' + i + '">לשיחה עם הטיוטה</button>' : '<button class="btn small" data-qdraft="' + i + '">כתיבת טיוטה</button>') + '<button class="btn small" data-qmark="' + i + '" data-st="sent">נשלח</button><button class="btn small" data-qmark="' + i + '" data-st="dismissed">לא רלוונטי</button></div></div></div>'; }).join('') : '<div class="small muted">אין הצעות תקועות</div>') + '</div>';
     }
+    // past customers (list of 22.10): review + "know someone renovating?" — opened on the staff phone via wa.me, sent by hand
+    var orl = rs[11].data || [], orTodo = orl.filter(function (o) { return o.status === 'todo' && !o.optout; });
+    if (rs[11].data && orl.length) {
+      var orSent = orl.filter(function (o) { return o.status === 'sent'; }), orRep = orSent.filter(function (o) { return o.replied; }).length;
+      var orRow = function (o) { return '<div class="airow"><span class="pill">' + esc(o.kind || '') + '</span><div><div class="txt">' + '<a href="#card/' + esc(o.tail9) + '">' + esc(o.name || localPhone(o.phone)) + '</a> · קנה ב-' + esc(fmtDate(o.last_invoice)) + '</div>' + (o.note ? '<div class="sub" style="color:var(--red)">⚠ ' + esc(o.note) + ' (לבדוק לפני ששולחים)</div>' : '') +
+        '<div class="row"><a class="btn small brass" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/972' + esc(o.tail9) + '?text=' + encodeURIComponent(outreachText(o)) + '">פתיחה בוואטסאפ</a><button class="btn small" data-or="' + o.id + '" data-st="sent">נשלח</button><button class="btn small" data-or="' + o.id + '" data-st="skip">דילוג</button><button class="btn small" data-or="' + o.id + '" data-st="optout">ביקש הסר</button></div></div></div>'; };
+      h += '<div class="sect"><h3>לשליחה: ביקורת והפניה <span class="n">' + orSent.length + ' מתוך ' + orl.length + ' נשלחו' + (orRep ? ' · ' + orRep + ' ענו' : '') + '</span></h3><div class="small muted">לקוחות שקנו אצלנו בספטמבר-אוקטובר. "פתיחה בוואטסאפ" פותח בטלפון שלך הודעה מוכנה (בקשת ביקורת, "מכירים מישהו שמשפץ?" ושורת הסרה). שולחים בעצמך ואז לוחצים "נשלח". מי שכתב לנו "הסר" לא מופיע.</div>' +
+        (orTodo.length ? orTodo.slice(0, 8).map(orRow).join('') + (orTodo.length > 8 ? '<details><summary>עוד ' + (orTodo.length - 8) + '</summary>' + orTodo.slice(8).map(orRow).join('') + '</details>' : '') : '<div class="small muted">כל הרשימה טופלה ✓</div>') + '</div>';
+    }
     var vToday = visits.filter(function (v) { return isToday(v.at); }).length, vMark = visits.filter(function (v) { return v.attended == null && new Date(v.at).getTime() < Date.now() - 15 * 60000; }).length;
     h += '<div class="sect"><h3>פגישות באולם <span class="n">' + vToday + ' היום · ' + visits.length + ' בשבוע' + (vMark ? ' · ' + vMark + ' לסמן אם הגיעו' : '') + '</span></h3>' + (visits.length ? visits.map(function (v) { return visitRow(v, true); }).join('') : '<div class="small muted">אין פגישות קבועות</div>') + '</div>';
     h += '<div class="sect"><h3>ממתינים עכשיו <span class="n">לפי זמן בשעות הפתיחה</span></h3>' + (waiting.length ? '<ul class="list" style="padding:0">' + waiting.slice(0, 20).map(function (c) { return '<li><button data-phone="' + esc(c.phone) + '"><span class="dot wait"></span><span class="name ellip">' + esc(c.name || localPhone(c.phone)) + '</span><span class="when">' + esc(ago(c.waiting_since || c.last_ts)) + '</span><span class="last ellip">' + esc(c.last_text || '') + '</span><span class="meta">' + (c.flag ? '<span class="pill flag">רגיש: לבדוק</span>' : '') + waitPill(c) + (c.claimed_by ? '<span class="pill">' + esc(nameOf(c.claimed_by)) + '</span>' : '<span class="pill">אין אחראית</span>') + '</span></button></li>'; }).join('') + '</ul>' : '<div class="small muted">כולם נענו</div>') + '</div>';
@@ -1244,6 +1262,10 @@ function loadToday() {
       var q = sq[Number(b.dataset.qmark)];
       if (!q.draft) { toast('אפשר לסמן אחרי שהטיוטה נכתבה'); return; }
       sb.from('crm_quote_fu').update({ status: b.dataset.st, status_at: new Date().toISOString(), status_by: me.email }).eq('pq', q.pq).then(function (r) { if (r.error) toast('לא נשמר'); else { sb.rpc('crm_log', { p_action: 'quote_fu_' + b.dataset.st, p_tail9: q.tail9, p_detail: { pq: q.pq } }); loadToday(); } });
+    }); });
+    $('todayBody').querySelectorAll('[data-or]').forEach(function (b) { b.addEventListener('click', function () {
+      var o = orl.filter(function (x) { return String(x.id) === b.dataset.or; })[0]; b.disabled = true;
+      sb.from('crm_outreach').update({ status: b.dataset.st, status_at: new Date().toISOString(), status_by: me.email }).eq('id', o.id).then(function (r) { if (r.error) { toast('לא נשמר'); b.disabled = false; } else { sb.rpc('crm_log', { p_action: 'outreach_' + b.dataset.st, p_tail9: o.tail9, p_detail: { campaign: OUTREACH } }); loadToday(); } });
     }); });
     $('todayBody').querySelectorAll('[data-aidone]').forEach(function (b) { b.addEventListener('click', function () { aiDone(b.dataset.aidone, loadToday); }); });
     var miss = ai.filter(function (a) { return !nm[a.tail9]; }).map(function (a) { return a.tail9; });
