@@ -926,6 +926,7 @@ function dueLabel(d) {
   var t = new Date(); t.setHours(0, 0, 0, 0); var x = new Date(d + 'T00:00:00'), days = Math.round((x - t) / 86400000);
   return days < 0 ? 'באיחור' : days === 0 ? 'היום' : days === 1 ? 'מחר' : fmtDate(d);
 }
+function mdLite(t) { return esc(t || '').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>'); }
 function noAction(a) { return !a || /^אין צורך/.test(a); }
 function loadAi(t9) {
   sb.from('crm_ai').select('*').eq('tail9', t9).maybeSingle().then(function (r) {
@@ -1138,7 +1139,9 @@ function loadToday() {
     sb.rpc('crm_followups'),
     sb.from('crm_visits').select('id,tail9,phone,name,at,note,source,by').is('cancelled_at', null).gte('at', new Date(Date.now() - 2 * 3600000).toISOString()).lte('at', new Date(Date.now() + 7 * 86400000).toISOString()).order('at').limit(30),
     isOwner() ? sb.rpc('crm_staff_stats', { p_days: statDays }) : Promise.resolve({}),
-    sb.from('crm_ai').select('tail9,temp,score,next_action,next_due,risk,intent,at').is('done_at', null).neq('temp', 'none').order('score', { ascending: false }).limit(40)
+    sb.from('crm_ai').select('tail9,temp,score,next_action,next_due,risk,intent,at').is('done_at', null).neq('temp', 'none').order('score', { ascending: false }).limit(40),
+    sb.rpc('crm_stalled_quotes'),
+    isOwner() ? sb.from('crm_insights').select('period_start,period_end,body,at').order('at', { ascending: false }).limit(1) : Promise.resolve({})
   ]).then(function (rs) {
     var tasks = rs[0].data || [], leads = rs[1].data || [], k = rs[2].data || {}, fu = rs[3].data || [], visits = rs[4].data || [], ss = rs[5].data;
     var today = new Date().toDateString();
@@ -1154,6 +1157,16 @@ function loadToday() {
       var nm = {}; convs.forEach(function (c) { if (c.tail9) nm[c.tail9] = c.name || localPhone(c.phone); });
       h += '<div class="sect"><h3>מה לעשות היום <span class="n">ניתוח אוטומטי · ' + ai.length + '</span></h3><div class="small muted">המערכת קוראת כל שיחה שהתחדשה וממיינת לפי מה שהכי שווה לטפל בו עכשיו. לוחצים על השם לכרטיס, "בוצע" מוריד מהרשימה עד שיקרה משהו חדש.</div>' +
         (ai.length ? ai.map(function (a) { return '<div class="airow"><span class="pill ' + esc(a.temp) + '">' + esc(TEMP[a.temp] || a.temp) + ' ' + a.score + '</span><div><div class="txt"><a href="#card/' + esc(a.tail9) + '" data-ainame="' + esc(a.tail9) + '">' + esc(nm[a.tail9] || 'לקוח') + '</a>' + (a.next_due ? ' · <b>' + esc(dueLabel(a.next_due)) + '</b>' : '') + ': ' + esc(a.next_action) + '</div>' + (a.risk ? '<div class="sub" style="color:var(--red)">⚠ ' + esc(a.risk) + '</div>' : '') + (a.intent ? '<div class="sub">' + esc(a.intent) + '</div>' : '') + '<button class="btn small" data-aidone="' + esc(a.tail9) + '">בוצע</button></div></div>'; }).join('') : '<div class="small muted">אין כרגע משהו דחוף</div>') + '</div>';
+    }
+    var sq = rs[7].data || [], ins = rs[8].data && rs[8].data[0];
+    if (isOwner() && rs[8].data) {
+      h += '<div class="sect"><h3>תובנות השבוע <span class="n">רק אתה רואה את זה</span></h3>' + (ins ? '<div class="summary">' + mdLite(ins.body) + '</div><div class="small muted">' + esc(fmtDate(ins.period_start)) + '–' + esc(fmtDate(ins.period_end)) + ' · מתעדכן לבד בכל יום ראשון בבוקר</div>' : '<div class="small muted">הסיכום הראשון יגיע ביום ראשון בבוקר.</div>') + '<div class="row"><button class="btn small" id="insNow">הפקה עכשיו</button></div></div>';
+    }
+    if (rs[7].data) {
+      h += '<div class="sect"><h3>הצעות מחיר תקועות <span class="n">' + sq.length + (sq.length ? ' · ' + money(sq.reduce(function (s, q) { return s + Number(q.total || 0); }, 0)) : '') + '</span></h3><div class="small muted">הצעות מ-45 הימים האחרונים בלי הזמנה אחריהן. לכל אחת טיוטת מעקב שהמערכת כתבה לפי השיחה. שולחים ידנית, פעם אחת, ומסמנים "נשלח".</div>' +
+        (sq.length ? sq.slice(0, 20).map(function (q, i) { return '<div class="airow"><span class="pill ' + esc(q.temp || '') + '">' + q.days + ' ימים</span><div><div class="txt">' + (q.tail9 ? '<a href="#card/' + esc(q.tail9) + '">' + esc(q.name || 'לקוח ' + q.cust_no) + '</a>' : esc(q.name || 'לקוח ' + q.cust_no)) + ' · ' + esc(q.pq) + ' · ' + money(q.total) + '</div>' + (q.angle ? '<div class="sub">' + esc(q.angle) + '</div>' : '') +
+          (q.draft ? '<details><summary>טיוטת מעקב</summary><div class="summary">' + esc(q.draft) + '</div></details>' : '<div class="sub">הטיוטה תיכתב בריצה הבאה</div>') +
+          '<div class="row">' + (q.draft ? '<button class="btn small" data-qsend="' + i + '">לשיחה עם הטיוטה</button>' : '<button class="btn small" data-qdraft="' + i + '">כתיבת טיוטה</button>') + '<button class="btn small" data-qmark="' + i + '" data-st="sent">נשלח</button><button class="btn small" data-qmark="' + i + '" data-st="dismissed">לא רלוונטי</button></div></div></div>'; }).join('') : '<div class="small muted">אין הצעות תקועות</div>') + '</div>';
     }
     var vToday = visits.filter(function (v) { return isToday(v.at); }).length;
     h += '<div class="sect"><h3>פגישות באולם <span class="n">' + vToday + ' היום · ' + visits.length + ' בשבוע הקרוב</span></h3>' + (visits.length ? visits.map(function (v) { return visitRow(v, true); }).join('') : '<div class="small muted">אין פגישות קבועות</div>') + '</div>';
@@ -1172,6 +1185,18 @@ function loadToday() {
     }
     h += '<p class="fine">לשיפור השירות נמדדים זמני המענה ללקוחות וכמה פניות כל איש צוות מטפל בהן. רק מספרים, בלי תוכן ההודעות, ורק המנהל רואה אותם.</p>';
     $('todayBody').innerHTML = h;
+    if ($('insNow')) $('insNow').addEventListener('click', function () { this.disabled = true; toast('מפיק סיכום שבועי…', 4000); aiFn({ mode: 'weekly' }).then(function (j) { if (!j.ok) throw new Error(j.error || 'שגיאה'); loadToday(); }).catch(function (e) { toast('לא הופק: ' + e.message); }); });
+    $('todayBody').querySelectorAll('[data-qsend]').forEach(function (b) { b.addEventListener('click', function () {
+      var q = sq[Number(b.dataset.qsend)], cv = convs.filter(function (c) { return c.tail9 === q.tail9; })[0];
+      if (cv) { go('chat', cv.phone); setTimeout(function () { putDraft(q.draft); }, 400); }
+      else if (navigator.clipboard) navigator.clipboard.writeText(q.draft).then(function () { toast('אין שיחת וואטסאפ פתוחה. הטיוטה הועתקה: אפשר להדביק בוואטסאפ בטלפון או להתקשר.', 5000); });
+    }); });
+    $('todayBody').querySelectorAll('[data-qdraft]').forEach(function (b) { b.addEventListener('click', function () { var q = sq[Number(b.dataset.qdraft)]; b.disabled = true; aiFn({ mode: 'quote', pq: q.pq }).then(function (j) { if (!j.ok) throw new Error(j.error || 'שגיאה'); loadToday(); }).catch(function (e) { toast('לא נכתבה: ' + e.message); b.disabled = false; }); }); });
+    $('todayBody').querySelectorAll('[data-qmark]').forEach(function (b) { b.addEventListener('click', function () {
+      var q = sq[Number(b.dataset.qmark)];
+      if (!q.draft) { toast('אפשר לסמן אחרי שהטיוטה נכתבה'); return; }
+      sb.from('crm_quote_fu').update({ status: b.dataset.st, status_at: new Date().toISOString(), status_by: me.email }).eq('pq', q.pq).then(function (r) { if (r.error) toast('לא נשמר'); else { sb.rpc('crm_log', { p_action: 'quote_fu_' + b.dataset.st, p_tail9: q.tail9, p_detail: { pq: q.pq } }); loadToday(); } });
+    }); });
     $('todayBody').querySelectorAll('[data-aidone]').forEach(function (b) { b.addEventListener('click', function () { aiDone(b.dataset.aidone, loadToday); }); });
     var miss = ai.filter(function (a) { return !nm[a.tail9]; }).map(function (a) { return a.tail9; });
     if (miss.length) sb.from('crm_customers').select('tail9,name').in('tail9', miss).then(function (r) { (r.data || []).forEach(function (c) { var el = $('todayBody').querySelector('[data-ainame="' + c.tail9 + '"]'); if (el && c.name) el.textContent = c.name; }); });
