@@ -117,7 +117,7 @@ def header(active=""):
   return '''<a class="skip" href="#main">דילוג לתוכן הראשי</a>
 <header class="top"><div class="wrap">
 <a class="mark" href="./" title="לדף הבית"><b>ZISO</b><span>קרמיקה</span></a>
-<nav class="nav" aria-label="ניווט ראשי">%s<a class="cta" href="./#visit">ביקור באולם</a></nav>
+<nav class="nav" aria-label="ניווט ראשי">%s<a class="cta" href="pegisha.html">קביעת פגישה</a></nav>
 </div></header>''' % nav
 
 # ---- Content pages written as markdown by the brand-growth thread (src/pages/areas/*.md, src/pages/guides/*.md).
@@ -486,7 +486,7 @@ def build():
 <div data-sc-parallax="-50">
 <h1>תרגיש בבית<br>לעצב את <em>הבית</em></h1>
 <p>אולם תצוגה לריצוף ואמבטיה בטירת כרמל: גרניט פורצלן, כלים סניטריים, ארונות אמבטיה, מקלחונים וברזים, עם מעצבות פנים מוסמכות שעוזרות לכם לבחור. פגישת ייעוץ ועיצוב באולם בחינם, דקות מחיפה.</p>
-<div class="actions"><a class="btn brass" href="{wa}" target="_blank" rel="noopener">לפגישת ייעוץ חינם בוואטסאפ</a><a class="btn ghost" href="#products">מה יש באולם</a></div>
+<div class="actions"><a class="btn brass" href="{wa}" target="_blank" rel="noopener">לפגישת ייעוץ חינם בוואטסאפ</a><a class="btn ghost" href="pegisha.html">בחירת יום ושעה</a></div>
 <dl class="facts onwall">
 <div><dt>כתובת</dt><dd>עוצמה 5, טירת כרמל</dd></div>
 <div><dt>טלפון וואטסאפ</dt><dd class="ltr">{phone}</dd></div>
@@ -658,6 +658,54 @@ def build():
 '''.format(intake=INTAKE_URL, wa=WA) + FOOTER
   write("tik-lakoach.html", "פתיחת תיק לקוח | זיסו קרמיקה", "ממלאים כמה פרטים על הפרויקט ומגיעים לאולם בטירת כרמל כשההצעות כבר מוכנות.", intake, [crumbs_schema("תיק לקוח", "tik-lakoach")])
 
+  # Showroom meeting request: visitor picks a day and hour, the page composes a WhatsApp message (no data stored on the site).
+  # The WhatsApp webhook turns the first message into a lead; the family confirms the slot by hand.
+  book = header() + """
+<div class="wall"><div class="wrap hero inner" style="grid-template-columns:1fr">
+<div><ol class="crumbs"><li><a href="./">זיסו קרמיקה</a></li><li aria-current="page">קביעת פגישה</li></ol>
+<h1>קביעת פגישת ייעוץ חינם באולם</h1><p>בוחרים יום ושעה, ופגישה עם מעצבת פנים מוסמכת שמחכה לכם באולם בטירת כרמל. הבקשה נשלחת אלינו בוואטסאפ, ואנחנו מאשרים את המועד.</p></div></div></div>
+<main id="main"><section><div class="wrap book">
+<form class="book-form" id="book" novalidate>
+<fieldset><legend>איזה יום?</legend><div class="chips" id="book-days" role="radiogroup" aria-label="בחירת יום"></div></fieldset>
+<fieldset><legend>באיזו שעה?</legend><div class="chips" id="book-hours" role="radiogroup" aria-label="בחירת שעה"><p class="hint">בחרו קודם יום.</p></div></fieldset>
+<fieldset><legend>על מה הפרויקט? <span class="opt">(לא חובה)</span></legend><div class="chips" id="book-topic" role="radiogroup" aria-label="נושא הפרויקט">
+<button type="button" role="radio" aria-checked="false" data-v="חדר רחצה">חדר רחצה</button><button type="button" role="radio" aria-checked="false" data-v="ריצוף">ריצוף</button><button type="button" role="radio" aria-checked="false" data-v="מטבח">מטבח</button><button type="button" role="radio" aria-checked="false" data-v="שיפוץ כל הבית">כל הבית</button><button type="button" role="radio" aria-checked="false" data-v="דירה חדשה מקבלן">דירה מקבלן</button></div></fieldset>
+<label class="book-name" for="book-name">שם <span class="opt">(לא חובה)</span></label><input id="book-name" type="text" maxlength="40" autocomplete="given-name">
+<div class="book-sum" id="book-sum" aria-live="polite">בחרו יום ושעה.</div>
+<a class="btn brass book-go" id="book-go" href="#book-days" target="_blank" rel="noopener" data-campaign="booking" aria-disabled="true">שליחת הבקשה בוואטסאפ</a>
+<p class="book-note">נפתח וואטסאפ עם ההודעה מוכנה, ונשאר רק ללחוץ שליחה. האולם סגור בשבת. מעדיפים לדבר? <a class="ltr" href="tel:{phone_intl}">{phone}</a></p>
+</form>
+<aside class="panel"><h2>מה קורה בפגישה</h2><p>כשעה באולם עם מעצבת פנים מוסמכת. מביאים תוכנית או תמונות של החלל, אם יש, ויוצאים עם כיוון ברור לחומרים ולגוונים.</p><p>הפגישה בחינם ולא מחייבת.</p><dl class="hours">{hours}</dl><p>עוצמה 5, טירת כרמל</p></aside>
+</div></section></main>
+<script>
+(function(){{
+var days=document.getElementById('book-days'),hours=document.getElementById('book-hours'),topic=document.getElementById('book-topic'),
+  nameI=document.getElementById('book-name'),sum=document.getElementById('book-sum'),go=document.getElementById('book-go'),
+  DN=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'],sel={{d:null,h:null,t:''}};
+function slots(dow){{if(dow===6)return[];if(dow===5)return['08:30','09:30','10:30','11:30','12:30'];return['09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00']}}
+function open(d){{var now=new Date(),lead=new Date(now.getTime()+2*3600e3);return slots(d.getDay()).filter(function(h){{var t=new Date(d);t.setHours(+h.slice(0,2),+h.slice(3),0,0);return t>lead}})}}
+function radio(box,btn){{box.querySelectorAll('[role=radio]').forEach(function(b){{b.setAttribute('aria-checked',b===btn?'true':'false')}})}}
+function fmt(d){{return d.getDate()+'.'+(d.getMonth()+1)}}
+var d0=new Date();d0.setHours(0,0,0,0);var n=0;
+for(var i=0;i<21&&n<12;i++){{var d=new Date(d0);d.setDate(d0.getDate()+i);if(!open(d).length)continue;n++;
+  var b=document.createElement('button');b.type='button';b.setAttribute('role','radio');b.setAttribute('aria-checked','false');
+  b.innerHTML='<b>'+(i===0?'היום':i===1?'מחר':'יום '+DN[d.getDay()])+'</b><span>'+fmt(d)+'</span>';b._d=d;days.appendChild(b)}}
+days.addEventListener('click',function(e){{var b=e.target.closest('[role=radio]');if(!b)return;radio(days,b);sel.d=b._d;sel.h=null;
+  hours.innerHTML='';open(b._d).forEach(function(h){{var x=document.createElement('button');x.type='button';x.setAttribute('role','radio');x.setAttribute('aria-checked','false');x.textContent=h;x.className='ltr';hours.appendChild(x)}});upd()}});
+hours.addEventListener('click',function(e){{var b=e.target.closest('[role=radio]');if(!b)return;radio(hours,b);sel.h=b.textContent;upd()}});
+topic.addEventListener('click',function(e){{var b=e.target.closest('[role=radio]');if(!b)return;var on=b.getAttribute('aria-checked')==='true';radio(topic,on?null:b);sel.t=on?'':b.getAttribute('data-v');upd()}});
+nameI.addEventListener('input',upd);
+function upd(){{if(!sel.d||!sel.h){{sum.textContent=sel.d?'בחרו שעה.':'בחרו יום ושעה.';go.setAttribute('aria-disabled','true');go.setAttribute('href','#book-days');return}}
+  var when='ביום '+DN[sel.d.getDay()]+' '+fmt(sel.d)+' בשעה '+sel.h;sum.textContent='הבקשה: פגישה '+when+'.';
+  var t='שלום, אשמח לקבוע פגישת ייעוץ ועיצוב באולם '+when+'.';if(sel.t)t+=' הפרויקט: '+sel.t+'.';var nm=nameI.value.trim();if(nm)t+=' שמי '+nm+'.';
+  if(window.zisoAdCode)t+=' ('+window.zisoAdCode+')';
+  go.setAttribute('href','https://wa.me/{wa}?text='+encodeURIComponent(t));go.removeAttribute('aria-disabled')}}
+go.addEventListener('click',function(e){{if(go.getAttribute('aria-disabled')==='true'){{e.preventDefault();e.stopPropagation();sum.textContent=sel.d?'בחרו שעה כדי להמשיך.':'בחרו יום ושעה כדי להמשיך.';(sel.d?hours:days).querySelector('button')&&(sel.d?hours:days).querySelector('button').focus()}}}},true);
+}})();
+</script>
+""".format(wa=WA, phone=PHONE, phone_intl=PHONE_INTL, hours=HOURS_HTML) + FOOTER
+  write("pegisha.html", "קביעת פגישת ייעוץ חינם באולם | זיסו קרמיקה, טירת כרמל", "בוחרים יום ושעה לפגישת ייעוץ ועיצוב חינם עם מעצבת פנים מוסמכת באולם זיסו קרמיקה בטירת כרמל. שולחים בוואטסאפ ואנחנו מאשרים.", book, [crumbs_schema("קביעת פגישה", "pegisha")], body_attrs=' data-page="book"')
+
   toda = header() + '''
 <div class="wall"><div class="wrap hero inner" style="grid-template-columns:1fr">
 <div><h1>תודה, קיבלנו</h1><p>התיק שלכם אצלנו. נחזור אליכם בוואטסאפ או בטלפון לתיאום ביקור באולם.</p>%s
@@ -727,7 +775,7 @@ def build():
   write("showroom.html", "זיסו קרמיקה | פגישת עיצוב חינם עם מעצבת פנים באולם בטירת כרמל",
     "חדר רחצה שנבחר עם מעצבת פנים מוסמכת, לא עם איש מכירות. אולם תצוגה לריצוף ואמבטיה בטירת כרמל מאז 1985. פגישת ייעוץ ועיצוב באולם בחינם.",
     header() + landing_body(WA_VISIT, PHONE, PHONE_INTL, HOURS_HTML, ADDR_Q, GALLERY) + FOOTER, [BUSINESS])
-  urls = ["", "about.html", "contact.html", "calculator.html", "tik-lakoach.html", "accessibility.html", "privacy.html", "terms.html", "data-deletion.html"] + [a["slug"] + ".html" for a in AREA_PAGES] + [g["slug"] + ".html" for g in GUIDE_PAGES] + (["gallery.html"] if GALLERY else []) + [c["slug"] + ".html" for c in CATS]
+  urls = ["", "pegisha.html", "about.html", "contact.html", "calculator.html", "tik-lakoach.html", "accessibility.html", "privacy.html", "terms.html", "data-deletion.html"] + [a["slug"] + ".html" for a in AREA_PAGES] + [g["slug"] + ".html" for g in GUIDE_PAGES] + (["gallery.html"] if GALLERY else []) + [c["slug"] + ".html" for c in CATS]
   open(os.path.join(DIST, "sitemap.xml"), "w").write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n%s</urlset>\n' %
     "".join("  <url><loc>%s%s</loc><lastmod>%s</lastmod></url>\n" % (SITE, u, TODAY) for u in urls))
   open(os.path.join(DIST, "robots.txt"), "w").write("User-agent: *\nAllow: /\nDisallow: /toda\nDisallow: /crm\nDisallow: /dashboard\nSitemap: %ssitemap.xml\n" % SITE)
