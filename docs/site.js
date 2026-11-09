@@ -84,6 +84,7 @@
   // GTM itself is loaded by the consent block below, only after the visitor agrees.
   document.addEventListener('click',function(e){
     var a=e.target.closest&&e.target.closest('a[href]');if(!a)return;var h=a.getAttribute('href')||'';
+    if(a.id==='book-go')return; // the booking page sends its own booking_submit instead (no double count)
     if(/wa\.me|api\.whatsapp\.com/.test(h))push('whatsapp_click',{link_url:h,link_text:(a.textContent||'').trim().slice(0,60),campaign:a.getAttribute('data-campaign')||''});
     else if(a.getAttribute('data-campaign')==='review')push('review_click',{link_url:h});
     else if(/^tel:/.test(h))push('phone_click',{link_url:h});
@@ -245,7 +246,7 @@
     try{var u=JSON.parse(sessionStorage.getItem('ziso_utm')||'null');if(u&&u.fbclid&&!/(^|; )_fbc=/.test(document.cookie)&&!/[?&]fbclid=/.test(location.search))
       document.cookie='_fbc=fb.1.'+Date.now()+'.'+u.fbclid+';path=/;max-age=7776000;SameSite=Lax'}catch(e){}
     fbq('init',meta);fbq('track','PageView');
-    var M={whatsapp_click:'Contact',phone_click:'Contact',generate_lead:'Lead'};
+    var M={whatsapp_click:'Contact',booking_submit:'Contact',phone_click:'Contact',generate_lead:'Lead'};
     window.__fbSend=function(ev){if(M[ev])fbq('track',M[ev])}}
   function loadAll(){loadGa();loadMeta();loadGtm();
     if(window.__zSend||!(window.__gaSend||window.__fbSend))return;

@@ -389,7 +389,11 @@ GTM_ID = ""  # optional GTM container (GTM-XXXXXXX); GA4 below is loaded directl
 # Meta pixel ("Wix Pixel" in the business portfolio), approved by Aviv 15.10.2026. Same cookie consent; empty = dormant.
 META_PIXEL_ID = "774998039816486"
 GADS_ID = "AW-399978850"
-GADS_LABELS = {"whatsapp_click": "AW-399978850/7QD4CJSiypwdEOLi3L4B", "phone_click": "AW-399978850/CY6cCJeiypwdEOLi3L4B",
+# >>> Google Ads conversion label for a booking sent from pegisha.html ("pegisha_booking"). Paste only the label part
+# (the text after "AW-399978850/"). Empty = the booking_submit event still goes to GA4, but no Ads conversion is sent.
+PEGISHA_BOOKING_LABEL = ""
+GADS_LABELS = {"booking_submit": ("AW-399978850/" + PEGISHA_BOOKING_LABEL) if PEGISHA_BOOKING_LABEL else "",
+               "whatsapp_click": "AW-399978850/7QD4CJSiypwdEOLi3L4B", "phone_click": "AW-399978850/CY6cCJeiypwdEOLi3L4B",
                "generate_lead": "AW-399978850/7QCDCP65wJwdEOLi3L4B", "directions_click": "AW-399978850/B1w8CIjOhZ0dEOLi3L4B"}  # empty label = no conversion sent
 GA_ID = "G-M02XKGDM7H"  # GA4 measurement id (G-XXXXXXXXXX) of the "Ziso Ceramics" property; empty = tracking dormant, no cookie banner
 
@@ -702,7 +706,7 @@ function upd(){{if(!sel.d||!sel.h){{sum.textContent=sel.d?'בחרו שעה.':'ב
   var t='שלום, אשמח לקבוע פגישת ייעוץ ועיצוב באולם '+when+'.';if(sel.t)t+=' הפרויקט: '+sel.t+'.';var nm=nameI.value.trim();if(nm)t+=' שמי '+nm+'.';
   if(window.zisoAdCode)t+=' ('+window.zisoAdCode+')';
   go.setAttribute('href','https://wa.me/{wa}?text='+encodeURIComponent(t));go.removeAttribute('aria-disabled')}}
-go.addEventListener('click',function(e){{if(go.getAttribute('aria-disabled')==='true'){{e.preventDefault();e.stopPropagation();sum.textContent=sel.d?'בחרו שעה כדי להמשיך.':'בחרו יום ושעה כדי להמשיך.';(sel.d?hours:days).querySelector('button')&&(sel.d?hours:days).querySelector('button').focus()}}}},true);
+go.addEventListener('click',function(e){{if(go.getAttribute('aria-disabled')!=='true'&&window.zisoTrack)window.zisoTrack('booking_submit',{{campaign:'booking',topic:sel.t}});if(go.getAttribute('aria-disabled')==='true'){{e.preventDefault();e.stopPropagation();sum.textContent=sel.d?'בחרו שעה כדי להמשיך.':'בחרו יום ושעה כדי להמשיך.';(sel.d?hours:days).querySelector('button')&&(sel.d?hours:days).querySelector('button').focus()}}}},true);
 }})();
 </script>
 """.format(wa=WA, phone=PHONE, phone_intl=PHONE_INTL, hours=HOURS_HTML) + FOOTER
