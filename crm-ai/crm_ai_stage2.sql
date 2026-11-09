@@ -25,7 +25,7 @@ language sql stable security definer set search_path = public as $f$
     left join crm_ai a on a.tail9 = c.tail9
    where (crm_me() is not null or auth.role() = $r$service_role$r$)
      and q.active and q.total > 0 and q.cust_no <> $w$1000001$w$
-     and q.date between current_date - 45 and current_date - 3
+     and q.date between current_date - 30 and current_date - 3
      and coalesce(k.kind, $e$$e$) not in ($k$supplier$k$, $k$not_customer$k$)
      and not exists (select 1 from priority_orders_all o where o.cust_no = q.cust_no and o.date >= q.date)
      and not exists (select 1 from priority_quotes q2 where q2.cust_no = q.cust_no and q2.active and q2.date > q.date)
