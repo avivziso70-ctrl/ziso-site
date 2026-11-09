@@ -74,7 +74,7 @@
   (function(){var a=attr(),s=(a.utm_source||'').toLowerCase(),m=(a.utm_medium||'').toLowerCase(),code='';
     if(a.gclid||a.gbraid||a.wbraid||s==='google')code='G1';
     else if(a.fbclid||s==='meta'||((s==='facebook'||s==='instagram')&&m==='paid'))code='M1';
-    if(!code)return;
+    window.zisoAdCode=code;if(!code)return;
     document.querySelectorAll('a[href*="wa.me"],a[href*="api.whatsapp.com"]').forEach(function(l){
       var h=l.getAttribute('href')||'',i=h.indexOf('?'),base=i>-1?h.slice(0,i):h,q=new URLSearchParams(i>-1?h.slice(i+1):''),
         t=q.get('text')||'שלום, אשמח לקבוע פגישת ייעוץ ועיצוב באולם';
