@@ -498,3 +498,7 @@ html.a11y-motion .scrollcue{display:none}
 .book-note{margin:0;color:var(--stone);font-size:.95em}
 .book-note a{white-space:nowrap}
 body[data-page="book"] .wa{display:none!important}
+.book-gets{list-style:none;margin:0 0 .9rem;padding:0;display:grid;gap:.35rem}
+.book-gets li{padding-inline-start:1.5rem;position:relative}
+.book-gets li::before{content:"✓";position:absolute;inset-inline-start:0;color:var(--brass-text);font-weight:700}
+.book-trust{margin:.8rem 0 0;font-size:.95rem}

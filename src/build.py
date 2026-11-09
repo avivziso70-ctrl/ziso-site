@@ -663,7 +663,7 @@ def build():
   book = header() + """
 <div class="wall"><div class="wrap hero inner" style="grid-template-columns:1fr">
 <div><ol class="crumbs"><li><a href="./">זיסו קרמיקה</a></li><li aria-current="page">קביעת פגישה</li></ol>
-<h1>קביעת פגישת ייעוץ חינם באולם</h1><p>בוחרים יום ושעה, ופגישה עם מעצבת פנים מוסמכת שמחכה לכם באולם בטירת כרמל. הבקשה נשלחת אלינו בוואטסאפ, ואנחנו מאשרים את המועד.</p></div></div></div>
+<h1>פגישת עיצוב חינם עם אילת או שיר</h1><p>בוחרים יום ושעה, ואחת ממעצבות הפנים שלנו מחכה לכם באולם בטירת כרמל. הבקשה נשלחת אלינו בוואטסאפ, ואנחנו מאשרים את המועד.</p></div></div></div>
 <main id="main"><section><div class="wrap book">
 <form class="book-form" id="book" novalidate>
 <fieldset><legend>איזה יום?</legend><div class="chips" id="book-days" role="radiogroup" aria-label="בחירת יום"></div></fieldset>
@@ -672,8 +672,10 @@ def build():
 <button type="button" role="radio" aria-checked="false" data-v="חדר רחצה">חדר רחצה</button><button type="button" role="radio" aria-checked="false" data-v="ריצוף">ריצוף</button><button type="button" role="radio" aria-checked="false" data-v="מטבח">מטבח</button><button type="button" role="radio" aria-checked="false" data-v="שיפוץ כל הבית">כל הבית</button><button type="button" role="radio" aria-checked="false" data-v="דירה חדשה מקבלן">דירה מקבלן</button></div></fieldset>
 <label class="book-name" for="book-name">שם <span class="opt">(לא חובה)</span></label><input id="book-name" type="text" maxlength="40" autocomplete="given-name">
 <div class="book-sum" id="book-sum" aria-live="polite">בחרו יום ושעה.</div>
+<ul class="book-gets" aria-label="מה יוצאים מהפגישה"><li>כיוון ברור לחומרים ולגוונים לחלל שלכם</li><li>הצעת מחיר תוך 24 שעות</li></ul>
 <a class="btn brass book-go" id="book-go" href="#book-days" target="_blank" rel="noopener" data-campaign="booking" aria-disabled="true">שליחת הבקשה בוואטסאפ</a>
-<p class="book-note">נפתח וואטסאפ עם ההודעה מוכנה, ונשאר רק ללחוץ שליחה. האולם סגור בשבת. מעדיפים לדבר? <a class="ltr" href="tel:{phone_intl}">{phone}</a></p>
+<p class="book-trust">מאז 1985 · מעצבת, לא איש מכירות · <a href="https://g.page/r/CewpRPPNS-JNEAE" target="_blank" rel="noopener">הביקורות שלנו בגוגל</a></p>
+<p class="book-note">נפתח וואטסאפ עם ההודעה מוכנה, ונשאר רק ללחוץ שליחה. נאשר לכם את המועד בוואטסאפ בשעות הפעילות. האולם סגור בשבת. מעדיפים לדבר? <a class="ltr" href="tel:{phone_intl}">{phone}</a></p>
 </form>
 <aside class="panel"><h2>מה קורה בפגישה</h2><p>כשעה באולם עם מעצבת פנים מוסמכת. מביאים תוכנית או תמונות של החלל, אם יש, ויוצאים עם כיוון ברור לחומרים ולגוונים.</p><p>הפגישה בחינם ולא מחייבת.</p><dl class="hours">{hours}</dl><p>עוצמה 5, טירת כרמל</p></aside>
 </div></section></main>
@@ -704,7 +706,7 @@ go.addEventListener('click',function(e){{if(go.getAttribute('aria-disabled')==='
 }})();
 </script>
 """.format(wa=WA, phone=PHONE, phone_intl=PHONE_INTL, hours=HOURS_HTML) + FOOTER
-  write("pegisha.html", "קביעת פגישת ייעוץ חינם באולם | זיסו קרמיקה, טירת כרמל", "בוחרים יום ושעה לפגישת ייעוץ ועיצוב חינם עם מעצבת פנים מוסמכת באולם זיסו קרמיקה בטירת כרמל. שולחים בוואטסאפ ואנחנו מאשרים.", book, [crumbs_schema("קביעת פגישה", "pegisha")], body_attrs=' data-page="book"')
+  write("pegisha.html", "פגישת עיצוב חינם באולם | זיסו קרמיקה, טירת כרמל", "בוחרים יום ושעה לפגישת עיצוב חינם עם אילת או שיר, מעצבות פנים מוסמכות באולם זיסו קרמיקה בטירת כרמל. שולחים בוואטסאפ ואנחנו מאשרים.", book, [crumbs_schema("קביעת פגישה", "pegisha")], body_attrs=' data-page="book"')
 
   toda = header() + '''
 <div class="wall"><div class="wrap hero inner" style="grid-template-columns:1fr">
@@ -750,8 +752,12 @@ go.addEventListener('click',function(e){{if(go.getAttribute('aria-disabled')==='
     photos = [(f, c) for f, c in GALLERY if f in g["photos"]]
     fig = gallery_html(photos, lazy=True) if photos else ""
     camp = g.get("campaign", g["slug"])
-    cta = '<p class="actions"><a class="btn brass" href="%s" target="_blank" rel="noopener" data-campaign="%s">לפגישת ייעוץ ועיצוב חינם</a>%s</p>' % (
-      WA_VISIT, html.escape(camp), (' <a class="btn line" href="%s.html">ל%s באולם</a>' % (cat["slug"], cat["name"])) if cat else "")
+    cat_link = (' <a class="btn line" href="%s.html">ל%s באולם</a>' % (cat["slug"], cat["name"])) if cat else ""
+    if g.get("cta") == "pegisha":  # straight to the day-and-hour booking page
+      cta = '<p class="actions"><a class="btn brass" href="pegisha.html" data-campaign="%s">לבחירת יום ושעה לפגישת עיצוב חינם</a>%s</p>' % (html.escape(camp), cat_link)
+    else:
+      cta = '<p class="actions"><a class="btn brass" href="%s" target="_blank" rel="noopener" data-campaign="%s">לפגישת ייעוץ ועיצוב חינם</a>%s</p>' % (
+        WA_VISIT, html.escape(camp), cat_link)
     body = header() + '''
 <div class="wall"><div class="wrap hero inner" style="grid-template-columns:1fr">
 <div><ol class="crumbs"><li><a href="./">זיסו קרמיקה</a></li><li aria-current="page">מדריך</li></ol>
