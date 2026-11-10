@@ -9,6 +9,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="../img/logo.jpg">
 <link rel="icon" href="../img/logo.jpg">
+<link rel="preconnect" href="https://ppnjosyraosrdephsksu.supabase.co" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="../fonts.css">
 <style>
 /* Tokens follow the site (styles.css): dark wall, brass, Bellefair + Assistant. Light theme when the phone asks for it. */
@@ -47,10 +49,10 @@ input::placeholder,textarea::placeholder{color:var(--mute)}
 .pill.wait{background:var(--red-soft);color:var(--red)}
 .pill.bot{background:var(--brass-soft);color:var(--brass)}
 .pill.ok{background:var(--green-soft);color:var(--green)}
-.pill.late{background:var(--red);color:#fff}
+.pill.late{background:var(--red);color:var(--wall)}
 .pill.flag{background:var(--red-soft);color:var(--red);border:1px solid var(--red)}
-.pill.hot{background:var(--red);color:#fff}.pill.warm{background:var(--brass-soft);color:var(--brass)}.pill.cold{background:var(--graphite);color:var(--mute)}
-.ai{border-inline-start:3px solid var(--brass);padding-inline-start:12px;margin:8px 0 12px}.ai .next{font-weight:600;margin:6px 0}.ai .risk{color:var(--red);font-size:14px}
+.pill.hot{background:var(--red);color:var(--wall)}.pill.warm{background:var(--brass-soft);color:var(--brass)}.pill.cold{background:var(--graphite);color:var(--mute)}
+.ai{background:var(--graphite);border-radius:10px;padding:10px 12px;margin:8px 0 12px}.ai .next{font-weight:600;margin:6px 0}.ai .risk{color:var(--red);font-size:14px}
 .airow{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:start;padding:10px 0;border-bottom:1px solid var(--grout)}.airow .txt{font-size:15px}.airow .sub{font-size:13px;color:var(--mute)}
 #chat .acts{display:flex;gap:6px;overflow:auto;padding-bottom:2px;align-items:center}
 #chat .acts > *,#chat .acts .pill{flex-shrink:0;white-space:nowrap}
@@ -83,7 +85,7 @@ main{min-height:0;display:grid;grid-template-columns:1fr;overflow:hidden}
 nav.tabs{display:flex;border-top:1px solid var(--line);background:var(--surface);padding-bottom:env(safe-area-inset-bottom)}
 nav.tabs button{flex:1;min-height:58px;background:none;border:0;border-top:2px solid transparent;color:var(--mute);font-weight:600;font-size:15px;display:grid;gap:2px;justify-items:center;cursor:pointer;position:relative}
 nav.tabs button[aria-current="page"]{color:var(--brass);border-top-color:var(--brass)}
-nav.tabs .badge{position:absolute;top:19px;inset-inline-start:calc(50% + 30px);min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--red);color:#fff;font-size:12px;line-height:20px;text-align:center}
+nav.tabs .badge{position:absolute;top:19px;inset-inline-start:calc(50% + 30px);min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--red);color:var(--wall);font-weight:700;font-size:12px;line-height:20px;text-align:center}
 
 /* Conversations list */
 .filters{display:flex;gap:8px;overflow:auto;padding-bottom:2px}
@@ -174,7 +176,7 @@ details.sect:not([open]){gap:0}
 .summary{white-space:pre-wrap;font-size:15px}
 .visit{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--grout)}
 .visit > *{min-width:0} .visit b{font-size:17px} .visit.today b{color:var(--brass)}
-.visit .att{font-size:13px;font-weight:600} .visit .att.yes{color:var(--ok,#2e7d32)} .visit .att.no{color:var(--muted)}
+.visit .att{font-size:13px;font-weight:600} .visit .att.yes{color:var(--green)} .visit .att.no{color:var(--mute)}
 .fine{font-size:13px;color:var(--mute);line-height:1.5}
 
 /* Today */
@@ -230,9 +232,46 @@ details.sect:not([open]){gap:0}
 }
 @media (max-width:1023px){header.top .desk{display:none}}
 
+/* 10.11: icons, screen-reader text, chat context line, Today groups, and no sideways scroll on phones */
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+svg.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+svg.ic.dots{stroke-width:3}
+.btn.small svg.ic{width:18px;height:18px}
+#today .body,#card .body{grid-template-columns:minmax(0,1fr)}
+.sect{min-width:0}.airow > div{min-width:0}.airow .row,.sect > .row,.task > div{flex-wrap:wrap;min-width:0}
+.airow .txt,.task .txt{overflow-wrap:anywhere}
+.risk{color:var(--red)}
+.ctx{display:flex;gap:6px 8px;flex-wrap:wrap;align-items:center;font-size:14px}
+.ctx .next{flex:1 1 220px;min-width:0;color:var(--ink)}
+.ctx .next b{color:var(--brass);font-weight:600}
+.seg{display:flex;gap:8px;overflow:auto;padding-bottom:2px}
+.seg button{min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:15px;font-weight:600;color:var(--mute);cursor:pointer;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--brass-soft);color:var(--brass);border-color:var(--brass)}
+.seg button .n{font-weight:400;margin-inline-start:4px}
+#todayBody[data-g="now"] .sect:not([data-g="now"]),#todayBody[data-g="money"] .sect:not([data-g="money"]),#todayBody[data-g="grow"] .sect:not([data-g="grow"]),#todayBody[data-g="admin"] .sect:not([data-g="admin"]){display:none}
+#todayBody .none{display:none;color:var(--mute);text-align:center;padding:24px 0}
+@media (max-width:599px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi b{font-size:26px}}
+.kpis{order:-2}
+@media (max-width:599px){#doneBtn .lbl{display:none}}
+.compose .quick button.aibtn{border-color:var(--brass);background:var(--brass-soft);color:var(--brass);font-weight:600;display:inline-flex;align-items:center;gap:6px}
+.compose .quick button.aibtn svg.ic{width:16px;height:16px}
+.compose .walink{text-decoration:none}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto !important;transition:none !important}}
+
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-phone" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></symbol>
+<symbol id="i-send" viewBox="0 0 24 24"><path d="M3 12 20 4l-3 8 3 8z"/><path d="M17 12H9"/></symbol>
+<symbol id="i-clip" viewBox="0 0 24 24"><path d="M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.5 8.5a1.8 1.8 0 0 1-2.6-2.6l7.8-7.8"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 6.3"/><path d="M20 4v7h-7"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+<symbol id="i-dots" viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01"/></symbol>
+<symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16v4M17 18h4"/></symbol>
+</defs></svg>
+<div class="sr" id="live" role="status" aria-live="polite"></div>
 <div id="login">
   <form id="loginForm" autocomplete="on">
     <img class="logo" src="../img/logo.jpg" alt="">
@@ -246,7 +285,7 @@ details.sect:not([open]){gap:0}
   </form>
 </div>
 
-<div id="docSheet" class="sheet hidden" role="dialog" aria-labelledby="docTitle">
+<div id="docSheet" class="sheet hidden" role="dialog" aria-modal="true" aria-labelledby="docTitle">
   <form id="docForm" class="docform" autocomplete="off">
     <h2 id="docTitle">מסמך ללקוח</h2>
     <div id="docPreview" class="docprev"></div>
@@ -256,7 +295,7 @@ details.sect:not([open]){gap:0}
     <div class="row" id="docBtns"><button class="btn brass" type="button" id="docSend">שליחה ללקוח בוואטסאפ</button><button class="btn" type="button" id="docDl">הורדה</button><button class="btn" type="button" id="docClose">סגירה</button></div>
   </form>
 </div>
-<div id="pwSheet" class="sheet hidden" role="dialog" aria-labelledby="pwTitle">
+<div id="pwSheet" class="sheet hidden" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
   <form id="pwForm" autocomplete="off">
     <h2 id="pwTitle">החלפת סיסמה</h2>
     <p class="small muted" id="pwNote">בכניסה הראשונה בוחרים סיסמה אישית. לפחות 8 תווים.</p>
@@ -280,12 +319,12 @@ details.sect:not([open]){gap:0}
     <button class="btn small" id="meBtn" title="החשבון שלי"></button>
   </header>
 
-  <div class="pushbar hidden" id="pushBar" role="region" aria-label="התראות"><span class="grow">לקבל התראה בטלפון על כל הודעה חדשה?</span><button class="btn small brass" id="pushOn" type="button">להפעיל</button><button class="btn icon small" id="pushX" type="button" aria-label="לא עכשיו">✕</button></div>
+  <div class="pushbar hidden" id="pushBar" role="region" aria-label="התראות"><span class="grow">לקבל התראה בטלפון על כל הודעה חדשה?</span><button class="btn small brass" id="pushOn" type="button">להפעיל</button><button class="btn icon small" id="pushX" type="button" aria-label="לא עכשיו"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button></div>
   <main data-view="chats">
     <!-- Conversations -->
     <section class="pane" id="chats" aria-label="שיחות">
       <div class="head">
-        <div class="row"><h2 class="grow">שיחות</h2><button class="btn icon small" id="refreshBtn" title="רענון" aria-label="רענון">↻</button></div>
+        <div class="row"><h2 class="grow">שיחות</h2><button class="btn icon small" id="refreshBtn" title="רענון" aria-label="רענון"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg></button></div>
         <input type="search" id="q" placeholder="חיפוש לפי שם או טלפון" autocomplete="off">
         <div class="filters" role="group" aria-label="סינון">
           <button data-f="waiting" aria-pressed="true">ממתינים</button>
@@ -301,21 +340,23 @@ details.sect:not([open]){gap:0}
     <section class="pane" id="chat" aria-label="שיחה">
       <div class="head">
         <div class="row">
-          <button class="btn icon small back" id="backFromChat" aria-label="חזרה">→</button>
+          <button class="btn icon small back" id="backFromChat" aria-label="חזרה לרשימת השיחות"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg></button>
           <div class="who grow"><div class="name ellip" id="chatName">בחרו שיחה</div><div class="small muted ellip" id="chatSub"></div></div>
-          <a class="btn small call hidden" id="callBtn" href="#" aria-label="להתקשר ללקוח" title="להתקשר ללקוח">📞<span class="lbl">להתקשר</span></a>
-          <button class="btn small done hidden" id="doneBtn">סמן כטופל</button>
-          <button class="btn icon small" id="menuBtn" aria-label="עוד פעולות" title="עוד פעולות">⋯</button>
+          <a class="btn small call hidden" id="callBtn" href="#" aria-label="להתקשר ללקוח" title="להתקשר ללקוח"><svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg><span class="lbl">להתקשר</span></a>
+          <button class="btn small done hidden" id="doneBtn"><span class="lbl">סמן כ</span>טופל</button>
+          <button class="btn icon small" id="menuBtn" aria-haspopup="dialog" aria-label="עוד פעולות" title="עוד פעולות"><svg class="ic dots" aria-hidden="true"><use href="#i-dots"/></svg></button>
         </div>
+        <div class="ctx hidden" id="ctx"></div>
       </div>
-      <div class="msgs" id="msgs"><div class="empty">בחרו שיחה מהרשימה</div></div>
+      <div class="msgs" id="msgs" role="log" aria-label="הודעות"><div class="empty">בחרו שיחה מהרשימה</div></div>
       <div class="compose hidden" id="compose">
         <div class="quick" id="quick"></div>
         <div class="row">
-          <textarea id="draft" rows="1" placeholder="כתיבת תשובה ללקוח"></textarea>
+          <textarea id="draft" rows="1" placeholder="כתיבת תשובה ללקוח" aria-label="תשובה ללקוח" enterkeyhint="send"></textarea>
           <input type="file" id="fileIn" class="hidden" accept="image/*,application/pdf">
-          <button class="btn icon" id="attachBtn" title="צירוף תמונה או PDF" aria-label="צירוף קובץ">📎</button>
-          <button class="btn icon brass" id="sendBtn" title="שליחה" aria-label="שליחה">➤</button>
+          <button class="btn icon" id="attachBtn" title="צירוף תמונה או PDF" aria-label="צירוף קובץ"><svg class="ic" aria-hidden="true"><use href="#i-clip"/></svg></button>
+          <button class="btn icon brass" id="sendBtn" title="שליחה" aria-label="שליחה"><svg class="ic" aria-hidden="true"><use href="#i-send"/></svg></button>
+          <a class="btn brass walink hidden" id="waBtn" href="#" target="_blank" rel="noopener">לפתוח בוואטסאפ</a>
         </div>
         <div class="note" id="composeNote"></div>
       </div>
@@ -325,9 +366,9 @@ details.sect:not([open]){gap:0}
     <section class="pane" id="card" aria-label="כרטיס לקוח">
       <div class="head">
         <div class="row">
-          <button class="btn icon small back" id="backFromCard" aria-label="חזרה">→</button>
+          <button class="btn icon small back" id="backFromCard" aria-label="חזרה"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg></button>
           <h2 class="grow ellip" id="cardName">כרטיס לקוח</h2>
-          <a class="btn small call hidden" id="cardCall" href="#" aria-label="להתקשר ללקוח" title="להתקשר ללקוח">📞<span class="lbl">להתקשר</span></a>
+          <a class="btn small call hidden" id="cardCall" href="#" aria-label="להתקשר ללקוח" title="להתקשר ללקוח"><svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg><span class="lbl">להתקשר</span></a>
           <button class="btn small done hidden" id="cardDone">סמן כטופל</button>
           <button class="btn small" id="cardChat">לשיחה</button>
         </div>
@@ -347,7 +388,7 @@ details.sect:not([open]){gap:0}
 
     <!-- Today -->
     <section class="pane" id="today" aria-label="היום">
-      <div class="head"><div class="row"><h2 class="grow">היום</h2></div></div>
+      <div class="head"><div class="row"><h2 class="grow">היום</h2></div><div class="seg" id="todaySeg" role="group" aria-label="מה להציג"></div></div>
       <div class="body" id="todayBody"></div>
     </section>
   </main>
@@ -409,7 +450,7 @@ var ago = function (d) {
 var localPhone = function (p) { p = String(p || '').replace(/\D/g, ''); if (/^972/.test(p)) p = '0' + p.slice(3); return p.length === 10 ? p.slice(0, 3) + '-' + p.slice(3) : p; };
 var tail9 = function (p) { p = String(p || '').replace(/\D/g, ''); return p.length >= 9 ? p.slice(-9) : null; };
 var nameOf = function (email) { var s = staff.filter(function (x) { return x.email.toLowerCase() === String(email || '').toLowerCase(); })[0]; return s ? s.name : (email || ''); };
-var toast = function (t, ms) { var el = document.createElement('div'); el.className = 'toast'; el.textContent = t; document.body.appendChild(el); setTimeout(function () { el.remove(); }, ms || 3000); };
+var toast = function (t, ms) { var el = document.createElement('div'); el.className = 'toast'; el.textContent = t; document.body.appendChild(el); $('live').textContent = ''; setTimeout(function () { $('live').textContent = t; }, 50); setTimeout(function () { el.remove(); }, ms || 3000); };
 var isOwner = function () { var s = staff.filter(function (x) { return x.email.toLowerCase() === me.email.toLowerCase(); })[0]; return !!(s && s.role === 'owner'); };
 var within24h = function (msgs) { var lastIn = null; msgs.forEach(function (m) { if (m.dir === 'in') lastIn = m.ts; }); return lastIn && (Date.now() - new Date(lastIn)) < 24 * 3600 * 1000; };
 
@@ -423,7 +464,7 @@ $('loginForm').addEventListener('submit', function (e) {
 });
 sb.auth.onAuthStateChange(function (ev, session) {
   if (session && session.user) { if (!me || me.email !== session.user.email) { me = session.user; start(); } }
-  else { me = null; $('app').classList.add('hidden'); $('login').classList.remove('hidden'); if (timer) clearInterval(timer); }
+  else { me = null; drafts = {}; storeDrafts(); $('app').classList.add('hidden'); $('login').classList.remove('hidden'); if (timer) clearInterval(timer); }
 });
 function openPw(first) {
   $('pwNote').textContent = first ? 'בכניסה הראשונה בוחרים סיסמה אישית. לפחות 8 תווים.' : 'סיסמה חדשה לחשבון ' + me.email + '. לפחות 8 תווים.';
@@ -451,13 +492,26 @@ function start() {
     $('meBtn').textContent = mine.name;
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
     sb.rpc('crm_log', { p_action: 'login' });
-    route(); loadConvs(); loadSync(); pushCheck();
+    route(); loadConvs(); loadSync(); pushCheck(); loadAiMap();
     if (!(me.user_metadata && me.user_metadata.pw_changed_at)) openPw(true);
     if (timer) clearInterval(timer);
-    timer = setInterval(function () { if (document.visibilityState === 'visible') { loadConvs(true); if (cur) loadChat(cur, true); } }, 20000);
-    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') loadConvs(true); });
+    // open chat every 10s, list every 20s, AI verdicts every 3 minutes; nothing runs while the tab is hidden
+    timer = setInterval(function () { if (document.visibilityState !== 'visible') return; tick++; if (cur) loadChat(cur, true); if (tick % 2 === 0) loadConvs(true); if (tick % 18 === 0) loadAiMap(); }, 10000);
+    if (!started) { started = true; document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && me) { loadConvs(true); if (cur) loadChat(cur, true); } }); }
   });
 }
+var tick = 0, started = false, convSig = '', aiMap = {};
+/* AI verdicts (crm_ai) for the list and the chat: who is hot, and the next step, without opening the card */
+function loadAiMap() {
+  sb.from('crm_ai').select('tail9,temp,score,next_action,next_due,risk').is('done_at', null).limit(1000).then(function (r) {
+    if (r.error || !r.data) return;
+    aiMap = {}; r.data.forEach(function (a) { aiMap[a.tail9] = a; });
+    renderConvs(); if (cur) updateActs(convOf(cur));
+  });
+}
+function isHot(c) { var a = c && c.tail9 && aiMap[c.tail9]; return a && a.temp === 'hot' ? 1 : 0; }
+/* waiting queue order: sensitive first, then hot leads, then whoever waits longest */
+function urgency(a, b) { return ((b.flag ? 1 : 0) - (a.flag ? 1 : 0)) || (isHot(b) - isHot(a)) || (Number(b.wait_biz_min || 0) - Number(a.wait_biz_min || 0)); }
 function loadSync() {
   sb.from('priority_sync').select('key,source_at').then(function (r) {
     var c = (r.data || []).filter(function (x) { return x.key === 'orders'; })[0];
@@ -496,6 +550,7 @@ function loadConvs(quiet) {
   var q = $('q').value.trim();
   sb.rpc('crm_inbox', { p_search: q || null, p_limit: 300 }).then(function (r) {
     if (r.error) { if (!quiet) toast('שגיאה בטעינת השיחות'); return; }
+    var sig = JSON.stringify(r.data || []); if (quiet && sig === convSig) return; convSig = sig;
     convs = r.data || []; renderConvs(); updateBadge();
     if (cur) updateActs(convOf(cur));
   });
@@ -513,19 +568,22 @@ function renderConvs() {
     if (filter === 'mine') return c.claimed_by && c.claimed_by.toLowerCase() === me.email.toLowerCase();
     return true;
   });
+  if (filter === 'waiting') list.sort(urgency);
   $('convEmpty').classList.toggle('hidden', list.length > 0);
+  $('convEmpty').textContent = filter === 'waiting' && !$('q').value.trim() ? 'אין ממתינים. כולם נענו.' : 'אין שיחות להצגה';
   $('convList').innerHTML = list.map(function (c) {
     var st = c.state === 'waiting' ? 'wait' : c.state === 'bot' ? 'bot' : 'ok';
     var wait = needsHuman(c) ? waitPill(c) + (c.state === 'bot' ? '<span class="pill bot">הבוט ענה</span>' : '') : '';
     var flag = c.flag ? '<span class="pill flag">רגיש: לבדוק</span>' : '';
     var quote = c.quote_at && !/won|lost/.test(c.lead_stage || '') ? '<span class="pill bot">הצעה נשלחה ' + esc(ago(c.quote_at)) + '</span>' : '';
     var who = c.claimed_by ? '<span class="pill">' + esc(nameOf(c.claimed_by)) + '</span>' : '';
+    if (isHot(c) && needsHuman(c)) flag += '<span class="pill hot">חם</span>';
     var canDone = needsHuman(c) && c.tail9;
     return '<li' + (canDone ? ' class="can-done"' : '') + '><button data-phone="' + esc(c.phone) + '" aria-current="' + (c.phone === cur) + '">' +
       '<span class="dot ' + st + '"></span>' +
       '<span class="name ellip">' + esc(c.name || localPhone(c.phone)) + '</span>' +
       '<span class="when">' + esc(ago(c.last_ts)) + '</span>' +
-      '<span class="last ellip">' + (c.last_dir === 'out' ? '↩ ' : '') + esc(c.last_text || '') + '</span>' +
+      '<span class="last ellip">' + (c.last_dir === 'out' ? 'אנחנו: ' : '') + esc(c.last_text || '') + '</span>' +
       (wait || flag || quote || who ? '<span class="meta">' + flag + wait + quote + who + '</span>' : '') +
       '</button>' + (canDone ? '<button class="ldone" type="button" data-done="' + esc(c.tail9) + '" data-dphone="' + esc(c.phone) + '" aria-label="סמן כטופל" title="סמן כטופל: יורד מהממתינים עד שהלקוח יכתוב שוב">סמן<small>כטופל</small></button>' : '') + '</li>';
   }).join('');
@@ -539,8 +597,15 @@ function stageLabel(s) { var x = STAGES.filter(function (p) { return p[0] === s;
 
 /* ---------- chat ---------- */
 var chatMsgs = [];
+var drafts = {}; try { drafts = JSON.parse(sessionStorage.getItem('crmDrafts') || '{}') || {}; } catch (e) {}
+function storeDrafts() { try { sessionStorage.setItem('crmDrafts', JSON.stringify(drafts)); } catch (e) {} }
+/* every chat keeps its own unsent text, so a reply typed for one customer can never be sent to another */
+function saveDraft() { if (!cur) return; var v = $('draft').value; if (v.trim()) drafts[cur] = v; else delete drafts[cur]; storeDrafts(); }
 function openChat(phone) {
+  var changed = cur !== phone;
+  if (cur && changed) saveDraft();
   cur = phone; curTail = tail9(phone);
+  if (changed) { $('draft').value = drafts[phone] || ''; autosize(); }
   var c = convs.filter(function (x) { return x.phone === phone; })[0];
   $('chatName').textContent = (c && c.name) || localPhone(phone);
   $('chatSub').innerHTML = '<span class="ltr">' + esc(localPhone(phone)) + '</span>' + (c && c.cust_no ? ' · לקוח ' + esc(c.cust_no) : '');
@@ -556,10 +621,17 @@ function isMine(c) { return !!(c && c.claimed_by && c.claimed_by.toLowerCase() =
 function telOf(p) { p = String(p || '').replace(/\D/g, ''); if (/^972/.test(p)) p = '0' + p.slice(3); if (p.length === 9 && p[0] !== '0') p = '0' + p; return /^0\d{8,9}$/.test(p) ? 'tel:' + p : ''; }
 function setCall(id, phone) { var t = telOf(phone), a = $(id); a.classList.toggle('hidden', !t); if (t) a.href = t; else a.removeAttribute('href'); }
 function updateActs(c) {
-  var sub = '<span class="ltr">' + esc(localPhone(cur)) + '</span>' + (c && c.cust_no ? ' · לקוח ' + esc(c.cust_no) : '');
-  if (c && c.flag) sub += ' <span class="pill flag">רגיש: לבדוק</span>';
-  if (c && needsHuman(c)) sub += ' ' + waitPill(c);
-  $('chatSub').innerHTML = sub;
+  $('chatSub').innerHTML = '<span class="ltr">' + esc(localPhone(cur)) + '</span>' + (c && c.cust_no ? ' · לקוח ' + esc(c.cust_no) : '');
+  // one line of context under the name: how long they wait, how hot, what was quoted, and the next step
+  var a = curTail && aiMap[curTail], h = '';
+  if (c && c.flag) h += '<span class="pill flag">רגיש: לבדוק</span>';
+  if (c && needsHuman(c)) h += waitPill(c);
+  if (a && a.temp && a.temp !== 'none') h += '<span class="pill ' + esc(a.temp) + '">' + esc(TEMP[a.temp] || a.temp) + '</span>';
+  if (c && c.quote_at && !/won|lost/.test(c.lead_stage || '')) h += '<span class="pill bot">הצעה נשלחה ' + esc(ago(c.quote_at)) + '</span>';
+  if (c && c.claimed_by) h += '<span class="pill">' + esc(nameOf(c.claimed_by)) + ' מטפלת</span>';
+  if (a && a.risk) h += '<span class="risk">' + esc(a.risk) + '</span>';
+  if (a && !noAction(a.next_action)) h += '<span class="next"><b>הצעד הבא:</b> ' + esc(a.next_action) + '</span>';
+  $('ctx').innerHTML = h; $('ctx').classList.toggle('hidden', !h);
   $('doneBtn').classList.toggle('hidden', !curTail || !c || !needsHuman(c));
   setCall('callBtn', cur);
 }
@@ -581,11 +653,25 @@ function undoToast(t9) {
 $('doneBtn').addEventListener('click', function () {
   if (!curTail) return;
   var phone = cur;
-  markDone(curTail, phone).then(function (ok) { if (ok) { $('doneBtn').classList.add('hidden'); if (window.innerWidth < 1024) go('chats'); else updateActs(convOf(phone)); } });
+  markDone(curTail, phone).then(function (ok) {
+    if (!ok) return; $('doneBtn').classList.add('hidden');
+    if (window.innerWidth < 1024) { go('chats'); return; }
+    var nx = convs.filter(needsHuman).sort(urgency)[0];
+    if (nx) go('chat', nx.phone); else updateActs(convOf(phone));
+  });
 });
 /* Everything else lives in one menu, so the screen keeps only reply + "טופל". */
+var lastFocus = null;
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape') return;
+  var m = document.querySelector('.lightbox') || document.querySelector('.menu');
+  if (m) { m.remove(); if (lastFocus && lastFocus.focus) lastFocus.focus(); return; }
+  if (!$('docSheet').classList.contains('hidden')) { $('docClose').click(); return; }
+  if (!$('pwSheet').classList.contains('hidden') && !$('pwLater').classList.contains('hidden')) $('pwLater').click();
+});
 function openMenu(title, items) {
-  var m = document.createElement('div'); m.className = 'menu'; m.setAttribute('role', 'dialog');
+  var m = document.createElement('div'); m.className = 'menu'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-label', title);
+  lastFocus = document.activeElement;
   m.innerHTML = '<div class="box"><b>' + esc(title) + '</b>' + items.map(function (it, i) { return '<button type="button" data-i="' + i + '"' + (it.on != null ? ' aria-pressed="' + !!it.on + '"' : '') + '>' + esc(it.label) + '</button>'; }).join('') + '<button type="button" class="cancel">סגירה</button></div>';
   m.addEventListener('click', function (e) {
     var b = e.target.closest('button'); if (e.target === m || (b && b.classList.contains('cancel'))) { m.remove(); return; }
@@ -646,11 +732,11 @@ function renderChat(same) {
     var day = fmtDate(m.ts); if (day !== lastDay) { html += '<div class="day">' + esc(fmtDay(m.ts)) + '</div>'; lastDay = day; }
     var body = '', mid = mediaId(m), r = m.raw || {};
     if (m.type === 'image' || m.type === 'sticker') body = mid ? '<img data-media="' + esc(mid) + '" alt="תמונה מהלקוח" loading="lazy">' : '(תמונה)';
-    else if (m.type === 'document') body = mid ? '<a class="file" href="#" data-media="' + esc(mid) + '" data-name="' + esc((r.document || {}).filename || 'קובץ') + '">📄 ' + esc((r.document || {}).filename || 'קובץ') + '</a>' : '(קובץ)';
+    else if (m.type === 'document') body = mid ? '<a class="file" href="#" data-media="' + esc(mid) + '" data-name="' + esc((r.document || {}).filename || 'קובץ') + '">קובץ: ' + esc((r.document || {}).filename || 'קובץ') + '</a>' : '(קובץ)';
     else if (m.type === 'audio') body = mid ? '<audio controls data-media="' + esc(mid) + '"></audio>' : '(הודעה קולית)';
     else if (m.type === 'media_placeholder') body = '<span class="muted">(תמונה או קובץ שנשלח לפני החיבור, רואים בטלפון)</span>';
-    else if (m.type === 'location') body = '📍 מיקום';
-    else if (m.type === 'contacts') body = '👤 איש קשר';
+    else if (m.type === 'location') body = '(מיקום)';
+    else if (m.type === 'contacts') body = '(איש קשר)';
     else body = esc(m.text || '');
     var cap = (r.image || r.document || {}).caption; if (cap) body += '<div>' + esc(cap) + '</div>';
     var by = m.dir === 'out' ? (m.source === 'bot' ? 'הבוט' : m.source === 'crm' ? (m.name ? nameOf(m.name) || m.name : 'מהדף') : m.source === 'phone-app' ? 'מהטלפון' : m.source === 'history' ? 'זיסו' : 'זיסו') : '';
@@ -661,9 +747,10 @@ function renderChat(same) {
   box.querySelectorAll('[data-media]').forEach(loadMedia);
   var sc = box.closest('.pane'); sc.scrollTo({ top: sc.scrollHeight, behavior: same ? 'smooth' : 'auto' });
   var ok = within24h(chatMsgs);
-  $('composeNote').textContent = ok ? 'אפשר לענות בחופשיות (בתוך 24 שעות מההודעה האחרונה של הלקוח). התשובה תופיע גם בוואטסאפ בטלפון.' : 'עברו יותר מ-24 שעות מההודעה האחרונה של הלקוח: לפי כללי מטא אפשר לשלוח רק תבנית מאושרת. בינתיים אפשר לענות מהטלפון או להתקשר.';
+  winOpen = !!ok;
+  $('composeNote').textContent = ok ? (deskKeys() ? 'Enter שולח, Shift+Enter יורד שורה. התשובה תופיע גם בוואטסאפ בטלפון.' : 'התשובה תופיע גם בוואטסאפ בטלפון.') : 'עברו יותר מ-24 שעות מההודעה האחרונה של הלקוח, ולכן אי אפשר לשלוח מכאן. כותבים את ההודעה, לוחצים "לפתוח בוואטסאפ" ושולחים מהוואטסאפ של העסק. אפשר גם להתקשר.';
   $('composeNote').classList.toggle('warn', !ok);
-  $('sendBtn').disabled = !ok; $('attachBtn').disabled = !ok;
+  $('sendBtn').classList.toggle('hidden', !ok); $('attachBtn').classList.toggle('hidden', !ok); $('waBtn').classList.toggle('hidden', !!ok);
 }
 function loadMedia(el) {
   var id = el.dataset.media;
@@ -682,12 +769,39 @@ function loadMedia(el) {
 }
 /* quick replies + compose */
 function renderQuick() {
-  $('quick').className = 'quick closed';
-  $('quick').innerHTML = '<button type="button" class="qt" id="quickToggle">תשובות מוכנות ▾</button>' + QUICK.map(function (q, i) { return '<button type="button" data-i="' + i + '">' + esc(q[0]) + '</button>'; }).join('');
-  $('quick').querySelectorAll('button[data-i]').forEach(function (b) { b.addEventListener('click', function () { var d = $('draft'); d.value = (d.value ? d.value + '\n' : '') + QUICK[b.dataset.i][1]; d.focus(); autosize(); }); });
-  $('quickToggle').addEventListener('click', function () { var q = $('quick'), c = q.classList.toggle('closed'); this.textContent = c ? 'תשובות מוכנות ▾' : 'סגירה ▴'; });
+  var open = window.innerWidth >= 1024;
+  $('quick').className = 'quick' + (open ? '' : ' closed');
+  $('quick').innerHTML = (aiReply && curTail ? '<button type="button" class="aibtn" id="aiReplyBtn"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg><span>הצעת תשובה</span></button>' : '') + '<button type="button" class="qt" id="quickToggle" aria-expanded="' + open + '">' + (open ? 'סגירה' : 'תשובות מוכנות') + '</button>' + QUICK.map(function (q, i) { return '<button type="button" data-i="' + i + '">' + esc(q[0]) + '</button>'; }).join('');
+  $('quick').querySelectorAll('button[data-i]').forEach(function (b) { b.addEventListener('click', function () { var d = $('draft'); d.value = (d.value ? d.value + '\n' : '') + QUICK[b.dataset.i][1]; d.focus(); autosize(); saveDraft(); }); });
+  $('quickToggle').addEventListener('click', function () { var q = $('quick'), c = q.classList.toggle('closed'); this.textContent = c ? 'תשובות מוכנות' : 'סגירה'; this.setAttribute('aria-expanded', String(!c)); });
+  if ($('aiReplyBtn')) $('aiReplyBtn').addEventListener('click', suggestReply);
   getPayLink();
 }
+/* "הצעת תשובה": the crm-ai-reply function drafts an answer to the customer's last message from the whole card.
+   It only fills the box. A person reads it, fills the ___ blanks (prices, stock, dates are never invented) and sends. */
+var aiReply = true, winOpen = false, sending = false;
+function deskKeys() { return !!(window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches); }
+function suggestReply() {
+  var b = $('aiReplyBtn'), phone = cur, t9 = curTail; if (!b || !t9 || b.disabled) return;
+  var lbl = b.querySelector('span'); b.disabled = true; lbl.textContent = 'כותב…';
+  aiFn({ tail9: t9 }, 'crm-ai-reply').then(function (j) {
+    if (j && j.ok && typeof j.draft === 'string') {
+      if (!j.draft.trim() || /^\s*(אין צורך|לא נדרשת)/.test(j.draft)) { toast('נראה שאין צורך בתשובה כאן'); return; }
+      if (cur !== phone) { drafts[phone] = j.draft; storeDrafts(); return; }
+      putDraft(j.draft); saveDraft();
+      toast(/_{3}/.test(j.draft) ? 'טיוטה מוכנה. למלא את ה-___ , לבדוק ולשלוח' : 'טיוטה מוכנה. לבדוק ולשלוח', 4000);
+      return;
+    }
+    throw new Error((j && j.error) || 'שגיאה');
+  }).catch(function (e) { toast('לא נכתבה טיוטה: ' + e.message, 5000); }).then(function () { if (b.isConnected) { b.disabled = false; lbl.textContent = 'הצעת תשובה'; } });
+}
+function waNum(p) { p = String(p || '').replace(/\D/g, ''); return /^0\d{9}$/.test(p) ? '972' + p.slice(1) : p; }
+$('waBtn').addEventListener('click', function (e) {
+  if (!cur) { e.preventDefault(); return; }
+  var t = $('draft').value.trim();
+  this.href = 'https://wa.me/' + waNum(cur) + (t ? '?text=' + encodeURIComponent(t) : '');
+  sb.rpc('crm_log', { p_action: 'wa_open', p_tail9: curTail });
+});
 /* Tranzila payment link: fixed link from crm_settings.pay_link, goes into the draft, staff send it */
 var payLink;  // {link} = fixed Tranzila page from crm_settings.pay_link, {api:true} = per-customer link via crm-pay
 function getPayLink() {
@@ -705,7 +819,7 @@ function payFn(body) {
 function payText(amount, link) {
   return (amount ? 'סכום לתשלום: ' + money(amount) + '\n' : '') + 'לתשלום מאובטח בכרטיס אשראי, דרך טרנזילה:\n' + link + '\nאחרי התשלום תקבלו מאיתנו אישור. לשאלות: 050-4770040';
 }
-function putDraft(t) { var d = $('draft'); d.value = (d.value ? d.value + '\n' : '') + t; d.focus(); autosize(); }
+function putDraft(t) { var d = $('draft'); d.value = (d.value ? d.value + '\n' : '') + t; d.focus(); autosize(); saveDraft(); }
 // Aviv only: read-only auth check, then one ₪1 request to his own email. Nothing goes into a customer chat.
 function payTest(t9) {
   toast('בודק חיבור לטרנזילה…');
@@ -729,22 +843,27 @@ function payDraft(amount, test) {
   });
 }
 function autosize() { var d = $('draft'); d.style.height = 'auto'; d.style.height = Math.min(140, d.scrollHeight) + 'px'; }
-$('draft').addEventListener('input', autosize);
-$('draft').addEventListener('keydown', function (e) { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(); } });
+$('draft').addEventListener('input', function () { autosize(); saveDraft(); });
+$('draft').addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
+  if (e.ctrlKey || e.metaKey || deskKeys()) { e.preventDefault(); if (winOpen) send(); else $('waBtn').click(); }
+});
 $('sendBtn').addEventListener('click', send);
 $('attachBtn').addEventListener('click', function () { $('fileIn').click(); });
 $('fileIn').addEventListener('change', function () { var f = this.files[0]; if (f) sendFile(f); this.value = ''; });
+function sent(phone) { delete drafts[phone]; storeDrafts(); if (cur === phone) { $('draft').value = ''; autosize(); loadChat(phone); } loadConvs(true); }
 function send() {
-  var text = $('draft').value.trim(); if (!text || !cur) return;
-  $('sendBtn').disabled = true;
-  callSend({ phone: cur, text: text }).then(function () { $('draft').value = ''; autosize(); loadChat(cur); loadConvs(true); }).catch(function (e) { toast('לא נשלח: ' + e.message, 5000); }).then(function () { $('sendBtn').disabled = false; });
+  var text = $('draft').value.trim(), phone = cur; if (!text || !phone || sending || !winOpen) return;
+  if (/_{3}/.test(text)) { toast('נשארו ___ למילוי בהודעה. משלימים ואז שולחים', 4000); $('draft').focus(); return; }
+  sending = true; $('sendBtn').disabled = true;
+  callSend({ phone: phone, text: text }).then(function () { sent(phone); }).catch(function (e) { toast('לא נשלח: ' + e.message, 5000); }).then(function () { sending = false; $('sendBtn').disabled = false; });
 }
 function sendFile(f) {
   if (f.size > 5 * 1024 * 1024) { toast('הקובץ גדול מ-5MB'); return; }
-  var caption = $('draft').value.trim();
-  var fd = new FormData(); fd.append('phone', cur); fd.append('file', f, f.name); if (caption) fd.append('caption', caption);
+  var caption = $('draft').value.trim(), phone = cur; if (!phone || !winOpen) return;
+  var fd = new FormData(); fd.append('phone', phone); fd.append('file', f, f.name); if (caption) fd.append('caption', caption);
   toast('שולח…', 1500);
-  callSend(fd).then(function () { $('draft').value = ''; autosize(); loadChat(cur); loadConvs(true); }).catch(function (e) { toast('לא נשלח: ' + e.message, 5000); });
+  callSend(fd).then(function () { sent(phone); }).catch(function (e) { toast('לא נשלח: ' + e.message, 5000); });
 }
 function callSend(payload) {
   return sb.auth.getSession().then(function (s) {
@@ -964,7 +1083,7 @@ function loadAi(t9) {
     $('aiBox').innerHTML = '<div class="ai"><div class="row"><span class="pill ' + esc(a.temp) + '">' + esc(TEMP[a.temp] || a.temp) + ' · ' + a.score + '</span>' + (a.stage_guess ? '<span class="pill">' + esc(STAGE_AI[a.stage_guess] || a.stage_guess) + '</span>' : '') + '</div>' +
       (a.intent ? '<div class="small">מחפש: ' + esc(a.intent) + '</div>' : '') +
       (noAction(a.next_action) ? '' : '<div class="next">הצעד הבא' + (a.next_due ? ' (' + esc(dueLabel(a.next_due)) + ')' : '') + ': ' + esc(a.next_action) + (a.done_at ? ' <span class="pill ok">בוצע</span>' : ' <button class="btn small" id="aiDone">בוצע</button>') + '</div>') +
-      (a.risk ? '<div class="risk">⚠ ' + esc(a.risk) + '</div>' : '') +
+      (a.risk ? '<div class="risk">שימו לב: ' + esc(a.risk) + '</div>' : '') +
       '<div class="small muted">' + esc(a.reason || '') + ' · ניתוח אוטומטי ' + esc(fmtDate(a.at)) + ' ' + esc(fmtTime(a.at)) + '</div></div>';
     if ($('aiDone')) $('aiDone').addEventListener('click', function () { aiDone(t9, function () { loadAi(t9); }); });
   });
@@ -1157,7 +1276,7 @@ function doSearch() {
 }
 
 /* ---------- today ---------- */
-var statDays = 30;
+var statDays = 30, todayG = 'now';
 function loadToday() {
   var waiting = convs.filter(needsHuman).sort(function (a, b) { return (b.flag - a.flag) || (Number(b.wait_biz_min || 0) - Number(a.wait_biz_min || 0)); });
   var late = waiting.filter(function (c) { return Number(c.wait_biz_min || 0) >= 15; }).length;
@@ -1205,22 +1324,22 @@ function loadToday() {
       .sort(function (a, b) { return b.amt - a.amt; });
     if (rs[9].data || rs[10].data) {
       var ctot = collect.reduce(function (s, c) { return s + c.amt; }, 0);
-      h += '<div class="sect"><h3>כסף שמחכה לגבייה <span class="n">' + collect.length + (ctot ? ' · ' + money(ctot) : '') + '</span></h3><div class="small muted">הזמנות מ-60 הימים האחרונים שממתינות לתשלום, ויתרות חוב פתוחות בפריוריטי. זה הכסף הכי קרוב לקופה: שיחה אחת או לינק לתשלום מהכרטיס.</div>' +
+      h += '<div class="sect" data-g="money"><h3>כסף שמחכה לגבייה <span class="n">' + collect.length + (ctot ? ' · ' + money(ctot) : '') + '</span></h3><div class="small muted">הזמנות מ-60 הימים האחרונים שממתינות לתשלום, ויתרות חוב פתוחות בפריוריטי. זה הכסף הכי קרוב לקופה: שיחה אחת או לינק לתשלום מהכרטיס.</div>' +
         (collect.length ? collect.slice(0, 12).map(function (c) { return '<div class="airow"><span class="pill hot">' + money(c.amt) + '</span><div><div class="txt">' + (c.t9 ? '<a href="#card/' + esc(c.t9) + '">' + esc(c.name || 'לקוח') + '</a>' : esc(c.name || 'לקוח')) + '</div><div class="sub">' + esc(c.what) + (c.since ? ' · מ-' + esc(fmtDate(c.since)) : '') + '</div></div></div>'; }).join('') : '<div class="small muted">אין כרגע כסף פתוח לגבייה</div>') + '</div>';
     }
     var cashRank = function (a) { var c = cashOf[a.tail9] || 0; return a.score + (c > 0 ? 20 + Math.min(30, c / 1000) : 0); };
     var ai = (rs[6].data || []).filter(function (a) { return !noAction(a.next_action) && a.score >= 30; }).sort(function (a, b) { return cashRank(b) - cashRank(a); }).slice(0, 15);
     if (rs[6].data) {
       var nm = {}; convs.forEach(function (c) { if (c.tail9) nm[c.tail9] = c.name || localPhone(c.phone); });
-      h += '<div class="sect"><h3>מה לעשות היום <span class="n">ניתוח אוטומטי · ' + ai.length + '</span></h3><div class="small muted">המערכת קוראת כל שיחה שהתחדשה וממיינת לפי מה שהכי קרוב לכסף: קודם לקוחות עם הזמנה שממתינה לתשלום, חוב פתוח או הצעה גדולה, ואחר כך לפי דחיפות. לוחצים על השם לכרטיס, "בוצע" מוריד מהרשימה עד שיקרה משהו חדש.</div>' +
-        (ai.length ? ai.map(function (a) { return '<div class="airow"><span class="pill ' + esc(a.temp) + '">' + esc(TEMP[a.temp] || a.temp) + ' ' + a.score + '</span><div><div class="txt"><a href="#card/' + esc(a.tail9) + '" data-ainame="' + esc(a.tail9) + '">' + esc(nm[a.tail9] || 'לקוח') + '</a>' + (cashOf[a.tail9] ? ' · <b>' + money(cashOf[a.tail9]) + ' על הפרק</b>' : '') + (a.next_due ? ' · <b>' + esc(dueLabel(a.next_due)) + '</b>' : '') + ': ' + esc(a.next_action) + '</div>' + (a.risk ? '<div class="sub" style="color:var(--red)">⚠ ' + esc(a.risk) + '</div>' : '') + (a.intent ? '<div class="sub">' + esc(a.intent) + '</div>' : '') + '<button class="btn small" data-aidone="' + esc(a.tail9) + '">בוצע</button></div></div>'; }).join('') : '<div class="small muted">אין כרגע משהו דחוף</div>') + '</div>';
+      h += '<div class="sect" data-g="now"><h3>מה לעשות היום <span class="n">ניתוח אוטומטי · ' + ai.length + '</span></h3><div class="small muted">המערכת קוראת כל שיחה שהתחדשה וממיינת לפי מה שהכי קרוב לכסף: קודם לקוחות עם הזמנה שממתינה לתשלום, חוב פתוח או הצעה גדולה, ואחר כך לפי דחיפות. לוחצים על השם לכרטיס, "בוצע" מוריד מהרשימה עד שיקרה משהו חדש.</div>' +
+        (ai.length ? ai.map(function (a) { return '<div class="airow"><span class="pill ' + esc(a.temp) + '">' + esc(TEMP[a.temp] || a.temp) + ' ' + a.score + '</span><div><div class="txt"><a href="#card/' + esc(a.tail9) + '" data-ainame="' + esc(a.tail9) + '">' + esc(nm[a.tail9] || 'לקוח') + '</a>' + (cashOf[a.tail9] ? ' · <b>' + money(cashOf[a.tail9]) + ' על הפרק</b>' : '') + (a.next_due ? ' · <b>' + esc(dueLabel(a.next_due)) + '</b>' : '') + ': ' + esc(a.next_action) + '</div>' + (a.risk ? '<div class="sub" style="color:var(--red)">שימו לב: ' + esc(a.risk) + '</div>' : '') + (a.intent ? '<div class="sub">' + esc(a.intent) + '</div>' : '') + '<button class="btn small" data-aidone="' + esc(a.tail9) + '">בוצע</button></div></div>'; }).join('') : '<div class="small muted">אין כרגע משהו דחוף</div>') + '</div>';
     }
     var sq = (rs[7].data || []).slice().sort(function (x, y) { return Number(y.total || 0) - Number(x.total || 0); }), ins = rs[8].data && rs[8].data[0];
     if (isOwner() && rs[8].data) {
-      h += '<div class="sect"><h3>תובנות השבוע <span class="n">רק אתה רואה את זה</span></h3>' + (ins ? '<div class="summary">' + mdLite(ins.body) + '</div><div class="small muted">' + esc(fmtDate(ins.period_start)) + '–' + esc(fmtDate(ins.period_end)) + ' · מתעדכן לבד בכל יום ראשון בבוקר</div>' : '<div class="small muted">הסיכום הראשון יגיע ביום ראשון בבוקר.</div>') + '<div class="row"><button class="btn small" id="insNow">הפקה עכשיו</button></div></div>';
+      h += '<div class="sect" data-g="admin"><h3>תובנות השבוע <span class="n">רק אתה רואה את זה</span></h3>' + (ins ? '<div class="summary">' + mdLite(ins.body) + '</div><div class="small muted">' + esc(fmtDate(ins.period_start)) + '–' + esc(fmtDate(ins.period_end)) + ' · מתעדכן לבד בכל יום ראשון בבוקר</div>' : '<div class="small muted">הסיכום הראשון יגיע ביום ראשון בבוקר.</div>') + '<div class="row"><button class="btn small" id="insNow">הפקה עכשיו</button></div></div>';
     }
     if (rs[7].data) {
-      h += '<div class="sect"><h3>הצעות מחיר תקועות <span class="n">' + sq.length + (sq.length ? ' · ' + money(sq.reduce(function (s, q) { return s + Number(q.total || 0); }, 0)) : '') + '</span></h3><div class="small muted">הצעות מ-30 הימים האחרונים בלי הזמנה אחריהן (ישנות יותר כבר לא רלוונטיות). לכל אחת טיוטת מעקב שהמערכת כתבה לפי השיחה. שולחים ידנית, פעם אחת, ומסמנים "נשלח".</div>' +
+      h += '<div class="sect" data-g="money"><h3>הצעות מחיר תקועות <span class="n">' + sq.length + (sq.length ? ' · ' + money(sq.reduce(function (s, q) { return s + Number(q.total || 0); }, 0)) : '') + '</span></h3><div class="small muted">הצעות מ-30 הימים האחרונים בלי הזמנה אחריהן (ישנות יותר כבר לא רלוונטיות). לכל אחת טיוטת מעקב שהמערכת כתבה לפי השיחה. שולחים ידנית, פעם אחת, ומסמנים "נשלח".</div>' +
         (sq.length ? sq.slice(0, 20).map(function (q, i) { return '<div class="airow"><span class="pill ' + esc(q.temp || '') + '">' + q.days + ' ימים</span><div><div class="txt">' + (q.tail9 ? '<a href="#card/' + esc(q.tail9) + '">' + esc(q.name || 'לקוח ' + q.cust_no) + '</a>' : esc(q.name || 'לקוח ' + q.cust_no)) + ' · ' + esc(q.pq) + ' · ' + money(q.total) + '</div>' + (q.angle ? '<div class="sub">' + esc(q.angle) + '</div>' : '') +
           (q.draft ? '<details><summary>טיוטת מעקב</summary><div class="summary">' + esc(q.draft) + '</div></details>' : '<div class="sub">הטיוטה תיכתב בריצה הבאה</div>') +
           '<div class="row">' + (q.draft ? '<button class="btn small" data-qsend="' + i + '">לשיחה עם הטיוטה</button>' : '<button class="btn small" data-qdraft="' + i + '">כתיבת טיוטה</button>') + '<button class="btn small" data-qmark="' + i + '" data-st="sent">נשלח</button><button class="btn small" data-qmark="' + i + '" data-st="dismissed">לא רלוונטי</button></div></div></div>'; }).join('') : '<div class="small muted">אין הצעות תקועות</div>') + '</div>';
@@ -1229,21 +1348,21 @@ function loadToday() {
     var orl = rs[11].data || [], orTodo = orl.filter(function (o) { return o.status === 'todo' && !o.optout; });
     if (rs[11].data && orl.length) {
       var orSent = orl.filter(function (o) { return o.status === 'sent'; }), orRep = orSent.filter(function (o) { return o.replied; }).length;
-      var orRow = function (o) { return '<div class="airow"><span class="pill">' + esc(o.kind || '') + '</span><div><div class="txt">' + '<a href="#card/' + esc(o.tail9) + '">' + esc(o.name || localPhone(o.phone)) + '</a> · קנה ב-' + esc(fmtDate(o.last_invoice)) + '</div>' + (o.note ? '<div class="sub" style="color:var(--red)">⚠ ' + esc(o.note) + ' (לבדוק לפני ששולחים)</div>' : '') +
+      var orRow = function (o) { return '<div class="airow"><span class="pill">' + esc(o.kind || '') + '</span><div><div class="txt">' + '<a href="#card/' + esc(o.tail9) + '">' + esc(o.name || localPhone(o.phone)) + '</a> · קנה ב-' + esc(fmtDate(o.last_invoice)) + '</div>' + (o.note ? '<div class="sub" style="color:var(--red)">שימו לב: ' + esc(o.note) + ' (לבדוק לפני ששולחים)</div>' : '') +
         '<div class="row"><a class="btn small brass" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/972' + esc(o.tail9) + '?text=' + encodeURIComponent(outreachText(o)) + '">פתיחה בוואטסאפ</a><button class="btn small" data-or="' + o.id + '" data-st="sent">נשלח</button><button class="btn small" data-or="' + o.id + '" data-st="skip">דילוג</button><button class="btn small" data-or="' + o.id + '" data-st="optout">ביקש הסר</button></div></div></div>'; };
-      h += '<div class="sect"><h3>לשליחה: ביקורת והפניה <span class="n">' + orSent.length + ' מתוך ' + orl.length + ' נשלחו' + (orRep ? ' · ' + orRep + ' ענו' : '') + '</span></h3><div class="small muted">לקוחות שקנו אצלנו בספטמבר-אוקטובר. "פתיחה בוואטסאפ" פותח בטלפון שלך הודעה מוכנה (בקשת ביקורת, "מכירים מישהו שמשפץ?" ושורת הסרה). שולחים בעצמך ואז לוחצים "נשלח". מי שכתב לנו "הסר" לא מופיע.</div>' +
+      h += '<div class="sect" data-g="grow"><h3>לשליחה: ביקורת והפניה <span class="n">' + orSent.length + ' מתוך ' + orl.length + ' נשלחו' + (orRep ? ' · ' + orRep + ' ענו' : '') + '</span></h3><div class="small muted">לקוחות שקנו אצלנו בספטמבר-אוקטובר. "פתיחה בוואטסאפ" פותח בטלפון שלך הודעה מוכנה (בקשת ביקורת, "מכירים מישהו שמשפץ?" ושורת הסרה). שולחים בעצמך ואז לוחצים "נשלח". מי שכתב לנו "הסר" לא מופיע.</div>' +
         (orTodo.length ? orTodo.slice(0, 8).map(orRow).join('') + (orTodo.length > 8 ? '<details><summary>עוד ' + (orTodo.length - 8) + '</summary>' + orTodo.slice(8).map(orRow).join('') + '</details>' : '') : '<div class="small muted">כל הרשימה טופלה ✓</div>') + '</div>';
     }
     var vToday = visits.filter(function (v) { return isToday(v.at); }).length, vMark = visits.filter(function (v) { return v.attended == null && new Date(v.at).getTime() < Date.now() - 15 * 60000; }).length;
-    h += '<div class="sect"><h3>פגישות באולם <span class="n">' + vToday + ' היום · ' + visits.length + ' בשבוע' + (vMark ? ' · ' + vMark + ' לסמן אם הגיעו' : '') + '</span></h3>' + (visits.length ? visits.map(function (v) { return visitRow(v, true); }).join('') : '<div class="small muted">אין פגישות קבועות</div>') + '</div>';
-    h += '<div class="sect"><h3>ממתינים עכשיו <span class="n">לפי זמן בשעות הפתיחה</span></h3>' + (waiting.length ? '<ul class="list" style="padding:0">' + waiting.slice(0, 20).map(function (c) { return '<li><button data-phone="' + esc(c.phone) + '"><span class="dot wait"></span><span class="name ellip">' + esc(c.name || localPhone(c.phone)) + '</span><span class="when">' + esc(ago(c.waiting_since || c.last_ts)) + '</span><span class="last ellip">' + esc(c.last_text || '') + '</span><span class="meta">' + (c.flag ? '<span class="pill flag">רגיש: לבדוק</span>' : '') + waitPill(c) + (c.claimed_by ? '<span class="pill">' + esc(nameOf(c.claimed_by)) + '</span>' : '<span class="pill">אין אחראית</span>') + '</span></button></li>'; }).join('') + '</ul>' : '<div class="small muted">כולם נענו</div>') + '</div>';
-    h += '<div class="sect"><h3>מעקב הצעות של 16:30 <span class="n">' + fu.length + '</span></h3><div class="small muted">הצעות מה-48 שעות האחרונות שהלקוח לא ענה עליהן. שולחים פעם אחת, ידנית, רק למי שכתב לנו קודם. יש תשובה מוכנה "מעקב הצעה".</div>' +
+    h += '<div class="sect" data-g="now"><h3>פגישות באולם <span class="n">' + vToday + ' היום · ' + visits.length + ' בשבוע' + (vMark ? ' · ' + vMark + ' לסמן אם הגיעו' : '') + '</span></h3>' + (visits.length ? visits.map(function (v) { return visitRow(v, true); }).join('') : '<div class="small muted">אין פגישות קבועות</div>') + '</div>';
+    h += '<div class="sect" data-g="now" style="order:-1"><h3>ממתינים עכשיו <span class="n">לפי זמן בשעות הפתיחה</span></h3>' + (waiting.length ? '<ul class="list" style="padding:0">' + waiting.slice(0, 20).map(function (c) { return '<li><button data-phone="' + esc(c.phone) + '"><span class="dot wait"></span><span class="name ellip">' + esc(c.name || localPhone(c.phone)) + '</span><span class="when">' + esc(ago(c.waiting_since || c.last_ts)) + '</span><span class="last ellip">' + esc(c.last_text || '') + '</span><span class="meta">' + (c.flag ? '<span class="pill flag">רגיש: לבדוק</span>' : '') + waitPill(c) + (c.claimed_by ? '<span class="pill">' + esc(nameOf(c.claimed_by)) + '</span>' : '<span class="pill">אין אחראית</span>') + '</span></button></li>'; }).join('') + '</ul>' : '<div class="small muted">כולם נענו</div>') + '</div>';
+    h += '<div class="sect" data-g="money"><h3>מעקב הצעות של 16:30 <span class="n">' + fu.length + '</span></h3><div class="small muted">הצעות מה-48 שעות האחרונות שהלקוח לא ענה עליהן. שולחים פעם אחת, ידנית, רק למי שכתב לנו קודם. יש תשובה מוכנה "מעקב הצעה".</div>' +
       (fu.length ? '<ul class="list" style="padding:0">' + fu.map(function (f) { return '<li><button data-phone="' + esc(f.phone) + '"><span class="dot bot"></span><span class="name ellip">' + esc(f.name || localPhone(f.phone)) + '</span><span class="when">' + esc(ago(f.quote_at)) + '</span><span class="last ellip">' + (f.quote_text ? esc(f.quote_text) : f.manual ? 'הצעה סומנה ידנית' : '') + '</span></button></li>'; }).join('') + '</ul>' : '<div class="small muted">אין הצעות שמחכות למעקב</div>') + '</div>';
-    h += '<div class="sect"><h3>משימות</h3>' + (tasks.length ? tasks.map(function (t) { return '<div class="task' + '"><input type="checkbox" data-done="' + t.id + '" aria-label="בוצע"><div><div class="txt"><a href="#card/' + esc(t.tail9) + '">' + esc(t.text) + '</a></div><div class="due' + (t.due && new Date(t.due) < new Date() ? ' late' : '') + '">' + (t.due ? esc(fmtDate(t.due)) + ' ' + esc(fmtTime(t.due)) : '') + (t.assigned_to ? ' · ' + esc(nameOf(t.assigned_to)) : '') + '</div></div></div>'; }).join('') : '<div class="small muted">אין משימות פתוחות</div>') + '</div>';
-    h += '<div class="sect"><h3>פניות 7 ימים אחרונים <span class="n">' + leadsToday.length + ' היום · ' + leads.length + ' בשבוע</span></h3><table class="t"><tr><th>מתי</th><th>ערוץ</th><th>שם</th><th>שלב</th></tr>' + leads.slice(0, 30).map(function (l) { return '<tr><td>' + esc(fmtDate(l.created_at)) + '</td><td>' + esc(channelLabel(l.channel)) + '</td><td>' + (l.phone_tail9 ? '<a href="#card/' + esc(l.phone_tail9) + '">' + esc(l.name || '—') + '</a>' : esc(l.name || '—')) + '</td><td>' + esc(stageLabel(l.stage)) + '</td></tr>'; }).join('') + '</table></div>';
-    if (mine.length) h += '<div class="sect"><h3>השיחות שלי</h3><ul class="list" style="padding:0">' + mine.map(function (c) { return '<li><button data-phone="' + esc(c.phone) + '"><span class="dot ' + (c.state === 'waiting' ? 'wait' : 'ok') + '"></span><span class="name ellip">' + esc(c.name || localPhone(c.phone)) + '</span><span class="when">' + esc(ago(c.last_ts)) + '</span></button></li>'; }).join('') + '</ul></div>';
+    h += '<div class="sect" data-g="now"><h3>משימות</h3>' + (tasks.length ? tasks.map(function (t) { return '<div class="task' + '"><input type="checkbox" data-done="' + t.id + '" aria-label="בוצע"><div><div class="txt"><a href="#card/' + esc(t.tail9) + '">' + esc(t.text) + '</a></div><div class="due' + (t.due && new Date(t.due) < new Date() ? ' late' : '') + '">' + (t.due ? esc(fmtDate(t.due)) + ' ' + esc(fmtTime(t.due)) : '') + (t.assigned_to ? ' · ' + esc(nameOf(t.assigned_to)) : '') + '</div></div></div>'; }).join('') : '<div class="small muted">אין משימות פתוחות</div>') + '</div>';
+    h += '<div class="sect" data-g="grow"><h3>פניות 7 ימים אחרונים <span class="n">' + leadsToday.length + ' היום · ' + leads.length + ' בשבוע</span></h3><table class="t"><tr><th>מתי</th><th>ערוץ</th><th>שם</th><th>שלב</th></tr>' + leads.slice(0, 30).map(function (l) { return '<tr><td>' + esc(fmtDate(l.created_at)) + '</td><td>' + esc(channelLabel(l.channel)) + '</td><td>' + (l.phone_tail9 ? '<a href="#card/' + esc(l.phone_tail9) + '">' + esc(l.name || '—') + '</a>' : esc(l.name || '—')) + '</td><td>' + esc(stageLabel(l.stage)) + '</td></tr>'; }).join('') + '</table></div>';
+    if (mine.length) h += '<div class="sect" data-g="now"><h3>השיחות שלי</h3><ul class="list" style="padding:0">' + mine.map(function (c) { return '<li><button data-phone="' + esc(c.phone) + '"><span class="dot ' + (c.state === 'waiting' ? 'wait' : 'ok') + '"></span><span class="name ellip">' + esc(c.name || localPhone(c.phone)) + '</span><span class="when">' + esc(ago(c.last_ts)) + '</span></button></li>'; }).join('') + '</ul></div>';
     if (ss && ss.rows) {
-      h += '<div class="sect"><h3>סטטיסטיקות צוות <span class="n">רק אתה רואה את זה</span></h3><div class="row">' + [7, 30, 90].map(function (d) { return '<button class="btn small' + (d === statDays ? ' brass' : '') + '" data-days="' + d + '">' + d + ' ימים</button>'; }).join('') + '</div>' +
+      h += '<div class="sect" data-g="admin"><h3>סטטיסטיקות צוות <span class="n">רק אתה רואה את זה</span></h3><div class="row">' + [7, 30, 90].map(function (d) { return '<button class="btn small' + (d === statDays ? ' brass' : '') + '" data-days="' + d + '">' + d + ' ימים</button>'; }).join('') + '</div>' +
         '<div class="small">' + ss.inquiries + ' פניות של לקוחות · ' + ss.unanswered + ' עדיין בלי תשובה מאדם · הבוט ענה ' + ss.bot_replies + ' פעמים</div>' +
         '<table class="t"><tr><th>מי</th><th class="num">ענה ראשון</th><th class="num">תוך 15 דק׳</th><th class="num">זמן חציוני</th><th class="num">מה-CRM</th><th class="num">טופל</th></tr>' +
         ss.rows.map(function (x) { return '<tr><td>' + esc(x.name) + '</td><td class="num">' + x.answered + '</td><td class="num">' + (x.pct15 == null ? '—' : x.pct15 + '%') + '</td><td class="num">' + (x.median_min == null ? '—' : x.median_min + ' דק׳') + '</td><td class="num">' + x.crm_sent + '</td><td class="num">' + x.marked_done + '</td></tr>'; }).join('') + '</table>' +
@@ -1251,6 +1370,17 @@ function loadToday() {
     }
     h += '<p class="fine">לשיפור השירות נמדדים זמני המענה ללקוחות וכמה פניות כל איש צוות מטפל בהן. רק מספרים, בלי תוכן ההודעות, ורק המנהל רואה אותם.</p>';
     $('todayBody').innerHTML = h;
+    // groups: what to answer now, money to collect, past customers and new leads, owner-only numbers
+    var moneyTot = collect.reduce(function (s, c) { return s + c.amt; }, 0) + sq.reduce(function (s, q) { return s + Number(q.total || 0); }, 0);
+    var segs = [['now', 'עכשיו', waiting.length || ''], ['money', 'כסף', moneyTot ? money(moneyTot) : ''], ['grow', 'לקוחות ופניות', orTodo.length || '']];
+    if (isOwner()) segs.push(['admin', 'ניהול', '']);
+    if (!segs.some(function (x) { return x[0] === todayG; })) todayG = 'now';
+    $('todayBody').dataset.g = todayG;
+    $('todaySeg').innerHTML = segs.map(function (x) { return '<button type="button" data-g="' + x[0] + '" aria-pressed="' + (x[0] === todayG) + '">' + x[1] + (x[2] !== '' ? '<span class="n">' + esc(x[2]) + '</span>' : '') + '</button>'; }).join('');
+    $('todaySeg').querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () {
+      todayG = b.dataset.g; $('todayBody').dataset.g = todayG; $('todaySeg').querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      $('today').scrollTo({ top: 0 });
+    }); });
     if ($('insNow')) $('insNow').addEventListener('click', function () { this.disabled = true; toast('מפיק סיכום שבועי…', 4000); aiFn({ mode: 'weekly' }).then(function (j) { if (!j.ok) throw new Error(j.error || 'שגיאה'); loadToday(); }).catch(function (e) { toast('לא הופק: ' + e.message); }); });
     $('todayBody').querySelectorAll('[data-qsend]').forEach(function (b) { b.addEventListener('click', function () {
       var q = sq[Number(b.dataset.qsend)], cv = convs.filter(function (c) { return c.tail9 === q.tail9; })[0];
