@@ -786,7 +786,7 @@ function suggestReply() {
   var lbl = b.querySelector('span'); b.disabled = true; lbl.textContent = 'כותב…';
   aiFn({ tail9: t9 }, 'crm-ai-reply').then(function (j) {
     if (j && j.ok && typeof j.draft === 'string') {
-      if (!j.draft.trim()) { toast('נראה שאין צורך בתשובה כאן'); return; }
+      if (!j.draft.trim() || /^\s*(אין צורך|לא נדרשת)/.test(j.draft)) { toast('נראה שאין צורך בתשובה כאן'); return; }
       if (cur !== phone) { drafts[phone] = j.draft; storeDrafts(); return; }
       putDraft(j.draft); saveDraft();
       toast(/_{3}/.test(j.draft) ? 'טיוטה מוכנה. למלא את ה-___ , לבדוק ולשלוח' : 'טיוטה מוכנה. לבדוק ולשלוח', 4000);
