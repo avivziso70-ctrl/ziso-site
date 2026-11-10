@@ -777,14 +777,14 @@ function renderQuick() {
   if ($('aiReplyBtn')) $('aiReplyBtn').addEventListener('click', suggestReply);
   getPayLink();
 }
-/* "הצעת תשובה": crm-ai-triage (mode reply) drafts an answer to the customer's last message from the whole card.
+/* "הצעת תשובה": the crm-ai-reply function drafts an answer to the customer's last message from the whole card.
    It only fills the box. A person reads it, fills the ___ blanks (prices, stock, dates are never invented) and sends. */
 var aiReply = true, winOpen = false, sending = false;
 function deskKeys() { return !!(window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches); }
 function suggestReply() {
   var b = $('aiReplyBtn'), phone = cur, t9 = curTail; if (!b || !t9 || b.disabled) return;
   var lbl = b.querySelector('span'); b.disabled = true; lbl.textContent = 'כותב…';
-  aiFn({ mode: 'reply', tail9: t9 }).then(function (j) {
+  aiFn({ tail9: t9 }, 'crm-ai-reply').then(function (j) {
     if (j && j.ok && typeof j.draft === 'string') {
       if (!j.draft.trim()) { toast('נראה שאין צורך בתשובה כאן'); return; }
       if (cur !== phone) { drafts[phone] = j.draft; storeDrafts(); return; }
@@ -792,7 +792,6 @@ function suggestReply() {
       toast(/_{3}/.test(j.draft) ? 'טיוטה מוכנה. למלא את ה-___ , לבדוק ולשלוח' : 'טיוטה מוכנה. לבדוק ולשלוח', 4000);
       return;
     }
-    if (j && j.ok && j.result) { aiReply = false; if (b.isConnected) b.remove(); toast('הצעת תשובה עוד לא הופעלה'); return; }  // older function version
     throw new Error((j && j.error) || 'שגיאה');
   }).catch(function (e) { toast('לא נכתבה טיוטה: ' + e.message, 5000); }).then(function () { if (b.isConnected) { b.disabled = false; lbl.textContent = 'הצעת תשובה'; } });
 }
