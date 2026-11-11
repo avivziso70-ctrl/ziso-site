@@ -84,6 +84,7 @@ main{min-height:0;display:grid;grid-template-columns:1fr;overflow:hidden}
 .pane > .head h2{font-size:26px}
 nav.tabs{display:flex;border-top:1px solid var(--line);background:var(--surface);padding-bottom:env(safe-area-inset-bottom)}
 nav.tabs button{flex:1;min-height:58px;background:none;border:0;border-top:2px solid transparent;color:var(--mute);font-weight:600;font-size:15px;display:grid;gap:2px;justify-items:center;cursor:pointer;position:relative}
+nav.tabs a.tablink{flex:1;min-height:58px;display:grid;place-items:center;color:var(--mute);font-weight:600;font-size:15px;text-decoration:none;border-top:2px solid transparent}
 nav.tabs button[aria-current="page"]{color:var(--brass);border-top-color:var(--brass)}
 nav.tabs .badge{position:absolute;top:19px;inset-inline-start:calc(50% + 30px);min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--red);color:var(--wall);font-weight:700;font-size:12px;line-height:20px;text-align:center}
 
@@ -406,6 +407,7 @@ svg.ic.dots{stroke-width:3}
     <button data-view="chats" aria-current="page">שיחות<span class="badge hidden" id="waitBadge"></span></button>
     <button data-view="search">לקוחות</button>
     <button data-view="today">היום</button>
+    <a class="tablink" href="prices.html">מחירון</a>
   </nav>
 </div>
 

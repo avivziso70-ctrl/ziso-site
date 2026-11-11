@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>העלאת מחירון | זיסו קרמיקה</title>
+<link rel="icon" href="../img/logo.jpg">
+<link rel="stylesheet" href="../fonts.css">
+<style>
+:root{--wall:#0f1113;--surface:#1d2024;--line:#3a3f45;--ink:#f2efe8;--mute:#b9b3a7;--brass:#cfae74;--brass-ink:#1a1610;--red:#e07a6a;--green:#8fc9a0;
+  --display:"Bellefair","Times New Roman",serif;--body:"Assistant","Segoe UI",Arial,sans-serif}
+@media (prefers-color-scheme: light){:root{--wall:#f3f2ef;--surface:#fff;--line:#d2cec5;--ink:#1e1b17;--mute:#5f5d58;--brass:#8a6a35;--brass-ink:#fff;--red:#b8432f;--green:#2e7d4f}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--wall);color:var(--ink);font-family:var(--body);font-size:18px;line-height:1.5}
+main{max-width:560px;margin:0 auto;padding:32px 16px 48px}
+h1{font-family:var(--display);font-weight:400;font-size:34px;margin:0 0 4px}
+.logo{display:block;width:64px;height:64px;border-radius:50%;margin-bottom:16px}
+p{margin:0 0 16px}.mute{color:var(--mute);font-size:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;margin-top:20px}
+label{display:block;font-weight:600;margin:16px 0 6px}
+input[type=text],textarea{width:100%;font:inherit;color:inherit;background:transparent;border:1px solid var(--line);border-radius:10px;padding:12px}
+textarea{min-height:80px}
+.drop{display:block;border:2px dashed var(--line);border-radius:14px;padding:28px 16px;text-align:center;cursor:pointer}
+.drop:focus-within,.drop.over{border-color:var(--brass)}
+.drop input{position:absolute;width:1px;height:1px;opacity:0}
+.check{display:flex;gap:10px;align-items:flex-start;font-weight:400;margin-top:16px}
+.check input{width:22px;height:22px;margin-top:3px;accent-color:var(--brass)}
+button{font:inherit;font-weight:700;width:100%;min-height:52px;margin-top:20px;border:0;border-radius:999px;background:var(--brass);color:var(--brass-ink);cursor:pointer}
+button:disabled{opacity:.5;cursor:default}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+ul.files{list-style:none;padding:0;margin:12px 0 0}ul.files li{padding:6px 0;border-bottom:1px solid var(--line);font-size:16px;display:flex;justify-content:space-between;gap:8px}
+.ok{color:var(--green)}.err{color:var(--red)}
+footer{margin-top:32px;font-size:14px;color:var(--mute)}footer a{color:var(--brass)}
+</style>
+</head>
+<body>
+<main>
+  <img class="logo" src="../img/logo.jpg" alt="">
+  <h1 id="hello">העלאת מחירון</h1>
+  <p class="mute">זיסו קרמיקה, טירת כרמל</p>
+
+  <div id="bad" class="card" hidden role="alert">
+    <p>הקישור לא תקין או שכבר לא פעיל.</p>
+    <p class="mute">אפשר לבקש קישור חדש בטלפון או וואטסאפ <a class="ltr" href="https://wa.me/972504770040">050-4770040</a>.</p>
+  </div>
+
+  <form id="f" class="card" hidden novalidate>
+    <p>כאן מעלים מחירונים, קטלוגים ועדכוני מחיר, בכל פורמט: אקסל, CSV, PDF או תמונה. אין צורך לסדר את הקובץ, אנחנו קוראים אותו אצלנו.</p>
+    <label class="drop" id="drop">
+      <input type="file" id="file" multiple accept=".xlsx,.xlsm,.xls,.csv,.pdf,.jpg,.jpeg,.png,.webp" aria-describedby="fileHelp">
+      <strong>בחירת קבצים</strong><br>
+      <span class="mute" id="fileHelp">או לגרור לכאן. עד 20MB לקובץ.</span>
+    </label>
+    <ul class="files" id="list" aria-live="polite"></ul>
+
+    <label class="check"><input type="checkbox" id="all"> <span>זה מחירון מלא שמחליף את כל המחירונים הקודמים שלנו</span></label>
+
+    <label for="who">שם השולח (לא חובה)</label>
+    <input type="text" id="who" autocomplete="name" maxlength="60">
+    <label for="note">הערה (לא חובה)</label>
+    <textarea id="note" maxlength="500" placeholder="למשל: בתוקף מ-1.12, המחירים לפני מע&quot;מ"></textarea>
+
+    <button type="submit" id="go" disabled>שליחה</button>
+    <p id="msg" role="status" aria-live="polite" style="margin-top:12px"></p>
+  </form>
+
+  <footer>
+    הקבצים נשמרים במערכת סגורה של זיסו קרמיקה ומשמשים רק לתמחור מוצרים. איננו שולחים מכאן הודעות שיווק.
+    <a href="../privacy.html">מדיניות פרטיות</a> · <a href="../accessibility.html">הצהרת נגישות</a>
+  </footer>
+</main>
+<script>
+(function () {
+  'use strict';
+  var FN = 'https://ppnjosyraosrdephsksu.supabase.co/functions/v1/supplier-upload';
+  var t = new URLSearchParams(location.search).get('t') || '';
+  var $ = function (id) { return document.getElementById(id); };
+  var files = [];
+  var ERR = { 'too big': 'הקובץ גדול מ-20MB', 'type': 'סוג קובץ לא נתמך', 'limit': 'הגעתם למגבלת ההעלאות היומית', 'bad link': 'הקישור לא פעיל' };
+
+  function render() {
+    $('list').innerHTML = '';
+    files.forEach(function (f) {
+      var li = document.createElement('li');
+      var a = document.createElement('span'); a.textContent = f.file.name;
+      var b = document.createElement('span'); b.textContent = f.state || ''; b.className = f.cls || '';
+      li.appendChild(a); li.appendChild(b); $('list').appendChild(li);
+    });
+    $('go').disabled = !files.some(function (f) { return !f.done; });
+  }
+  function add(list) { Array.prototype.forEach.call(list, function (file) { files.push({ file: file }); }); render(); }
+
+  if (!/^[0-9a-f]{36}$/.test(t)) { $('bad').hidden = false; return; }
+  fetch(FN + '?t=' + encodeURIComponent(t)).then(function (r) { return r.ok ? r.json() : Promise.reject(); }).then(function (j) {
+    $('hello').textContent = 'שלום ' + j.name;
+    $('f').hidden = false;
+  }).catch(function () { $('bad').hidden = false; });
+
+  $('file').addEventListener('change', function (e) { add(e.target.files); e.target.value = ''; });
+  var drop = $('drop');
+  ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); }); });
+  ['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); }); });
+  drop.addEventListener('drop', function (e) { add(e.dataTransfer.files); });
+
+  $('f').addEventListener('submit', function (e) {
+    e.preventDefault();
+    $('go').disabled = true; $('msg').textContent = 'שולח...';
+    var todo = files.filter(function (f) { return !f.done; });
+    var chain = Promise.resolve();
+    todo.forEach(function (f) {
+      chain = chain.then(function () {
+        f.state = 'שולח...'; f.cls = ''; render();
+        var fd = new FormData();
+        fd.append('t', t); fd.append('file', f.file);
+        fd.append('name', $('who').value); fd.append('note', $('note').value);
+        fd.append('replaces_all', $('all').checked ? '1' : '0');
+        return fetch(FN, { method: 'POST', body: fd }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (x) {
+            if (x.ok) { f.done = true; f.state = 'התקבל ✓'; f.cls = 'ok'; }
+            else { f.state = ERR[x.j && x.j.error] || 'שגיאה, נסו שוב'; f.cls = 'err'; }
+          }).catch(function () { f.state = 'שגיאת רשת, נסו שוב'; f.cls = 'err'; });
+      });
+    });
+    chain.then(function () {
+      render();
+      var bad = files.some(function (f) { return !f.done; });
+      $('msg').textContent = bad ? 'חלק מהקבצים לא נשלחו. אפשר לנסות שוב.' : 'תודה! הקבצים התקבלו ויעודכנו אצלנו אחרי בדיקה.';
+      $('msg').className = bad ? 'err' : 'ok';
+    });
+  });
+})();
+</script>
+</body>
+</html>
