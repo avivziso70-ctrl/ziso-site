@@ -18,10 +18,10 @@ def strip_tags(s): return re.sub(r"<[^>]+>", "", s)
 
 BUSINESS = {
   "@context": "https://schema.org", "@type": "HomeAndConstructionBusiness", "@id": SITE + "#business",
-  "name": "זיסו קרמיקה", "legalName": LEGAL, "alternateName": ["Ziso Ceramics", "ZISO CERAMICS LTD"], "taxID": COMPANY_ID,
+  "name": "זיסו קרמיקה", "legalName": LEGAL, "alternateName": ["Ziso Ceramics", "ZISO CERAMICS LTD", "זיסו", "Ziso"], "taxID": COMPANY_ID,
   "slogan": "תרגיש בבית לעצב את הבית", "url": SITE, "foundingDate": "1985",
   "description": "אולם תצוגה משפחתי בטירת כרמל, ליד חיפה, מאז 1985: גרניט פורצלן ואריחים, כלים סניטריים, ארונות אמבטיה, מקלחונים לפי מידה, ברזים, בריקים ופרקט למינציה. פגישת עיצוב חינם עם מעצבות פנים מוסמכות. מוכרים לכל הארץ.",
-  "logo": SITE + "img/logo.jpg", "image": SITE + "img/logo.jpg",
+  "logo": SITE + "img/logo.jpg", "hasMap": "https://www.google.com/maps/search/?api=1&query=" + ADDR_Q, "image": SITE + "img/logo.jpg",
   "knowsAbout": ["גרניט פורצלן", "אריחים לריצוף וחיפוי", "כלים סניטריים", "ארונות אמבטיה", "מקלחונים לפי מידה", "ברזים", "בריקים", "פרקט למינציה", "עיצוב חדרי רחצה"],
   "openingHoursSpecification": [{"@type": "OpeningHoursSpecification", "dayOfWeek": ["Sunday","Monday","Tuesday","Wednesday","Thursday"], "opens": "08:00", "closes": "18:00"}, {"@type": "OpeningHoursSpecification", "dayOfWeek": "Friday", "opens": "08:00", "closes": "13:30"}], "telephone": "+972-50-477-0040", "email": EMAIL,
   "address": {"@type": "PostalAddress", "streetAddress": "עוצמה 5", "addressLocality": "טירת כרמל", "postalCode": "3903005", "addressRegion": "חיפה", "addressCountry": "IL"},
@@ -559,7 +559,8 @@ def build():
   for c in CATS:
     if not any("באזור חיפה" in q for q, _ in c["faq"]):
       c["faq"] = c["faq"] + [("איפה אפשר לראות %s באזור חיפה?" % c["name"], "באולם זיסו קרמיקה, עוצמה 5 בטירת כרמל, דקות מחיפה, מנשר ומהקריות. פתוח בימים א' עד ה' 08:00 עד 18:00 ובשישי 08:00 עד 13:30, ופגישת ייעוץ עם מעצבת היא בחינם. אנחנו מוכרים לכל הארץ.")]
-    parts = []
+    # Answer-first summary: one self-contained sentence an AI assistant can quote as-is.
+    parts = ['<p class="answer"><strong>בקצרה:</strong> זיסו קרמיקה, אולם תצוגה משפחתי בטירת כרמל ליד חיפה מאז 1985, מציגה %s באולם בעוצמה 5. אפשר לקבוע פגישת עיצוב חינם עם מעצבת פנים ולקבל הצעת מחיר תוך 24 שעות. מוכרים לכל הארץ.</p>' % c["name"]]
     for h2, content in c["body"]:
       parts.append("<h2>%s</h2>" % h2)
       if content == "TABLE":
@@ -587,7 +588,7 @@ def build():
 '''.format(name=c["name"], h1=c["h1"], lede=c["lede"], wa=WA_VISIT, visual=cat_video or (
       '<div class="sw photo" role="img" aria-label="%s"><img src="img/gallery/%s" alt="" width="1200" height="900">%s</div>' % (c["name"], CAT_PHOTOS[c["slug"]], sz)
       if c["slug"] in CAT_PHOTOS and os.path.exists(os.path.join(GALLERY_DIR, CAT_PHOTOS[c["slug"]])) else '<div class="sw %s" role="img" aria-label="%s">%s</div>' % (c["sw"], c["name"], sz)), parts=ltr_sizes("\n".join(parts)), side=sidebar(c["name"]), others=others) + FOOTER
-    write(c["slug"] + ".html", c["title"], c["desc"], body, [{"@context": "https://schema.org", "@type": "WebPage", "name": c["title"], "about": {"@id": SITE + "#business"}}, crumbs_schema(c["name"], c["slug"]), faq_schema(c["faq"]),
+    write(c["slug"] + ".html", c["title"], c["desc"], body, [{"@context": "https://schema.org", "@type": "WebPage", "name": c["title"], "about": {"@id": SITE + "#business"}, "dateModified": TODAY}, crumbs_schema(c["name"], c["slug"]), faq_schema(c["faq"]),
       {"@context": "https://schema.org", "@type": "Service", "name": c["name"], "serviceType": c["name"], "description": c["desc"], "url": SITE + c["slug"] + ".html",
        "provider": {"@id": SITE + "#business"}, "areaServed": [{"@type": "City", "name": n} for n in ("טירת כרמל", "חיפה", "נשר", "הקריות", "עתלית", "חוף הכרמל", "זכרון יעקב", "יקנעם")]}], body_attrs=' data-item="%s"' % c["name"])
 
@@ -818,7 +819,16 @@ go.addEventListener('click',function(e){{if(go.getAttribute('aria-disabled')!=='
 ## מדריכים
 """ % (SITE, SITE) + "".join("- [%s](%s%s.html)\n" % (g["h1"], SITE, g["slug"]) for g in GUIDE_PAGES) + """
 ## אזורי שירות
-""" + "".join("- [%s](%s%s.html)\n" % (a["h1"], SITE, a["slug"]) for a in AREA_PAGES))
+""" + "".join("- [%s](%s%s.html)\n" % (a["h1"], SITE, a["slug"]) for a in AREA_PAGES) + """
+## שאלות נפוצות
+- איפה אפשר לראות מקלחונים לפי מידה באזור חיפה? באולם זיסו קרמיקה, עוצמה 5 בטירת כרמל, דקות מחיפה, מנשר ומהקריות.
+- איפה קונים ריצוף וגרניט פורצלן ליד חיפה? זיסו קרמיקה בטירת כרמל מציגה גרניט פורצלן בפורמטים גדולים, ריצוף וחיפוי.
+- האם פגישת העיצוב באולם עולה כסף? לא. הפגישה עם מעצבת פנים (אילת או שיר) בחינם ולא מחייבת, והצעת מחיר נשלחת תוך 24 שעות.
+- האם זיסו קרמיקה מוכרת רק באזור חיפה? לא, מוכרים לכל הארץ.
+
+## English summary
+Ziso Ceramics (זיסו קרמיקה) is a family-owned tile, bathroom and shower showroom at Otzma 5, Tirat Carmel, near Haifa, Israel, since 1985. It sells porcelain tiles, sanitary ware, bathroom vanities, custom-made shower enclosures, faucets, bricks and laminate flooring, and offers a free design meeting with a certified interior designer in the showroom. It sells nationwide. Phone and WhatsApp +972-50-477-0040, info@zisoceramics.com. Open Sun-Thu 08:00-18:00, Fri 08:00-13:30, closed Saturday.
+""")
   # IndexNow key (Bing, Yandex, Seznam, Naver): proves the site owns the key used to ping new and changed URLs.
   open(os.path.join(DIST, INDEXNOW_KEY + ".txt"), "w").write(INDEXNOW_KEY)
 
