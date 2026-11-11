@@ -133,3 +133,4 @@ on conflict (id) do nothing;
 drop policy if exists sp_files_staff_read on storage.objects;
 create policy sp_files_staff_read on storage.objects for select
   using (bucket_id = 'supplier-files' and public.crm_me() is not null);
+alter table public.sp_uploads add column if not exists supplier_name_typed text; -- 11.11 required supplier name on the upload page

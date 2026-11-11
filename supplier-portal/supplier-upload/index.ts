@@ -170,6 +170,8 @@ Deno.serve(async (req) => {
     sup = data;
   }
   if (!sup) return json({ error: "bad link" }, 404);
+  const company = str(form.get("company"), 120);
+  if (!staffUpload && !company) return json({ error: "company" }, 400);
   const file = form.get("file");
   const since0 = new Date(Date.now() - 24 * 3600_000).toISOString();
   if (!(file instanceof File)) {
@@ -177,7 +179,7 @@ Deno.serve(async (req) => {
     if (!text || text.length < 3) return json({ error: "no file" }, 400);
     const { count: c0 } = await db.from("sp_uploads").select("id", { count: "exact", head: true }).eq("supplier_id", sup.id).gte("created_at", since0);
     if ((c0 || 0) >= MAX_PER_DAY) return json({ error: "limit" }, 429);
-    const { data: m, error: me } = await db.from("sp_uploads").insert({ supplier_id: sup.id, file_name: null, uploader_name: str(form.get("name"), 60), supplier_note: text, source: staffUpload ? "staff" : "supplier" }).select("id").single();
+    const { data: m, error: me } = await db.from("sp_uploads").insert({ supplier_id: sup.id, file_name: null, supplier_name_typed: company, uploader_name: str(form.get("name"), 60), supplier_note: text, source: staffUpload ? "staff" : "supplier" }).select("id").single();
     if (me) return json({ error: "db" }, 500);
     await db.from("sp_suppliers").update({ last_upload_at: new Date().toISOString() }).eq("id", sup.id);
     // @ts-ignore EdgeRuntime is provided by Supabase
@@ -197,7 +199,7 @@ Deno.serve(async (req) => {
   if (upErr) return json({ error: "store" }, 500);
   const { data: row, error } = await db.from("sp_uploads").insert({
     supplier_id: sup.id, file_path: path, file_name: file.name.slice(-120), mime: file.type || null, size_bytes: file.size,
-    uploader_name: str(form.get("name"), 60), supplier_note: str(form.get("note"), 4000), replaces_all: form.get("replaces_all") === "1",
+    supplier_name_typed: company, uploader_name: str(form.get("name"), 60), supplier_note: str(form.get("note"), 4000), replaces_all: form.get("replaces_all") === "1",
     source: staffUpload ? "staff" : "supplier",
   }).select("id").single();
   if (error) return json({ error: "db" }, 500);

@@ -143,7 +143,7 @@ function loadPending() {
     $('pendList').innerHTML = list.map(function (u) {
       var s = suppliers[u.supplier_id] || {};
       return '<div class="card" data-id="' + u.id + '"><div class="row"><strong class="grow">' + esc(s.name) + ' · ' + (u.file_path ? esc(u.file_name) : 'הודעה בטקסט') + '</strong><span class="badge">' + esc(ST[u.status] || u.status) + '</span></div>' +
-        '<p class="mute">' + fmtDate(u.created_at) + (u.uploader_name ? ' · ' + esc(u.uploader_name) : '') + (u.replaces_all ? ' · <strong>מחליף את כל המחירון</strong>' : '') + (u.rows_count != null ? ' · ' + u.rows_count + ' שורות' : '') + '</p>' +
+        '<p class="mute">' + fmtDate(u.created_at) + (u.supplier_name_typed && u.supplier_name_typed !== s.name ? ' · <span class="warn">כתב: ' + esc(u.supplier_name_typed) + '</span>' : '') + (u.uploader_name ? ' · ' + esc(u.uploader_name) : '') + (u.replaces_all ? ' · <strong>מחליף את כל המחירון</strong>' : '') + (u.rows_count != null ? ' · ' + u.rows_count + ' שורות' : '') + '</p>' +
         (u.supplier_note ? '<p style="white-space:pre-wrap">' + (u.file_path ? 'הערת הספק: ' : '') + esc(u.supplier_note) + '</p>' : '') + (u.parse_note ? '<p class="' + (u.file_path || u.status === 'failed' ? 'err' : 'mute') + '">' + (u.file_path ? '' : 'סיכום: ') + esc(u.parse_note) + '</p>' : '') +
         '<div class="prev"></div><div class="row" style="margin-top:8px">' +
         (u.status === 'parsed' ? (u.rows_count ? '<button class="btn small brass" data-a="ok">אישור והכנסה למחירון</button><button class="btn small red" data-a="no">דחייה</button>' : '<button class="btn small brass" data-a="ok">טופל</button>') : '') +
