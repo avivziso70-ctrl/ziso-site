@@ -142,14 +142,14 @@ function loadPending() {
     if (!list.length) { $('pendList').innerHTML = '<p class="mute">אין קבצים שמחכים.</p>'; return; }
     $('pendList').innerHTML = list.map(function (u) {
       var s = suppliers[u.supplier_id] || {};
-      return '<div class="card" data-id="' + u.id + '"><div class="row"><strong class="grow">' + esc(s.name) + ' · ' + esc(u.file_name) + '</strong><span class="badge">' + esc(ST[u.status] || u.status) + '</span></div>' +
+      return '<div class="card" data-id="' + u.id + '"><div class="row"><strong class="grow">' + esc(s.name) + ' · ' + (u.file_path ? esc(u.file_name) : 'הודעה בטקסט') + '</strong><span class="badge">' + esc(ST[u.status] || u.status) + '</span></div>' +
         '<p class="mute">' + fmtDate(u.created_at) + (u.uploader_name ? ' · ' + esc(u.uploader_name) : '') + (u.replaces_all ? ' · <strong>מחליף את כל המחירון</strong>' : '') + (u.rows_count != null ? ' · ' + u.rows_count + ' שורות' : '') + '</p>' +
-        (u.supplier_note ? '<p>הערת הספק: ' + esc(u.supplier_note) + '</p>' : '') + (u.parse_note ? '<p class="err">' + esc(u.parse_note) + '</p>' : '') +
+        (u.supplier_note ? '<p style="white-space:pre-wrap">' + (u.file_path ? 'הערת הספק: ' : '') + esc(u.supplier_note) + '</p>' : '') + (u.parse_note ? '<p class="' + (u.file_path || u.status === 'failed' ? 'err' : 'mute') + '">' + (u.file_path ? '' : 'סיכום: ') + esc(u.parse_note) + '</p>' : '') +
         '<div class="prev"></div><div class="row" style="margin-top:8px">' +
-        (u.status === 'parsed' ? '<button class="btn small brass" data-a="ok">אישור והכנסה למחירון</button><button class="btn small red" data-a="no">דחייה</button>' : '') +
-        '<button class="btn small" data-a="file">פתיחת הקובץ</button>' + (u.status !== 'parsing' ? '<button class="btn small" data-a="again">לקרוא שוב</button>' : '') + '</div></div>';
+        (u.status === 'parsed' ? (u.rows_count ? '<button class="btn small brass" data-a="ok">אישור והכנסה למחירון</button><button class="btn small red" data-a="no">דחייה</button>' : '<button class="btn small brass" data-a="ok">טופל</button>') : '') +
+        (u.file_path ? '<button class="btn small" data-a="file">פתיחת הקובץ</button>' : '') + (u.status !== 'parsing' ? '<button class="btn small" data-a="again">לקרוא שוב</button>' : '') + '</div></div>';
     }).join('');
-    list.filter(function (u) { return u.status === 'parsed'; }).forEach(function (u) {
+    list.filter(function (u) { return u.status === 'parsed' && u.rows_count; }).forEach(function (u) {
       sb.from('sp_prices').select('supplier_code,description,size,unit,price,currency').eq('upload_id', u.id).order('id').limit(15).then(function (p) {
         var el = document.querySelector('[data-id="' + u.id + '"] .prev'); if (!el) return;
         el.innerHTML = '<div class="tablewrap"><table><thead><tr><th>תיאור</th><th>מק"ט</th><th>מידה</th><th>מחיר</th></tr></thead><tbody>' + (p.data || []).map(function (x) {
