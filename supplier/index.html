@@ -47,7 +47,10 @@ footer{margin-top:32px;font-size:14px;color:var(--mute)}footer a{color:var(--bra
   </div>
 
   <form id="f" class="card" hidden novalidate>
-    <p>כאן מעלים מחירונים, קטלוגים ועדכוני מחיר, בכל פורמט: אקסל, CSV, PDF או תמונה. אין צורך לסדר את הקובץ, אנחנו קוראים אותו אצלנו.</p>
+    <p>כאן מעדכנים אותנו על הכל: מחירונים, קטלוגים, מוצרים חדשים, שינויי מחיר ומלאי. אפשר להעלות קובץ בכל פורמט (אקסל, CSV, PDF, תמונה), ואפשר פשוט לכתוב במילים שלכם. המערכת שלנו קוראת ומתעדכנת.</p>
+    <label for="note">מה חדש? (כתבו חופשי)</label>
+    <textarea id="note" maxlength="4000" placeholder="למשל: נכנסה סדרה חדשה של פורצלן 60x120 בגוון שמנת, 89 ש&quot;ח למ&quot;ר לפני מע&quot;מ. מ-1.12 עלייה של 4% בכל הברזים."></textarea>
+    <label>קבצים (לא חובה)</label>
     <label class="drop" id="drop">
       <input type="file" id="file" multiple accept=".xlsx,.xlsm,.xls,.csv,.pdf,.jpg,.jpeg,.png,.webp" aria-describedby="fileHelp">
       <strong>בחירת קבצים</strong><br>
@@ -59,8 +62,6 @@ footer{margin-top:32px;font-size:14px;color:var(--mute)}footer a{color:var(--bra
 
     <label for="who">שם השולח (לא חובה)</label>
     <input type="text" id="who" autocomplete="name" maxlength="60">
-    <label for="note">הערה (לא חובה)</label>
-    <textarea id="note" maxlength="500" placeholder="למשל: בתוקף מ-1.12, המחירים לפני מע&quot;מ"></textarea>
 
     <button type="submit" id="go" disabled>שליחה</button>
     <p id="msg" role="status" aria-live="polite" style="margin-top:12px"></p>
@@ -88,7 +89,7 @@ footer{margin-top:32px;font-size:14px;color:var(--mute)}footer a{color:var(--bra
       var b = document.createElement('span'); b.textContent = f.state || ''; b.className = f.cls || '';
       li.appendChild(a); li.appendChild(b); $('list').appendChild(li);
     });
-    $('go').disabled = !files.some(function (f) { return !f.done; });
+    $('go').disabled = !files.some(function (f) { return !f.done; }) && $('note').value.trim().length < 3;
   }
   function add(list) { Array.prototype.forEach.call(list, function (file) { files.push({ file: file }); }); render(); }
 
@@ -98,6 +99,7 @@ footer{margin-top:32px;font-size:14px;color:var(--mute)}footer a{color:var(--bra
     $('f').hidden = false;
   }).catch(function () { $('bad').hidden = false; });
 
+  $('note').addEventListener('input', render);
   $('file').addEventListener('change', function (e) { add(e.target.files); e.target.value = ''; });
   var drop = $('drop');
   ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); }); });
@@ -108,13 +110,19 @@ footer{margin-top:32px;font-size:14px;color:var(--mute)}footer a{color:var(--bra
     e.preventDefault();
     $('go').disabled = true; $('msg').textContent = 'שולח...';
     var todo = files.filter(function (f) { return !f.done; });
-    var chain = Promise.resolve();
+    var chain = Promise.resolve(), noteErr = false, text = $('note').value.trim();
+    if (text.length >= 3) {
+      chain = chain.then(function () {
+        var fd = new FormData(); fd.append('t', t); fd.append('note', text); fd.append('name', $('who').value);
+        return fetch(FN, { method: 'POST', body: fd }).then(function (r) { if (r.ok) $('note').value = ''; else noteErr = true; }).catch(function () { noteErr = true; });
+      });
+    }
     todo.forEach(function (f) {
       chain = chain.then(function () {
         f.state = 'שולח...'; f.cls = ''; render();
         var fd = new FormData();
         fd.append('t', t); fd.append('file', f.file);
-        fd.append('name', $('who').value); fd.append('note', $('note').value);
+        fd.append('name', $('who').value);
         fd.append('replaces_all', $('all').checked ? '1' : '0');
         return fetch(FN, { method: 'POST', body: fd }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
           .then(function (x) {
@@ -125,8 +133,8 @@ footer{margin-top:32px;font-size:14px;color:var(--mute)}footer a{color:var(--bra
     });
     chain.then(function () {
       render();
-      var bad = files.some(function (f) { return !f.done; });
-      $('msg').textContent = bad ? 'חלק מהקבצים לא נשלחו. אפשר לנסות שוב.' : 'תודה! הקבצים התקבלו ויעודכנו אצלנו אחרי בדיקה.';
+      var bad = noteErr || files.some(function (f) { return !f.done; });
+      $('msg').textContent = bad ? 'חלק מהעדכון לא נשלח. אפשר לנסות שוב.' : 'תודה! העדכון התקבל ויעודכן אצלנו אחרי בדיקה.';
       $('msg').className = bad ? 'err' : 'ok';
     });
   });
