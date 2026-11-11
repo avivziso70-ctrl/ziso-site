@@ -61,8 +61,8 @@ def landing_body(wa, phone, phone_intl, hours, addr_q, gallery):
 <a class="btn brass" data-sc-in href="{wa}" target="_blank" rel="noopener">לקבוע פגישה עם מעצבת</a>
 </div>
 <div class="lp-portraits">
-<figure data-sc-parallax="-30"><img src="img/family-2.jpg" alt="אילת זיסו" loading="lazy" width="312" height="369"><figcaption>אילת זיסו<small>מעצבת פנים</small></figcaption></figure>
-<figure data-sc-parallax="30"><img src="img/family-3.jpg" alt="שיר זיסו" loading="lazy" width="720" height="720"><figcaption>שיר זיסו<small>מעצבת פנים</small></figcaption></figure>
+<figure data-sc-parallax="-0.4"><img src="img/family-2.jpg" alt="אילת זיסו" loading="lazy" width="312" height="369"><figcaption>אילת זיסו<small>מעצבת פנים</small></figcaption></figure>
+<figure data-sc-parallax="0.4"><img src="img/family-3.jpg" alt="שיר זיסו" loading="lazy" width="720" height="720"><figcaption>שיר זיסו<small>מעצבת פנים</small></figcaption></figure>
 </div>
 </div>
 </section>
