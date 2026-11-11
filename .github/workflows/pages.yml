@@ -20,3 +20,20 @@ jobs:
           publish_dir: ./docs
           publish_branch: gh-pages
           cname: www.zisoceramics.com
+      # Tell Bing and the other IndexNow engines (which feed ChatGPT search and Copilot) which pages exist.
+      # Waits for GitHub Pages to serve the new build first, so the key file is reachable. Never fails the deploy.
+      - name: Ping IndexNow
+        continue-on-error: true
+        run: |
+          sleep 90
+          python3 - <<'PY'
+          import json, re, glob, urllib.request
+          key = open(glob.glob("docs/" + "[0-9a-f]" * 32 + ".txt")[0]).read().strip()
+          urls = re.findall(r"<loc>(.*?)</loc>", open("docs/sitemap.xml").read())
+          body = json.dumps({"host": "www.zisoceramics.com", "key": key, "keyLocation": "https://www.zisoceramics.com/%s.txt" % key, "urlList": urls}).encode()
+          req = urllib.request.Request("https://api.indexnow.org/indexnow", data=body, headers={"Content-Type": "application/json; charset=utf-8"})
+          try:
+            print("IndexNow:", urllib.request.urlopen(req, timeout=30).status, len(urls), "urls")
+          except Exception as e:
+            print("IndexNow failed:", e)
+          PY
