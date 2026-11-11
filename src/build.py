@@ -491,7 +491,7 @@ def build():
   video = ('<video class="herovid" autoplay muted loop playsinline preload="auto" poster="img/video/hero.jpg" data-hero aria-hidden="true"><source src="%s" type="video/mp4"></video>' % HERO_CLIP) if HERO_CLIP else ''
   home = header() + '''
 <div class="wall live" id="top" data-sc-act="flow"><canvas class="tilewall" aria-hidden="true"></canvas>{video}<div class="wrap hero home live">
-<div data-sc-parallax="-50">
+<div data-sc-parallax="-0.6">
 <h1>תרגיש בבית<br>לעצב את <em>הבית</em></h1>
 <p>אולם תצוגה לריצוף ואמבטיה בטירת כרמל: גרניט פורצלן, כלים סניטריים, ארונות אמבטיה, מקלחונים וברזים, עם מעצבות פנים מוסמכות שעוזרות לכם לבחור. פגישת ייעוץ ועיצוב באולם בחינם, דקות מחיפה.</p>
 <div class="actions"><a class="btn brass" href="{wa}" target="_blank" rel="noopener">לפגישת ייעוץ חינם בוואטסאפ</a><a class="btn ghost" href="pegisha.html">בחירת יום ושעה</a></div>
