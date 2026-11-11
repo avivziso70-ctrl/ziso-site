@@ -23,7 +23,7 @@ BUSINESS = {
   "openingHoursSpecification": [{"@type": "OpeningHoursSpecification", "dayOfWeek": ["Sunday","Monday","Tuesday","Wednesday","Thursday"], "opens": "08:00", "closes": "18:00"}, {"@type": "OpeningHoursSpecification", "dayOfWeek": "Friday", "opens": "08:00", "closes": "13:30"}], "telephone": "+972-50-477-0040", "email": EMAIL,
   "address": {"@type": "PostalAddress", "streetAddress": "עוצמה 5", "addressLocality": "טירת כרמל", "postalCode": "3903005", "addressRegion": "חיפה", "addressCountry": "IL"},
   "areaServed": [{"@type": "City", "name": a} for a in AREAS],
-  "sameAs": ["https://www.instagram.com/ziso_ceramics/", "https://www.facebook.com/zisoceramics"] + ([TIKTOK] if TIKTOK else []) + ([YOUTUBE] if YOUTUBE else []),
+  "sameAs": ["https://www.instagram.com/ziso_ceramics/", "https://www.facebook.com/zisoceramics", "https://g.page/r/CewpRPPNS-JNEAE"] + ([TIKTOK] if TIKTOK else []) + ([YOUTUBE] if YOUTUBE else []),
   "makesOffer": {"@type": "Offer", "price": "0", "priceCurrency": "ILS", "itemOffered": {"@type": "Service", "name": "פגישת ייעוץ ועיצוב פנים באולם", "description": "פגישה חינם עם מעצבת פנים מוסמכת לבחירת ריצוף, חיפוי ואמבטיה"}},
   "employee": [{"@type": "Person", "name": "אילת זיסו", "jobTitle": "מעצבת פנים"}, {"@type": "Person", "name": "שיר זיסו", "jobTitle": "מעצבת פנים"}],
   "hasOfferCatalog": {"@type": "OfferCatalog", "name": "מוצרים באולם",
@@ -388,6 +388,7 @@ GTM_ID = ""  # optional GTM container (GTM-XXXXXXX); GA4 below is loaded directl
 # Loaded with the same cookie consent as GA4. Primary conversions: whatsapp_click, phone_click, generate_lead; secondary: directions_click.
 # Meta pixel ("Wix Pixel" in the business portfolio), approved by Aviv 15.10.2026. Same cookie consent; empty = dormant.
 META_PIXEL_ID = "774998039816486"
+INDEXNOW_KEY = "20c5517890402f385178eff21aa879aa"  # public by design (served at /<key>.txt); see indexnow.org
 GADS_ID = "AW-399978850"
 # >>> Google Ads conversion label for a booking sent from pegisha.html ("pegisha_booking"). Paste only the label part
 # (the text after "AW-399978850/"). Empty = the booking_submit event still goes to GA4, but no Ads conversion is sent.
@@ -581,7 +582,9 @@ def build():
 '''.format(name=c["name"], h1=c["h1"], lede=c["lede"], wa=WA_VISIT, visual=cat_video or (
       '<div class="sw photo" role="img" aria-label="%s"><img src="img/gallery/%s" alt="" width="1200" height="900">%s</div>' % (c["name"], CAT_PHOTOS[c["slug"]], sz)
       if c["slug"] in CAT_PHOTOS and os.path.exists(os.path.join(GALLERY_DIR, CAT_PHOTOS[c["slug"]])) else '<div class="sw %s" role="img" aria-label="%s">%s</div>' % (c["sw"], c["name"], sz)), parts=ltr_sizes("\n".join(parts)), side=sidebar(c["name"]), others=others) + FOOTER
-    write(c["slug"] + ".html", c["title"], c["desc"], body, [{"@context": "https://schema.org", "@type": "WebPage", "name": c["title"], "about": {"@id": SITE + "#business"}}, crumbs_schema(c["name"], c["slug"]), faq_schema(c["faq"])], body_attrs=' data-item="%s"' % c["name"])
+    write(c["slug"] + ".html", c["title"], c["desc"], body, [{"@context": "https://schema.org", "@type": "WebPage", "name": c["title"], "about": {"@id": SITE + "#business"}}, crumbs_schema(c["name"], c["slug"]), faq_schema(c["faq"]),
+      {"@context": "https://schema.org", "@type": "Service", "name": c["name"], "serviceType": c["name"], "description": c["desc"], "url": SITE + c["slug"] + ".html",
+       "provider": {"@id": SITE + "#business"}, "areaServed": [{"@type": "City", "name": n} for n in ("טירת כרמל", "חיפה", "נשר", "הקריות", "עתלית", "חוף הכרמל", "זכרון יעקב", "יקנעם")]}], body_attrs=' data-item="%s"' % c["name"])
 
   # Calculator page
   calc_faq = [("כמה פחת להוסיף לאריחים?", "בהנחה ישרה 10%, ובהנחה אלכסונית, אדרה או חדר עם הרבה פינות 15%."),
@@ -791,6 +794,8 @@ go.addEventListener('click',function(e){{if(go.getAttribute('aria-disabled')!=='
   open(os.path.join(DIST, "robots.txt"), "w").write("User-agent: *\nAllow: /\nDisallow: /toda\nDisallow: /crm\nDisallow: /dashboard\nSitemap: %ssitemap.xml\n" % SITE)
   open(os.path.join(DIST, "CNAME"), "w").write("www.zisoceramics.com\n")
   open(os.path.join(DIST, "googlee191b4da733a4939.html"), "w").write("google-site-verification: googlee191b4da733a4939.html")  # Search Console
+  # IndexNow key (Bing, Yandex, Seznam, Naver): proves the site owns the key used to ping new and changed URLs.
+  open(os.path.join(DIST, INDEXNOW_KEY + ".txt"), "w").write(INDEXNOW_KEY)
 
 if __name__ == "__main__":
   build(); print(sorted(os.listdir(DIST)))
