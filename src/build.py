@@ -20,6 +20,9 @@ BUSINESS = {
   "@context": "https://schema.org", "@type": "HomeAndConstructionBusiness", "@id": SITE + "#business",
   "name": "זיסו קרמיקה", "legalName": LEGAL, "alternateName": ["Ziso Ceramics", "ZISO CERAMICS LTD"], "taxID": COMPANY_ID,
   "slogan": "תרגיש בבית לעצב את הבית", "url": SITE, "foundingDate": "1985",
+  "description": "אולם תצוגה משפחתי בטירת כרמל, ליד חיפה, מאז 1985: גרניט פורצלן ואריחים, כלים סניטריים, ארונות אמבטיה, מקלחונים לפי מידה, ברזים, בריקים ופרקט למינציה. פגישת עיצוב חינם עם מעצבות פנים מוסמכות. מוכרים לכל הארץ.",
+  "logo": SITE + "img/logo.jpg", "image": SITE + "img/logo.jpg",
+  "knowsAbout": ["גרניט פורצלן", "אריחים לריצוף וחיפוי", "כלים סניטריים", "ארונות אמבטיה", "מקלחונים לפי מידה", "ברזים", "בריקים", "פרקט למינציה", "עיצוב חדרי רחצה"],
   "openingHoursSpecification": [{"@type": "OpeningHoursSpecification", "dayOfWeek": ["Sunday","Monday","Tuesday","Wednesday","Thursday"], "opens": "08:00", "closes": "18:00"}, {"@type": "OpeningHoursSpecification", "dayOfWeek": "Friday", "opens": "08:00", "closes": "13:30"}], "telephone": "+972-50-477-0040", "email": EMAIL,
   "address": {"@type": "PostalAddress", "streetAddress": "עוצמה 5", "addressLocality": "טירת כרמל", "postalCode": "3903005", "addressRegion": "חיפה", "addressCountry": "IL"},
   "areaServed": [{"@type": "City", "name": a} for a in AREAS],
@@ -554,6 +557,8 @@ def build():
 
   # Category pages
   for c in CATS:
+    if not any("באזור חיפה" in q for q, _ in c["faq"]):
+      c["faq"] = c["faq"] + [("איפה אפשר לראות %s באזור חיפה?" % c["name"], "באולם זיסו קרמיקה, עוצמה 5 בטירת כרמל, דקות מחיפה, מנשר ומהקריות. פתוח בימים א' עד ה' 08:00 עד 18:00 ובשישי 08:00 עד 13:30, ופגישת ייעוץ עם מעצבת היא בחינם. אנחנו מוכרים לכל הארץ.")]
     parts = []
     for h2, content in c["body"]:
       parts.append("<h2>%s</h2>" % h2)
@@ -794,6 +799,26 @@ go.addEventListener('click',function(e){{if(go.getAttribute('aria-disabled')!=='
   open(os.path.join(DIST, "robots.txt"), "w").write("User-agent: *\nAllow: /\nDisallow: /toda\nDisallow: /crm\nDisallow: /dashboard\nSitemap: %ssitemap.xml\n" % SITE)
   open(os.path.join(DIST, "CNAME"), "w").write("www.zisoceramics.com\n")
   open(os.path.join(DIST, "googlee191b4da733a4939.html"), "w").write("google-site-verification: googlee191b4da733a4939.html")  # Search Console
+  # llms.txt: a plain summary for AI assistants (llmstxt.org); facts only, the same ones the site states.
+  open(os.path.join(DIST, "llms.txt"), "w", encoding="utf-8").write("""# זיסו קרמיקה (Ziso Ceramics)
+
+> אולם תצוגה משפחתי לריצוף, חיפוי ואמבטיה בטירת כרמל, ליד חיפה, מאז 1985. פגישת עיצוב חינם עם מעצבות פנים מוסמכות (אילת ושיר זיסו). מוכרים לכל הארץ.
+
+- כתובת: עוצמה 5, טירת כרמל (דקות מחיפה, נשר והקריות)
+- טלפון ווואטסאפ: 050-4770040 · info@zisoceramics.com
+- שעות: א'-ה' 08:00-18:00, ו' 08:00-13:30, שבת סגור
+- חברה: זיסו קרמיקה בע"מ, ח.פ. 517079661
+
+## מוצרים
+""" + "".join("- [%s](%s%s.html): %s\n" % (c["name"], SITE, c["slug"], c["desc"]) for c in CATS) + """
+## קביעת פגישה
+- [פגישת עיצוב חינם, בחירת יום ושעה](%spegisha.html)
+- [צור קשר וניווט](%scontact.html)
+
+## מדריכים
+""" % (SITE, SITE) + "".join("- [%s](%s%s.html)\n" % (g["h1"], SITE, g["slug"]) for g in GUIDE_PAGES) + """
+## אזורי שירות
+""" + "".join("- [%s](%s%s.html)\n" % (a["h1"], SITE, a["slug"]) for a in AREA_PAGES))
   # IndexNow key (Bing, Yandex, Seznam, Naver): proves the site owns the key used to ping new and changed URLs.
   open(os.path.join(DIST, INDEXNOW_KEY + ".txt"), "w").write(INDEXNOW_KEY)
 
