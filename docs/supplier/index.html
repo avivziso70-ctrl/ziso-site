@@ -48,6 +48,8 @@ footer{margin-top:32px;font-size:14px;color:var(--mute)}footer a{color:var(--bra
 
   <form id="f" class="card" hidden novalidate>
     <p>כאן מעדכנים אותנו על הכל: מחירונים, קטלוגים, מוצרים חדשים, שינויי מחיר ומלאי. אפשר להעלות קובץ בכל פורמט (אקסל, CSV, PDF, תמונה), ואפשר פשוט לכתוב במילים שלכם. המערכת שלנו קוראת ומתעדכנת.</p>
+    <label for="company">שם הספק (חובה)</label>
+    <input type="text" id="company" required aria-required="true" autocomplete="organization" maxlength="120">
     <label for="note">מה חדש? (כתבו חופשי)</label>
     <textarea id="note" maxlength="4000" placeholder="למשל: נכנסה סדרה חדשה של פורצלן 60x120 בגוון שמנת, 89 ש&quot;ח למ&quot;ר לפני מע&quot;מ. מ-1.12 עלייה של 4% בכל הברזים."></textarea>
     <label>קבצים (לא חובה)</label>
@@ -79,7 +81,7 @@ footer{margin-top:32px;font-size:14px;color:var(--mute)}footer a{color:var(--bra
   var t = new URLSearchParams(location.search).get('t') || '';
   var $ = function (id) { return document.getElementById(id); };
   var files = [];
-  var ERR = { 'too big': 'הקובץ גדול מ-20MB', 'type': 'סוג קובץ לא נתמך', 'limit': 'הגעתם למגבלת ההעלאות היומית', 'bad link': 'הקישור לא פעיל' };
+  var ERR = { 'company': 'חסר שם ספק', 'too big': 'הקובץ גדול מ-20MB', 'type': 'סוג קובץ לא נתמך', 'limit': 'הגעתם למגבלת ההעלאות היומית', 'bad link': 'הקישור לא פעיל' };
 
   function render() {
     $('list').innerHTML = '';
@@ -89,17 +91,19 @@ footer{margin-top:32px;font-size:14px;color:var(--mute)}footer a{color:var(--bra
       var b = document.createElement('span'); b.textContent = f.state || ''; b.className = f.cls || '';
       li.appendChild(a); li.appendChild(b); $('list').appendChild(li);
     });
-    $('go').disabled = !files.some(function (f) { return !f.done; }) && $('note').value.trim().length < 3;
+    $('go').disabled = !$('company').value.trim() || (!files.some(function (f) { return !f.done; }) && $('note').value.trim().length < 3);
   }
   function add(list) { Array.prototype.forEach.call(list, function (file) { files.push({ file: file }); }); render(); }
 
   if (!/^[0-9a-f]{36}$/.test(t)) { $('bad').hidden = false; return; }
   fetch(FN + '?t=' + encodeURIComponent(t)).then(function (r) { return r.ok ? r.json() : Promise.reject(); }).then(function (j) {
     $('hello').textContent = 'שלום ' + j.name;
+    $('company').value = j.name;
     $('f').hidden = false;
   }).catch(function () { $('bad').hidden = false; });
 
   $('note').addEventListener('input', render);
+  $('company').addEventListener('input', render);
   $('file').addEventListener('change', function (e) { add(e.target.files); e.target.value = ''; });
   var drop = $('drop');
   ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); }); });
@@ -113,7 +117,7 @@ footer{margin-top:32px;font-size:14px;color:var(--mute)}footer a{color:var(--bra
     var chain = Promise.resolve(), noteErr = false, text = $('note').value.trim();
     if (text.length >= 3) {
       chain = chain.then(function () {
-        var fd = new FormData(); fd.append('t', t); fd.append('note', text); fd.append('name', $('who').value);
+        var fd = new FormData(); fd.append('t', t); fd.append('company', $('company').value.trim()); fd.append('note', text); fd.append('name', $('who').value);
         return fetch(FN, { method: 'POST', body: fd }).then(function (r) { if (r.ok) $('note').value = ''; else noteErr = true; }).catch(function () { noteErr = true; });
       });
     }
@@ -121,7 +125,7 @@ footer{margin-top:32px;font-size:14px;color:var(--mute)}footer a{color:var(--bra
       chain = chain.then(function () {
         f.state = 'שולח...'; f.cls = ''; render();
         var fd = new FormData();
-        fd.append('t', t); fd.append('file', f.file);
+        fd.append('t', t); fd.append('company', $('company').value.trim()); fd.append('file', f.file);
         fd.append('name', $('who').value);
         fd.append('replaces_all', $('all').checked ? '1' : '0');
         return fetch(FN, { method: 'POST', body: fd }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
