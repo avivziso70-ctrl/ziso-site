@@ -34,18 +34,20 @@ create policy crm_takings_upd on public.crm_takings for update to authenticated 
 
 create function public.crm_takings_task() returns trigger language plpgsql set search_path to 'public' as $$
 declare
-  m text := case new.method when 'cash' then 'במזומן' when 'cheque' then 'בצ׳ק' when 'transfer' then 'בהעברה או ביט'
-            when 'card_terminal' then 'באשראי (חויב במסוף)' else 'באשראי (לינק תשלום, לוודא שהתשלום עבר)' end;
-  who text := coalesce((select name from crm_staff where lower(email) = lower(new.by) limit 1), new.by);
+  m text; who text;
 begin
   if tg_op = 'INSERT' then
-    insert into crm_tasks (tail9, text, due, by)
+    m := case new.method when 'cash' then 'במזומן' when 'cheque' then 'בצ׳ק' when 'transfer' then 'בהעברה או ביט'
+         when 'card_terminal' then 'באשראי (חויב במסוף)' else 'באשראי (לינק תשלום, לוודא שהתשלום עבר)' end;
+    -- "by" is a reserved word: it must stay quoted inside plpgsql
+    who := coalesce((select s.name from crm_staff s where lower(s.email) = lower(new."by") limit 1), new."by");
+    insert into crm_tasks (tail9, text, due, "by")
     values (new.tail9,
       'דחוף, להוציא קבלה: ' || who || ' קיבל ₪' || to_char(new.amount, 'FM999G999G990D00') || ' ' || m || ' מ' || btrim(new.payer_name)
       || '. סיבה: ' || btrim(new.reason)
       || '. סחורה שנלקחה: ' || case when new.goods_taken then btrim(new.goods) else 'לא נלקחה' end
       || '. להקליד בפריוריטי ולסגור כאן עם מספר המסמך.',
-      now(), new.by)
+      now(), new."by")
     returning id into new.task_id;
     return new;
   end if;
