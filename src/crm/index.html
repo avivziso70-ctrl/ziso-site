@@ -245,6 +245,16 @@ body.wall{padding-top:76px}
 #station .tile.mid{border-color:var(--amber)} #station .tile.mid .v{color:var(--amber)}
 #station .tile.bad{border-color:var(--red)} #station .tile.bad .v{color:var(--red)}
 #station .tile.veil .v{color:var(--mute);letter-spacing:.2em}
+/* showroom music panel: controls the player on the main office PC through public.showroom_music */
+#musicPanel{position:fixed;z-index:45;width:min(360px,calc(100vw - 24px));background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;display:grid;gap:12px;box-shadow:0 12px 36px rgba(0,0,0,.4)}
+#musicPanel h2{font-size:18px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+#musicPanel .styles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#musicPanel .styles button[aria-pressed=true]{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
+#musicPanel .ctl{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#musicPanel .vol{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;font-size:14px;color:var(--mute)}
+#musicPanel input[type=range]{width:100%;min-height:44px;accent-color:var(--brass)}
+#musicPanel .now{font-size:14px;color:var(--mute);min-height:20px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#musicPanel .now.off{color:var(--amber);white-space:normal}
 /* phone calls on the customer card */
 .callsum{background:var(--grout);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:15px;line-height:1.5}
 .callsum b{display:block;font-size:13px;color:var(--mute);font-weight:600;margin-bottom:2px}
@@ -349,6 +359,13 @@ svg.ic.dots{stroke-width:3}
 <button id="wallBar" type="button" class="hidden"></button>
 <div id="station" class="hidden" aria-label="לוח העמדה"></div>
 <div id="taskAlerts" aria-live="polite"></div>
+<div id="musicPanel" class="hidden" role="dialog" aria-label="מוזיקה באולם">
+  <h2>מוזיקה באולם <button class="btn small" id="musicClose" aria-label="סגירה">סגירה</button></h2>
+  <div class="styles" id="musicStyles"></div>
+  <div class="ctl"><button class="btn" id="musicPause">השהיה</button><button class="btn" id="musicNext">הבא ⏭</button></div>
+  <label class="vol"><span>שקט</span><input type="range" id="musicVol" min="0" max="100" step="5" aria-label="עוצמה"><span id="musicVolN"></span></label>
+  <div class="now" id="musicNow" aria-live="polite"></div>
+</div>
 <div id="cover" class="hidden" role="dialog" aria-label="מסך המתנה"><div><div class="logo">זיסו קרמיקה</div><div class="clock" id="coverClock"></div><div class="feed" id="coverFeed" aria-live="polite"></div><div class="wait" id="coverWait"></div><div class="wait" id="coverTask"></div><div class="hint" id="coverHint">להחזרת המסך: ללחוץ ולהחזיק שנייה</div></div><span class="dot hidden" id="coverDot"></span><span class="ring"></span></div>
 <div id="login">
   <form id="loginForm" autocomplete="on">
@@ -402,6 +419,7 @@ svg.ic.dots{stroke-width:3}
       <button class="btn small" id="deskSearch">חיפוש לקוח</button>
       <button class="btn small" id="deskToday">היום</button>
       <button class="btn small" id="deskChats">שיחות</button>
+      <button class="btn small" id="musicBtn" aria-expanded="false" aria-controls="musicPanel">♪ מוזיקה</button>
       <button class="btn small brass" id="deskAsk">תשאלו את קלוד</button>
     </div>
     <a class="btn small brass pricebtn" href="prices.html" title="חיפוש מחיר במחירוני הספקים"><span aria-hidden="true">₪</span> מחירון ספקים</a>
@@ -583,7 +601,7 @@ function start() {
     $('meBtn').textContent = mine.name;
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
     sb.rpc('crm_log', { p_action: 'login' });
-    route(); loadConvs(); loadSync(); pushCheck(); loadAiMap(); stationLoad(); feedLoad(); taskAlertLoad();
+    route(); loadConvs(); loadSync(); pushCheck(); loadAiMap(); stationLoad(); feedLoad(); taskAlertLoad(); musicLoad();
     if (!(me.user_metadata && me.user_metadata.pw_changed_at)) openPw(true);
     if (timer) clearInterval(timer);
     // open chat every 10s, list every 20s, AI verdicts every 3 minutes; nothing runs while the tab is hidden
@@ -1238,6 +1256,49 @@ function loadCalls(t9) {
     });
   });
 }
+/* ---------- showroom music ----------
+   The player runs on the main office PC (public-domain tracks only). This panel sets what should play in
+   public.showroom_music; the player picks it up within a few seconds and reports what is actually playing. */
+var MUSIC_STYLES = [['piano', 'פסנתר רך'], ['lofi', 'לו-פיי רגוע'], ['ambient', 'אמביינט'], ['classic', 'קלאסי']], music = null, musicT = null, musicVolBusy = 0, musicSetAt = 0;
+function musicLoad() { if (!me) return; sb.rpc('showroom_music_state').then(function (r) { if (!r.error && r.data) { music = r.data; musicRender(); } }); }
+/* What to show: what the player really plays (it can also be changed on the player itself), except right after a press here. */
+function musicView() {
+  var m = music, live = m.alive && Date.now() - musicSetAt > 8000;
+  return { style: live && m.now_style ? m.now_style : m.style, paused: live && m.now_paused != null ? m.now_paused : m.paused, volume: live && m.now_volume != null ? m.now_volume : m.volume };
+}
+function musicSet(a) {
+  musicSetAt = Date.now();
+  sb.rpc('showroom_music_set', a).then(function (r) { if (r.error || !r.data) { toast('לא נשמר, נסו שוב'); return; } music = r.data; musicRender(); });
+}
+function musicRender() {
+  var m = music; if (!m) return;
+  var v = musicView();
+  var nm = (MUSIC_STYLES.filter(function (x) { return x[0] === v.style; })[0] || [])[1] || '';
+  $('musicBtn').textContent = '♪ ' + (v.paused ? 'מוזיקה מושהית' : nm || 'מוזיקה');
+  $('musicStyles').innerHTML = MUSIC_STYLES.map(function (x) { return '<button class="btn" data-mstyle="' + x[0] + '" aria-pressed="' + (v.style === x[0]) + '">' + x[1] + '</button>'; }).join('');
+  $('musicPause').textContent = v.paused ? 'המשך ▶' : 'השהיה ⏸';
+  if (Date.now() - musicVolBusy > 3000) $('musicVol').value = v.volume;
+  $('musicVolN').textContent = $('musicVol').value + '%';
+  $('musicNow').className = 'now' + (m.alive ? '' : ' off');
+  $('musicNow').textContent = !m.alive ? 'הנגן במחשב הראשי לא מחובר כרגע. הבחירה תיכנס כשיתחבר.' : m.now_paused ? 'מושהה' : m.now_track ? 'מתנגן: ' + m.now_track : 'מתנגן';
+}
+function musicOpen(on) {
+  var p = $('musicPanel'); p.classList.toggle('hidden', !on); $('musicBtn').setAttribute('aria-expanded', String(on));
+  clearInterval(musicT);
+  if (!on) return;
+  var r = $('musicBtn').getBoundingClientRect();
+  p.style.top = Math.round(r.bottom + 8) + 'px'; p.style.left = Math.round(Math.max(12, Math.min(r.left, innerWidth - p.offsetWidth - 12))) + 'px';
+  musicLoad(); musicT = setInterval(musicLoad, 4000);
+}
+$('musicBtn').addEventListener('click', function () { musicOpen($('musicPanel').classList.contains('hidden')); });
+$('musicClose').addEventListener('click', function () { musicOpen(false); });
+$('musicStyles').addEventListener('click', function (e) { var b = e.target.closest('[data-mstyle]'); if (b) musicSet({ p_style: b.dataset.mstyle, p_paused: false }); });
+$('musicPause').addEventListener('click', function () { if (music) musicSet({ p_paused: !musicView().paused }); });
+$('musicNext').addEventListener('click', function () { musicSet({ p_next: true, p_paused: false }); });
+$('musicVol').addEventListener('input', function () { musicVolBusy = Date.now(); $('musicVolN').textContent = $('musicVol').value + '%'; });
+$('musicVol').addEventListener('change', function () { musicVolBusy = Date.now(); musicSet({ p_volume: Number($('musicVol').value) }); });
+document.addEventListener('pointerdown', function (e) { if (!$('musicPanel').classList.contains('hidden') && !e.target.closest('#musicPanel,#musicBtn')) musicOpen(false); });
+setInterval(function () { if ($('musicPanel').classList.contains('hidden') && innerWidth >= 1024) musicLoad(); }, 60000);
 /* ---------- task alerts ----------
    Any open task with a set time (typed by staff, or agreed with a customer on a phone call) pops up on every open CRM screen:
    an hour before, ten minutes before, and when it is late. "הבנתי" hides that stage on this device; "בוצע" closes the task for everyone. */
