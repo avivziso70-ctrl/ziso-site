@@ -313,14 +313,16 @@ body.wall.station{padding-top:188px}
 /* Mobile: one pane at a time by hash. Desktop: three panes. */
 @media (max-width: 1023px){
   main > .pane{display:none}
-  main[data-view="chats"] > #chats,main[data-view="chat"] > #chat,main[data-view="card"] > #card,main[data-view="today"] > #today,main[data-view="search"] > #search{display:flex}
+  main[data-view="chats"] > #chats,main[data-view="chat"] > #chat,main[data-view="card"] > #card,main[data-view="today"] > #today,main[data-view="search"] > #search,main[data-view="home"] > #home{display:flex}
   .back{display:inline-flex}
 }
 @media (min-width: 1024px){
   main{grid-template-columns:360px 1fr 400px}
   main > .pane{display:flex;border-inline-start:1px solid var(--line)}
   main > .pane:first-child{border:0}
-  #today,#search{display:none}
+  #today,#search,#home{display:none}
+  main[data-view="home"] > #home{display:flex;grid-column:2 / span 2}
+  main[data-view="home"] > #chat,main[data-view="home"] > #card{display:none}
   main[data-view="today"] > #today{display:flex;grid-column:2 / span 2}
   main[data-view="today"] > #chat,main[data-view="today"] > #card{display:none}
   main[data-view="search"] > #search{display:flex;grid-column:2 / span 2}
@@ -348,6 +350,10 @@ svg.ic.dots{stroke-width:3}
 .seg button[aria-pressed="true"]{background:var(--brass-soft);color:var(--brass);border-color:var(--brass)}
 .seg button .n{font-weight:400;margin-inline-start:4px}
 #todayBody[data-g="now"] .sect:not([data-g="now"]),#todayBody[data-g="money"] .sect:not([data-g="money"]),#todayBody[data-g="grow"] .sect:not([data-g="grow"]),#todayBody[data-g="admin"] .sect:not([data-g="admin"]){display:none}
+#home .body{padding:12px var(--pad) 32px;display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+.hello{display:grid;gap:2px}.hello h3{font-size:28px}.hello .brief{margin:6px 0 0;font-size:17px;font-weight:600}
+.sect.urgent{border-color:var(--red);box-shadow:0 0 0 2px var(--red-soft)}
+#home .kpis{order:0}#home .airow .row .btn{min-height:44px}#home .task input[type=checkbox]{width:28px;height:28px}
 #todayBody .none{display:none;color:var(--mute);text-align:center;padding:24px 0}
 @media (max-width:599px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi b{font-size:26px}}
 .kpis{order:-2}
@@ -460,6 +466,7 @@ svg.ic.dots{stroke-width:3}
     <h1>זיסו צוות</h1>
     <span class="pill" id="syncPill" title="מתי עודכנו הנתונים מפריוריטי"></span>
     <nav class="desk views" aria-label="מסכים">
+      <button type="button" id="deskHome" data-nav="home">בית</button>
       <button type="button" id="deskChats" data-nav="chats">שיחות</button>
       <button type="button" id="deskSearch" data-nav="search">לקוחות</button>
       <button type="button" id="deskToday" data-nav="today">היום</button>
@@ -545,6 +552,12 @@ svg.ic.dots{stroke-width:3}
       <div class="empty" id="searchEmpty">חיפוש בכל הלקוחות: פריוריטי, וואטסאפ וכרטיסים</div>
     </section>
 
+    <!-- Home: urgent items + day summary per role -->
+    <section class="pane" id="home" aria-label="בית">
+      <div class="head"><div class="row"><h2 class="grow">בית</h2><button class="btn icon small" type="button" id="homeRefresh" title="רענון" aria-label="רענון מסך הבית"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg></button></div></div>
+      <div class="body" id="homeBody" aria-live="polite" aria-busy="false"><div class="small muted">טוען…</div></div>
+    </section>
+
     <!-- Today -->
     <section class="pane" id="today" aria-label="היום">
       <div class="head"><div class="row"><h2 class="grow">היום</h2></div><div class="seg" id="todaySeg" role="group" aria-label="מה להציג"></div></div>
@@ -553,6 +566,7 @@ svg.ic.dots{stroke-width:3}
   </main>
 
   <nav class="tabs" aria-label="ניווט">
+    <button data-view="home">בית</button>
     <button data-view="chats" aria-current="page">שיחות<span class="badge hidden" id="waitBadge"></span></button>
     <button data-view="search">לקוחות</button>
     <button data-view="today">היום</button>
@@ -657,6 +671,7 @@ function start() {
     if (!mine) { $('loginErr').textContent = 'החשבון הזה לא מורשה. פנו לאביב.'; sb.auth.signOut(); return; }
     $('meName').textContent = mine.name;
     // the till button: on every phone, and big on any screen for whoever takes money at the showroom
+    $('deskHome').classList.toggle('hidden', WALL);
     $('kupaBar').classList.toggle('hidden', WALL); $('voiceBar').classList.toggle('hidden', WALL);
     $('quickBars').classList.toggle('big', /^zisomosh/i.test(me.email));
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
@@ -697,10 +712,12 @@ function setView(v) {
 }
 function go(v, arg) { location.hash = v + (arg ? '/' + arg : ''); }
 function route() {
-  var h = location.hash.replace(/^#/, '').split('/'), v = h[0] || 'chats', arg = h[1];
+  var h = location.hash.replace(/^#/, '').split('/'), v = h[0] || (!WALL && innerWidth < 1024 ? 'home' : 'chats'), arg = h[1];
+  if (v === 'home' && WALL) v = 'chats';
   if (v === 'chat' && arg) { openChat(arg); setView('chat'); }
   else if (v === 'card' && arg) { openCard(arg); setView('card'); }
   else if (v === 'today') { setView('today'); loadToday(); }
+  else if (v === 'home') { setView('home'); loadHome(); }
   else if (v === 'search') { setView('search'); setTimeout(function () { $('q2').focus(); }, 50); }
   else setView('chats');
 }
@@ -708,6 +725,8 @@ window.addEventListener('hashchange', route);
 document.querySelectorAll('nav.tabs button[data-view]').forEach(function (b) { b.addEventListener('click', function () { go(b.dataset.view); }); });
 $('deskSearch').addEventListener('click', function () { go('search'); });
 $('deskToday').addEventListener('click', function () { go('today'); });
+$('deskHome').addEventListener('click', function () { go('home'); });
+$('homeRefresh').addEventListener('click', function () { loadHome(true); });
 $('deskChats').addEventListener('click', function () { go(cur ? 'chat' : 'chats', cur); });
 $('backFromChat').addEventListener('click', function () { go('chats'); });
 $('backFromCard').addEventListener('click', function () { go(cur ? 'chat' : 'search', cur); });
@@ -725,7 +744,7 @@ function loadConvs(quiet) {
   sb.rpc('crm_inbox', { p_search: q || null, p_limit: 300 }).then(function (r) {
     if (r.error) { if (!quiet) toast('שגיאה בטעינת השיחות'); return; }
     var sig = JSON.stringify(r.data || []); if (quiet && sig === convSig) return; convSig = sig;
-    convs = r.data || []; renderConvs(); updateBadge();
+    convs = r.data || []; renderConvs(); updateBadge(); if (document.querySelector('main').dataset.view === 'home') homeRender();
     if (cur) updateActs(convOf(cur));
   });
 }
@@ -2067,6 +2086,171 @@ function loadToday() {
     $('todayBody').querySelectorAll('[data-done]').forEach(function (cb) { cb.addEventListener('change', function () { sb.from('crm_tasks').update({ done_at: new Date().toISOString(), done_by: me.email }).eq('id', cb.dataset.done).then(loadToday); }); });
   });
 }
+
+/* ---------- home (12.11): what opens first on a phone. Urgent items + a short day summary, cut to each person's job.
+   Eilat: bookkeeping actions to do/fix/check + customers. Moshe: logistics, supplier payments, bank (bank only through
+   crm_home_money(), which the database allows only to sees_bank staff and the owner). Shir: selling, nothing else.
+   The owner can look at each person's screen. ---------- */
+var HOME_ROLES = [['eilat', 'אילת'], ['moshe', 'משה'], ['shir', 'שיר']], homeData = null, homeAt = 0, homeBusy = false;
+function homeRole() {
+  var s = staff.filter(function (x) { return x.email.toLowerCase() === me.email.toLowerCase(); })[0] || {};
+  if (s.role === 'owner') { var p = ''; try { p = localStorage.getItem('homeRole') || ''; } catch (e) {} return HOME_ROLES.some(function (r) { return r[0] === p; }) ? p : 'eilat'; }
+  if (/משה/.test(s.name || '') || /^zisomosh/i.test(me.email)) return 'moshe';
+  if (/אילת/.test(s.name || '')) return 'eilat';
+  return 'shir';
+}
+/* bank sums are often negative: say "מינוס" in words, a minus sign flips around in Hebrew text */
+function sMoney(n) { return n == null ? '—' : Number(n) < 0 ? 'מינוס ' + money(-Number(n)) : money(n); }
+function homeGreet() { var h = new Date().getHours(); return h < 12 ? 'בוקר טוב' : h < 17 ? 'צהריים טובים' : 'ערב טוב'; }
+function daysTo(d) { var a = new Date(); a.setHours(0, 0, 0, 0); var b = new Date(d); b.setHours(0, 0, 0, 0); return Math.round((b - a) / 86400000); }
+function dayWord(d) { var n = daysTo(d); return n === 0 ? 'היום' : n === 1 ? 'מחר' : n < 0 ? 'לפני ' + (-n) + ' ימים' : fmtDay(d); }
+function loadHome(force) {
+  if (!me || homeBusy) return;
+  if (!force && homeData && Date.now() - homeAt < 60000) { homeRender(); return; }
+  homeBusy = true;
+  var role = homeRole(), owner = isOwner(), d90 = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10), wk = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+  var none = Promise.resolve({});
+  var want = function (r) { return owner || role === r; };
+  Promise.all([
+    sb.from('crm_tasks').select('id,tail9,text,due,assigned_to,by').is('done_at', null).order('due', { ascending: true, nullsFirst: false }).limit(40),
+    sb.from('crm_ai').select('tail9,temp,score,next_action,next_due,risk').is('done_at', null).in('temp', ['hot', 'warm']).order('score', { ascending: false }).limit(30),
+    sb.from('crm_visits').select('id,tail9,phone,name,at,note,source,by,attended').is('cancelled_at', null).gte('at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString()).lte('at', new Date(Date.now() + 2 * 86400000).toISOString()).order('at').limit(20),
+    want('shir') ? sb.rpc('crm_stalled_quotes') : none,
+    sb.rpc('crm_kpi'),
+    sb.from('leads').select('id,created_at,name,phone_tail9,stage').gte('created_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString()).limit(100),
+    want('eilat') ? sb.from('priority_orders_all').select('so,cust_no,cust_name,date,amount').eq('status', 'ממתין לתשלום').gte('date', new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10)).order('amount', { ascending: false }).limit(30) : none,
+    want('eilat') ? sb.from('priority_aging').select('cust_no,name,tail9,total,d90p').gt('total', 500).order('total', { ascending: false }).limit(20) : none,
+    want('eilat') ? sb.from('payment_proofs').select('id,amount,pay_date,payer,status,created_at').eq('status', 'extracted').order('created_at', { ascending: false }).limit(20) : none,
+    want('eilat') ? sb.from('priority_sync').select('key,source_at') : none,
+    want('moshe') ? sb.from('priority_orders').select('so,date,cust_name,tail9,open_total,lines').gte('date', d90).order('date', { ascending: false }).limit(400) : none,
+    want('moshe') ? sb.from('priority_supplier_orders').select('po,sup_name,due,item,open_qty,unit').gt('open_qty', 0).lte('due', wk).gte('due', new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)).order('due').limit(300) : none,
+    want('moshe') ? sb.rpc('crm_home_money') : none,
+    takeLoad()
+  ]).then(function (rs) {
+    homeData = { role: role, tasks: rs[0].data || [], ai: rs[1].data || [], visits: rs[2].data || [], quotes: rs[3].data || [], kpi: rs[4].data || {}, leads: rs[5].data || [],
+      pay: rs[6].data || [], debt: rs[7].data || [], proofs: rs[8].data || [], sync: rs[9].data || [], orders: rs[10].data || [], supOrders: rs[11].data || [],
+      money: rs[12] && !rs[12].error ? rs[12].data : null, moneyErr: !!(rs[12] && rs[12].error) };
+    homeAt = Date.now(); homeBusy = false; homeRender();
+  }).catch(function () { homeBusy = false; $('homeBody').innerHTML = '<div class="sect"><div>לא נטען. נסו שוב</div><div class="row"><button class="btn small" type="button" data-hreload>טעינה מחדש</button></div></div>'; });
+}
+function homeRender() {
+  if (!homeData || !me) return;
+  var D = homeData, role = homeRole(), mine = staff.filter(function (x) { return x.email.toLowerCase() === me.email.toLowerCase(); })[0] || {};
+  if (role !== D.role && isOwner()) { loadHome(true); return; }
+  var nm = {}; convs.forEach(function (c) { if (c.tail9) nm[c.tail9] = c.name || localPhone(c.phone); });
+  var waiting = convs.filter(needsHuman).sort(urgency), late = waiting.filter(function (c) { return Number(c.wait_biz_min || 0) >= 15; });
+  var nBell = Number($('bellN').textContent || 0) * ($('bellN').classList.contains('hidden') ? 0 : 1);
+  var urgent = [], kpis = [], sects = [], line = [];
+  var link = function (t9, name) { return t9 ? '<a href="#card/' + esc(t9) + '">' + esc(name || nm[t9] || 'לקוח') + '</a>' : esc(name || 'לקוח'); };
+  var row = function (pill, cls, main, sub, act) { return '<div class="airow"><span class="pill ' + (cls || '') + '">' + pill + '</span><div><div class="txt">' + main + '</div>' + (sub ? '<div class="sub">' + sub + '</div>' : '') + (act ? '<div class="row">' + act + '</div>' : '') + '</div></div>'; };
+  var kpi = function (v, label, sub, cls) { kpis.push('<div class="kpi' + (cls ? ' ' + cls : '') + '"><b>' + v + '</b><span>' + label + '</span>' + (sub ? '<span class="sub">' + sub + '</span>' : '') + '</div>'); };
+  var waitRows = function (n) { return waiting.slice(0, n).map(function (c) { return '<li><button data-phone="' + esc(c.phone) + '"><span class="dot wait"></span><span class="name ellip">' + esc(c.name || localPhone(c.phone)) + '</span><span class="when">' + esc(ago(c.waiting_since || c.last_ts)) + '</span><span class="last ellip">' + esc(c.last_text || '') + '</span></button></li>'; }).join(''); };
+  var waitSect = function (title, n) { return '<div class="sect"><h3>' + title + ' <span class="n">' + waiting.length + (late.length ? ' · ' + late.length + ' באיחור' : '') + '</span></h3>' + (waiting.length ? '<ul class="list" style="padding:0">' + waitRows(n) + '</ul>' + (waiting.length > n ? '<div class="row"><button class="btn small" type="button" data-go="chats">לכל הממתינים</button></div>' : '') : '<div class="small muted">אין לקוחות שמחכים לתשובה ✓</div>') + '</div>'; };
+  var tasksOpen = D.tasks.filter(function (t) { return t.by !== 'תמלול שיחה'; });
+  var lateTasks = tasksOpen.filter(function (t) { return t.due && new Date(t.due) < new Date(); });
+  var vToday = D.visits.filter(function (v) { return isToday(v.at); });
+  if (late.length && role !== 'moshe') urgent.push(row(late.length, 'late', late.length === 1 ? 'לקוח אחד מחכה לתשובה יותר מ-15 דקות' : late.length + ' לקוחות מחכים לתשובה יותר מ-15 דקות', esc(late.slice(0, 3).map(function (c) { return c.name || localPhone(c.phone); }).join(', ')), '<button class="btn small brass" type="button" data-phone="' + esc(late[0].phone) + '">לענות עכשיו</button>'));
+
+  if (role === 'shir') {
+    var hot = D.ai.filter(function (a) { return !noAction(a.next_action) && a.score >= 40; }).slice(0, 6);
+    var dueAi = hot.filter(function (a) { return a.next_due && daysTo(a.next_due) <= 0; });
+    var sq = D.quotes.slice().sort(function (x, y) { return Number(y.total || 0) - Number(x.total || 0); });
+    vToday.forEach(function (v) { if (v.attended == null) urgent.push(row(esc(fmtTime(v.at)), 'warm', 'פגישה באולם: ' + link(v.tail9, v.name), v.note ? esc(v.note) : '')); });
+    dueAi.slice(0, 3).forEach(function (a) { urgent.push(row(esc(TEMP[a.temp] || ''), a.temp, link(a.tail9) + ': ' + esc(a.next_action), esc(dueLabel(a.next_due)))); });
+    kpi(waiting.length, 'מחכים לתשובה', late.length ? late.length + ' באיחור' : 'אין איחורים', late.length ? 'bad' : waiting.length ? '' : 'good');
+    kpi(vToday.length, 'פגישות היום', D.visits.length > vToday.length ? (D.visits.length - vToday.length) + ' מחר' : '');
+    kpi(D.leads.length, 'פניות חדשות היום', '');
+    kpi(sq.length, 'הצעות שמחכות למעקב', sq.length ? 'שווי ' + amt(sq.reduce(function (s, q) { return s + Number(q.total || 0); }, 0)) : '');
+    line.push(waiting.length ? waiting.length + ' לקוחות מחכים לך' : 'אין מי שמחכה');
+    if (vToday.length) line.push(vToday.length + ' פגישות באולם');
+    if (sq.length) line.push(sq.length + ' הצעות לסגור');
+    sects.push(waitSect('לענות קודם', 6));
+    sects.push('<div class="sect"><h3>לקוחות חמים להיום <span class="n">' + hot.length + '</span></h3><div class="small muted">מי הכי קרוב לקנות, ומה הצעד הבא איתו.</div>' + (hot.length ? hot.map(function (a) { return row(esc(TEMP[a.temp] || '') + ' ' + a.score, a.temp, link(a.tail9) + (a.next_due ? ' · <b>' + esc(dueLabel(a.next_due)) + '</b>' : ''), esc(a.next_action)); }).join('') : '<div class="small muted">אין כרגע לקוחות חמים פתוחים</div>') + '</div>');
+    sects.push('<div class="sect"><h3>הצעות מחיר לסגור <span class="n">' + sq.length + '</span></h3><div class="small muted">לכל הצעה יש טיוטת הזמנה לאולם. שולחים, ומסמנים "נשלח" במסך "היום".</div>' + (sq.length ? sq.slice(0, 5).map(function (q) { return row(q.days + ' ימים', q.temp || '', link(q.tail9, q.name || 'לקוח ' + q.cust_no) + ' · ' + amt(q.total), q.angle ? esc(q.angle) : ''); }).join('') + '<div class="row"><button class="btn small" type="button" data-go="today" data-g="money">לטיוטות ולסימון</button></div>' : '<div class="small muted">אין הצעות תקועות ✓</div>') + '</div>');
+    if (D.visits.length) sects.push('<div class="sect"><h3>פגישות באולם <span class="n">היום ומחר</span></h3>' + D.visits.map(function (v) { return visitRow(v, true); }).join('') + '</div>');
+  }
+
+  if (role === 'eilat') {
+    var ready = takes.filter(function (t) { return !t.unpaid; });
+    var collect = D.pay.map(function (o) { return { t9: null, name: o.cust_name, amt: Number(o.amount), what: 'הזמנה ' + o.so + ' ממתינה לתשלום', since: o.date }; })
+      .concat(D.debt.map(function (d) { return { t9: d.tail9, name: d.name, amt: Number(d.total), what: 'יתרת חוב' + (Number(d.d90p) > 0 ? ' (חלקה מעל 90 יום)' : ''), since: null }; }))
+      .sort(function (a, b) { return b.amt - a.amt; });
+    var ctot = collect.reduce(function (s, c) { return s + c.amt; }, 0);
+    var stale = D.sync.filter(function (s) { return ['orders', 'receipts', 'invoices'].indexOf(s.key) >= 0 && s.source_at && daysTo(s.source_at) < -1; });
+    if (ready.length) urgent.push(row(ready.length, 'late', ready.length === 1 ? 'תשלום אחד התקבל ומחכה לקבלה' : ready.length + ' תשלומים התקבלו ומחכים לקבלה', 'מקלידים בפריוריטי ולוחצים "יצאה קבלה"', '<button class="btn small brass" type="button" data-go="today" data-g="now">לקבלות</button>'));
+    if (D.proofs.length) urgent.push(row(D.proofs.length, 'hot', D.proofs.length === 1 ? 'אישור העברה מלקוח מחכה לבדיקה מול הבנק' : D.proofs.length + ' אישורי העברה מלקוחות מחכים לבדיקה מול הבנק', D.proofs.slice(0, 3).map(function (p) { return esc(p.payer || 'לקוח') + (p.amount ? ' ' + amt(p.amount) : ''); }).join(' · ')));
+    lateTasks.slice(0, 4).forEach(function (t) { urgent.push(row('באיחור', 'late', taskTxt(t.text), esc(dayWord(t.due)))); });
+    kpi(ready.length, 'קבלות להוציא', takes.length > ready.length ? (takes.length - ready.length) + ' עוד לא שולמו' : '', ready.length ? 'bad' : 'good');
+    kpi(tasksOpen.length, 'משימות פתוחות', lateTasks.length ? lateTasks.length + ' באיחור' : '', lateTasks.length ? 'bad' : '');
+    kpi(collect.length, 'לגבות', ctot ? amt(ctot) : '');
+    kpi(waiting.length, 'לקוחות מחכים', late.length ? late.length + ' באיחור' : '', late.length ? 'bad' : '');
+    line.push(ready.length ? ready.length + ' קבלות להוציא' : 'אין קבלות פתוחות');
+    if (tasksOpen.length) line.push(tasksOpen.length + ' משימות');
+    if (ctot) line.push(amt(ctot) + ' לגבות');
+    var check = [];
+    D.proofs.forEach(function (p) { check.push(row('העברה', 'warm', 'אישור העברה מ' + esc(p.payer || 'לקוח') + (p.amount ? ' · ' + amt(p.amount) : ''), 'להשוות לבנק ולהוציא קבלה' + (p.pay_date ? ' · שולם ' + esc(fmtDate(p.pay_date)) : ''))); });
+    stale.forEach(function (s) { check.push(row('פריוריטי', '', 'הנתונים מפריוריטי (' + esc({ orders: 'הזמנות', receipts: 'קבלות', invoices: 'חשבוניות' }[s.key]) + ') לא עודכנו מאז ' + esc(fmtDate(s.source_at)), 'מה שמוצג כאן עלול להיות ישן')); });
+    sects.push('<div class="sect"><h3>לבצע, לתקן, לבדוק <span class="n">' + (tasksOpen.length + check.length) + '</span></h3>' +
+      (tasksOpen.length ? tasksOpen.slice(0, 12).map(function (t) { return '<div class="task"><input type="checkbox" data-hdone="' + t.id + '" aria-label="בוצע: ' + esc(String(t.text).slice(0, 60)) + '"><div><div class="txt">' + (t.tail9 ? '<a href="#card/' + esc(t.tail9) + '">' + taskTxt(t.text) + '</a>' : taskTxt(t.text)) + '</div><div class="due' + (t.due && new Date(t.due) < new Date() ? ' late' : '') + '">' + (t.due ? esc(dayWord(t.due)) + ' ' + esc(fmtTime(t.due)) : '') + (t.by && t.by.indexOf('@') < 0 ? ' · ' + esc(t.by) : '') + '</div></div></div>'; }).join('') : '') +
+      check.join('') + (!tasksOpen.length && !check.length ? '<div class="small muted">אין כרגע מה לתקן ✓</div>' : '') + '</div>');
+    if (D.pay.length || D.debt.length) sects.push('<div class="sect"><h3>גבייה <span class="n">' + collect.length + (ctot ? ' · ' + amt(ctot) : '') + '</span></h3>' + collect.slice(0, 6).map(function (c) { return row(amt(c.amt), 'hot', link(c.t9, c.name), esc(c.what) + (c.since ? ' · מ-' + esc(fmtDate(c.since)) : '')); }).join('') + '<div class="row"><button class="btn small" type="button" data-go="today" data-g="money">לכל הרשימה</button></div></div>');
+    sects.push(waitSect('לקוחות שמחכים', 5));
+  }
+
+  if (role === 'moshe') {
+    var M = D.money, chq = M && M.cheques || [];
+    var chqSoon = chq.filter(function (c) { return daysTo(c.due) <= 1; }), chq7 = chq.filter(function (c) { return daysTo(c.due) <= 6; });
+    var sum = function (a) { return a.reduce(function (s, c) { return s + Number(c.net || 0); }, 0); };
+    var avail = M && M.balance != null ? Number(M.balance) + Number(M.credit_limit || 0) : null;
+    // an order is ready when every open line has enough in stock; otherwise it waits for goods
+    var readyO = [], waitO = [];
+    D.orders.forEach(function (o) { var ls = (o.lines || []).filter(function (l) { return Number(l.bal || 0) > 0; }); if (!ls.length) return; (ls.every(function (l) { return l.stock != null && Number(l.stock) >= Number(l.bal); }) ? readyO : waitO).push(o); });
+    var byPo = {}; D.supOrders.forEach(function (s) { var k = s.po; (byPo[k] = byPo[k] || { po: s.po, sup: s.sup_name, due: s.due, n: 0 }).n++; if (s.due < byPo[k].due) byPo[k].due = s.due; });
+    var pos = Object.keys(byPo).map(function (k) { return byPo[k]; }).sort(function (a, b) { return a.due < b.due ? -1 : 1; });
+    var posLate = pos.filter(function (p) { return daysTo(p.due) < 0; }), posWeek = pos.filter(function (p) { return daysTo(p.due) >= 0; });
+    if (chqSoon.length) urgent.push(row(amt(sum(chqSoon)), 'late', chqSoon.length === 1 ? 'צ׳ק לספק יורד ' + dayWord(chqSoon[0].due) : chqSoon.length + ' צ׳קים לספקים יורדים היום ומחר', esc(chqSoon.slice(0, 3).map(function (c) { return c.sup; }).join(', '))));
+    if (avail != null && avail < sum(chq7)) urgent.push(row('בנק', 'late', 'הצ׳קים של השבוע (' + amt(sum(chq7)) + ') גדולים ממה שנשאר עד המסגרת (' + sMoney(avail) + ')', 'צריך להכניס כסף לפני שהם יורדים'));
+    if (posWeek.filter(function (p) { return daysTo(p.due) === 0; }).length) urgent.push(row('סחורה', 'warm', 'היום אמורה להגיע סחורה מ' + esc(posWeek.filter(function (p) { return daysTo(p.due) === 0; }).map(function (p) { return p.sup; }).slice(0, 3).join(', ')), ''));
+    kpi(M && M.balance != null ? sMoney(M.balance) : '—', 'יתרה בבנק', M && M.as_of ? 'נכון ל' + esc(dayWord(M.as_of)) : '', M && Number(M.balance) < 0 ? 'bad' : 'good');
+    kpi(avail != null ? sMoney(avail) : '—', 'נשאר עד המסגרת', M && M.credit_limit ? 'מסגרת ' + amt(M.credit_limit) : '', avail != null && avail < 20000 ? 'bad' : '');
+    kpi(chq7.length ? amt(sum(chq7)) : '0', 'צ׳קים לספקים השבוע', chq7.length ? chq7.length + ' צ׳קים' : 'אין צ׳קים');
+    kpi(readyO.length, 'הזמנות מוכנות לאספקה', waitO.length + ' מחכות לסחורה');
+    if (M && M.balance != null) line.push('בבנק ' + sMoney(M.balance));
+    if (chq7.length) line.push(chq7.length + ' צ׳קים השבוע');
+    line.push(readyO.length + ' הזמנות מוכנות לאספקה');
+    sects.push('<div class="sect"><h3>מצב בבנק <span class="n">רק אתה רואה את זה</span></h3>' + (M && M.balance != null ?
+      '<dl class="kv"><dt>יתרה</dt><dd><b>' + sMoney(M.balance) + '</b></dd><dt>מסגרת</dt><dd>' + amt(M.credit_limit) + '</dd><dt>נשאר עד המסגרת</dt><dd><b>' + sMoney(avail) + '</b></dd>' +
+      (M.forecast_low != null ? '<dt>הנקודה הכי נמוכה בתחזית</dt><dd>' + sMoney(M.forecast_low) + (M.forecast_low_date ? ' · ' + esc(fmtDate(M.forecast_low_date)) : '') + '</dd>' : '') +
+      (M.receipts_per_workday ? '<dt>תקבולים ליום עבודה החודש</dt><dd>' + amt(M.receipts_per_workday) + ' <span class="muted">(יעד ₪16,800)</span></dd>' : '') + '</dl><div class="fine">מתעדכן פעם ביום בבוקר מהבנק.</div>'
+      : '<div class="small muted">' + (D.moneyErr ? 'המצב בבנק יופיע כאן בקרוב.' : 'אין עדיין נתון מהבנק להיום.') + '</div>') + '</div>');
+    var byDay = {}; chq.forEach(function (c) { (byDay[c.due] = byDay[c.due] || []).push(c); });
+    sects.push('<div class="sect"><h3>תשלומים לספקים <span class="n">שבועיים קדימה' + (chq.length ? ' · ' + amt(sum(chq)) : '') + '</span></h3>' + (chq.length ? Object.keys(byDay).sort().map(function (d) { var a = byDay[d]; return row(esc(dayWord(d)), daysTo(d) <= 1 ? 'late' : '', '<b>' + amt(sum(a)) + '</b> · ' + a.length + (a.length === 1 ? ' צ׳ק' : ' צ׳קים'), esc(a.map(function (c) { return c.sup + ' ' + money(c.net); }).join(' · '))); }).join('') : '<div class="small muted">' + (M ? 'אין צ׳קים לספקים בשבועיים הקרובים' : 'יופיע כאן יחד עם המצב בבנק') + '</div>') + '</div>');
+    sects.push('<div class="sect"><h3>מוכן לאספקה ללקוחות <span class="n">' + readyO.length + '</span></h3><div class="small muted">הזמנות פתוחות מ-90 הימים האחרונים שכל הסחורה שלהן במלאי.</div>' + (readyO.length ? readyO.slice(0, 8).map(function (o) { return row(esc(fmtDate(o.date)), 'ok', link(o.tail9, o.cust_name) + ' · ' + esc(o.so), esc((o.lines || []).filter(function (l) { return Number(l.bal || 0) > 0; }).map(function (l) { return l.desc; }).slice(0, 2).join(', '))); }).join('') + (readyO.length > 8 ? '<div class="small muted">ועוד ' + (readyO.length - 8) + '</div>' : '') : '<div class="small muted">אין הזמנות שמוכנות במלאי</div>') + '</div>');
+    sects.push('<div class="sect"><h3>סחורה מספקים <span class="n">' + posWeek.length + ' השבוע' + (posLate.length ? ' · ' + posLate.length + ' באיחור' : '') + '</span></h3>' + (posWeek.length + posLate.length ? posWeek.slice(0, 8).concat(posLate.slice(0, 5)).map(function (p) { return row(esc(dayWord(p.due)), daysTo(p.due) < 0 ? 'late' : daysTo(p.due) === 0 ? 'warm' : '', esc(p.sup) + ' · ' + esc(p.po), p.n + (p.n === 1 ? ' פריט' : ' פריטים')); }).join('') : '<div class="small muted">אין סחורה שאמורה להגיע השבוע</div>') + '</div>');
+  }
+
+  if (nBell) urgent.push(row(nBell, 'hot', nBell === 1 ? 'התראה אחת בפעמון' : nBell + ' התראות בפעמון', '', '<button class="btn small" type="button" data-hbell>לפתוח את ההתראות</button>'));
+  var h = '';
+  if (isOwner()) h += '<div class="seg" role="group" aria-label="מסך הבית של">' + HOME_ROLES.map(function (r) { return '<button type="button" data-hrole="' + r[0] + '" aria-pressed="' + (r[0] === role) + '">' + r[1] + '</button>'; }).join('') + '</div>';
+  h += '<div class="hello"><h3>' + homeGreet() + ', ' + esc(isOwner() ? HOME_ROLES.filter(function (r) { return r[0] === role; })[0][1] : (mine.name || '')) + '</h3><div class="small muted">' + esc(fmtDay(new Date())) + '</div><p class="brief">' + line.join(' · ') + '</p></div>';
+  h += '<div class="sect urgent"><h3>דחוף עכשיו <span class="n">' + urgent.length + '</span></h3>' + (urgent.length ? urgent.join('') : '<div class="small muted">אין כרגע משהו דחוף ✓</div>') + '</div>';
+  h += '<div class="kpis">' + kpis.join('') + '</div>' + sects.join('');
+  h += '<p class="fine">מתעדכן לבד כל דקה. ' + (homeAt ? 'נטען ב-' + esc(fmtTime(homeAt)) : '') + '</p>';
+  $('homeBody').innerHTML = h;
+}
+$('homeBody').addEventListener('click', function (e) {
+  var b = e.target.closest('button,input'); if (!b) return;
+  if (b.dataset.phone) { go('chat', b.dataset.phone); return; }
+  if (b.dataset.go) { if (b.dataset.g) todayG = b.dataset.g; go(b.dataset.go); return; }
+  if (b.dataset.hrole) { try { localStorage.setItem('homeRole', b.dataset.hrole); } catch (x) {} loadHome(true); return; }
+  if (b.hasAttribute('data-hbell')) { notifOpen(true); return; }
+  if (b.hasAttribute('data-hreload')) { loadHome(true); return; }
+});
+$('homeBody').addEventListener('change', function (e) {
+  var cb = e.target.closest('[data-hdone]'); if (!cb) return; cb.disabled = true;
+  sb.from('crm_tasks').update({ done_at: new Date().toISOString(), done_by: me.email }).eq('id', cb.dataset.hdone).then(function (r) { if (r.error) { toast('לא נשמר. נסו שוב'); cb.disabled = false; cb.checked = false; } else { toast('סומן כבוצע ✓'); loadHome(true); taskAlertLoad(); } });
+});
+setInterval(function () { if (me && document.visibilityState === 'visible' && document.querySelector('main').dataset.view === 'home') loadHome(true); }, 60000);
 
 /* ---------- Push alerts (crm-push sends one per incoming WhatsApp message to every subscribed device) ---------- */
 function pushFn(body) {
