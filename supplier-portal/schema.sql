@@ -152,7 +152,7 @@ grant execute on function public.sp_token_fix(text) to anon, authenticated;
 -- 12.11.2026: heavy PDFs. supplier-upload hands every PDF to the edge function supplier-parse, which cuts it into
 -- page parts, reads them as a Message Batch and reports page by page. State lives on the upload row.
 alter table public.sp_uploads
-  add column if not exists job jsonb,            -- reader state: phase new/wait/done, batch ids, page ranges
+  add column if not exists job jsonb,            -- reader state: phase new/send/wait/done, batch ids, page ranges sent and still to send
   add column if not exists job_lease timestamptz, -- a worker holds the row until this time
   add column if not exists parse_info text,       -- neutral reading summary for staff; parse_note is for problems
   add column if not exists task_id bigint;        -- the CRM task opened for this upload (sp_upload_alert)
