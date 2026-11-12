@@ -245,6 +245,25 @@ body.wall{padding-top:76px}
 #station .tile.mid{border-color:var(--amber)} #station .tile.mid .v{color:var(--amber)}
 #station .tile.bad{border-color:var(--red)} #station .tile.bad .v{color:var(--red)}
 #station .tile.veil .v{color:var(--mute);letter-spacing:.2em}
+/* phone calls on the customer card */
+.callsum{background:var(--grout);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:15px;line-height:1.5}
+.callsum b{display:block;font-size:13px;color:var(--mute);font-weight:600;margin-bottom:2px}
+.callsum .agreed{margin-top:6px;color:var(--brass)}
+.call{padding:8px 0;border-bottom:1px solid var(--grout);font-size:15px}
+.call:last-child{border:0}
+.call .h{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;font-size:13px;color:var(--mute)}
+.call .h b{color:var(--ink);font-size:14px}
+.call.miss .h b{color:var(--red)}
+.call .tr{white-space:pre-wrap;font-size:14px;color:var(--mute);margin-top:6px;max-height:320px;overflow:auto}
+#noteList.hidecalls .callnote{display:none}
+/* task alerts: a task with a set time pops up an hour before, ten minutes before, and when it is late */
+#taskAlerts{position:fixed;inset-inline-start:12px;bottom:12px;z-index:80;display:grid;gap:8px;width:min(440px,calc(100vw - 24px))}
+.talert{background:var(--surface);border:2px solid var(--amber);border-radius:14px;padding:12px 14px;box-shadow:0 8px 28px rgba(0,0,0,.35);display:grid;gap:6px}
+.talert.late{border-color:var(--red)}
+.talert .w{font-size:13px;font-weight:700;color:var(--amber)} .talert.late .w{color:var(--red)}
+.talert .x{font-size:16px;line-height:1.4}
+.talert .row{display:flex;gap:8px;flex-wrap:wrap}
+@media (max-width:900px){#taskAlerts{bottom:calc(70px + env(safe-area-inset-bottom))}}
 #station .hide{border:0;border-radius:14px;background:var(--brass);color:var(--brass-ink);font:inherit;font-size:18px;font-weight:700;cursor:pointer;line-height:1.25}
 body.wall.station{padding-top:188px}
 /* privacy cover: customers in the room. Hold 1 second to come back, so a passing tap does not open it */
@@ -329,7 +348,8 @@ svg.ic.dots{stroke-width:3}
 <div class="sr" id="live" role="status" aria-live="polite"></div>
 <button id="wallBar" type="button" class="hidden"></button>
 <div id="station" class="hidden" aria-label="לוח העמדה"></div>
-<div id="cover" class="hidden" role="dialog" aria-label="מסך המתנה"><div><div class="logo">זיסו קרמיקה</div><div class="clock" id="coverClock"></div><div class="feed" id="coverFeed" aria-live="polite"></div><div class="wait" id="coverWait"></div><div class="hint" id="coverHint">להחזרת המסך: ללחוץ ולהחזיק שנייה</div></div><span class="dot hidden" id="coverDot"></span><span class="ring"></span></div>
+<div id="taskAlerts" aria-live="polite"></div>
+<div id="cover" class="hidden" role="dialog" aria-label="מסך המתנה"><div><div class="logo">זיסו קרמיקה</div><div class="clock" id="coverClock"></div><div class="feed" id="coverFeed" aria-live="polite"></div><div class="wait" id="coverWait"></div><div class="wait" id="coverTask"></div><div class="hint" id="coverHint">להחזרת המסך: ללחוץ ולהחזיק שנייה</div></div><span class="dot hidden" id="coverDot"></span><span class="ring"></span></div>
 <div id="login">
   <form id="loginForm" autocomplete="on">
     <img class="logo" src="../img/logo.jpg" alt="">
@@ -563,7 +583,7 @@ function start() {
     $('meBtn').textContent = mine.name;
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
     sb.rpc('crm_log', { p_action: 'login' });
-    route(); loadConvs(); loadSync(); pushCheck(); loadAiMap(); stationLoad(); feedLoad();
+    route(); loadConvs(); loadSync(); pushCheck(); loadAiMap(); stationLoad(); feedLoad(); taskAlertLoad();
     if (!(me.user_metadata && me.user_metadata.pw_changed_at)) openPw(true);
     if (timer) clearInterval(timer);
     // open chat every 10s, list every 20s, AI verdicts every 3 minutes; nothing runs while the tab is hidden
@@ -728,6 +748,7 @@ function coverSet(on, mode) {
   $('coverHint').textContent = coverMode === 'idle' ? 'לחזרה: לגעת במסך' : 'להחזרת המסך: ללחוץ ולהחזיק שנייה';
   try { localStorage.setItem('crmCover', on && coverMode === 'manual' ? '1' : ''); } catch (e) {}
   if (on) { coverTick(); feedShow(); wallUpdate(); } else lastAct = Date.now();
+  taskAlertRender();
 }
 /* screensaver feed: one customer-safe line per department, written by the agents into public.agent_feed */
 function feedLoad() {
@@ -1139,6 +1160,7 @@ function renderCard() {
   }
   h += '<div class="sect"><h3>פגישה באולם</h3><div id="visitBox"><span class="small muted">טוען…</span></div><div class="addrow"><input type="datetime-local" id="visitAt" aria-label="מועד הפגישה"><button class="btn small" id="addVisit">קביעה</button></div></div>';
   h += '<div class="sect"><h3>סיכום חכם</h3><div id="aiBox"></div><div class="summary" id="summaryBox">' + (crm.summary ? esc(crm.summary) + '<div class="small muted">עודכן ' + esc(fmtDate(crm.summary_at)) + '</div>' : '<span class="muted">עדיין אין סיכום.</span>') + '</div><div class="row"><button class="btn small" id="sumBtn"' + (c.chat_n ? '' : ' disabled') + '>' + (crm.summary ? 'ניתוח מחדש' : 'ניתוח השיחה') + '</button><span class="small muted">' + (c.chat_n ? c.chat_n + ' הודעות בוואטסאפ' : 'אין שיחת וואטסאפ') + '</span></div></div>';
+  h += '<div class="sect"><h3>שיחות טלפון <span class="n" id="callsN"></span></h3><div id="callsBox"><span class="small muted">טוען…</span></div></div>';
   h += '<div class="sect"><h3>הזמנות <span class="n">' + openOrders.length + ' פתוחות' + (debt ? ' · חוב ' + money(debt) : '') + '</span></h3>';
   if (!c.orders.length) h += '<div class="small muted">אין הזמנות בפריוריטי</div>';
   else h += '<table class="t"><tr><th>הזמנה</th><th>תאריך</th><th>סטטוס</th><th class="num">פתוח</th></tr>' + c.orders.slice(0, 12).map(function (o) {
@@ -1151,7 +1173,7 @@ function renderCard() {
   h += '</div>';
   h += '<div class="sect"><h3>משימות <span class="n">' + c.tasks.filter(function (t) { return !t.done_at; }).length + ' פתוחות</span></h3><div id="taskList">' + c.tasks.map(taskRow).join('') + '</div>' +
     '<div class="addrow"><input id="taskText" placeholder="משימה חדשה, למשל: לחזור עם הצעת מחיר" aria-label="משימה חדשה"></div><div class="addrow"><input type="datetime-local" id="taskDue" aria-label="מועד"><button class="btn small" id="addTask">הוספה</button></div></div>';
-  h += '<div class="sect"><h3>הערות <span class="n">' + c.notes.length + '</span></h3><div id="noteList">' + c.notes.map(function (n) { return '<div class="note"><div>' + esc(n.text) + '</div><div class="who">' + esc(nameOf(n.by)) + ' · ' + esc(fmtDate(n.at)) + ' ' + esc(fmtTime(n.at)) + (isOwner() ? ' · <a href="#" data-delnote="' + n.id + '">מחיקה</a>' : '') + '</div></div>'; }).join('') + '</div>' +
+  h += '<div class="sect"><h3>הערות <span class="n">' + c.notes.length + '</span></h3><div id="noteList">' + c.notes.map(function (n) { return '<div class="note' + (n.by === CALL_BY ? ' callnote' : '') + '"><div>' + esc(n.text) + '</div><div class="who">' + esc(nameOf(n.by)) + ' · ' + esc(fmtDate(n.at)) + ' ' + esc(fmtTime(n.at)) + (isOwner() ? ' · <a href="#" data-delnote="' + n.id + '">מחיקה</a>' : '') + '</div></div>'; }).join('') + '</div>' +
     '<div class="addrow"><textarea id="noteText" rows="2" placeholder="הערה לצוות (לא נשלחת ללקוח)" aria-label="הערה"></textarea><button class="btn small" id="addNote">הוספה</button></div></div>';
   $('cardBody').innerHTML = h;
   $('saveCust').addEventListener('click', saveCust);
@@ -1160,6 +1182,7 @@ function renderCard() {
   $('addNote').addEventListener('click', addNote);
   $('addVisit').addEventListener('click', addVisit);
   loadVisits();
+  loadCalls(card.tail9);
   loadAi(card.tail9);
   $('sumBtn').addEventListener('click', summarize);
   $('cardBody').querySelectorAll('[data-doc]').forEach(function (b) { b.addEventListener('click', function () { openDoc(b.dataset.doc, b.dataset.so); }); });
@@ -1180,6 +1203,81 @@ function renderCard() {
   $('cardBody').querySelectorAll('[data-done]').forEach(function (cb) { cb.addEventListener('change', function () { doneTask(cb.dataset.done, cb.checked); }); });
   $('cardBody').querySelectorAll('[data-delnote]').forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); delNote(a.dataset.delnote); }); });
 }
+/* ---------- phone calls on the card (public.calls, written by the calls-ingest function from the office phone) ----------
+   The newest summaries answer "what is going on with this customer"; every call is listed below, and a transcript opens on demand.
+   The same summaries also arrive as notes by CALL_BY; they are hidden from the notes list once the calls are shown here. */
+var CALL_BY = 'תמלול שיחה', CALL_DIR = { 'in': 'נכנסת', out: 'יוצאת', missed: 'לא נענתה', rejected: 'נדחתה' };
+function callDur(s) { s = Number(s) || 0; return s ? (s >= 60 ? Math.floor(s / 60) + ' דק׳' + (s % 60 ? ' ' + (s % 60) + ' שנ׳' : '') : s + ' שנ׳') : ''; }
+function callRow(k) {
+  var miss = k.direction === 'missed' || k.direction === 'rejected';
+  return '<div class="call' + (miss ? ' miss' : '') + '"><div class="h"><b>' + esc(CALL_DIR[k.direction] || k.direction || 'שיחה') + '</b><span>' + esc(fmtDate(k.occurred_at)) + ' ' + esc(fmtTime(k.occurred_at)) + '</span>' + (callDur(k.duration_sec) ? '<span>' + esc(callDur(k.duration_sec)) + '</span>' : '') + '</div>' +
+    (k.summary ? '<div>' + esc(k.summary) + '</div>' : '') +
+    (k.transcribed_at ? '<details data-call="' + esc(k.id) + '"><summary class="small">תמלול מלא</summary><div class="tr">טוען…</div></details>' : '') + '</div>';
+}
+function loadCalls(t9) {
+  sb.from('calls').select('id,occurred_at,direction,duration_sec,summary,commitments,transcribed_at').eq('phone_tail9', t9).order('occurred_at', { ascending: false }).limit(40).then(function (r) {
+    if (!card || card.tail9 !== t9 || !$('callsBox')) return;
+    if (r.error) { $('callsBox').innerHTML = '<div class="small muted">יומן השיחות לא נטען</div>'; return; }
+    var rows = r.data || [], sums = rows.filter(function (k) { return k.summary; });
+    $('callsN').textContent = rows.length ? rows.length + (rows.length === 40 ? '+' : '') + (sums.length ? ' · ' + sums.length + ' עם סיכום' : '') : '';
+    if (!rows.length) { $('callsBox').innerHTML = '<div class="small muted">אין שיחות טלפון רשומות עם הלקוח הזה.</div>'; return; }
+    var agreed = [];
+    sums.forEach(function (k) { (Array.isArray(k.commitments) ? k.commitments : []).forEach(function (m) { if (m && m.what && (!m.due || new Date(m.due).getTime() > Date.now() - 7 * 86400000)) agreed.push(m); }); });
+    var h = '';
+    if (sums.length) h += '<div class="callsum"><b>מה המצב עם הלקוח, לפי השיחות האחרונות</b>' + sums.slice(0, 3).map(function (k) { return '<div>' + esc(fmtDate(k.occurred_at)) + ': ' + esc(k.summary) + '</div>'; }).join('') +
+      agreed.slice(0, 4).map(function (m) { return '<div class="agreed">סוכם: ' + esc(m.what) + (m.due ? ' · ' + esc(fmtDate(m.due)) + ' ' + esc(fmtTime(m.due)) : '') + '</div>'; }).join('') + '</div>';
+    h += rows.slice(0, 6).map(callRow).join('');
+    if (rows.length > 6) h += '<details><summary class="small">עוד ' + (rows.length - 6) + ' שיחות</summary>' + rows.slice(6).map(callRow).join('') + '</details>';
+    $('callsBox').innerHTML = h;
+    if (sums.length && $('noteList')) $('noteList').classList.add('hidecalls');
+    $('callsBox').querySelectorAll('details[data-call]').forEach(function (d) {
+      d.addEventListener('toggle', function () {
+        if (!d.open || d.dataset.got) return; d.dataset.got = '1';
+        sb.from('calls').select('transcript').eq('id', d.dataset.call).maybeSingle().then(function (x) { d.querySelector('.tr').textContent = (x.data && x.data.transcript) || 'אין תמלול לשיחה הזו.'; });
+      });
+    });
+  });
+}
+/* ---------- task alerts ----------
+   Any open task with a set time (typed by staff, or agreed with a customer on a phone call) pops up on every open CRM screen:
+   an hour before, ten minutes before, and when it is late. "הבנתי" hides that stage on this device; "בוצע" closes the task for everyone. */
+var taskAl = [], taskShown = {};
+function taskSeen() { try { return JSON.parse(localStorage.getItem('crmTaskAl') || '{}'); } catch (e) { return {}; } }
+function taskStage(t) { var m = (new Date(t.due).getTime() - Date.now()) / 60000; return m < 0 ? 'late' : m <= 10 ? '10' : m <= 60 ? '60' : ''; }
+function taskAlertLoad() {
+  if (!me) return;
+  sb.from('crm_tasks').select('id,tail9,text,due,by').is('done_at', null).not('due', 'is', null).gte('due', new Date(Date.now() - 3 * 86400000).toISOString()).lte('due', new Date(Date.now() + 61 * 60000).toISOString()).order('due').limit(20).then(function (r) {
+    if (r.error) return;
+    taskAl = (r.data || []).filter(function (t) { return t.due && !t.done_at && new Date(t.due).getTime() > Date.now() - 3 * 86400000; });
+    taskAlertRender();
+  });
+}
+function taskAlertRender() {
+  if (!taskAl) return; /* called once from coverSet before this block has run */
+  var seen = taskSeen(), fresh = false, live = {};
+  var list = taskAl.map(function (t) { return { t: t, st: taskStage(t) }; }).filter(function (a) { return a.st && !seen[a.t.id + ':' + a.st]; }).slice(0, 3);
+  $('taskAlerts').innerHTML = list.map(function (a) {
+    var t = a.t, m = Math.round((new Date(t.due).getTime() - Date.now()) / 60000), cv = convs.filter(function (x) { return x.tail9 === t.tail9; })[0];
+    var when = a.st === 'late' ? 'עבר הזמן: ' + fmtDate(t.due) + ' ' + fmtTime(t.due) : m <= 1 ? 'עכשיו' : 'בעוד ' + m + ' דקות (' + fmtTime(t.due) + ')';
+    var k = t.id + ':' + a.st; live[k] = 1; if (!taskShown[k]) fresh = true;
+    return '<div class="talert' + (a.st === 'late' ? ' late' : '') + '"><div class="w">' + esc(when) + (cv && cv.name ? ' · ' + esc(cv.name) : '') + '</div><div class="x">' + esc(t.text) + '</div><div class="row">' +
+      (t.tail9 ? '<a class="btn small" href="#card/' + esc(t.tail9) + '">לכרטיס</a>' : '') + '<button class="btn small" data-tdone="' + t.id + '">בוצע</button><button class="btn small" data-tok="' + esc(k) + '">הבנתי</button></div></div>';
+  }).join('');
+  taskShown = live;
+  var idle = coverMode === 'idle';
+  $('coverTask').textContent = idle && list.length ? 'יש משימה שהגיע הזמן שלה. לגעת במסך' : '';
+  if (fresh && WALL && wallOpenNow() && ($('cover').classList.contains('hidden') || idle)) wallBeep();
+}
+document.addEventListener('click', function (e) {
+  var b = e.target.closest && e.target.closest('[data-tok],[data-tdone]'); if (!b) return;
+  if (b.dataset.tok) { var s = taskSeen(), cut = Date.now() - 7 * 86400000; Object.keys(s).forEach(function (k) { if (s[k] < cut) delete s[k]; }); s[b.dataset.tok] = Date.now(); try { localStorage.setItem('crmTaskAl', JSON.stringify(s)); } catch (x) {} taskAlertRender(); return; }
+  b.disabled = true;
+  sb.from('crm_tasks').update({ done_at: new Date().toISOString(), done_by: me.email }).eq('id', b.dataset.tdone).then(function (r) {
+    if (r.error) { toast('לא נשמר'); b.disabled = false; return; }
+    taskAl = taskAl.filter(function (t) { return String(t.id) !== String(b.dataset.tdone); }); taskAlertRender(); toast('סומן כבוצע ✓');
+  });
+});
+setInterval(taskAlertLoad, 60000);
 // Payment links sent from the card; Tranzila's notify marks them paid once the payment is confirmed.
 function loadPays(t9) {
   sb.from('crm_pay_requests').select('amount, status, test, created_at, paid_at').eq('tail9', t9).in('status', ['created', 'paid']).not('pr_link', 'is', null).order('created_at', { ascending: false }).limit(10).then(function (r) {
