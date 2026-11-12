@@ -52,7 +52,7 @@ th{color:var(--mute);font-weight:600}
 
   <section id="v-search">
     <input type="search" id="q" placeholder="כתבו חופשי: דגם, מידה, מק&quot;ט או שם ספק. למשל: דיאור פורצלן 60x120" autocomplete="off" aria-label="חיפוש במחירון הספקים">
-    <div class="supf"><label for="supF">ספק</label><input id="supF" list="supList" placeholder="כל הספקים (הקלידו חלק מהשם)" autocomplete="off"><button type="button" class="btn small" id="supClr" hidden>× נקה</button><datalist id="supList"></datalist></div>
+    <div class="supf"><label for="supF">ספק</label><input id="supF" list="supOpts" placeholder="כל הספקים (הקלידו חלק מהשם)" autocomplete="off"><button type="button" class="btn small" id="supClr" hidden>× נקה</button><datalist id="supOpts"></datalist></div>
     <div class="calc"><label for="mk">רווח %</label><input id="mk" type="number" min="0" value="40" inputmode="decimal"><span class="mute">מחיר ללקוח = עלות × (1+רווח) × 1.18 (אם המחיר לפני מע"מ)</span></div>
     <p class="mute" id="sInfo" role="status" aria-live="polite"></p>
     <div class="tablewrap"><table id="sTable" class="hidden"><thead><tr><th>תיאור</th><th>מק"ט ספק</th><th>מידה</th><th>ספק</th><th>עלות</th><th>ללקוח</th><th>עודכן</th></tr></thead><tbody></tbody></table></div>
@@ -151,7 +151,7 @@ function search() {
 function fillSupList() {
   sb.from('sp_prices').select('supplier_id').eq('status', 'active').limit(20000).then(function (r) {
     var n = {}; (r.data || []).forEach(function (x) { n[x.supplier_id] = (n[x.supplier_id] || 0) + 1; });
-    $('supList').innerHTML = Object.keys(n).filter(function (id) { return suppliers[id]; }).sort(function (a, b) { return suppliers[a].name.localeCompare(suppliers[b].name, 'he'); })
+    $('supOpts').innerHTML = Object.keys(n).filter(function (id) { return suppliers[id]; }).sort(function (a, b) { return suppliers[a].name.localeCompare(suppliers[b].name, 'he'); })
       .map(function (id) { return '<option value="' + esc(suppliers[id].name) + '">' + n[id] + ' פריטים</option>'; }).join('');
   });
 }
