@@ -244,6 +244,7 @@ body.wall{padding-top:76px}
 #station .tile.good{border-color:var(--green)} #station .tile.good .v{color:var(--green)}
 #station .tile.mid{border-color:var(--amber)} #station .tile.mid .v{color:var(--amber)}
 #station .tile.bad{border-color:var(--red)} #station .tile.bad .v{color:var(--red)}
+#station .tile.veil .v{color:var(--mute);letter-spacing:.2em}
 #station .hide{border:0;border-radius:14px;background:var(--brass);color:var(--brass-ink);font:inherit;font-size:18px;font-weight:700;cursor:pointer;line-height:1.25}
 body.wall.station{padding-top:188px}
 /* privacy cover: customers in the room. Hold 1 second to come back, so a passing tap does not open it */
@@ -667,7 +668,7 @@ function wallUpdate() {
 /* ---------- station tiles (wall mode): today's numbers against the targets ----------
    Receipts target: ₪16,800 per working day, minimum ₪15,000 (Sun-Thu = 1 day, Fri = half, Sat = 0).
    Priority data arrives through the bridge, so receipts and orders run to the last update, usually yesterday. */
-var stationData = {}, coverHold = null, coverMode = '', feed = [], feedI = 0, lastAct = Date.now();
+var stationData = {}, revealUntil = 0, revealT = null, coverHold = null, coverMode = '', feed = [], feedI = 0, lastAct = Date.now();
 function ilDate(d) { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' }).format(d || new Date()); }
 function workDays(from, toExcl) {
   var n = 0, d = new Date(from + 'T12:00:00Z'), end = new Date(toExcl + 'T12:00:00Z');
@@ -695,6 +696,7 @@ function stationLoad() {
     stationRender();
   });
 }
+var REVEAL_MS = 8000;
 function stationRender() {
   var d = stationData, k = d.kpi || {}, w = convs.filter(needsHuman).length;
   var tone = function (v, good, mid) { return v >= good ? 'good' : v >= mid ? 'mid' : 'bad'; };
@@ -706,9 +708,17 @@ function stationRender() {
     ['money', '', 'הצעות מחיר השבוע', String(k.quotes7 || 0), 'נסגרו ' + (k.won7 || 0) + ' · בלי תשובה ' + (k.open_quotes7 || 0)],
     ['grow', d.visToday >= 2 ? 'good' : '', 'פגישות באולם היום', String(d.visToday || 0), 'השבוע ' + (d.visWeek || 0)]
   ];
-  $('station').innerHTML = tiles.map(function (t) { return '<button type="button" class="tile ' + t[1] + '" data-g="' + t[0] + '"><span class="k">' + esc(t[2]) + '</span><span class="v">' + esc(t[3]) + '</span><span class="s">' + esc(t[4]) + '</span></button>'; }).join('') +
+  /* the money tiles stay covered (the screen faces the showroom): one touch shows them for a few seconds */
+  var shown = Date.now() < revealUntil;
+  $('station').innerHTML = tiles.map(function (t) {
+    var veil = t[0] === 'money' && !shown;
+    return '<button type="button" class="tile ' + (veil ? 'veil' : t[1]) + '" data-g="' + t[0] + '"' + (veil ? ' data-veil="1" aria-label="' + esc(t[2]) + ', מוסתר. לגעת כדי לראות"' : '') + '><span class="k">' + esc(t[2]) + '</span><span class="v">' + (veil ? '••••' : esc(t[3])) + '</span><span class="s">' + (veil ? 'לגעת כדי לראות' : esc(t[4])) + '</span></button>';
+  }).join('') +
     '<button type="button" class="hide" id="coverBtn">יש לקוחות<br><small>להסתיר מסך</small></button>';
-  $('station').querySelectorAll('.tile').forEach(function (b) { b.addEventListener('click', function () { if (b.dataset.g === 'now') { var f = document.querySelector('.filters button[data-f="waiting"]'); if (f) f.click(); go('chats'); } else { todayG = b.dataset.g; go('today'); } }); });
+  $('station').querySelectorAll('.tile').forEach(function (b) { b.addEventListener('click', function () {
+    if (b.dataset.veil) { revealUntil = Date.now() + REVEAL_MS; clearTimeout(revealT); revealT = setTimeout(stationRender, REVEAL_MS + 50); stationRender(); return; }
+    if (b.dataset.g === 'now') { var f = document.querySelector('.filters button[data-f="waiting"]'); if (f) f.click(); go('chats'); } else { todayG = b.dataset.g; go('today'); }
+  }); });
   $('coverBtn').addEventListener('click', function () { coverSet(true); });
 }
 /* manual = "יש לקוחות" (silent); idle = screensaver after 5 quiet minutes (still beeps and shows how many wait) */

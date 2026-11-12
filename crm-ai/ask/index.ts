@@ -480,6 +480,9 @@ const SYSTEM = () => `את/ה "קלוד", העוזר הפנימי של צוות 
 - נתוני שכר לא נמצאים במערכת. אם שואלים, לומר שזה לא רשום כאן.
 - אם שואלים משהו שלא קשור לעסק, לענות בקצרה ולהחזיר לעניין.`;
 
+// Repeated next to every question and every batch of data: a rule only in the system prompt was not enough.
+const HE = "לענות בעברית פשוטה בלבד, בלי מילים באנגלית.";
+
 async function usedToday() {
   const d = new Date(new Date().toLocaleString("en-US", { timeZone: IL }));
   const offset = new Date().getTime() - d.getTime();
@@ -521,10 +524,11 @@ Deno.serve(async (req: Request) => {
     .filter((m: any) => m && (m.role === "user" || m.role === "assistant") && String(m.content || "").trim())
     .map((m: any) => ({ role: m.role, content: scrub(String(m.content).slice(0, 1500)) }));
   while (history.length && history[0].role !== "user") history.shift();
-  const messages: any[] = [...history, { role: "user", content: q }];
+  const messages: any[] = [...history, { role: "user", content: q + "\n\n(" + HE + ")" }];
 
   const client = new Anthropic();
-  let tin = 0, tout = 0, steps = 0, answer = "", stop = "", fixed = false;
+  let tin = 0, tout = 0, steps = 0, answer = "", stop = "";
+  let fixed: string[] = [];
   const used: string[] = [];
   // Latin words that came from the data or the question (order numbers, SKUs, brands) are allowed in the answer.
   const LATIN = /[A-Za-z][A-Za-z'’-]+/g;
@@ -542,25 +546,30 @@ Deno.serve(async (req: Request) => {
         messages.push({ role: "assistant", content: res.content });
         const calls = res.content.filter((b: any) => b.type === "tool_use");
         const results = await Promise.all(calls.map(async (c: any) => { used.push(c.name); const content = await runTool(R, c.name, c.input || {}); for (const w of content.match(LATIN) || []) known.add(w.toLowerCase()); return { type: "tool_result", tool_use_id: c.id, content }; }));
-        messages.push({ role: "user", content: results });
+        messages.push({ role: "user", content: [...results, { type: "text", text: HE }] });
         continue;
       }
       answer = res.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("").trim();
       break;
     }
-    // Staff asked for plain Hebrew only: if the model slipped in English words of its own, rewrite once.
-    const foreign = (answer.match(LATIN) || []).filter((w) => !/^L$/.test(w) && !known.has(w.toLowerCase()));
-    if (answer && foreign.length) {
+    // Staff asked for plain Hebrew only. The model sometimes drifts into English, so check the answer and, if it
+    // used English words of its own, ask again inside the same conversation (the data with the real names is there).
+    const foreignIn = (t: string) => (t.match(LATIN) || []).filter((w) => !known.has(w.toLowerCase()));
+    for (let i = 0; i < 2 && answer; i++) {
+      const foreign = foreignIn(answer);
+      if (!foreign.length) break;
+      if (!fixed.length) fixed = foreign.slice(0, 8);
+      messages.push({ role: "assistant", content: answer }, { role: "user", content: "התשובה הזו לא בעברית פשוטה: יש בה מילים באנגלית (" + foreign.slice(0, 6).join(", ") + "). כתוב את אותה תשובה מחדש בעברית בלבד, עם שמות הלקוחות והפריטים בדיוק כפי שהם מופיעים בנתונים. בלי הקדמה ובלי הסבר על התיקון." });
       const fix: any = await client.messages.create({
-        model: MODEL, max_tokens: 3000, thinking: { type: "disabled" },
-        system: "כתוב מחדש את הטקסט שתקבל בעברית פשוטה ויומיומית בלבד. להחליף כל מילה באנגלית במילה עברית רגילה. לא לשנות מספרים, תאריכים, סכומים, שמות של אנשים, מספרי הזמנה ומק\"טים. לא להוסיף ולא להשמיט מידע. להחזיר רק את הטקסט המתוקן.",
-        messages: [{ role: "user", content: answer }],
+        model: MODEL, max_tokens: 3000, system: SYSTEM(), tools: TOOLS, messages, tool_choice: { type: "none" },
+        thinking: { type: "disabled" }, output_config: { effort: "medium" },
       } as any);
       tin += fix.usage?.input_tokens || 0; tout += fix.usage?.output_tokens || 0;
       const t = (fix.content || []).filter((b: any) => b.type === "text").map((b: any) => b.text).join("").trim();
-      if (fix.stop_reason !== "refusal" && t) { answer = t; fixed = true; }
+      if (fix.stop_reason === "refusal" || !t) break;
+      answer = t;
     }
-    await admin.from("crm_audit").insert({ who, action: "ai_ask", detail: { q: scrub(q).slice(0, 300), model: MODEL, in: tin, out: tout, steps: steps + 1, tools: used, ...(fixed ? { hebrew_fix: foreign.slice(0, 8) } : {}) } });
+    await admin.from("crm_audit").insert({ who, action: "ai_ask", detail: { q: scrub(q).slice(0, 300), model: MODEL, in: tin, out: tout, steps: steps + 1, tools: used, ...(fixed.length ? { hebrew_fix: fixed } : {}) } });
     if (stop === "refusal" || !answer) return json(req, { ok: false, error: "לא הצלחתי לענות על זה, נסו לנסח אחרת" }, 502);
     // Refs are internal: strip any that slipped into the text.
     answer = scrub(answer).replace(/\s*[\[(]?\bL\d{1,3}\b[\])]?:?/g, "").replace(/\*\*/g, "").replace(/^#+\s*/gm, "").replace(/[ \t]+\n/g, "\n").trim();
