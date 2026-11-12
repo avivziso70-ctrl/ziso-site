@@ -79,6 +79,9 @@ footer{margin-top:32px;font-size:14px;color:var(--mute)}footer a{color:var(--bra
   'use strict';
   var FN = 'https://ppnjosyraosrdephsksu.supabase.co/functions/v1/supplier-upload';
   var t = new URLSearchParams(location.search).get('t') || '';
+  if (!/^[0-9a-f]{36}$/i.test(t)) { var u = location.href; for (var i = 0; i < 3; i++) try { u = decodeURIComponent(u); } catch (e) {} var m = u.match(/t=([0-9a-f]{36})/i) || u.match(/([0-9a-f]{36})/i); t = m ? m[1] : t; }
+  t = t.toLowerCase();
+  if (t && location.search !== '?t=' + t) try { history.replaceState(null, '', location.pathname + '?t=' + t); } catch (e) {}
   var $ = function (id) { return document.getElementById(id); };
   var files = [];
   var ERR = { 'company': 'חסר שם ספק', 'too big': 'הקובץ גדול מ-20MB', 'type': 'סוג קובץ לא נתמך', 'limit': 'הגעתם למגבלת ההעלאות היומית', 'bad link': 'הקישור לא פעיל' };
