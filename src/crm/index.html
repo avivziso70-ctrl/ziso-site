@@ -840,6 +840,7 @@ function coverSet(on, mode) {
   try { localStorage.setItem('crmCover', on && coverMode === 'manual' ? '1' : ''); } catch (e) {}
   if (on) { coverTick(); feedShow(); wallUpdate(); } else lastAct = Date.now();
   taskAlertRender();
+  if (!on) takeAnnounce();
 }
 /* screensaver feed: one customer-safe line per department, written by the agents into public.agent_feed */
 function feedLoad() {
@@ -1394,6 +1395,8 @@ function taskAlertLoad() {
     taskAlertRender();
   });
 }
+/* a task text can carry a sum ("קיבל ₪550"): on the wall screen it is covered like every other amount */
+function taskTxt(v) { var h = esc(v); return WALL ? h.replace(/₪\s?[\d,]+(?:\.\d+)?/g, function (m) { return veil(m); }) : h; }
 function taskAlertRender() {
   if (!taskAl) return; /* called once from coverSet before this block has run */
   var seen = taskSeen(), fresh = false, live = {};
@@ -1403,7 +1406,7 @@ function taskAlertRender() {
     var sp = t.by === 'פורטל ספקים'; /* a supplier sent a price list (portal or WhatsApp): not a late task, a new item to approve */
     var when = sp ? 'מחירון חדש מספק · ' + fmtDate(t.due) + ' ' + fmtTime(t.due) : a.st === 'late' ? 'משימה שעבר הזמן שלה · ' + fmtDate(t.due) + ' ' + fmtTime(t.due) : m <= 1 ? 'משימה לעכשיו' : 'משימה בעוד ' + m + ' דקות · ' + fmtTime(t.due);
     var k = t.id + ':' + a.st; live[k] = 1; if (!taskShown[k]) fresh = true;
-    return '<div class="talert' + (a.st === 'late' && !sp ? ' late' : '') + '"><div class="w">' + esc(when) + (cv && cv.name ? ' · ' + esc(cv.name) : '') + '</div><div class="x">' + esc(t.text) + '</div><div class="row">' +
+    return '<div class="talert' + (a.st === 'late' && !sp ? ' late' : '') + '"><div class="w">' + esc(when) + (cv && cv.name ? ' · ' + esc(cv.name) : '') + '</div><div class="x">' + taskTxt(t.text) + '</div><div class="row">' +
       (t.tail9 ? '<a class="btn small" href="#card/' + esc(t.tail9) + '" data-nclose="1">לכרטיס הלקוח</a>' : '') + (sp ? '<a class="btn small" href="prices.html">למחירון ספקים</a>' : '') + '<button class="btn small" data-tdone="' + t.id + '" title="סוגר את המשימה לכל הצוות">בוצע</button><button class="btn small" data-tok="' + esc(k) + '" title="מסתיר את ההתראה במכשיר הזה. המשימה נשארת פתוחה">הבנתי</button></div></div>';
   }).join('');
   taskShown = live;
@@ -1454,7 +1457,7 @@ setInterval(taskAlertLoad, 60000);
 /* ---------- money taken at the showroom (phone page kupa.html) ----------
    Every payment Moshe or anyone records there waits here until the office types it into Priority and closes it with the
    receipt/invoice number. The red pill in the header and the red block at the top of "היום" stay until that happens. */
-var takes = [], takeSig = null, TAKE_M = { card_link: 'אשראי בלינק', card_terminal: 'אשראי במסוף', cash: 'מזומן', cheque: 'צ׳ק', transfer: 'העברה / ביט' };
+var takes = [], takeSig = null, takeKnown = null, takeNew = false, TAKE_M = { card_link: 'אשראי בלינק', card_terminal: 'אשראי במסוף', cash: 'מזומן', cheque: 'צ׳ק', transfer: 'העברה / ביט' };
 function takeLoad() {
   if (!me) return Promise.resolve([]);
   return sb.from('crm_takings').select('id,at,by,amount,method,payments,payer_name,tail9,reason,goods_taken,goods,pay_pr_id').is('closed_at', null).is('cancelled_at', null).order('at').limit(50).then(function (r) {
@@ -1469,13 +1472,25 @@ function takeLoad() {
       var tot = ready.reduce(function (s, t) { return s + Number(t.amount); }, 0);
       var sig = rows.map(function (t) { return t.id + (t.unpaid ? 'w' : 'r'); }).join(',');
       var changed = takeSig !== null && sig !== takeSig; takeSig = sig;
+      /* money that arrived since the last look (a link that turned paid, or cash Moshe just recorded) announces itself */
+      var fresh = takeKnown !== null && ready.some(function (t) { return !takeKnown[t.id]; });
+      takeKnown = {}; ready.forEach(function (t) { takeKnown[t.id] = 1; });
       $('takeRow').classList.toggle('hidden', !rows.length); $('takeRow').classList.toggle('late', !!ready.length);
       /* wall screen: customers can see it, so no sums */
-      $('takeTxt').textContent = [ready.length ? (ready.length === 1 ? 'תשלום אחד התקבל ומחכה לקבלה' : ready.length + ' תשלומים התקבלו ומחכים לקבלה') + (WALL ? '' : ' · ' + money(tot)) : '', wait ? (wait === 1 ? 'בקשת תשלום אחת עוד לא שולמה' : wait + ' בקשות תשלום עוד לא שולמו') : ''].filter(Boolean).join('. ');
+      $('takeTxt').textContent = [ready.length ? (ready.length === 1 ? 'תשלום מ' + String(ready[0].payer_name || 'לקוח').trim() + ' התקבל ומחכה לקבלה' : ready.length + ' תשלומים התקבלו ומחכים לקבלה') + (WALL ? '' : ' · ' + money(tot)) : '', wait ? (wait === 1 ? 'בקשת תשלום אחת עוד לא שולמה' : wait + ' בקשות תשלום עוד לא שולמו') : ''].filter(Boolean).join('. ');
       if (changed && !$('today').classList.contains('hidden')) loadToday();
+      if (fresh) { takeNew = true; if (WALL && wallOpenNow() && ($('cover').classList.contains('hidden') || coverMode === 'idle')) wallBeep(); }
+      takeAnnounce();
       return rows;
     });
   });
+}
+/* shown at once in the one alerts place: the panel opens by itself on a wide screen, a phone gets a short line.
+   Behind a cover ("יש לקוחות" or the screensaver) it waits and opens when the screen comes back. */
+function takeAnnounce() {
+  if (!takeNew || !$('cover').classList.contains('hidden')) return;
+  takeNew = false;
+  if (innerWidth >= 1024) notifOpen(true, true); else if ($('notifPanel').classList.contains('hidden')) toast('תשלום התקבל ומחכה לקבלה. לפתיחה: הפעמון למעלה', 6000);
 }
 function takeHtml() {
   if (!takes.length) return '';
@@ -1490,8 +1505,8 @@ function takeHtml() {
         '<div class="row">' + (t.unpaid ? '' : '<button class="btn small brass" data-tkclose="' + t.id + '">יצאה קבלה</button>') + '<button class="btn small" data-tkcancel="' + t.id + '">ביטול (לא התקבל כסף)</button></div></div></div>';
     }).join('') + '</div>';
 }
-// the yellow rows turn green by themselves: look again every 20 seconds while the screen is on
-setInterval(function () { if (me && (WALL || document.visibilityState === 'visible')) takeLoad(); }, 20000);
+// the yellow rows turn green by themselves, and new money pops up: look again every 10 seconds while the screen is on
+setInterval(function () { if (me && (WALL || document.visibilityState === 'visible')) takeLoad(); }, 10000);
 $('takePill').addEventListener('click', function () { notifOpen(false); todayG = 'now'; go('today'); if (!$('today').classList.contains('hidden')) loadToday(); });
 document.addEventListener('click', function (e) {
   var b = e.target.closest && e.target.closest('[data-tkclose],[data-tkcancel]'); if (!b) return;
@@ -1516,7 +1531,7 @@ function loadPays(t9) {
 }
 function taskRow(t) {
   var late = t.due && !t.done_at && new Date(t.due) < new Date();
-  return '<div class="task' + (t.done_at ? ' done' : '') + '"><input type="checkbox" data-done="' + t.id + '"' + (t.done_at ? ' checked' : '') + ' aria-label="בוצע"><div><div class="txt">' + esc(t.text) + '</div><div class="due' + (late ? ' late' : '') + '">' + (t.due ? esc(fmtDate(t.due)) + ' ' + esc(fmtTime(t.due)) : '') + (t.assigned_to ? ' · ' + esc(nameOf(t.assigned_to)) : '') + '</div></div><span class="small muted">' + esc(nameOf(t.by)) + '</span></div>';
+  return '<div class="task' + (t.done_at ? ' done' : '') + '"><input type="checkbox" data-done="' + t.id + '"' + (t.done_at ? ' checked' : '') + ' aria-label="בוצע"><div><div class="txt">' + taskTxt(t.text) + '</div><div class="due' + (late ? ' late' : '') + '">' + (t.due ? esc(fmtDate(t.due)) + ' ' + esc(fmtTime(t.due)) : '') + (t.assigned_to ? ' · ' + esc(nameOf(t.assigned_to)) : '') + '</div></div><span class="small muted">' + esc(nameOf(t.by)) + '</span></div>';
 }
 function channelLabel(ch) { return { whatsapp: 'וואטסאפ', phone: 'טלפון', site_form: 'אתר', instagram: 'אינסטגרם', facebook: 'פייסבוק', tiktok: 'טיקטוק', google_ads: 'פרסום גוגל', meta_ads: 'פרסום מטא', social: 'רשתות', gbp: 'גוגל', walk_in: 'הגיע לאולם', other: 'אחר' }[ch] || ch || ''; }
 function ensureCust() {
@@ -1994,7 +2009,7 @@ function loadToday() {
     h += '<div class="sect" data-g="now" style="order:-1"><h3>ממתינים עכשיו <span class="n">לפי זמן בשעות הפתיחה</span></h3>' + (waiting.length ? '<ul class="list" style="padding:0">' + waiting.slice(0, 20).map(function (c) { return '<li><button data-phone="' + esc(c.phone) + '"><span class="dot wait"></span><span class="name ellip">' + esc(c.name || localPhone(c.phone)) + '</span><span class="when">' + esc(ago(c.waiting_since || c.last_ts)) + '</span><span class="last ellip">' + esc(c.last_text || '') + '</span><span class="meta">' + (c.flag ? '<span class="pill flag">רגיש: לבדוק</span>' : '') + waitPill(c) + (c.claimed_by ? '<span class="pill">' + esc(nameOf(c.claimed_by)) + '</span>' : '<span class="pill">אין אחראית</span>') + '</span></button></li>'; }).join('') + '</ul>' : '<div class="small muted">כולם נענו</div>') + '</div>';
     h += '<div class="sect" data-g="money"><h3>מעקב הצעות של 16:30 <span class="n">' + fu.length + '</span></h3><div class="small muted">הצעות מה-48 שעות האחרונות שהלקוח לא ענה עליהן. שולחים פעם אחת, ידנית, רק למי שכתב לנו קודם. יש תשובה מוכנה "מעקב הצעה".</div>' +
       (fu.length ? '<ul class="list" style="padding:0">' + fu.map(function (f) { return '<li><button data-phone="' + esc(f.phone) + '"><span class="dot bot"></span><span class="name ellip">' + esc(f.name || localPhone(f.phone)) + '</span><span class="when">' + esc(ago(f.quote_at)) + '</span><span class="last ellip">' + (f.quote_text ? esc(f.quote_text) : f.manual ? 'הצעה סומנה ידנית' : '') + '</span></button></li>'; }).join('') + '</ul>' : '<div class="small muted">אין הצעות שמחכות למעקב</div>') + '</div>';
-    h += '<div class="sect" data-g="now"><h3>משימות <span class="n"><a href="kupa.html">רישום כסף שהתקבל (קופה)</a></span></h3>' + (tasks.length ? tasks.map(function (t) { return '<div class="task' + '"><input type="checkbox" data-done="' + t.id + '" aria-label="בוצע"><div><div class="txt">' + (t.tail9 ? '<a href="#card/' + esc(t.tail9) + '">' + esc(t.text) + '</a>' : esc(t.text)) + '</div><div class="due' + (t.due && new Date(t.due) < new Date() ? ' late' : '') + '">' + (t.due ? esc(fmtDate(t.due)) + ' ' + esc(fmtTime(t.due)) : '') + (t.assigned_to ? ' · ' + esc(nameOf(t.assigned_to)) : '') + '</div></div></div>'; }).join('') : '<div class="small muted">אין משימות פתוחות</div>') + '</div>';
+    h += '<div class="sect" data-g="now"><h3>משימות <span class="n"><a href="kupa.html">רישום כסף שהתקבל (קופה)</a></span></h3>' + (tasks.length ? tasks.map(function (t) { return '<div class="task' + '"><input type="checkbox" data-done="' + t.id + '" aria-label="בוצע"><div><div class="txt">' + (t.tail9 ? '<a href="#card/' + esc(t.tail9) + '">' + taskTxt(t.text) + '</a>' : taskTxt(t.text)) + '</div><div class="due' + (t.due && new Date(t.due) < new Date() ? ' late' : '') + '">' + (t.due ? esc(fmtDate(t.due)) + ' ' + esc(fmtTime(t.due)) : '') + (t.assigned_to ? ' · ' + esc(nameOf(t.assigned_to)) : '') + '</div></div></div>'; }).join('') : '<div class="small muted">אין משימות פתוחות</div>') + '</div>';
     h += '<div class="sect" data-g="grow"><h3>פניות 7 ימים אחרונים <span class="n">' + leadsToday.length + ' היום · ' + leads.length + ' בשבוע</span></h3><table class="t"><tr><th>מתי</th><th>ערוץ</th><th>שם</th><th>שלב</th></tr>' + leads.slice(0, 30).map(function (l) { return '<tr><td>' + esc(fmtDate(l.created_at)) + '</td><td>' + esc(channelLabel(l.channel)) + '</td><td>' + (l.phone_tail9 ? '<a href="#card/' + esc(l.phone_tail9) + '">' + esc(l.name || '—') + '</a>' : esc(l.name || '—')) + '</td><td>' + esc(stageLabel(l.stage)) + '</td></tr>'; }).join('') + '</table></div>';
     if (mine.length) h += '<div class="sect" data-g="now"><h3>השיחות שלי</h3><ul class="list" style="padding:0">' + mine.map(function (c) { return '<li><button data-phone="' + esc(c.phone) + '"><span class="dot ' + (c.state === 'waiting' ? 'wait' : 'ok') + '"></span><span class="name ellip">' + esc(c.name || localPhone(c.phone)) + '</span><span class="when">' + esc(ago(c.last_ts)) + '</span></button></li>'; }).join('') + '</ul></div>';
     // showroom funnel (12.11): anonymous gate-camera count vs customers with a Priority quote/order that day; numbers only
