@@ -11,6 +11,7 @@ create table public.crm_takings (
   reason text not null check (length(btrim(reason)) >= 3),
   goods_taken boolean not null,
   goods text,
+  payments integer not null default 1 check (payments between 1 and 12),
   pay_pr_id text,
   task_id bigint,
   doc_no text,
@@ -38,7 +39,8 @@ declare
 begin
   if tg_op = 'INSERT' then
     m := case new.method when 'cash' then 'במזומן' when 'cheque' then 'בצ׳ק' when 'transfer' then 'בהעברה או ביט'
-         when 'card_terminal' then 'באשראי (חויב במסוף)' else 'באשראי (לינק תשלום, לוודא שהתשלום עבר)' end;
+         when 'card_terminal' then 'באשראי (חויב במסוף)' else 'באשראי (לינק תשלום, לוודא שהתשלום עבר)' end
+         || case when new.payments > 1 then ' ב-' || new.payments || ' תשלומים' else '' end;
     -- "by" is a reserved word: it must stay quoted inside plpgsql
     who := coalesce((select s.name from crm_staff s where lower(s.email) = lower(new."by") limit 1), new."by");
     insert into crm_tasks (tail9, text, due, "by")

@@ -1365,7 +1365,7 @@ setInterval(taskAlertLoad, 60000);
 var takes = [], TAKE_M = { card_link: 'אשראי בלינק', card_terminal: 'אשראי במסוף', cash: 'מזומן', cheque: 'צ׳ק', transfer: 'העברה / ביט' };
 function takeLoad() {
   if (!me) return Promise.resolve([]);
-  return sb.from('crm_takings').select('id,at,by,amount,method,payer_name,tail9,reason,goods_taken,goods,pay_pr_id').is('closed_at', null).is('cancelled_at', null).order('at').limit(50).then(function (r) {
+  return sb.from('crm_takings').select('id,at,by,amount,method,payments,payer_name,tail9,reason,goods_taken,goods,pay_pr_id').is('closed_at', null).is('cancelled_at', null).order('at').limit(50).then(function (r) {
     if (r.error) return takes;
     var rows = r.data || [], prs = rows.filter(function (t) { return t.pay_pr_id; }).map(function (t) { return t.pay_pr_id; });
     return (prs.length ? sb.from('crm_pay_requests').select('pr_id,status').in('pr_id', prs) : Promise.resolve({ data: [] })).then(function (p) {
@@ -1385,7 +1385,7 @@ function takeHtml() {
   var tot = takes.reduce(function (s, t) { return s + Number(t.amount); }, 0);
   return '<div class="sect take" data-g="now"><h3>כסף שהתקבל ומחכה לקבלה <span class="n">' + takes.length + ' · ' + amt(tot) + '</span></h3><div class="small muted">על כל תשלום חייבים להוציא קבלה או חשבונית. מקלידים בפריוריטי, ואז לוחצים "יצאה קבלה" וכותבים את מספר המסמך. עד אז זה נשאר כאן.</div>' +
     takes.map(function (t) {
-      return '<div class="airow"><span class="pill hot">' + veil('₪' + Number(t.amount).toLocaleString('he-IL', { maximumFractionDigits: 2 })) + '</span><div><div class="txt">' + (t.tail9 ? '<a href="#card/' + esc(t.tail9) + '">' + esc(t.payer_name) + '</a>' : esc(t.payer_name)) + ' · ' + esc(TAKE_M[t.method] || t.method) + ' · רשם ' + esc(nameOf(t.by)) + ' ' + esc(fmtDate(t.at)) + ' ' + esc(fmtTime(t.at)) + '</div>' +
+      return '<div class="airow"><span class="pill hot">' + veil('₪' + Number(t.amount).toLocaleString('he-IL', { maximumFractionDigits: 2 })) + '</span><div><div class="txt">' + (t.tail9 ? '<a href="#card/' + esc(t.tail9) + '">' + esc(t.payer_name) + '</a>' : esc(t.payer_name)) + ' · ' + esc(TAKE_M[t.method] || t.method) + (t.payments > 1 ? ', ' + t.payments + ' תשלומים' : '') + ' · רשם ' + esc(nameOf(t.by)) + ' ' + esc(fmtDate(t.at)) + ' ' + esc(fmtTime(t.at)) + '</div>' +
         '<div class="txt">סיבה: ' + esc(t.reason) + '</div><div class="txt">סחורה שנלקחה: ' + (t.goods_taken ? esc(t.goods) : 'לא נלקחה') + '</div>' +
         (t.method === 'card_link' ? '<div class="sub"' + (t.unpaid ? ' style="color:var(--red)"' : '') + '>' + (t.unpaid ? 'הלינק עוד לא שולם. לוודא עם הלקוח לפני שמוציאים קבלה.' : 'שולם בלינק ✓') + '</div>' : '') +
         '<div class="row"><button class="btn small brass" data-tkclose="' + t.id + '">יצאה קבלה</button><button class="btn small" data-tkcancel="' + t.id + '">ביטול (לא התקבל כסף)</button></div></div></div>';
