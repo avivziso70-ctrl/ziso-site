@@ -467,7 +467,7 @@ const SYSTEM = () => `את/ה "קלוד", העוזר הפנימי של צוות 
 - "מה קבענו / מה סוכם": לחפש בוואטסאפ, בהערות, במשימות, בפגישות ובשיחות הטלפון, ולצטט בקצרה מה נאמר, מי אמר ומתי.
 - "מתי הובלה / אספקה": תאריכי האספקה בשורות ההזמנה הפתוחה הם התאריך שרשום בפריוריטי. אם סוכם משהו אחר בוואטסאפ, לציין את שניהם. אם אין תאריך, לומר שלא נקבע.
 - מלאי מוצג רק לפריטים שנמצאים בהזמנה פתוחה. לא להסיק מלאי ממשהו אחר.
-- תמיד לענות בעברית בלבד, גם כשהנתונים או שמות הכלים באנגלית.
+- תמיד לענות בעברית פשוטה ויומיומית בלבד, כמו שמדברים בעסק: משפטים קצרים ומילים רגילות. אסור לכתוב מילים באנגלית, גם לא מונחים מקצועיים או קיצורים (לא status, לא follow up, לא OK). באותיות לועזיות מותר רק מה שמופיע כך בנתונים: מספר הזמנה או מסמך, מק"ט ושם מותג.
 - יום בשבוע של תאריך: רק לפי לוח הימים שלמעלה, לא לחשב לבד. אם התאריך לא בלוח, לכתוב תאריך בלי יום בשבוע.
 - לא להזכיר שמות של כלים (כמו cash_position או customer_file). כמקור לכתוב במילים: וואטסאפ, פריוריטי, תמונת התזרים, דף הבנק.
 - לא לנחש שמות של אנשי צוות. להזכיר שם רק אם הוא מופיע בנתונים.
@@ -524,8 +524,11 @@ Deno.serve(async (req: Request) => {
   const messages: any[] = [...history, { role: "user", content: q }];
 
   const client = new Anthropic();
-  let tin = 0, tout = 0, steps = 0, answer = "", stop = "";
+  let tin = 0, tout = 0, steps = 0, answer = "", stop = "", fixed = false;
   const used: string[] = [];
+  // Latin words that came from the data or the question (order numbers, SKUs, brands) are allowed in the answer.
+  const LATIN = /[A-Za-z][A-Za-z'’-]+/g;
+  const known = new Set<string>((q.match(LATIN) || []).map((w) => w.toLowerCase()));
   try {
     for (; steps < MAX_STEPS; steps++) {
       const last = steps === MAX_STEPS - 1;
@@ -538,14 +541,26 @@ Deno.serve(async (req: Request) => {
       if (res.stop_reason === "tool_use") {
         messages.push({ role: "assistant", content: res.content });
         const calls = res.content.filter((b: any) => b.type === "tool_use");
-        const results = await Promise.all(calls.map(async (c: any) => { used.push(c.name); return { type: "tool_result", tool_use_id: c.id, content: await runTool(R, c.name, c.input || {}) }; }));
+        const results = await Promise.all(calls.map(async (c: any) => { used.push(c.name); const content = await runTool(R, c.name, c.input || {}); for (const w of content.match(LATIN) || []) known.add(w.toLowerCase()); return { type: "tool_result", tool_use_id: c.id, content }; }));
         messages.push({ role: "user", content: results });
         continue;
       }
       answer = res.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("").trim();
       break;
     }
-    await admin.from("crm_audit").insert({ who, action: "ai_ask", detail: { q: scrub(q).slice(0, 300), model: MODEL, in: tin, out: tout, steps: steps + 1, tools: used } });
+    // Staff asked for plain Hebrew only: if the model slipped in English words of its own, rewrite once.
+    const foreign = (answer.match(LATIN) || []).filter((w) => !/^L$/.test(w) && !known.has(w.toLowerCase()));
+    if (answer && foreign.length) {
+      const fix: any = await client.messages.create({
+        model: MODEL, max_tokens: 3000, thinking: { type: "disabled" },
+        system: "כתוב מחדש את הטקסט שתקבל בעברית פשוטה ויומיומית בלבד. להחליף כל מילה באנגלית במילה עברית רגילה. לא לשנות מספרים, תאריכים, סכומים, שמות של אנשים, מספרי הזמנה ומק\"טים. לא להוסיף ולא להשמיט מידע. להחזיר רק את הטקסט המתוקן.",
+        messages: [{ role: "user", content: answer }],
+      } as any);
+      tin += fix.usage?.input_tokens || 0; tout += fix.usage?.output_tokens || 0;
+      const t = (fix.content || []).filter((b: any) => b.type === "text").map((b: any) => b.text).join("").trim();
+      if (fix.stop_reason !== "refusal" && t) { answer = t; fixed = true; }
+    }
+    await admin.from("crm_audit").insert({ who, action: "ai_ask", detail: { q: scrub(q).slice(0, 300), model: MODEL, in: tin, out: tout, steps: steps + 1, tools: used, ...(fixed ? { hebrew_fix: foreign.slice(0, 8) } : {}) } });
     if (stop === "refusal" || !answer) return json(req, { ok: false, error: "לא הצלחתי לענות על זה, נסו לנסח אחרת" }, 502);
     // Refs are internal: strip any that slipped into the text.
     answer = scrub(answer).replace(/\s*[\[(]?\bL\d{1,3}\b[\])]?:?/g, "").replace(/\*\*/g, "").replace(/^#+\s*/gm, "").replace(/[ \t]+\n/g, "\n").trim();
