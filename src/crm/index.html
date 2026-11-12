@@ -1865,7 +1865,8 @@ function loadToday() {
     }),
     sb.from('priority_aging').select('cust_no,name,tail9,total,d90p').gt('total', 500).order('total', { ascending: false }).limit(30),
     sb.rpc('crm_outreach_list', { p_campaign: OUTREACH }),
-    takeLoad()
+    takeLoad(),
+    isOwner() ? sb.rpc('showroom_conversion', { p_days: 14 }) : Promise.resolve({})
   ]).then(function (rs) {
     var tasks = rs[0].data || [], leads = rs[1].data || [], k = rs[2].data || {}, fu = rs[3].data || [], visits = (rs[4].data || []).filter(function (v) { return new Date(v.at).getTime() >= Date.now() - 2 * 3600000 || v.attended == null; }), ss = rs[5].data;
     var today = new Date().toDateString();
@@ -1925,6 +1926,17 @@ function loadToday() {
     h += '<div class="sect" data-g="now"><h3>משימות <span class="n"><a href="kupa.html">רישום כסף שהתקבל (קופה)</a></span></h3>' + (tasks.length ? tasks.map(function (t) { return '<div class="task' + '"><input type="checkbox" data-done="' + t.id + '" aria-label="בוצע"><div><div class="txt">' + (t.tail9 ? '<a href="#card/' + esc(t.tail9) + '">' + esc(t.text) + '</a>' : esc(t.text)) + '</div><div class="due' + (t.due && new Date(t.due) < new Date() ? ' late' : '') + '">' + (t.due ? esc(fmtDate(t.due)) + ' ' + esc(fmtTime(t.due)) : '') + (t.assigned_to ? ' · ' + esc(nameOf(t.assigned_to)) : '') + '</div></div></div>'; }).join('') : '<div class="small muted">אין משימות פתוחות</div>') + '</div>';
     h += '<div class="sect" data-g="grow"><h3>פניות 7 ימים אחרונים <span class="n">' + leadsToday.length + ' היום · ' + leads.length + ' בשבוע</span></h3><table class="t"><tr><th>מתי</th><th>ערוץ</th><th>שם</th><th>שלב</th></tr>' + leads.slice(0, 30).map(function (l) { return '<tr><td>' + esc(fmtDate(l.created_at)) + '</td><td>' + esc(channelLabel(l.channel)) + '</td><td>' + (l.phone_tail9 ? '<a href="#card/' + esc(l.phone_tail9) + '">' + esc(l.name || '—') + '</a>' : esc(l.name || '—')) + '</td><td>' + esc(stageLabel(l.stage)) + '</td></tr>'; }).join('') + '</table></div>';
     if (mine.length) h += '<div class="sect" data-g="now"><h3>השיחות שלי</h3><ul class="list" style="padding:0">' + mine.map(function (c) { return '<li><button data-phone="' + esc(c.phone) + '"><span class="dot ' + (c.state === 'waiting' ? 'wait' : 'ok') + '"></span><span class="name ellip">' + esc(c.name || localPhone(c.phone)) + '</span><span class="when">' + esc(ago(c.last_ts)) + '</span></button></li>'; }).join('') + '</ul></div>';
+    // showroom funnel (12.11): anonymous gate-camera count vs customers with a Priority quote/order that day; numbers only
+    var sc = (rs[13] && rs[13].data || []).filter(function (r) { return r.visitors != null; });
+    if (isOwner() && rs[13] && rs[13].data) {
+      var scV = sc.reduce(function (s, r) { return s + r.visitors; }, 0), scO = sc.reduce(function (s, r) { return s + r.order_customers; }, 0);
+      h += '<div class="sect" data-g="admin"><h3>אולם: נכנסו מול קנו <span class="n">רק אתה רואה את זה' + (sc.length && sc[0].trial ? ' · בהרצה עד 18.11' : '') + '</span></h3>' +
+        (sc.length ? '<div class="small">' + sc.length + ' ימים: ' + scV + ' נכנסו · ' + scO + ' לקוחות עם הזמנה' + (scV ? ' · <b>' + Math.round(100 * scO / scV) + '% סגירה</b>' : '') + '</div>' +
+          '<table class="t"><tr><th>יום</th><th class="num">נכנסו</th><th class="num">קיבלו הצעה</th><th class="num">הזמינו</th><th class="num">סגירה</th></tr>' +
+          sc.map(function (r) { return '<tr><td>' + esc(fmtDate(r.day)) + '</td><td class="num">' + r.visitors + '</td><td class="num">' + r.quote_customers + '</td><td class="num">' + r.order_customers + '</td><td class="num">' + (r.conversion_pct == null ? '—' : r.conversion_pct + '%') + '</td></tr>'; }).join('') + '</table>'
+          : '<div class="small muted">עוד אין ימים עם ספירה מהמצלמה</div>') +
+        '<div class="fine">"נכנסו": ספירה אנונימית בשער (מצלמה 11), בלי פנים, בלי שמות ובלי תמונות שנשמרות. כוללת גם שליחים וספקים. "הזמינו": לקוחות שונים עם הזמנה בפריוריטי באותו יום, כולל הזמנות בטלפון ובוואטסאפ, ולכן אחוז הסגירה כאן הוא תקרה. בשבוע הראשון המונה עוד מכויל.</div></div>';
+    }
     if (ss && ss.rows) {
       h += '<div class="sect" data-g="admin"><h3>סטטיסטיקות צוות <span class="n">רק אתה רואה את זה</span></h3><div class="row">' + [7, 30, 90].map(function (d) { return '<button class="btn small' + (d === statDays ? ' brass' : '') + '" data-days="' + d + '">' + d + ' ימים</button>'; }).join('') + '</div>' +
         '<div class="small">' + ss.inquiries + ' פניות של לקוחות · ' + ss.unanswered + ' עדיין בלי תשובה מאדם · הבוט ענה ' + ss.bot_replies + ' פעמים</div>' +
