@@ -348,7 +348,7 @@ svg.ic.dots{stroke-width:3}
     <div class="asklog" id="askLog" aria-live="polite"></div>
     <div class="askchips" id="askChips"></div>
     <form id="askForm" autocomplete="off"><textarea id="askQ" rows="1" placeholder="למשל: מה קבענו עם דני כהן?" aria-label="שאלה לקלוד"></textarea><button class="btn brass" type="submit" id="askSend">שליחה</button></form>
-    <p class="small muted">קלוד עונה רק ממה שרשום במערכת: וואטסאפ, הזמנות, הצעות מחיר, פגישות ושיחות טלפון. הוא לא שולח שום דבר ללקוחות. כדאי לוודא פרט חשוב לפני שמבטיחים ללקוח. השאלות נשמרות ביומן המערכת.</p>
+    <p class="small muted">קלוד עונה רק ממה שרשום במערכת: וואטסאפ, הזמנות, הצעות מחיר, פגישות, שיחות טלפון, וגם בנק, תזרים, שיקים וספקים. הוא לא שולח שום דבר ללקוחות. כדאי לוודא פרט חשוב לפני שמבטיחים ללקוח. השאלות נשמרות ביומן המערכת.</p>
   </div>
 </div>
 <div id="docSheet" class="sheet hidden" role="dialog" aria-modal="true" aria-labelledby="docTitle">
@@ -1289,7 +1289,7 @@ function aiFn(body, fn) {
    visits, calls) and answers staff; it writes nothing and sends nothing to a customer. The conversation lives in
    memory only and is gone on reload or "שיחה חדשה". ---------- */
 var askHist = [], askBusy = false;
-var ASK_EX = ['מה קבענו עם ', 'מתי האספקה ל', 'מה פתוח אצל ', 'מי מחכה לסחורה השבוע?', 'אילו פגישות יש היום?'];
+var ASK_EX = ['מה קבענו עם ', 'מתי האספקה ל', 'מה פתוח אצל ', 'מי מחכה לסחורה השבוע?', 'אילו פגישות יש היום?', 'אילו שיקים יורדים השבוע?', 'מה המצב בבנק?'];
 function askOpen() { lastFocus = document.activeElement; $('askSheet').classList.remove('hidden'); askRender(); setTimeout(function () { $('askQ').focus(); }, 50); }
 function askClose() { $('askSheet').classList.add('hidden'); if (lastFocus && lastFocus.focus) lastFocus.focus(); }
 function askRender() {
