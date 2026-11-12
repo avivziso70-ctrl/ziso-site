@@ -82,7 +82,7 @@ a.go{display:flex;align-items:center;justify-content:center;text-decoration:none
     <label for="lEmail">אימייל</label><input id="lEmail" type="email" name="email" autocomplete="username" required inputmode="email" dir="ltr">
     <label for="lPw" style="margin-top:12px">סיסמה</label><input id="lPw" type="password" name="password" autocomplete="current-password" required dir="ltr">
     <div class="err" id="loginErr" role="alert"></div>
-    <button class="go" type="submit" style="margin-top:16px">כניסה</button>
+    <button class="go" id="loginBtn" type="submit" style="margin-top:16px">כניסה</button>
   </form>
 </main>
 
@@ -182,7 +182,9 @@ a.go{display:flex;align-items:center;justify-content:center;text-decoration:none
 'use strict';
 var SB_URL = 'https://ppnjosyraosrdephsksu.supabase.co';
 var SB_KEY = 'sb_publishable_yjpTHQkvH5-l4v-HCcEj4w_ofAYpQmV';
-var sb = supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+// No cross-tab auth lock: on a phone the installed CRM app can hold that lock while frozen in the background,
+// and then every call here waits forever (sign-in accepted by the server, page never moves on).
+var sb = supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true, lock: function (name, timeout, fn) { return fn(); } } });
 var $ = function (id) { return document.getElementById(id); };
 var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
 var money = function (n) { return '₪' + Number(n).toLocaleString('he-IL', { maximumFractionDigits: 2 }); };
@@ -192,22 +194,34 @@ var say = function (t) { $('live').textContent = ''; setTimeout(function () { $(
 function show(id) { ['login', 'form', 'after'].forEach(function (x) { $(x).classList.toggle('hidden', x !== id); }); window.scrollTo(0, 0); }
 
 /* ---------- sign-in: the same staff account as the CRM, remembered on the phone ---------- */
+var loginT = null;
+function loginBusy(on) {
+  var b = $('loginBtn'); b.disabled = on; b.textContent = on ? 'מתחבר…' : 'כניסה';
+  clearTimeout(loginT);
+  if (on) loginT = setTimeout(function () { loginBusy(false); $('loginErr').textContent = 'אין תשובה מהשרת. לבדוק שיש אינטרנט ולנסות שוב.'; }, 15000);
+}
 $('loginForm').addEventListener('submit', function (e) {
-  e.preventDefault(); $('loginErr').textContent = '';
+  e.preventDefault(); $('loginErr').textContent = ''; loginBusy(true);
   sb.auth.signInWithPassword({ email: e.target.email.value.trim(), password: e.target.password.value }).then(function (r) {
-    if (r.error) $('loginErr').textContent = 'הכניסה נכשלה. לבדוק אימייל וסיסמה.';
-  });
+    if (r.error) { loginBusy(false); $('loginErr').textContent = /invalid/i.test(r.error.message || '') ? 'הכניסה נכשלה. לבדוק אימייל וסיסמה.' : 'הכניסה נכשלה: ' + (r.error.message || 'אין חיבור'); return; }
+    if (r.data && r.data.session) signedIn(r.data.session);
+  }).catch(function (x) { loginBusy(false); $('loginErr').textContent = 'הכניסה נכשלה: ' + (x && x.message || 'אין חיבור'); });
 });
+function signedIn(session) {
+  if (!me || me.email !== session.user.email) { me = session.user; setTimeout(start, 0); } // never call supabase from inside its own auth callback
+}
 sb.auth.onAuthStateChange(function (ev, session) {
-  if (session && session.user) { if (!me || me.email !== session.user.email) { me = session.user; start(); } }
-  else { me = null; $('who').textContent = ''; show('login'); }
+  if (session && session.user) signedIn(session);
+  else { me = null; $('who').textContent = ''; loginBusy(false); show('login'); }
 });
 $('out').addEventListener('click', function () { if (confirm('לצאת מהחשבון?')) sb.auth.signOut(); });
 function start() {
   sb.from('crm_staff').select('email,name').then(function (r) {
+    if (!me) return;
+    if (r.error) { loginBusy(false); me = null; show('login'); $('loginErr').textContent = 'לא הצלחתי לטעון את החשבון (' + (r.error.message || 'אין חיבור') + '). לנסות שוב.'; return; }
     var mine = (r.data || []).filter(function (x) { return x.email.toLowerCase() === me.email.toLowerCase(); })[0];
-    if (!mine) { $('loginErr').textContent = 'החשבון הזה לא מורשה. לפנות לאביב.'; sb.auth.signOut(); return; }
-    $('who').textContent = mine.name; show('form'); loadMine();
+    if (!mine) { sb.auth.signOut().then(function () { $('loginErr').textContent = 'החשבון הזה לא מורשה. לפנות לאביב.'; }); return; }
+    loginBusy(false); $('who').textContent = mine.name; show('form'); loadMine();
   });
 }
 
