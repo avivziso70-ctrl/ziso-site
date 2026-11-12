@@ -5,7 +5,11 @@
 // One model call cannot return a whole catalog (the answer is cut at the output limit and rows get dropped), so:
 //   1. a PDF of up to DIRECT_MAX pages is read in one direct call;
 //   2. a longer PDF is cut into files of PAGES pages (pdf-lib), each file is one request in a Message Batch
-//      (half price, no wall-clock limit), and the worker polls the batch on the next ticks;
+//      (half price, no wall-clock limit), and the worker polls the batch on the next ticks. A heavy file is sent
+//      over several calls of this function (phase 'send', about STEP_BYTES a call, progress saved after every
+//      batch), because one call may use only about two seconds of CPU. Memory is the other limit (256MB a worker):
+//      the file is downloaded into one buffer, pdf-lib parses it without copying it, and only one file is in a
+//      heavy step (new/send) at any moment;
 //   3. a part that fails or is cut off (stop_reason other than end_turn) is sent again in halves, up to ROUNDS rounds;
 //   4. pages that still could not be read are named in parse_note, pages with no items in parse_info, so staff can
 //      check them against the file. Nothing is active in the price list before staff approve (rpc sp_decide).
@@ -13,6 +17,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@1.8.0";
 import { PDFDocument } from "npm:pdf-lib@1.17.1";
+import { Buffer } from "node:buffer";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const db = createClient(SB_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -24,18 +29,23 @@ const MAX_PAGES = 600;
 const MAX_TOKENS = 64000;
 const ROUNDS = 3;
 const GROUP_BYTES = 5 * 1024 * 1024; // PDF bytes per batch, keeps the request body and the worker's memory small
+const PART_MAX = 18 * 1024 * 1024; // one request may carry 32MB; base64 adds a third
+const STEP_BYTES = 16 * 1024 * 1024; // PDF bytes sent in one call of this function; the rest waits for the next call
 const LEASE_MS = 6 * 60_000;
+const SEND_LEASE_MS = 2 * 60_000; // a call that was cut off while sending is picked up again quickly
 // Synthetic test files only (rows inserted by hand with this prefix); real uploads always live in the private bucket.
 const TEST_PREFIX = "https://raw.githubusercontent.com/avivziso70-ctrl/ziso-site/";
 
 const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { "content-type": "application/json" } });
-const b64 = (u: Uint8Array) => { let s = ""; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
+// Native encoder. Building the string in a JS loop cost seconds of CPU on a heavy catalog and got the worker killed
+// ("CPU Time exceeded", the 51MB catalog of 12.11).
+const b64 = (u: Uint8Array) => Buffer.from(u.buffer, u.byteOffset, u.byteLength).toString("base64");
 const num = (v: unknown) => { if (v == null || v === "") return null; if (typeof v === "number") return isFinite(v) ? v : null; const n = Number(String(v).replace(/[^\d.\-]/g, "")); return isFinite(n) && String(v).match(/\d/) ? n : null; };
 const str = (v: unknown, n = 300) => (v == null || String(v).trim() === "" ? null : String(v).trim().slice(0, n));
 
 type Range = [number, number];
 type Row = Record<string, unknown>;
-type Job = { phase: string; tries?: number; run?: number; pages?: number; round?: number; batches?: string[]; ranges?: Range[]; notes?: string; pp?: Record<string, number>; missing?: Range[] };
+type Job = { phase: string; at?: number; tries?: number; run?: number; pages?: number; round?: number; batches?: string[]; ranges?: Range[]; todo?: Range[]; step?: number; notes?: string; pp?: Record<string, number>; missing?: Range[] };
 // deno-lint-ignore no-explicit-any
 type Upload = any;
 
@@ -85,11 +95,39 @@ function rowsOf(m: any, a: number, b: number): Row[] | null {
   }).filter((r) => r.description);
 }
 
+// The whole body in one buffer. arrayBuffer() holds the chunks and the joined copy together, twice the file.
+async function body(r: Response): Promise<Uint8Array> {
+  const len = Number(r.headers.get("content-length")) || 0;
+  if (!len || !r.body) return new Uint8Array(await r.arrayBuffer());
+  let out = new Uint8Array(len), off = 0;
+  for await (const chunk of r.body) {
+    if (off + chunk.length > out.length) { const grown = new Uint8Array(Math.max(out.length * 2, off + chunk.length)); grown.set(out.subarray(0, off)); out = grown; }
+    out.set(chunk, off); off += chunk.length;
+  }
+  return off === out.length ? out : out.subarray(0, off);
+}
+// pdf-lib copies every stream out of the file while it parses (bytes.slice), which doubles the memory. A view of the
+// same buffer is enough, the parts it writes are byte for byte the same.
+function openBytes(bytes: Uint8Array) {
+  // deno-lint-ignore no-explicit-any
+  (bytes as any).slice = (a?: number, b?: number) => bytes.subarray(a, b);
+  return PDFDocument.load(bytes, { updateMetadata: false, ignoreEncryption: true });
+}
 async function load(path: string): Promise<Uint8Array> {
+  if (path.startsWith("wa:")) {
+    // a PDF over 20MB that came through WhatsApp is not kept in the bucket; WhatsApp keeps the media for 30 days
+    const { data: cfg } = await db.from("wa_config").select("token").limit(1).maybeSingle();
+    const auth = { authorization: `Bearer ${cfg?.token || ""}` };
+    const info = await fetch(`https://graph.facebook.com/v23.0/${path.slice(3)}`, { headers: auth }).then((r) => r.json()).catch(() => null);
+    if (!info?.url) throw new Error("הקובץ כבר לא זמין בוואטסאפ, בקשו מהספק לשלוח אותו שוב");
+    const r = await fetch(info.url, { headers: auth });
+    if (!r.ok) throw new Error("הורדת הקובץ מוואטסאפ נכשלה " + r.status);
+    return await body(r);
+  }
   if (path.startsWith(TEST_PREFIX)) {
     const r = await fetch(path);
     if (!r.ok) throw new Error("test file " + r.status);
-    return new Uint8Array(await r.arrayBuffer());
+    return await body(r);
   }
   const { data, error } = await db.storage.from("supplier-files").download(path);
   if (error || !data) throw new Error("download " + (error?.message || ""));
@@ -125,30 +163,63 @@ async function finish(u: Upload, job: Job) {
   await save(u, { status: total ? "parsed" : "failed", rows_count: total, parsed_at: new Date().toISOString(), parse_note: note, parse_info: info, job: { phase: "done", pages, round: job.round || 0 }, job_lease: null });
 }
 
-async function submit(src: PDFDocument, ranges: Range[], total: number, notes: string): Promise<string[]> {
-  const ids: string[] = [];
+const openPdf = async (path: string) => openBytes(await load(path));
+const lease = (ms: number) => new Date(Date.now() + ms).toISOString();
+const kick = () => fetch(`${SB_URL}/functions/v1/supplier-parse`, { method: "POST" }).then((r) => r.body?.cancel()).catch(() => {});
+
+// phase 'send': sends the page ranges in job.todo as batches, up to STEP_BYTES in one call. Progress is saved after
+// every batch, so a call that is cut off repeats one batch at most. A part that is too heavy for one request is cut
+// in halves; a single page that is still too heavy is skipped and reported to staff as a page that was not read.
+async function send(u: Upload, job: Job, src?: PDFDocument) {
+  const doc0 = src || await openPdf(u.file_path);
+  const queue: Range[] = [...(job.todo || [])], ids = [...(job.batches || [])], sent: Range[] = [...(job.ranges || [])], skipped: Range[] = [...(job.missing || [])];
+  const total = job.pages || 0, stepMax = job.step || STEP_BYTES;
   // deno-lint-ignore no-explicit-any
-  let group: any[] = [], size = 0;
-  const flush = async () => { if (!group.length) return; const b = await ai.messages.batches.create({ requests: group }); ids.push(b.id); group = []; size = 0; };
-  for (const [a, b] of ranges) {
-    const bytes = await part(src, a, b);
-    if (group.length && size + bytes.length > GROUP_BYTES) await flush();
-    group.push({ custom_id: `p${a}-${b}`, params: params(b64(bytes), a, b, total, notes) });
-    size += bytes.length;
+  let group: any[] = [], held: Range[] = [], size = 0, spent = 0;
+  const state = (): Job => ({ ...job, phase: "send", batches: ids, ranges: sent, missing: skipped, todo: [...queue], run: 0, tries: 0 });
+  const flush = async () => {
+    if (!group.length) return;
+    const b = await ai.messages.batches.create({ requests: group });
+    ids.push(b.id); sent.push(...held); group = []; held = []; size = 0;
+    await save(u, { job: state(), job_lease: lease(SEND_LEASE_MS), parse_info: `מכין את הקובץ לקריאה: ${sent.length} חלקים נשלחו, ${queue.length} בתור.` });
+  };
+  while (queue.length && spent < stepMax) {
+    const [a, b] = queue[0];
+    const bytes = await part(doc0, a, b);
+    if (bytes.length > PART_MAX) {
+      queue.shift();
+      if (b > a) { const mid = Math.floor((a + b) / 2); queue.unshift([a, mid], [mid + 1, b]); } else skipped.push([a, b]);
+      continue;
+    }
+    if (group.length && size + bytes.length > GROUP_BYTES) await flush(); // the part in hand is still first in the queue here
+    queue.shift();
+    group.push({ custom_id: `p${a}-${b}`, params: params(b64(bytes), a, b, total, job.notes || "") });
+    held.push([a, b]); size += bytes.length; spent += bytes.length;
   }
   await flush();
-  return ids;
+  if (queue.length) { // more to send: free the row and call this function again, so the rest gets its own CPU allowance
+    await save(u, { job: state(), job_lease: null });
+    await kick();
+    return;
+  }
+  const round = job.round || 1;
+  await save(u, {
+    job: { ...state(), phase: "wait", todo: [] }, job_lease: lease(40_000),
+    parse_info: round > 1 ? `קורא שוב ${sent.length} חלקים שלא נקראו בסבב הקודם.` : `קורא ${total} עמודים ב-${sent.length} חלקים. זה לוקח כמה דקות.`,
+  });
 }
 
 // phase 'new': count the pages, read a short PDF directly, cut a long one into parts and send them as a batch.
 async function start(u: Upload, job: Job) {
   const bytes = await load(u.file_path);
+  const direct = bytes.length <= PART_MAX; // a heavy file never goes out as one request
   await db.from("sp_prices").delete().eq("upload_id", u.id).eq("status", "pending");
   let src: PDFDocument | null = null, n = 0;
-  try { src = await PDFDocument.load(bytes, { updateMetadata: false, ignoreEncryption: true }); n = src.getPageCount(); } catch { src = null; }
+  try { src = await openBytes(bytes); n = src.getPageCount(); } catch { src = null; }
   if (src && n > MAX_PAGES) { await save(u, { status: "failed", parse_note: `הקובץ ארוך מדי (${n} עמודים, עד ${MAX_PAGES}). בקשו מהספק לפצל אותו או לשלוח אקסל.`, job: { phase: "done" }, job_lease: null }); return; }
   let per = PAGES;
-  if (!src || n <= DIRECT_MAX) {
+  if (!src && !direct) { await save(u, { status: "failed", parse_note: "לא הצלחנו לקרוא את ה-PDF הזה (קובץ נעול או פגום). בקשו מהספק קובץ אחר או אקסל.", job: { phase: "done" }, job_lease: null }); return; }
+  if (!src || (n <= DIRECT_MAX && direct)) {
     const m = await ai.messages.stream(params(b64(bytes), 1, n || 1, n, "")).finalMessage();
     const rows = rowsOf(m, 1, n || 1);
     if (rows) {
@@ -163,12 +234,14 @@ async function start(u: Upload, job: Job) {
   let notes = "";
   try {
     const head = await part(src, 1, Math.min(n, PAGES));
+    if (head.length > PART_MAX) throw new Error("heavy head");
     const m = await ai.messages.create({ model: MODEL, max_tokens: 4000, system: SYS_NOTES, output_config: { format: { type: "json_schema", schema: NOTES_SCHEMA } }, messages: [{ role: "user", content: [doc(b64(head)), { type: "text", text: "JSON." }] }] });
     notes = str(JSON.parse(textOf(m)).notes, 700) || "";
   } catch { notes = ""; }
   const ranges: Range[] = []; for (let a = 1; a <= n; a += per) ranges.push([a, Math.min(n, a + per - 1)]);
-  const batches = await submit(src, ranges, n, notes);
-  await save(u, { job: { phase: "wait", pages: n, round: 1, batches, ranges, notes, pp: {}, missing: [] }, parse_info: `קורא ${n} עמודים ב-${ranges.length} חלקים. זה לוקח כמה דקות.`, job_lease: new Date(Date.now() + 40_000).toISOString() });
+  const next: Job = { phase: "send", at: job.at, pages: n, round: 1, batches: [], ranges: [], todo: ranges, notes, pp: {}, missing: [], step: job.step };
+  await save(u, { job: next, job_lease: lease(SEND_LEASE_MS), parse_info: `מכין ${n} עמודים לקריאה.` });
+  await send(u, next, src);
 }
 
 // phase 'wait': when every batch has ended, collect the rows; parts that failed go out again in halves.
@@ -180,7 +253,7 @@ async function poll(u: Upload, job: Job) {
     if (b.processing_status !== "ended") ended = false;
   }
   if (!ended) {
-    await save(u, { parse_info: `קורא ${job.pages} עמודים: ${done} מתוך ${total} חלקים נקראו` + ((job.round || 1) > 1 ? " (סבב חוזר לחלקים שלא נקראו)" : "") + ".", job: { ...job, run: 0 }, job_lease: new Date(Date.now() + 40_000).toISOString() });
+    await save(u, { parse_info: `קורא ${job.pages} עמודים: ${done} מתוך ${total} חלקים נקראו` + ((job.round || 1) > 1 ? " (סבב חוזר לחלקים שלא נקראו)" : "") + ".", job: { ...job, run: 0 }, job_lease: lease(40_000) });
     return;
   }
   // a worker that died half way through this step must not leave double rows: clear the pages of this round first
@@ -202,12 +275,22 @@ async function poll(u: Upload, job: Job) {
   if (failed.length && round < ROUNDS) {
     const again: Range[] = [];
     for (const [a, b] of failed) { if (b > a) { const mid = Math.floor((a + b) / 2); again.push([a, mid], [mid + 1, b]); } else again.push([a, b]); }
-    const src = await PDFDocument.load(await load(u.file_path), { updateMetadata: false, ignoreEncryption: true });
-    const batches = await submit(src, again, job.pages || 0, job.notes || "");
-    await save(u, { job: { ...job, round: round + 1, batches, ranges: again, pp, run: 0 }, parse_info: `קורא שוב ${again.length} חלקים שלא נקראו בסבב הקודם.`, job_lease: new Date(Date.now() + 40_000).toISOString() });
+    // the rows of this round are in; the failed parts go out again through phase 'send' in a call of their own
+    await save(u, { job: { ...job, phase: "send", round: round + 1, batches: [], ranges: [], todo: again, pp, run: 0 }, parse_info: `קורא שוב ${again.length} חלקים שלא נקראו בסבב הקודם.`, job_lease: null });
+    await kick();
     return;
   }
-  await finish(u, { ...job, pp, missing: failed });
+  await finish(u, { ...job, pp, missing: [...(job.missing || []), ...failed] });
+}
+
+// Only one file may be in a heavy step (new/send: the whole PDF is in memory) at a time; two heavy files in one
+// worker pass its memory limit (12.11: 51MB + 97MB sent a minute apart, "Memory limit exceeded"). The earlier
+// claim (job.at) wins, the other waits for the next call.
+const heavy = (p?: string) => !p || p === "new" || p === "send";
+async function busy(id: string, at?: number) {
+  const { data } = await db.from("sp_uploads").select("id, job").eq("status", "parsing").neq("id", id).gt("job_lease", new Date().toISOString());
+  // deno-lint-ignore no-explicit-any
+  return (data || []).some((r: any) => heavy(r.job?.phase) && (at === undefined || (r.job?.at || 0) < at || ((r.job?.at || 0) === at && r.id < id)));
 }
 
 async function tick() {
@@ -217,19 +300,26 @@ async function tick() {
     // claim the row; a second worker that runs at the same moment gets nothing back and moves on.
     // run counts claims that never reached the end of their step (a worker that was cut off), so a file that
     // kills the worker every time stops after 4 attempts instead of going round forever.
-    const run = (row.job?.run || 0) + 1;
-    const { data: mine } = await db.from("sp_uploads").update({ job_lease: new Date(Date.now() + LEASE_MS).toISOString(), job: { ...(row.job || { phase: "new" }), run } }).eq("id", row.id).eq("status", "parsing").or(`job_lease.is.null,job_lease.lt.${now}`).select("*");
+    const run = (row.job?.run || 0) + 1, big = heavy(row.job?.phase);
+    if (big && await busy(row.id)) continue;
+    const { data: mine } = await db.from("sp_uploads").update({ job_lease: lease(row.job?.phase === "send" ? SEND_LEASE_MS : LEASE_MS), job: { ...(row.job || { phase: "new" }), run, ...(big ? { at: Date.now() } : {}) } }).eq("id", row.id).eq("status", "parsing").or(`job_lease.is.null,job_lease.lt.${now}`).select("*");
     const u = mine?.[0]; if (!u) continue;
     const job: Job = u.job;
-    if (run > 4) { await save(u, { status: "failed", parse_note: 'הקריאה נעצרה באמצע כמה פעמים. אפשר ללחוץ "לקרוא שוב", ואם זה חוזר לבקש מהספק קובץ קטן יותר או אקסל.', job: { ...job, phase: "done" }, job_lease: null }); continue; }
+    if (big && await busy(u.id, job.at)) { await save(u, { job: { ...job, run: run - 1 }, job_lease: null }); continue; } // claimed at the same moment as another file
+    // the first step sends paid batches, so it gets one retry only
+    if (run > (job.phase === "new" ? 2 : 4)) { await save(u, { status: "failed", parse_note: 'הקריאה נעצרה באמצע כמה פעמים. אפשר ללחוץ "לקרוא שוב", ואם זה חוזר לבקש מהספק קובץ קטן יותר או אקסל.', job: { ...job, phase: "done" }, job_lease: null }); continue; }
     try {
       if (job.phase === "new") { await start(u, job); break; } // one heavy step per call, the next call takes the next file
+      else if (job.phase === "send") { await send(u, job); break; }
       else if (job.phase === "wait") await poll(u, job);
       else await save(u, { job_lease: null, status: "failed", parse_note: "מצב קריאה לא מוכר" });
     } catch (e) {
-      const tries = (job.tries || 0) + 1, msg = String((e as Error).message || e).slice(0, 240);
-      if (tries >= 4) await save(u, { status: "failed", parse_note: "הקריאה נכשלה: " + msg, job: { ...job, phase: "done", tries }, job_lease: null });
-      else await save(u, { job: { ...job, tries }, job_lease: new Date(Date.now() + 30_000).toISOString(), parse_info: "ניסיון קריאה נוסף בעוד רגע." });
+      // the step may have saved progress before it failed (batches already sent), so count the try on the saved job
+      const { data: cur } = await db.from("sp_uploads").select("job").eq("id", u.id).maybeSingle();
+      const j: Job = cur?.job || job;
+      const tries = (j.tries || 0) + 1, msg = String((e as Error).message || e).slice(0, 240);
+      if (tries >= (j.phase === "new" ? 2 : 4)) await save(u, { status: "failed", parse_note: "הקריאה נכשלה: " + msg, job: { ...j, phase: "done", tries }, job_lease: null });
+      else await save(u, { job: { ...j, tries }, job_lease: lease(30_000), parse_info: "ניסיון קריאה נוסף בעוד רגע." });
     }
   }
 }

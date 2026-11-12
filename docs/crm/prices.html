@@ -30,7 +30,7 @@ input[type=search]{width:100%;margin-top:10px;font-size:18px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0}
 table{width:100%;border-collapse:collapse;font-size:15px}th,td{text-align:right;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
 th{color:var(--mute);font-weight:600}
-.price{font-weight:700;white-space:nowrap}.ltr{direction:ltr;unicode-bidi:isolate}
+.price{font-weight:700;white-space:nowrap}.sub{font-weight:400;font-size:.85em}.ltr{direction:ltr;unicode-bidi:isolate}
 .calc{display:flex;gap:8px;align-items:center;margin-top:8px}.calc input{width:90px}
 .supf{display:flex;gap:8px;align-items:center;margin-top:8px}.supf input{flex:1;font-size:16px}
 .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--brass-soft);font-size:13px}
@@ -117,8 +117,8 @@ function drawSearch() {
     var s = suppliers[r.supplier_id] || {};
     var old = (Date.now() - new Date(r.created_at)) > 180 * 864e5;
     return '<tr><td>' + esc(r.description) + (r.category ? ' <span class="mute">· ' + esc(r.category) + '</span>' : '') + '</td><td class="ltr">' + esc(r.supplier_code) + '</td><td>' + esc(r.size) + '</td><td>' + esc(s.name) + '</td>' +
-      '<td class="price">' + money(r.price, r.currency) + (r.unit ? ' <span class="mute">/' + esc(r.unit) + '</span>' : '') + (r.vat_included ? ' <span class="mute">כולל מע"מ</span>' : '') + '</td>' +
-      '<td class="price">' + (r.currency && r.currency !== 'ILS' ? '<span class="mute">מט"ח</span>' : money(customer(r.price, r.vat_included), 'ILS')) + '</td>' +
+      '<td class="price">' + money(r.price, r.currency) + (r.unit ? ' <span class="mute">/' + esc(r.unit) + '</span>' : '') + (r.vat_included ? ' <span class="mute">כולל מע"מ</span>' : '') + (r.list_price != null ? '<br><span class="mute sub">מחירון לצרכן ' + money(r.list_price, r.currency) + '</span>' : '') + '</td>' +
+      '<td class="price">' + (r.currency && r.currency !== 'ILS' ? '<span class="mute">מט"ח</span>' : money(customer(r.price, r.vat_included), 'ILS')) + (r.list_price != null && (!r.currency || r.currency === 'ILS') ? '<br><span class="mute sub">מחירון הספק ' + money(r.list_price * (r.vat_included ? 1 : 1.18), 'ILS') + '</span>' : '') + '</td>' +
       '<td class="' + (old ? 'warn' : '') + '">' + fmtDate(r.created_at) + (old ? ' ישן' : '') + '</td></tr>';
   }).join('');
   $('sTable').classList.toggle('hidden', !last.length);
@@ -137,7 +137,7 @@ function search() {
   var only = supFilter();
   if (!words.length && !only) { last = []; drawSearch(); $('sInfo').textContent = ''; return; }
   if (only && !only.length) { last = []; drawSearch(); $('sInfo').textContent = 'אין ספק בשם הזה.'; return; }
-  var q = sb.from('sp_prices').select('id,supplier_id,supplier_code,description,size,unit,price,currency,vat_included,category,created_at').eq('status', 'active');
+  var q = sb.from('sp_prices').select('id,supplier_id,supplier_code,description,size,unit,price,list_price,currency,vat_included,category,created_at').eq('status', 'active');
   if (only) q = q.in('supplier_id', only);
   words.forEach(function (w) {
     var ids = supIds(w), f = 'description.ilike.*' + w + '*,supplier_code.ilike.*' + w + '*,size.ilike.*' + w + '*,category.ilike.*' + w + '*';
@@ -178,17 +178,19 @@ function loadPending() {
       var s = suppliers[u.supplier_id] || {}, inbox = s.kind === 'wa_inbox';
       return '<div class="card" data-id="' + u.id + '"><div class="row"><strong class="grow">' + esc(s.name) + ' · ' + (u.file_name ? esc(u.file_name) : 'הודעה בטקסט') + '</strong>' + (u.source === 'whatsapp' ? '<span class="badge">וואטסאפ</span>' : '') + '<span class="badge">' + esc(ST[u.status] || u.status) + '</span></div>' +
         '<p class="mute">' + fmtDate(u.created_at) + (u.supplier_name_typed && u.supplier_name_typed !== s.name ? ' · <span class="warn">כתב: ' + esc(u.supplier_name_typed) + '</span>' : '') + (u.uploader_name ? ' · ' + esc(u.uploader_name) : '') + (u.replaces_all ? ' · <strong>מחליף את כל המחירון</strong>' : '') + (u.rows_count != null ? ' · ' + u.rows_count + ' שורות' : '') + '</p>' +
-        (u.supplier_note ? '<p style="white-space:pre-wrap">' + (u.file_path ? 'הערת הספק: ' : '') + esc(u.supplier_note) + '</p>' : '') + (u.parse_info ? '<p class="mute">' + esc(u.parse_info) + '</p>' : '') + (u.parse_note ? '<p class="' + (u.file_path || u.status === 'failed' ? 'err' : 'mute') + '">' + (u.file_path || u.status === 'failed' ? '' : 'סיכום: ') + esc(u.parse_note) + '</p>' : '') +
+        (u.supplier_note ? '<p style="white-space:pre-wrap">' + (u.file_path ? 'הערת הספק: ' : '') + esc(u.supplier_note) + '</p>' : '') + (u.file_path && u.file_path.indexOf('wa:') === 0 ? '<p class="mute">קובץ כבד (' + Math.round((u.size_bytes || 0) / 1048576) + 'MB): נקרא ישר מהוואטסאפ העסקי, ושם אפשר לפתוח אותו.</p>' : '') + (u.parse_info ? '<p class="mute">' + esc(u.parse_info) + '</p>' : '') + (u.parse_note ? '<p class="' + (u.file_path || u.status === 'failed' ? 'err' : 'mute') + '">' + (u.file_path || u.status === 'failed' ? '' : 'סיכום: ') + esc(u.parse_note) + '</p>' : '') +
         (inbox ? '<div class="row" style="margin-top:8px"><input class="grow" list="asgOpts" data-asg placeholder="מאיזה ספק הקובץ? הקלידו שם" aria-label="שיוך לספק"><button class="btn small brass" data-a="asg">שיוך לספק</button></div><p class="mute">אחרי השיוך המספר נשמר, והקבצים הבאים ממנו ייכנסו ישר לספק הזה.</p>' : '') +
+        (u.status === 'parsed' && u.rows_count && !inbox ? '<div class="row" style="margin-top:8px"><label class="mute" for="dc' + u.id + '">הקובץ הוא מחירון לצרכן? ההנחה שלנו באחוזים:</label><input id="dc' + u.id + '" data-disc type="number" min="0" max="99" step="0.5" inputmode="decimal" style="width:90px" value="' + esc(u.discount_pct != null ? u.discount_pct : (s.discount_pct != null ? s.discount_pct : '')) + '"><button class="btn small" data-a="disc">חישוב מחיר קנייה</button></div>' +
+          '<p class="mute">' + (u.discount_pct != null ? 'הוחלה הנחה של ' + esc(u.discount_pct) + '%: המחיר בטבלה הוא מחיר הקנייה שלנו, ומחירון הצרכן נשמר לידו. 0 מבטל.' : 'בלי הנחה, המחיר שבקובץ נכנס כמחיר הקנייה שלנו.') + '</p>' : '') +
         '<div class="prev"></div><div class="row" style="margin-top:8px">' +
         (u.status === 'parsed' ? (u.rows_count ? (inbox ? '' : '<button class="btn small brass" data-a="ok">אישור והכנסה למחירון</button>') + '<button class="btn small red" data-a="no">דחייה</button>' : '<button class="btn small brass" data-a="' + (inbox ? 'no' : 'ok') + '">טופל</button>') : '') + (u.status === 'failed' ? '<button class="btn small red" data-a="no">הסרה מהרשימה</button>' : '') +
-        (u.file_path ? '<button class="btn small" data-a="file">פתיחת הקובץ</button>' : '') + (u.status !== 'parsing' && (u.file_path || !u.file_name) ? '<button class="btn small" data-a="again">לקרוא שוב</button>' : '') + '</div></div>';
+        (u.file_path && u.file_path.indexOf('wa:') !== 0 ? '<button class="btn small" data-a="file">פתיחת הקובץ</button>' : '') + (u.status !== 'parsing' && (u.file_path || !u.file_name) ? '<button class="btn small" data-a="again">לקרוא שוב</button>' : '') + '</div></div>';
     }).join('');
     list.filter(function (u) { return u.status === 'parsed' && u.rows_count; }).forEach(function (u) {
-      sb.from('sp_prices').select('supplier_code,description,size,unit,price,currency').eq('upload_id', u.id).order('id').limit(15).then(function (p) {
+      sb.from('sp_prices').select('supplier_code,description,size,unit,price,list_price,currency').eq('upload_id', u.id).order('id').limit(15).then(function (p) {
         var el = document.querySelector('[data-id="' + u.id + '"] .prev'); if (!el) return;
         el.innerHTML = '<div class="tablewrap"><table><thead><tr><th>תיאור</th><th>מק"ט</th><th>מידה</th><th>מחיר</th></tr></thead><tbody>' + (p.data || []).map(function (x) {
-          return '<tr><td>' + esc(x.description) + '</td><td class="ltr">' + esc(x.supplier_code) + '</td><td>' + esc(x.size) + '</td><td class="price">' + money(x.price, x.currency) + (x.unit ? ' /' + esc(x.unit) : '') + '</td></tr>';
+          return '<tr><td>' + esc(x.description) + '</td><td class="ltr">' + esc(x.supplier_code) + '</td><td>' + esc(x.size) + '</td><td class="price">' + money(x.price, x.currency) + (x.unit ? ' /' + esc(x.unit) : '') + (x.list_price != null ? '<br><span class="mute sub">מחירון לצרכן ' + money(x.list_price, x.currency) + '</span>' : '') + '</td></tr>';
         }).join('') + '</tbody></table></div><p class="mute">15 השורות הראשונות. בדקו שהמחיר בעמודה הנכונה.</p>';
       });
     });
@@ -202,6 +204,14 @@ $('pendList').addEventListener('click', function (e) {
     sb.rpc('sp_decide', { p_upload: id, p_approve: a === 'ok' }).then(function (r) {
       if (r.error) { alert('לא הצליח: ' + r.error.message); b.disabled = false; return; }
       loadPending();
+    });
+  } else if (a === 'disc') {
+    var pct = b.closest('[data-id]').querySelector('[data-disc]').value.trim();
+    if (pct !== '' && !(Number(pct) >= 0 && Number(pct) < 100)) { alert('אחוז הנחה בין 0 ל-99.'); return; }
+    b.disabled = true;
+    sb.rpc('sp_set_discount', { p_upload: id, p_pct: pct === '' ? null : Number(pct) }).then(function (r) {
+      if (r.error) { alert('לא הצליח: ' + r.error.message); b.disabled = false; return; }
+      loadSupMap().then(loadPending);
     });
   } else if (a === 'asg') {
     var card = b.closest('[data-id]'), name = card.querySelector('[data-asg]').value.trim();

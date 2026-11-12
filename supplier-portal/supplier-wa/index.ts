@@ -13,6 +13,7 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const db = createClient(SB_URL, SERVICE_KEY);
 const GRAPH = "https://graph.facebook.com/v23.0";
 const MAX_BYTES = 20 * 1024 * 1024; // same limit as the portal and the bucket
+const BIG_MAX = 100 * 1024 * 1024; // WhatsApp's own limit for a document
 const PER_TICK = 4;
 const OK_EXT = /\.(xlsx|xlsm|xls|csv|pdf|jpg|jpeg|png|webp)$/i;
 const SHEET = /\.(xlsx|xlsm|xls|csv)$/i;
@@ -56,7 +57,16 @@ async function take(m: Msg, token: string, inboxId: string) {
   const auth = { authorization: `Bearer ${token}` };
   const info = await fetch(`${GRAPH}/${media.id}`, { headers: auth }).then((r) => r.json()).catch(() => null);
   if (!info?.url) return await fail("לא הצלחנו להוריד את הקובץ מוואטסאפ. בקשו מהספק לשלוח אותו שוב.");
-  if (Number(info.file_size) > MAX_BYTES) return await fail(`הקובץ גדול מדי (${Math.round(Number(info.file_size) / 1048576)}MB, עד 20MB). בקשו מהספק לפצל אותו או לשלוח אקסל.`);
+  const big = Number(info.file_size) || 0, isPdf = /\.pdf$/i.test(name);
+  if (big > MAX_BYTES && !(isPdf && big <= BIG_MAX)) return await fail(`הקובץ גדול מדי (${Math.round(big / 1048576)}MB). אפשר לקבל PDF עד 100MB וקבצים אחרים עד 20MB. בקשו מהספק לפצל אותו.`);
+  if (big > MAX_BYTES) {
+    // a heavy PDF (catalog with pictures) is not copied into the bucket: supplier-parse reads it straight from WhatsApp, part by part
+    const { data: row, error } = await db.from("sp_uploads").insert({ ...base, file_path: `wa:${media.id}`, size_bytes: big }).select("id").single();
+    if (error || !row) throw new Error("db " + (error?.message || ""));
+    if (known) await db.from("sp_suppliers").update({ last_upload_at: new Date().toISOString() }).eq("id", supplierId);
+    await fetch(`${SB_URL}/functions/v1/supplier-upload`, { method: "POST", headers: { "content-type": "application/json", "x-sp-key": SERVICE_KEY }, body: JSON.stringify({ reparse: row.id }) }).catch(() => {});
+    return { result: "ok", upload_id: row.id };
+  }
   const res = await fetch(info.url, { headers: auth });
   if (!res.ok) return await fail("לא הצלחנו להוריד את הקובץ מוואטסאפ. בקשו מהספק לשלוח אותו שוב.");
   const bytes = new Uint8Array(await res.arrayBuffer());
