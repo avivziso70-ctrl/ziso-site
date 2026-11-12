@@ -340,6 +340,10 @@ svg.ic.dots{stroke-width:3}
 @media (max-width:599px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi b{font-size:26px}}
 .kpis{order:-2}
 .sect.take{order:-3;border-color:var(--red);box-shadow:0 0 0 2px var(--red-soft)}
+#kupaBar{display:none;align-items:center;justify-content:center;gap:10px;margin:8px 12px 0;min-height:48px;border-radius:12px;background:var(--brass);color:var(--brass-ink);font-weight:700;font-size:17px;text-decoration:none}
+#kupaBar.big{display:flex;min-height:84px;font-size:26px;border-radius:16px;margin:12px 12px 4px}
+#kupaBar.hidden{display:none !important}
+@media (max-width:899px){#kupaBar{display:flex}}
 @media (max-width:899px){header.top{flex-wrap:wrap}#takePill{order:9;flex:1 0 100% !important;justify-content:center}}
 @media (max-width:599px){#doneBtn .lbl{display:none}}
 .compose .quick button.aibtn{border-color:var(--brass);background:var(--brass-soft);color:var(--brass);font-weight:600;display:inline-flex;align-items:center;gap:6px}
@@ -431,6 +435,7 @@ svg.ic.dots{stroke-width:3}
     <a class="btn small brass pricebtn" href="prices.html" title="חיפוש מחיר במחירוני הספקים"><span aria-hidden="true">₪</span> מחירון ספקים</a>
     <button class="btn small" id="meBtn" title="החשבון שלי"></button>
   </header>
+  <a id="kupaBar" class="hidden" href="kupa.html"><span aria-hidden="true">₪</span> קופה · לקחת כסף מלקוח</a>
 
   <div class="pushbar hidden" id="pushBar" role="region" aria-label="התראות"><span class="grow">לקבל התראה בטלפון על כל הודעה חדשה?</span><button class="btn small brass" id="pushOn" type="button">להפעיל</button><button class="btn icon small" id="pushX" type="button" aria-label="לא עכשיו"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button></div>
   <main data-view="chats">
@@ -605,6 +610,8 @@ function start() {
     var mine = staff.filter(function (x) { return x.email.toLowerCase() === me.email.toLowerCase(); })[0];
     if (!mine) { $('loginErr').textContent = 'החשבון הזה לא מורשה. פנו לאביב.'; sb.auth.signOut(); return; }
     $('meBtn').textContent = mine.name;
+    // the till button: on every phone, and big on any screen for whoever takes money at the showroom
+    $('kupaBar').classList.toggle('hidden', WALL); $('kupaBar').classList.toggle('big', /^zisomosh/i.test(me.email));
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
     sb.rpc('crm_log', { p_action: 'login' });
     route(); loadConvs(); loadSync(); pushCheck(); loadAiMap(); stationLoad(); feedLoad(); taskAlertLoad(); takeLoad(); musicLoad();
