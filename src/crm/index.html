@@ -235,6 +235,12 @@ body.wall.station{padding-top:188px}
 #cover .logo{font-size:clamp(40px,6vw,84px);font-weight:700;letter-spacing:.04em;color:var(--brass)}
 #cover .clock{font-size:clamp(28px,4vw,56px);font-variant-numeric:tabular-nums;margin-top:12px}
 #cover .hint{margin-top:40px;font-size:15px;color:var(--mute)}
+#cover .feed{margin:44px auto 0;max-width:min(900px,90vw);min-height:150px;transition:opacity .6s}
+#cover .feed.fade{opacity:0}
+#cover .feed .d{font-size:clamp(16px,1.6vw,22px);color:var(--brass);font-weight:600}
+#cover .feed .l{font-size:clamp(22px,2.6vw,38px);line-height:1.35;margin-top:8px}
+#cover .feed .t{font-size:14px;color:var(--mute);margin-top:10px}
+#cover .wait{margin-top:28px;font-size:clamp(18px,1.8vw,26px);font-weight:700;color:var(--amber)}
 #cover .dot{position:fixed;bottom:18px;inset-inline-start:18px;width:14px;height:14px;border-radius:50%;background:var(--amber)}
 #cover .ring{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 0 0 var(--brass);transition:box-shadow 1s linear}
 #cover.holding .ring{box-shadow:inset 0 0 0 10px var(--brass)}
@@ -306,7 +312,7 @@ svg.ic.dots{stroke-width:3}
 <div class="sr" id="live" role="status" aria-live="polite"></div>
 <button id="wallBar" type="button" class="hidden"></button>
 <div id="station" class="hidden" aria-label="לוח העמדה"></div>
-<div id="cover" class="hidden" role="dialog" aria-label="מסך המתנה"><div><div class="logo">זיסו קרמיקה</div><div class="clock" id="coverClock"></div><div class="hint">להחזרת המסך: ללחוץ ולהחזיק שנייה</div></div><span class="dot hidden" id="coverDot"></span><span class="ring"></span></div>
+<div id="cover" class="hidden" role="dialog" aria-label="מסך המתנה"><div><div class="logo">זיסו קרמיקה</div><div class="clock" id="coverClock"></div><div class="feed" id="coverFeed" aria-live="polite"></div><div class="wait" id="coverWait"></div><div class="hint">להחזרת המסך: ללחוץ ולהחזיק שנייה</div></div><span class="dot hidden" id="coverDot"></span><span class="ring"></span></div>
 <div id="login">
   <form id="loginForm" autocomplete="on">
     <img class="logo" src="../img/logo.jpg" alt="">
@@ -528,7 +534,7 @@ function start() {
     $('meBtn').textContent = mine.name;
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
     sb.rpc('crm_log', { p_action: 'login' });
-    route(); loadConvs(); loadSync(); pushCheck(); loadAiMap(); stationLoad();
+    route(); loadConvs(); loadSync(); pushCheck(); loadAiMap(); stationLoad(); feedLoad();
     if (!(me.user_metadata && me.user_metadata.pw_changed_at)) openPw(true);
     if (timer) clearInterval(timer);
     // open chat every 10s, list every 20s, AI verdicts every 3 minutes; nothing runs while the tab is hidden
@@ -626,13 +632,14 @@ function wallUpdate() {
   bar.className = late ? 'late' : w.length ? 'wait' : '';
   bar.innerHTML = !w.length ? 'אין ממתינים. כולם נענו.' :
     '<span>' + (w.length === 1 ? 'לקוח אחד מחכה' : w.length + ' לקוחות מחכים') + ' לתשובה</span><small>הכי הרבה זמן: ' + esc(bizLabel(max)) + (late ? ' · ' + late + ' מעל 15 דקות' : '') + ' · לחצו כדי לענות</small>';
-  if (late && wallOpenNow() && $('cover').classList.contains('hidden') && Date.now() - wallLastBeep > 58000) { wallLastBeep = Date.now(); wallBeep(); }
+  if (late && wallOpenNow() && ($('cover').classList.contains('hidden') || coverMode === 'idle') && Date.now() - wallLastBeep > 58000) { wallLastBeep = Date.now(); wallBeep(); }
   $('coverDot').classList.toggle('hidden', !w.length);
+  $('coverWait').textContent = coverMode === 'idle' && w.length ? (w.length === 1 ? 'לקוח אחד מחכה לתשובה' : w.length + ' לקוחות מחכים לתשובה') : '';
 }
 /* ---------- station tiles (wall mode): today's numbers against the targets ----------
    Receipts target: ₪16,800 per working day, minimum ₪15,000 (Sun-Thu = 1 day, Fri = half, Sat = 0).
    Priority data arrives through the bridge, so receipts and orders run to the last update, usually yesterday. */
-var stationData = {}, coverHold = null;
+var stationData = {}, coverHold = null, coverMode = '', feed = [], feedI = 0, lastAct = Date.now();
 function ilDate(d) { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' }).format(d || new Date()); }
 function workDays(from, toExcl) {
   var n = 0, d = new Date(from + 'T12:00:00Z'), end = new Date(toExcl + 'T12:00:00Z');
@@ -676,10 +683,26 @@ function stationRender() {
   $('station').querySelectorAll('.tile').forEach(function (b) { b.addEventListener('click', function () { if (b.dataset.g === 'now') { var f = document.querySelector('.filters button[data-f="waiting"]'); if (f) f.click(); go('chats'); } else { todayG = b.dataset.g; go('today'); } }); });
   $('coverBtn').addEventListener('click', function () { coverSet(true); });
 }
-function coverSet(on) {
+/* manual = "יש לקוחות" (silent); idle = screensaver after 5 quiet minutes (still beeps and shows how many wait) */
+function coverSet(on, mode) {
+  coverMode = on ? (mode || 'manual') : '';
   $('cover').classList.toggle('hidden', !on);
-  try { localStorage.setItem('crmCover', on ? '1' : ''); } catch (e) {}
-  if (on) coverTick();
+  try { localStorage.setItem('crmCover', on && coverMode === 'manual' ? '1' : ''); } catch (e) {}
+  if (on) { coverTick(); feedShow(); wallUpdate(); } else lastAct = Date.now();
+}
+/* screensaver feed: one customer-safe line per department, written by the agents into public.agent_feed */
+function feedLoad() {
+  if (!WALL || !me) return;
+  sb.from('agent_feed').select('dept,line,updated_at,ord').order('ord').then(function (r) { if (!r.error) feed = r.data || []; });
+}
+function feedShow() {
+  var el = $('coverFeed'); if (!feed.length) { el.innerHTML = ''; return; }
+  el.classList.add('fade');
+  setTimeout(function () {
+    var f = feed[feedI++ % feed.length];
+    el.innerHTML = '<div class="d">' + esc(f.dept) + '</div><div class="l">' + esc(f.line) + '</div><div class="t">עודכן ' + esc(ago(f.updated_at)) + '</div>';
+    el.classList.remove('fade');
+  }, 600);
 }
 function coverTick() { $('coverClock').textContent = new Date().toLocaleTimeString('he-IL', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit' }); }
 if (WALL) {
@@ -691,6 +714,10 @@ if (WALL) {
   cv.addEventListener('keydown', function (e) { if (e.key === 'Enter') coverSet(false); });
   try { if (localStorage.getItem('crmCover')) coverSet(true); } catch (e) {}
   setInterval(coverTick, 20000);
+  setInterval(function () { if (!$('cover').classList.contains('hidden')) feedShow(); }, 12000);
+  setInterval(feedLoad, 10 * 60000);
+  ['pointerdown', 'keydown', 'wheel'].forEach(function (ev) { document.addEventListener(ev, function () { lastAct = Date.now(); }, { passive: true }); });
+  setInterval(function () { if (me && $('cover').classList.contains('hidden') && Date.now() - lastAct > 5 * 60000) coverSet(true, 'idle'); }, 30000);
   setInterval(stationLoad, 5 * 60000);
 }
 if (WALL) {
