@@ -1358,10 +1358,11 @@ function taskAlertRender() {
   var list = taskAl.map(function (t) { return { t: t, st: taskStage(t) }; }).filter(function (a) { return a.st && !seen[a.t.id + ':' + a.st]; }).slice(0, 3);
   $('taskAlerts').innerHTML = list.map(function (a) {
     var t = a.t, m = Math.round((new Date(t.due).getTime() - Date.now()) / 60000), cv = convs.filter(function (x) { return x.tail9 === t.tail9; })[0];
-    var when = a.st === 'late' ? 'עבר הזמן: ' + fmtDate(t.due) + ' ' + fmtTime(t.due) : m <= 1 ? 'עכשיו' : 'בעוד ' + m + ' דקות (' + fmtTime(t.due) + ')';
+    var sp = t.by === 'פורטל ספקים'; /* a supplier sent a price list (portal or WhatsApp): not a late task, a new item to approve */
+    var when = sp ? 'מחירון ספקים · ' + fmtDate(t.due) + ' ' + fmtTime(t.due) : a.st === 'late' ? 'עבר הזמן: ' + fmtDate(t.due) + ' ' + fmtTime(t.due) : m <= 1 ? 'עכשיו' : 'בעוד ' + m + ' דקות (' + fmtTime(t.due) + ')';
     var k = t.id + ':' + a.st; live[k] = 1; if (!taskShown[k]) fresh = true;
-    return '<div class="talert' + (a.st === 'late' ? ' late' : '') + '"><div class="w">' + esc(when) + (cv && cv.name ? ' · ' + esc(cv.name) : '') + '</div><div class="x">' + esc(t.text) + '</div><div class="row">' +
-      (t.tail9 ? '<a class="btn small" href="#card/' + esc(t.tail9) + '">לכרטיס</a>' : '') + '<button class="btn small" data-tdone="' + t.id + '">בוצע</button><button class="btn small" data-tok="' + esc(k) + '">הבנתי</button></div></div>';
+    return '<div class="talert' + (a.st === 'late' && !sp ? ' late' : '') + '"><div class="w">' + esc(when) + (cv && cv.name ? ' · ' + esc(cv.name) : '') + '</div><div class="x">' + esc(t.text) + '</div><div class="row">' +
+      (t.tail9 ? '<a class="btn small" href="#card/' + esc(t.tail9) + '">לכרטיס</a>' : '') + (sp ? '<a class="btn small" href="prices.html">למחירון ספקים</a>' : '') + '<button class="btn small" data-tdone="' + t.id + '">בוצע</button><button class="btn small" data-tok="' + esc(k) + '">הבנתי</button></div></div>';
   }).join('');
   taskShown = live;
   var idle = coverMode === 'idle';
