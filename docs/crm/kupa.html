@@ -177,6 +177,7 @@ a.go{display:flex;align-items:center;justify-content:center;text-decoration:none
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+<script src="piggy.js"></script>
 <script>
 (function () {
 'use strict';
@@ -315,6 +316,7 @@ function finish(v, link) {
     $('aText').textContent = 'המשרד קיבל משימה דחופה להוציא קבלה ל' + v.payer_name + '. אין צורך לעשות שום דבר נוסף.';
   }
   $('aTitle').focus(); say($('aTitle').textContent);
+  if (window.zisoPiggy) zisoPiggy();
 }
 function poll(prId) {
   clearInterval(pollT); var n = 0;
@@ -325,6 +327,7 @@ function poll(prId) {
         clearInterval(pollT); $('aState').className = 'state ok'; $('aState').textContent = '● שולם ✓ התשלום אושר בטרנזילה';
         $('aOpen').classList.add('hidden'); $('aWa').classList.add('hidden'); $('aIcon').textContent = '✓'; say('התשלום עבר');
         if (navigator.vibrate) navigator.vibrate(200);
+        if (window.zisoPiggy) zisoPiggy();
       }
     });
   };
@@ -332,6 +335,7 @@ function poll(prId) {
 }
 document.addEventListener('visibilitychange', function () { if (!document.hidden && me && !$('form').classList.contains('hidden')) loadMine(); });
 setInterval(function () { if (!document.hidden && me && !$('form').classList.contains('hidden')) loadMine(); }, 20000); // yellow turns green by itself
+$('aWa').addEventListener('click', function () { if (window.zisoPiggy) zisoPiggy(); });
 $('again').addEventListener('click', function () {
   clearInterval(pollT); method = null; goods = null; cardHow = 'card_link'; pays = 1; press('[data-pays]', 'data-pays', '1');
   ['amount', 'payer', 'phone', 'reason', 'goods'].forEach(function (id) { $(id).value = ''; });
