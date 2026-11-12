@@ -312,7 +312,7 @@ svg.ic.dots{stroke-width:3}
 <div class="sr" id="live" role="status" aria-live="polite"></div>
 <button id="wallBar" type="button" class="hidden"></button>
 <div id="station" class="hidden" aria-label="לוח העמדה"></div>
-<div id="cover" class="hidden" role="dialog" aria-label="מסך המתנה"><div><div class="logo">זיסו קרמיקה</div><div class="clock" id="coverClock"></div><div class="feed" id="coverFeed" aria-live="polite"></div><div class="wait" id="coverWait"></div><div class="hint">להחזרת המסך: ללחוץ ולהחזיק שנייה</div></div><span class="dot hidden" id="coverDot"></span><span class="ring"></span></div>
+<div id="cover" class="hidden" role="dialog" aria-label="מסך המתנה"><div><div class="logo">זיסו קרמיקה</div><div class="clock" id="coverClock"></div><div class="feed" id="coverFeed" aria-live="polite"></div><div class="wait" id="coverWait"></div><div class="hint" id="coverHint">להחזרת המסך: ללחוץ ולהחזיק שנייה</div></div><span class="dot hidden" id="coverDot"></span><span class="ring"></span></div>
 <div id="login">
   <form id="loginForm" autocomplete="on">
     <img class="logo" src="../img/logo.jpg" alt="">
@@ -446,6 +446,7 @@ svg.ic.dots{stroke-width:3}
 <script>
 (function () {
 'use strict';
+var SELF_SRC = document.currentScript ? document.currentScript.textContent : '';
 var SB_URL = 'https://ppnjosyraosrdephsksu.supabase.co';
 var SB_KEY = 'sb_publishable_yjpTHQkvH5-l4v-HCcEj4w_ofAYpQmV';
 var FN = SB_URL + '/functions/v1/';
@@ -606,7 +607,7 @@ function updateBadge() {
 /* ---------- wall screen: open the page as /crm/?wall=1 on the office monitor ----------
    Top bar: green when nobody waits, amber when someone waits, blinking red plus a beep every minute
    once a customer has waited 15 working minutes (the SLA). Sound only in opening hours. */
-var WALL = /[?&]wall=1/.test(location.search), wallCtx = null, wallLastBeep = 0, wallTop = null;
+var WALL = /[?&]wall=1/.test(location.search), selfReload = false, wallCtx = null, wallLastBeep = 0, wallTop = null;
 function wallOpenNow() {
   var p = {}; new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jerusalem', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date()).forEach(function (x) { p[x.type] = x.value; });
   var m = Number(p.hour) * 60 + Number(p.minute);
@@ -687,6 +688,7 @@ function stationRender() {
 function coverSet(on, mode) {
   coverMode = on ? (mode || 'manual') : '';
   $('cover').classList.toggle('hidden', !on);
+  $('coverHint').textContent = coverMode === 'idle' ? 'לחזרה: לגעת במסך' : 'להחזרת המסך: ללחוץ ולהחזיק שנייה';
   try { localStorage.setItem('crmCover', on && coverMode === 'manual' ? '1' : ''); } catch (e) {}
   if (on) { coverTick(); feedShow(); wallUpdate(); } else lastAct = Date.now();
 }
@@ -708,9 +710,10 @@ function coverTick() { $('coverClock').textContent = new Date().toLocaleTimeStri
 if (WALL) {
   document.body.classList.add('station'); $('station').classList.remove('hidden');
   var cv = $('cover');
-  var holdStart = function (e) { e.preventDefault(); cv.classList.add('holding'); coverHold = setTimeout(function () { cv.classList.remove('holding'); coverSet(false); }, 1000); };
+  var holdStart = function (e) { e.preventDefault(); if (coverMode === 'idle') return; cv.classList.add('holding'); coverHold = setTimeout(function () { cv.classList.remove('holding'); coverSet(false); }, 1000); };
   var holdEnd = function () { cv.classList.remove('holding'); clearTimeout(coverHold); };
   cv.addEventListener('pointerdown', holdStart); ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { cv.addEventListener(ev, holdEnd); });
+  cv.addEventListener('click', function () { if (coverMode === 'idle') coverSet(false); });
   cv.addEventListener('keydown', function (e) { if (e.key === 'Enter') coverSet(false); });
   try { if (localStorage.getItem('crmCover')) coverSet(true); } catch (e) {}
   setInterval(coverTick, 20000);
@@ -723,7 +726,19 @@ if (WALL) {
 if (WALL) {
   $('wallBar').addEventListener('click', function () { try { wallCtx = wallCtx || new (window.AudioContext || window.webkitAudioContext)(); wallCtx.resume(); } catch (e) {} if (wallTop) go('chat', wallTop); });
   setInterval(wallUpdate, 15000);
-  window.addEventListener('beforeunload', function (e) { e.preventDefault(); e.returnValue = ''; });
+  window.addEventListener('beforeunload', function (e) { if (selfReload) return; e.preventDefault(); e.returnValue = ''; });
+  /* touch screen: a long press must not open the browser menu */
+  document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  /* the station updates itself: while the screensaver is on, look for a newer page and load it */
+  setInterval(function () {
+    if (coverMode !== 'idle' || !SELF_SRC || Date.now() - lastAct < 6 * 60000) return;
+    fetch(location.pathname + '?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
+      if (t.length < 50000 || t.indexOf('</html>') < 0 || t.indexOf(SELF_SRC) >= 0 || coverMode !== 'idle') return;
+      var sig = t.length + ':' + t.slice(-4000).split('').reduce(function (a, c) { return (a * 31 + c.charCodeAt(0)) | 0; }, 7);
+      try { if (sessionStorage.getItem('crmSelfSig') === sig) return; sessionStorage.setItem('crmSelfSig', sig); } catch (e) { return; }
+      selfReload = true; location.reload();
+    }).catch(function () {});
+  }, 10 * 60000);
 }
 function renderConvs() {
   var list = convs.filter(function (c) {
