@@ -259,3 +259,38 @@ select cron.schedule('supplier-wa', '*/2 * * * *', $cron$
   where exists (select 1 from public.wa_messages m where m.dir = 'in' and m.source = 'live' and m.type in ('document', 'image')
     and m.ts > now() - interval '48 hours' and not exists (select 1 from public.sp_wa_log l where l.msg_id = m.id))
 $cron$);
+
+-- Consumer price lists (12.11.2026): a supplier may send its consumer price list instead of our net cost.
+-- list_price keeps the price as printed in the file; price becomes our cost after the discount.
+alter table public.sp_prices add column if not exists list_price numeric;
+alter table public.sp_uploads add column if not exists discount_pct numeric;
+alter table public.sp_suppliers add column if not exists discount_pct numeric;
+
+create or replace function public.sp_apply_discount(p_upload uuid, p_pct numeric)
+returns integer language plpgsql security definer set search_path to 'public' as $$
+declare n int; v_pct numeric := nullif(p_pct, 0);
+begin
+  if v_pct is not null and (v_pct < 0 or v_pct >= 100) then raise exception 'הנחה בין 0 ל-100'; end if;
+  if v_pct is null then
+    update sp_prices set price = coalesce(list_price, price), list_price = null where upload_id = p_upload and list_price is not null;
+  else
+    update sp_prices set list_price = coalesce(list_price, price), price = round(coalesce(list_price, price) * (1 - v_pct / 100), 2)
+    where upload_id = p_upload and coalesce(list_price, price) is not null;
+  end if;
+  get diagnostics n = row_count;
+  update sp_uploads set discount_pct = v_pct where id = p_upload;
+  if v_pct is not null then update sp_suppliers s set discount_pct = v_pct from sp_uploads u where u.id = p_upload and s.id = u.supplier_id and s.kind is distinct from 'wa_inbox'; end if;
+  return n;
+end $$;
+
+create or replace function public.sp_set_discount(p_upload uuid, p_pct numeric)
+returns integer language plpgsql security definer set search_path to 'public' as $$
+begin
+  if crm_me() is null then raise exception 'staff only'; end if;
+  if not exists (select 1 from sp_uploads where id = p_upload and status = 'parsed') then raise exception 'upload not ready'; end if;
+  return sp_apply_discount(p_upload, p_pct);
+end $$;
+
+revoke all on function public.sp_apply_discount(uuid, numeric) from public, anon, authenticated;
+revoke all on function public.sp_set_discount(uuid, numeric) from public, anon;
+grant execute on function public.sp_set_discount(uuid, numeric) to authenticated;
