@@ -95,6 +95,7 @@ nav.tabs .badge{position:absolute;top:19px;inset-inline-start:calc(50% + 30px);m
 .filters button[aria-pressed="true"]{background:var(--brass-soft);color:var(--brass);border-color:var(--brass)}
 ul.list{list-style:none;margin:0;padding:8px var(--pad) 24px;display:grid;gap:8px}
 ul.list li button{width:100%;text-align:start;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:center;cursor:pointer}
+ul.list li.dayhead{font-size:14px;font-weight:600;color:var(--mute);padding:10px 4px 0;position:sticky;top:0;background:var(--wall);z-index:1}
 ul.list li button[aria-current="true"]{border-color:var(--brass);background:var(--brass-soft)}
 ul.list .dot{width:12px;height:12px;border-radius:50%;background:var(--grout);grid-row:span 2}
 ul.list .dot.wait{background:var(--red)}ul.list .dot.bot{background:var(--brass)}ul.list .dot.ok{background:var(--green)}
@@ -706,9 +707,19 @@ function renderConvs() {
     return true;
   });
   if (filter === 'waiting') list.sort(urgency);
+  else if (filter === 'all') list.sort(function (a, b) { return String(b.last_ts || '').localeCompare(String(a.last_ts || '')); });
   $('convEmpty').classList.toggle('hidden', list.length > 0);
   $('convEmpty').textContent = filter === 'waiting' && !$('q').value.trim() ? 'אין ממתינים. כולם נענו.' : 'אין שיחות להצגה';
-  $('convList').innerHTML = list.map(function (c) {
+  var dayOf = function (ts) { return ts ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' }).format(new Date(ts)) : ''; };
+  var today0 = dayOf(new Date().toISOString()), yest0 = dayOf(new Date(Date.now() - 864e5).toISOString()), prevDay = null;
+  var dayHead = function (c) {
+    if (filter !== 'all') return '';
+    var d = dayOf(c.last_ts); if (d === prevDay) return ''; prevDay = d;
+    var lbl = d === today0 ? 'היום' : d === yest0 ? 'אתמול' : d ? new Date(d + 'T12:00:00Z').toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'numeric' }) : '';
+    return '<li class="dayhead" role="presentation">' + esc(lbl) + '</li>';
+  };
+  $('convList').innerHTML = list.map(function (c) { return dayHead(c) + convItem(c); }).join('');
+  function convItem(c) {
     var st = c.state === 'waiting' ? 'wait' : c.state === 'bot' ? 'bot' : 'ok';
     var wait = needsHuman(c) ? waitPill(c) + (c.state === 'bot' ? '<span class="pill bot">הבוט ענה</span>' : '') : '';
     var flag = c.flag ? '<span class="pill flag">רגיש: לבדוק</span>' : '';
@@ -723,7 +734,7 @@ function renderConvs() {
       '<span class="last ellip">' + (c.last_dir === 'out' ? 'אנחנו: ' : '') + esc(c.last_text || '') + '</span>' +
       (wait || flag || quote || who ? '<span class="meta">' + flag + wait + quote + who + '</span>' : '') +
       '</button>' + (canDone ? '<button class="ldone" type="button" data-done="' + esc(c.tail9) + '" data-dphone="' + esc(c.phone) + '" aria-label="סמן כטופל" title="סמן כטופל: יורד מהממתינים עד שהלקוח יכתוב שוב">סמן<small>כטופל</small></button>' : '') + '</li>';
-  }).join('');
+  }
   $('convList').querySelectorAll('button[data-phone]').forEach(function (b) { b.addEventListener('click', function () { go('chat', b.dataset.phone); }); });
   $('convList').querySelectorAll('button[data-done]').forEach(function (b) { b.addEventListener('click', function () { b.disabled = true; markDone(b.dataset.done, b.dataset.dphone); }); });
 }
