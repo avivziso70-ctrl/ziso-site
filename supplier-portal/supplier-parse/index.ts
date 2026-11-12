@@ -19,7 +19,7 @@ const db = createClient(SB_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const ai = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")!, maxRetries: 2 });
 const MODEL = Deno.env.get("SP_MODEL") || Deno.env.get("BOT_MODEL") || "claude-sonnet-5-5";
 const PAGES = 5; // pages per request
-const DIRECT_MAX = 5; // a PDF this short is read in one direct call
+const DIRECT_MAX = 3; // a PDF this short is read in one direct call (about 20 seconds a dense page)
 const MAX_PAGES = 600;
 const MAX_TOKENS = 64000;
 const ROUNDS = 3;
@@ -35,7 +35,7 @@ const str = (v: unknown, n = 300) => (v == null || String(v).trim() === "" ? nul
 
 type Range = [number, number];
 type Row = Record<string, unknown>;
-type Job = { phase: string; tries?: number; pages?: number; round?: number; batches?: string[]; ranges?: Range[]; notes?: string; pp?: Record<string, number>; missing?: Range[] };
+type Job = { phase: string; tries?: number; run?: number; pages?: number; round?: number; batches?: string[]; ranges?: Range[]; notes?: string; pp?: Record<string, number>; missing?: Range[] };
 // deno-lint-ignore no-explicit-any
 type Upload = any;
 
@@ -180,7 +180,7 @@ async function poll(u: Upload, job: Job) {
     if (b.processing_status !== "ended") ended = false;
   }
   if (!ended) {
-    await save(u, { parse_info: `קורא ${job.pages} עמודים: ${done} מתוך ${total} חלקים נקראו` + ((job.round || 1) > 1 ? " (סבב חוזר לחלקים שלא נקראו)" : "") + ".", job_lease: new Date(Date.now() + 40_000).toISOString() });
+    await save(u, { parse_info: `קורא ${job.pages} עמודים: ${done} מתוך ${total} חלקים נקראו` + ((job.round || 1) > 1 ? " (סבב חוזר לחלקים שלא נקראו)" : "") + ".", job: { ...job, run: 0 }, job_lease: new Date(Date.now() + 40_000).toISOString() });
     return;
   }
   // a worker that died half way through this step must not leave double rows: clear the pages of this round first
@@ -204,7 +204,7 @@ async function poll(u: Upload, job: Job) {
     for (const [a, b] of failed) { if (b > a) { const mid = Math.floor((a + b) / 2); again.push([a, mid], [mid + 1, b]); } else again.push([a, b]); }
     const src = await PDFDocument.load(await load(u.file_path), { updateMetadata: false, ignoreEncryption: true });
     const batches = await submit(src, again, job.pages || 0, job.notes || "");
-    await save(u, { job: { ...job, round: round + 1, batches, ranges: again, pp }, parse_info: `קורא שוב ${again.length} חלקים שלא נקראו בסבב הקודם.`, job_lease: new Date(Date.now() + 40_000).toISOString() });
+    await save(u, { job: { ...job, round: round + 1, batches, ranges: again, pp, run: 0 }, parse_info: `קורא שוב ${again.length} חלקים שלא נקראו בסבב הקודם.`, job_lease: new Date(Date.now() + 40_000).toISOString() });
     return;
   }
   await finish(u, { ...job, pp, missing: failed });
@@ -214,12 +214,16 @@ async function tick() {
   const now = new Date().toISOString();
   const { data: list } = await db.from("sp_uploads").select("*").eq("status", "parsing").not("job", "is", null).or(`job_lease.is.null,job_lease.lt.${now}`).order("created_at").limit(3);
   for (const row of list || []) {
-    // claim the row; a second worker that runs at the same moment gets nothing back and moves on
-    const { data: mine } = await db.from("sp_uploads").update({ job_lease: new Date(Date.now() + LEASE_MS).toISOString() }).eq("id", row.id).eq("status", "parsing").or(`job_lease.is.null,job_lease.lt.${now}`).select("*");
+    // claim the row; a second worker that runs at the same moment gets nothing back and moves on.
+    // run counts claims that never reached the end of their step (a worker that was cut off), so a file that
+    // kills the worker every time stops after 4 attempts instead of going round forever.
+    const run = (row.job?.run || 0) + 1;
+    const { data: mine } = await db.from("sp_uploads").update({ job_lease: new Date(Date.now() + LEASE_MS).toISOString(), job: { ...(row.job || { phase: "new" }), run } }).eq("id", row.id).eq("status", "parsing").or(`job_lease.is.null,job_lease.lt.${now}`).select("*");
     const u = mine?.[0]; if (!u) continue;
-    const job: Job = u.job || { phase: "new" };
+    const job: Job = u.job;
+    if (run > 4) { await save(u, { status: "failed", parse_note: 'הקריאה נעצרה באמצע כמה פעמים. אפשר ללחוץ "לקרוא שוב", ואם זה חוזר לבקש מהספק קובץ קטן יותר או אקסל.', job: { ...job, phase: "done" }, job_lease: null }); continue; }
     try {
-      if (job.phase === "new") await start(u, job);
+      if (job.phase === "new") { await start(u, job); break; } // one heavy step per call, the next call takes the next file
       else if (job.phase === "wait") await poll(u, job);
       else await save(u, { job_lease: null, status: "failed", parse_note: "מצב קריאה לא מוכר" });
     } catch (e) {

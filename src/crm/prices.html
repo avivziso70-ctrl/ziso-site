@@ -59,7 +59,8 @@ th{color:var(--mute);font-weight:600}
   </section>
 
   <section id="v-pending" class="hidden">
-    <p class="mute">כל קובץ שספק מעלה נקרא אוטומטית. המחירים נכנסים למחירון רק אחרי אישור כאן.</p>
+    <p class="mute">כל קובץ שספק מעלה בפורטל או שולח לוואטסאפ העסקי נקרא אוטומטית. המחירים נכנסים למחירון רק אחרי אישור כאן.</p>
+    <datalist id="asgOpts"></datalist>
     <div id="pendList"></div>
   </section>
 
@@ -103,6 +104,7 @@ document.querySelectorAll('nav.seg button').forEach(function (b) { b.addEventLis
 function loadSupMap() {
   return sb.from('sp_suppliers').select('*').order('name').then(function (r) {
     suppliers = {}; (r.data || []).forEach(function (s) { suppliers[s.id] = s; });
+    $('asgOpts').innerHTML = (r.data || []).filter(function (s) { return s.kind !== 'wa_inbox' && s.active; }).map(function (s) { return '<option value="' + esc(s.name) + '"></option>'; }).join('');
   });
 }
 
@@ -162,19 +164,25 @@ $('mk').addEventListener('input', drawSearch);
 
 /* ---------- pending ---------- */
 var ST = { received: 'התקבל', parsing: 'בקריאה...', parsed: 'מוכן לאישור', failed: 'לא נקרא' };
+var pendTimer = null;
+function pendTick() { if (!$('v-pending').classList.contains('hidden') && !$('pendList').contains(document.activeElement)) loadPending(); else pendTimer = setTimeout(pendTick, 20000); }
 function loadPending() {
+  clearTimeout(pendTimer);
   sb.from('sp_uploads').select('*').in('status', ['received', 'parsing', 'parsed', 'failed']).order('created_at', { ascending: false }).limit(50).then(function (r) {
     var list = r.data || [];
     $('pendN').textContent = list.length ? '(' + list.length + ')' : '';
     if (!list.length) { $('pendList').innerHTML = '<p class="mute">אין קבצים שמחכים.</p>'; return; }
+    // a long PDF is read in parts for a few minutes: keep the list fresh while one is being read, unless someone is typing in it
+    if (list.some(function (u) { return u.status === 'parsing' || u.status === 'received'; })) pendTimer = setTimeout(pendTick, 20000);
     $('pendList').innerHTML = list.map(function (u) {
-      var s = suppliers[u.supplier_id] || {};
-      return '<div class="card" data-id="' + u.id + '"><div class="row"><strong class="grow">' + esc(s.name) + ' · ' + (u.file_path ? esc(u.file_name) : 'הודעה בטקסט') + '</strong><span class="badge">' + esc(ST[u.status] || u.status) + '</span></div>' +
+      var s = suppliers[u.supplier_id] || {}, inbox = s.kind === 'wa_inbox';
+      return '<div class="card" data-id="' + u.id + '"><div class="row"><strong class="grow">' + esc(s.name) + ' · ' + (u.file_name ? esc(u.file_name) : 'הודעה בטקסט') + '</strong>' + (u.source === 'whatsapp' ? '<span class="badge">וואטסאפ</span>' : '') + '<span class="badge">' + esc(ST[u.status] || u.status) + '</span></div>' +
         '<p class="mute">' + fmtDate(u.created_at) + (u.supplier_name_typed && u.supplier_name_typed !== s.name ? ' · <span class="warn">כתב: ' + esc(u.supplier_name_typed) + '</span>' : '') + (u.uploader_name ? ' · ' + esc(u.uploader_name) : '') + (u.replaces_all ? ' · <strong>מחליף את כל המחירון</strong>' : '') + (u.rows_count != null ? ' · ' + u.rows_count + ' שורות' : '') + '</p>' +
-        (u.supplier_note ? '<p style="white-space:pre-wrap">' + (u.file_path ? 'הערת הספק: ' : '') + esc(u.supplier_note) + '</p>' : '') + (u.parse_note ? '<p class="' + (u.file_path || u.status === 'failed' ? 'err' : 'mute') + '">' + (u.file_path ? '' : 'סיכום: ') + esc(u.parse_note) + '</p>' : '') +
+        (u.supplier_note ? '<p style="white-space:pre-wrap">' + (u.file_path ? 'הערת הספק: ' : '') + esc(u.supplier_note) + '</p>' : '') + (u.parse_info ? '<p class="mute">' + esc(u.parse_info) + '</p>' : '') + (u.parse_note ? '<p class="' + (u.file_path || u.status === 'failed' ? 'err' : 'mute') + '">' + (u.file_path || u.status === 'failed' ? '' : 'סיכום: ') + esc(u.parse_note) + '</p>' : '') +
+        (inbox ? '<div class="row" style="margin-top:8px"><input class="grow" list="asgOpts" data-asg placeholder="מאיזה ספק הקובץ? הקלידו שם" aria-label="שיוך לספק"><button class="btn small brass" data-a="asg">שיוך לספק</button></div><p class="mute">אחרי השיוך המספר נשמר, והקבצים הבאים ממנו ייכנסו ישר לספק הזה.</p>' : '') +
         '<div class="prev"></div><div class="row" style="margin-top:8px">' +
-        (u.status === 'parsed' ? (u.rows_count ? '<button class="btn small brass" data-a="ok">אישור והכנסה למחירון</button><button class="btn small red" data-a="no">דחייה</button>' : '<button class="btn small brass" data-a="ok">טופל</button>') : '') +
-        (u.file_path ? '<button class="btn small" data-a="file">פתיחת הקובץ</button>' : '') + (u.status !== 'parsing' ? '<button class="btn small" data-a="again">לקרוא שוב</button>' : '') + '</div></div>';
+        (u.status === 'parsed' ? (u.rows_count ? (inbox ? '' : '<button class="btn small brass" data-a="ok">אישור והכנסה למחירון</button>') + '<button class="btn small red" data-a="no">דחייה</button>' : '<button class="btn small brass" data-a="' + (inbox ? 'no' : 'ok') + '">טופל</button>') : '') + (u.status === 'failed' ? '<button class="btn small red" data-a="no">הסרה מהרשימה</button>' : '') +
+        (u.file_path ? '<button class="btn small" data-a="file">פתיחת הקובץ</button>' : '') + (u.status !== 'parsing' && (u.file_path || !u.file_name) ? '<button class="btn small" data-a="again">לקרוא שוב</button>' : '') + '</div></div>';
     }).join('');
     list.filter(function (u) { return u.status === 'parsed' && u.rows_count; }).forEach(function (u) {
       sb.from('sp_prices').select('supplier_code,description,size,unit,price,currency').eq('upload_id', u.id).order('id').limit(15).then(function (p) {
@@ -195,6 +203,15 @@ $('pendList').addEventListener('click', function (e) {
       if (r.error) { alert('לא הצליח: ' + r.error.message); b.disabled = false; return; }
       loadPending();
     });
+  } else if (a === 'asg') {
+    var card = b.closest('[data-id]'), name = card.querySelector('[data-asg]').value.trim();
+    var sid = Object.keys(suppliers).filter(function (k) { return suppliers[k].name === name && suppliers[k].kind !== 'wa_inbox'; })[0];
+    if (!sid) { alert('בחרו ספק מהרשימה. ספק שעוד לא קיים מוסיפים בלשונית "ספקים וקישורים".'); return; }
+    b.disabled = true;
+    sb.rpc('sp_assign_upload', { p_upload: id, p_supplier: sid }).then(function (r) {
+      if (r.error) { alert('לא הצליח: ' + r.error.message); b.disabled = false; return; }
+      loadPending();
+    });
   } else if (a === 'file') {
     sb.from('sp_uploads').select('file_path').eq('id', id).single().then(function (r) {
       return sb.storage.from('supplier-files').createSignedUrl(r.data.file_path, 300);
@@ -208,7 +225,7 @@ $('pendList').addEventListener('click', function (e) {
 /* ---------- suppliers ---------- */
 function loadSuppliers() {
   loadSupMap().then(function () {
-    var list = Object.keys(suppliers).map(function (k) { return suppliers[k]; });
+    var list = Object.keys(suppliers).map(function (k) { return suppliers[k]; }).filter(function (s) { return s.kind !== 'wa_inbox'; });
     if (!list.length) { $('supList').innerHTML = '<p class="mute">עוד אין ספקים בפורטל.</p>'; return; }
     $('supList').innerHTML = list.map(function (s) {
       return '<div class="card" data-sid="' + s.id + '"><div class="row"><strong class="grow">' + esc(s.name) + '</strong>' + (s.active ? '' : '<span class="badge">מושבת</span>') + '</div>' +
