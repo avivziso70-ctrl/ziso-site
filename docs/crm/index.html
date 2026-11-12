@@ -575,6 +575,7 @@ svg.ic.dots{stroke-width:3}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+<script src="piggy.js"></script>
 <script>
 (function () {
 'use strict';
@@ -1201,12 +1202,13 @@ function payTest(t9) {
 function payDraft(amount, test) {
   getPayLink().then(function (p) {
     if (!p) { toast('הלינק לתשלום עוד לא הוגדר במערכת'); return; }
-    if (p.link) { putDraft(payText(amount, p.link)); sb.rpc('crm_log', { p_action: 'pay_link_draft', p_tail9: curTail, p_detail: { amount: amount || null } }); return; }
+    if (p.link) { putDraft(payText(amount, p.link)); if (window.zisoPiggy) zisoPiggy(); sb.rpc('crm_log', { p_action: 'pay_link_draft', p_tail9: curTail, p_detail: { amount: amount || null } }); return; }
     if (!test && !amount) { var a = prompt('סכום לתשלום בש"ח (כולל מע"מ):'); if (a === null) return; amount = Number((a || '').replace(/[^\d.]/g, '')) || null; if (!amount) { toast('צריך סכום כדי ליצור לינק'); return; } }
     toast('יוצר לינק בטרנזילה…');
     payFn({ action: 'create', tail9: curTail, amount: amount, test: !!test }).then(function (j) {
       if (!j.ok) throw new Error(j.error || 'שגיאה');
       putDraft(payText(j.amount, j.pr_link));
+      if (!test && window.zisoPiggy) zisoPiggy();
     }).catch(function (e) { toast('הלינק לא נוצר: ' + e.message, 6000); });
   });
 }
