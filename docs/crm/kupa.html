@@ -49,6 +49,7 @@ input:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .opt{font:inherit;font-weight:700;font-size:20px;min-height:68px;border-radius:12px;border:2px solid var(--line);background:var(--wall);color:var(--ink);cursor:pointer;padding:8px}
 .opt[aria-pressed="true"]{background:var(--brass);border-color:var(--brass);color:var(--brass-ink)}
+.pays{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.pays .opt{min-height:56px;padding:0}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
 .chip{font:inherit;font-size:17px;font-weight:600;min-height:48px;padding:0 16px;border-radius:999px;border:2px solid var(--line);background:var(--wall);color:var(--ink);cursor:pointer}
 .err{color:var(--red);font-weight:700;font-size:17px;margin-top:8px}
@@ -104,6 +105,12 @@ a.go{display:flex;align-items:center;justify-content:center;text-decoration:none
       <div class="grid2" role="group" aria-label="איך מחייבים את הכרטיס">
         <button type="button" class="opt" data-card="card_link" aria-pressed="true" style="font-size:17px">לחייב עכשיו בטלפון</button>
         <button type="button" class="opt" data-card="card_terminal" aria-pressed="false" style="font-size:17px">כבר חייבתי במסוף</button>
+      </div>
+      <div style="margin-top:14px">
+        <div id="hPays" style="font-weight:600;margin-bottom:6px">כמה תשלומים?</div>
+        <div class="pays" role="group" aria-labelledby="hPays">
+          <button type="button" class="opt" data-pays="1" aria-pressed="true">1</button><button type="button" class="opt" data-pays="2" aria-pressed="false">2</button><button type="button" class="opt" data-pays="3" aria-pressed="false">3</button><button type="button" class="opt" data-pays="4" aria-pressed="false">4</button><button type="button" class="opt" data-pays="5" aria-pressed="false">5</button><button type="button" class="opt" data-pays="6" aria-pressed="false">6</button><button type="button" class="opt" data-pays="8" aria-pressed="false">8</button><button type="button" class="opt" data-pays="10" aria-pressed="false">10</button><button type="button" class="opt" data-pays="12" aria-pressed="false">12</button>
+        </div>
       </div>
     </div>
     <div class="err" id="eMethod" role="alert"></div>
@@ -180,7 +187,7 @@ var $ = function (id) { return document.getElementById(id); };
 var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
 var money = function (n) { return '₪' + Number(n).toLocaleString('he-IL', { maximumFractionDigits: 2 }); };
 var METHOD = { card_link: 'אשראי', card_terminal: 'אשראי (מסוף)', cash: 'מזומן', cheque: 'צ׳ק', transfer: 'העברה / ביט' };
-var me = null, method = null, cardHow = 'card_link', goods = null, pollT = null, busy = false;
+var me = null, method = null, cardHow = 'card_link', pays = 1, goods = null, pollT = null, busy = false;
 var say = function (t) { $('live').textContent = ''; setTimeout(function () { $('live').textContent = t; }, 50); };
 function show(id) { ['login', 'form', 'after'].forEach(function (x) { $(x).classList.toggle('hidden', x !== id); }); window.scrollTo(0, 0); }
 
@@ -212,6 +219,7 @@ document.querySelectorAll('[data-method]').forEach(function (b) { b.addEventList
   $('cardHow').classList.toggle('hidden', method !== 'card'); phoneRule(); clearErr('Method');
 }); });
 document.querySelectorAll('[data-card]').forEach(function (b) { b.addEventListener('click', function () { cardHow = b.dataset.card; press('[data-card]', 'data-card', cardHow); phoneRule(); }); });
+document.querySelectorAll('[data-pays]').forEach(function (b) { b.addEventListener('click', function () { pays = Number(b.dataset.pays); press('[data-pays]', 'data-pays', String(pays)); }); });
 document.querySelectorAll('[data-goods]').forEach(function (b) { b.addEventListener('click', function () {
   goods = b.dataset.goods; press('[data-goods]', 'data-goods', goods);
   $('goodsWrap').classList.toggle('hidden', goods !== 'yes'); clearErr('Goods');
@@ -231,7 +239,7 @@ function tail9(p) { p = String(p || '').replace(/\D/g, ''); if (/^972/.test(p)) 
 function read() {
   var v = {
     amount: Math.round(Number($('amount').value.replace(/,/g, '')) * 100) / 100,
-    method: method === 'card' ? cardHow : method,
+    method: method === 'card' ? cardHow : method, payments: method === 'card' ? pays : 1,
     payer_name: $('payer').value.trim(), phone: $('phone').value.trim(), tail9: tail9($('phone').value),
     reason: $('reason').value.trim().replace(/[:\s]+$/, ''), goods_taken: goods === 'yes', goods: goods === 'yes' ? $('goods').value.trim() : null
   };
@@ -259,16 +267,16 @@ $('save').addEventListener('click', function () {
   if (busy) return;
   var v = read(); if (!v) return;
   busy = true; $('save').disabled = true; $('save').textContent = 'שומר…'; $('eSave').textContent = '';
-  var key = v.tail9 + '|' + v.amount, link;
+  var key = v.tail9 + '|' + v.amount + '|' + v.payments, link;
   var step = v.method !== 'card_link' ? Promise.resolve(null)
     : pending && pending.key === key ? Promise.resolve(pending.j)
-    : fn('crm-pay', { action: 'create', tail9: v.tail9, amount: v.amount, description: v.reason }).then(function (j) {
+    : fn('crm-pay', { action: 'create', tail9: v.tail9, amount: v.amount, description: v.reason, payments: v.payments }).then(function (j) {
         if (!j.ok) throw new Error(j.error || 'לא נוצר לינק תשלום');
         pending = { key: key, j: j }; return j;
       });
   step.then(function (j) {
     link = j;
-    return sb.from('crm_takings').insert({ by: me.email, amount: v.amount, method: v.method, payer_name: v.payer_name, tail9: v.tail9, reason: v.reason, goods_taken: v.goods_taken, goods: v.goods, pay_pr_id: j ? String(j.pr_id) : null }).select('id').single();
+    return sb.from('crm_takings').insert({ by: me.email, amount: v.amount, method: v.method, payer_name: v.payer_name, tail9: v.tail9, reason: v.reason, goods_taken: v.goods_taken, goods: v.goods, payments: j ? Number(j.payments) || 1 : v.payments, pay_pr_id: j ? String(j.pr_id) : null }).select('id').single();
   }).then(function (r) {
     if (r.error) throw new Error(r.error.message);
     pending = null; finish(v, link);
@@ -280,15 +288,16 @@ function finish(v, link) {
   show('after');
   $('aPay').classList.toggle('hidden', !link); $('aPay').style.display = link ? 'grid' : '';
   if (link) {
-    $('aIcon').textContent = '💳'; $('aTitle').textContent = 'נרשם. עכשיו לחייב ' + money(v.amount);
-    $('aText').textContent = 'המשרד כבר קיבל משימה דחופה להוציא קבלה ל' + v.payer_name + '.';
+    var got = Number(link.payments) || 1;
+    $('aIcon').textContent = '💳'; $('aTitle').textContent = 'נרשם. עכשיו לחייב ' + money(v.amount) + (got > 1 ? ' בעד ' + got + ' תשלומים' : '');
+    $('aText').textContent = (v.payments > 1 && got === 1 ? 'שימו לב: טרנזילה לא אישרה תשלומים בלינק, אז הלינק הוא לתשלום אחד. ' : got > 1 ? 'את מספר התשלומים בוחרים בדף התשלום. ' : '') + 'המשרד כבר קיבל משימה דחופה להוציא קבלה ל' + v.payer_name + '.';
     $('aState').className = 'state'; $('aState').textContent = 'ממתין לתשלום…';
     $('aOpen').classList.remove('hidden'); $('aWa').classList.remove('hidden');
     $('aOpen').href = link.pr_link;
     $('aWa').href = 'https://wa.me/972' + v.tail9 + '?text=' + encodeURIComponent('שלום ' + v.payer_name + ', כאן זיסו קרמיקה. לתשלום מאובטח של ' + money(v.amount) + ' בכרטיס אשראי, דרך טרנזילה:\n' + link.pr_link);
     poll(String(link.pr_id));
   } else {
-    $('aIcon').textContent = '✓'; $('aTitle').textContent = 'נשמר: ' + money(v.amount) + ' ' + METHOD[v.method];
+    $('aIcon').textContent = '✓'; $('aTitle').textContent = 'נשמר: ' + money(v.amount) + ' ' + METHOD[v.method] + (v.payments > 1 ? ', ' + v.payments + ' תשלומים' : '');
     $('aText').textContent = 'המשרד קיבל משימה דחופה להוציא קבלה ל' + v.payer_name + '. אין צורך לעשות שום דבר נוסף.';
   }
   $('aTitle').focus(); say($('aTitle').textContent);
@@ -309,7 +318,7 @@ function poll(prId) {
 }
 document.addEventListener('visibilitychange', function () { if (!document.hidden && me && !$('form').classList.contains('hidden')) loadMine(); });
 $('again').addEventListener('click', function () {
-  clearInterval(pollT); method = null; goods = null; cardHow = 'card_link';
+  clearInterval(pollT); method = null; goods = null; cardHow = 'card_link'; pays = 1; press('[data-pays]', 'data-pays', '1');
   ['amount', 'payer', 'phone', 'reason', 'goods'].forEach(function (id) { $(id).value = ''; });
   press('[data-method]', 'data-method', ''); press('[data-goods]', 'data-goods', ''); press('[data-card]', 'data-card', 'card_link');
   $('cardHow').classList.add('hidden'); $('goodsWrap').classList.add('hidden'); phoneRule();
@@ -318,7 +327,7 @@ $('again').addEventListener('click', function () {
 
 /* ---------- my last entries: what still waits for a receipt, and undoing a card charge that never happened ---------- */
 function loadMine() {
-  sb.from('crm_takings').select('id,at,amount,method,payer_name,doc_no,closed_at,cancelled_at,pay_pr_id').ilike('by', me.email).order('at', { ascending: false }).limit(8).then(function (r) {
+  sb.from('crm_takings').select('id,at,amount,method,payments,payer_name,doc_no,closed_at,cancelled_at,pay_pr_id').ilike('by', me.email).order('at', { ascending: false }).limit(8).then(function (r) {
     if (r.error) { $('mineList').textContent = 'הרשימה לא נטענה.'; return; }
     var rows = r.data || [];
     if (!rows.length) { $('mineList').textContent = 'עוד לא נרשם כלום.'; return; }
@@ -329,7 +338,7 @@ function loadMine() {
       $('mineList').innerHTML = rows.map(function (t) {
         var d = new Date(t.at), unpaid = t.method === 'card_link' && !paid[t.pay_pr_id] && !t.cancelled_at && !t.closed_at;
         var tag = t.cancelled_at ? '<span class="tag off">בוטל</span>' : t.closed_at ? '<span class="tag ok">יצאה קבלה ' + esc(t.doc_no) + '</span>' : unpaid ? '<span class="tag">האשראי עוד לא שולם</span>' : '<span class="tag">מחכה לקבלה מהמשרד</span>';
-        return '<div class="row"><div><b>' + money(t.amount) + '</b> ' + esc(METHOD[t.method]) + ' · ' + esc(t.payer_name) + '</div><div class="muted small">' + esc(d.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })) + ' ' + esc(d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })) + '</div><div>' + tag +
+        return '<div class="row"><div><b>' + money(t.amount) + '</b> ' + esc(METHOD[t.method]) + (t.payments > 1 ? ' ' + t.payments + ' תשלומים' : '') + ' · ' + esc(t.payer_name) + '</div><div class="muted small">' + esc(d.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })) + ' ' + esc(d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })) + '</div><div>' + tag +
           (unpaid ? ' <button class="linkbtn" data-cancel="' + t.id + '">הלקוח לא שילם, לבטל</button>' : '') + '</div></div>';
       }).join('');
     });
