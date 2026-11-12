@@ -245,6 +245,9 @@ body.wall{padding-top:76px}
 #station .tile.mid{border-color:var(--amber)} #station .tile.mid .v{color:var(--amber)}
 #station .tile.bad{border-color:var(--red)} #station .tile.bad .v{color:var(--red)}
 #station .tile.veil .v{color:var(--mute);letter-spacing:.2em}
+body.station:not(.amtshow) .amt{cursor:pointer}
+body.station:not(.amtshow) .amt>span{display:none}
+body.station:not(.amtshow) .amt::after{content:'••••';letter-spacing:.15em}
 /* showroom music panel: controls the player on the main office PC through public.showroom_music */
 #musicPanel{position:fixed;z-index:45;width:min(360px,calc(100vw - 24px));background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;display:grid;gap:12px;box-shadow:0 12px 36px rgba(0,0,0,.4)}
 #musicPanel h2{font-size:18px;display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -737,7 +740,15 @@ function stationLoad() {
     stationRender();
   });
 }
-var REVEAL_MS = 8000;
+var REVEAL_MS = 8000, amtT = null;
+/* the same rule for money amounts in the lists (today view, customer card) on the wall screen: drawn covered, a touch shows them for a few seconds */
+function veil(h) { return WALL ? '<span class="amt" title="לגעת כדי לראות"><span>' + h + '</span></span>' : String(h); }
+function amt(v) { return veil(money(v)); }
+document.addEventListener('click', function (e) {
+  /* the total on the "כסף" tab stays covered when the tab is pressed; only a touch on an amount in the list shows them */
+  if (!WALL || !e.target.closest || !e.target.closest('.amt') || e.target.closest('#todaySeg') || document.body.classList.contains('amtshow')) return;
+  document.body.classList.add('amtshow'); clearTimeout(amtT); amtT = setTimeout(function () { document.body.classList.remove('amtshow'); }, REVEAL_MS);
+});
 function stationRender() {
   var d = stationData, k = d.kpi || {}, w = convs.filter(needsHuman).length;
   var tone = function (v, good, mid) { return v >= good ? 'good' : v >= mid ? 'mid' : 'bad'; };
@@ -808,16 +819,22 @@ if (WALL) {
   window.addEventListener('beforeunload', function (e) { if (selfReload) return; e.preventDefault(); e.returnValue = ''; });
   /* touch screen: a long press must not open the browser menu */
   document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
-  /* the station updates itself: while the screensaver is on, look for a newer page and load it */
-  setInterval(function () {
-    if (coverMode !== 'idle' || !SELF_SRC || Date.now() - lastAct < 6 * 60000) return;
+  /* the station updates itself: whenever a cover is on (screensaver or "יש לקוחות") and nobody touched the screen for a minute,
+     and once right after it opens, it looks for a newer page and loads it. The cover comes back after the reload. */
+  var selfCheck = function (boot) {
+    var covered = !$('cover').classList.contains('hidden');
+    if (!SELF_SRC || (boot ? $('draft').value.trim() : !covered || Date.now() - lastAct < 60000)) return;
     fetch(location.pathname + '?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
-      if (t.length < 50000 || t.indexOf('</html>') < 0 || t.indexOf(SELF_SRC) >= 0 || coverMode !== 'idle') return;
+      if (t.length < 50000 || t.indexOf('</html>') < 0 || t.indexOf(SELF_SRC) >= 0) return;
+      if (boot ? $('draft').value.trim() : $('cover').classList.contains('hidden')) return;
       var sig = t.length + ':' + t.slice(-4000).split('').reduce(function (a, c) { return (a * 31 + c.charCodeAt(0)) | 0; }, 7);
-      try { if (sessionStorage.getItem('crmSelfSig') === sig) return; sessionStorage.setItem('crmSelfSig', sig); } catch (e) { return; }
+      try { if (sessionStorage.getItem('crmSelfSig') === sig) return; sessionStorage.setItem('crmSelfSig', sig); if (coverMode === 'idle') sessionStorage.setItem('crmIdleCover', '1'); } catch (e) { return; }
       selfReload = true; location.reload();
     }).catch(function () {});
-  }, 10 * 60000);
+  };
+  setInterval(selfCheck, 2 * 60000);
+  setTimeout(function () { selfCheck(true); }, 8000);
+  try { if (sessionStorage.getItem('crmIdleCover')) { sessionStorage.removeItem('crmIdleCover'); if ($('cover').classList.contains('hidden')) coverSet(true, 'idle'); } } catch (e) {}
 }
 function renderConvs() {
   var list = convs.filter(function (c) {
@@ -1182,14 +1199,14 @@ function renderCard() {
   h += '<div class="sect"><h3>פגישה באולם</h3><div id="visitBox"><span class="small muted">טוען…</span></div><div class="addrow"><input type="datetime-local" id="visitAt" aria-label="מועד הפגישה"><button class="btn small" id="addVisit">קביעה</button></div></div>';
   h += '<div class="sect"><h3>סיכום חכם</h3><div id="aiBox"></div><div class="summary" id="summaryBox">' + (crm.summary ? esc(crm.summary) + '<div class="small muted">עודכן ' + esc(fmtDate(crm.summary_at)) + '</div>' : '<span class="muted">עדיין אין סיכום.</span>') + '</div><div class="row"><button class="btn small" id="sumBtn"' + (c.chat_n ? '' : ' disabled') + '>' + (crm.summary ? 'ניתוח מחדש' : 'ניתוח השיחה') + '</button><span class="small muted">' + (c.chat_n ? c.chat_n + ' הודעות בוואטסאפ' : 'אין שיחת וואטסאפ') + '</span></div></div>';
   h += '<div class="sect"><h3>שיחות טלפון <span class="n" id="callsN"></span></h3><div id="callsBox"><span class="small muted">טוען…</span></div></div>';
-  h += '<div class="sect"><h3>הזמנות <span class="n">' + openOrders.length + ' פתוחות' + (debt ? ' · חוב ' + money(debt) : '') + '</span></h3>';
+  h += '<div class="sect"><h3>הזמנות <span class="n">' + openOrders.length + ' פתוחות' + (debt ? ' · חוב ' + amt(debt) : '') + '</span></h3>';
   if (!c.orders.length) h += '<div class="small muted">אין הזמנות בפריוריטי</div>';
   else h += '<table class="t"><tr><th>הזמנה</th><th>תאריך</th><th>סטטוס</th><th class="num">פתוח</th></tr>' + c.orders.slice(0, 12).map(function (o) {
     return '<tr><td><details><summary>' + esc(o.so) + '</summary><table class="t">' + (o.lines || []).map(function (l) { return '<tr><td>' + esc(l.desc || l.item) + '</td><td class="num">' + esc(l.bal != null ? l.bal + '/' + l.qty : l.qty) + ' ' + esc(l.unit || '') + '</td><td class="num">' + (l.total != null ? money(l.total) : '') + '</td></tr>'; }).join('') + '</table><button class="btn small" type="button" data-doc="order" data-so="' + esc(o.so) + '">פירוט הזמנה כ-PDF</button></details></td><td>' + esc(fmtDate(o.date)) + '</td><td>' + esc(o.status || 'פתוחה') + '</td><td class="num">' + (o.open_total ? money(o.open_total) : '') + '</td></tr>';
   }).join('') + '</table>';
   h += '<div class="row">' + (c.orders.length || c.aging.length ? '<button class="btn small" type="button" data-doc="balance">דף יתרה כ-PDF</button>' : '') + '<button class="btn small" type="button" id="payBtn">לינק לתשלום</button></div>';
   h += '<div id="payList"></div>';
-  if (c.aging.length) h += '<div class="small">יתרת חוב: ' + c.aging.map(function (a) { return money(a.total) + (a.d90p ? ' (מעל 90 יום: ' + money(a.d90p) + ')' : ''); }).join(', ') + '</div>';
+  if (c.aging.length) h += '<div class="small">יתרת חוב: ' + c.aging.map(function (a) { return amt(a.total) + (a.d90p ? ' (מעל 90 יום: ' + amt(a.d90p) + ')' : ''); }).join(', ') + '</div>';
   if (c.invoices.length || c.receipts.length) h += '<details><summary>קבלות וחשבוניות השנה · שליחת העתק בוואטסאפ</summary><table class="t">' + c.receipts.slice(0, 10).map(function (i) { return '<tr><td>קבלה ' + esc(i.doc) + (i.method ? ' · ' + esc(i.method) : '') + '</td><td>' + esc(fmtDate(i.date)) + '</td><td class="num">' + money(i.amount) + '</td><td><button class="btn small" type="button" data-pdoc="' + esc(i.doc) + '" data-pkind="receipt">שליחה</button></td></tr>'; }).join('') + c.invoices.slice(0, 10).map(function (i) { return '<tr><td>חשבונית ' + esc(i.doc) + '</td><td>' + esc(fmtDate(i.date)) + '</td><td class="num">' + money(i.amount) + '</td><td><button class="btn small" type="button" data-pdoc="' + esc(i.doc) + '" data-pkind="invoice">שליחה</button></td></tr>'; }).join('') + '</table></details>';
   h += '</div>';
   h += '<div class="sect"><h3>משימות <span class="n">' + c.tasks.filter(function (t) { return !t.done_at; }).length + ' פתוחות</span></h3><div id="taskList">' + c.tasks.map(taskRow).join('') + '</div>' +
@@ -1357,7 +1374,7 @@ function takeLoad() {
       takes = rows;
       var tot = rows.reduce(function (s, t) { return s + Number(t.amount); }, 0);
       $('takePill').classList.toggle('hidden', !rows.length);
-      $('takePill').textContent = rows.length + ' בלי קבלה' + ' · ' + money(tot);
+      $('takePill').textContent = rows.length + ' בלי קבלה' + (WALL ? '' : ' · ' + money(tot)); /* wall screen: customers can see it, so no sums */
       $('takePill').setAttribute('aria-label', rows.length + ' תשלומים שהתקבלו ומחכים לקבלה, ' + money(tot));
       return rows;
     });
@@ -1366,9 +1383,9 @@ function takeLoad() {
 function takeHtml() {
   if (!takes.length) return '';
   var tot = takes.reduce(function (s, t) { return s + Number(t.amount); }, 0);
-  return '<div class="sect take" data-g="now"><h3>כסף שהתקבל ומחכה לקבלה <span class="n">' + takes.length + ' · ' + money(tot) + '</span></h3><div class="small muted">על כל תשלום חייבים להוציא קבלה או חשבונית. מקלידים בפריוריטי, ואז לוחצים "יצאה קבלה" וכותבים את מספר המסמך. עד אז זה נשאר כאן.</div>' +
+  return '<div class="sect take" data-g="now"><h3>כסף שהתקבל ומחכה לקבלה <span class="n">' + takes.length + ' · ' + amt(tot) + '</span></h3><div class="small muted">על כל תשלום חייבים להוציא קבלה או חשבונית. מקלידים בפריוריטי, ואז לוחצים "יצאה קבלה" וכותבים את מספר המסמך. עד אז זה נשאר כאן.</div>' +
     takes.map(function (t) {
-      return '<div class="airow"><span class="pill hot">₪' + Number(t.amount).toLocaleString('he-IL', { maximumFractionDigits: 2 }) + '</span><div><div class="txt">' + (t.tail9 ? '<a href="#card/' + esc(t.tail9) + '">' + esc(t.payer_name) + '</a>' : esc(t.payer_name)) + ' · ' + esc(TAKE_M[t.method] || t.method) + ' · רשם ' + esc(nameOf(t.by)) + ' ' + esc(fmtDate(t.at)) + ' ' + esc(fmtTime(t.at)) + '</div>' +
+      return '<div class="airow"><span class="pill hot">' + veil('₪' + Number(t.amount).toLocaleString('he-IL', { maximumFractionDigits: 2 })) + '</span><div><div class="txt">' + (t.tail9 ? '<a href="#card/' + esc(t.tail9) + '">' + esc(t.payer_name) + '</a>' : esc(t.payer_name)) + ' · ' + esc(TAKE_M[t.method] || t.method) + ' · רשם ' + esc(nameOf(t.by)) + ' ' + esc(fmtDate(t.at)) + ' ' + esc(fmtTime(t.at)) + '</div>' +
         '<div class="txt">סיבה: ' + esc(t.reason) + '</div><div class="txt">סחורה שנלקחה: ' + (t.goods_taken ? esc(t.goods) : 'לא נלקחה') + '</div>' +
         (t.method === 'card_link' ? '<div class="sub"' + (t.unpaid ? ' style="color:var(--red)"' : '') + '>' + (t.unpaid ? 'הלינק עוד לא שולם. לוודא עם הלקוח לפני שמוציאים קבלה.' : 'שולם בלינק ✓') + '</div>' : '') +
         '<div class="row"><button class="btn small brass" data-tkclose="' + t.id + '">יצאה קבלה</button><button class="btn small" data-tkcancel="' + t.id + '">ביטול (לא התקבל כסף)</button></div></div></div>';
@@ -1788,8 +1805,8 @@ function loadToday() {
     var h = '<div class="kpis">' +
       '<div class="kpi' + (k.pct7 == null ? '' : k.pct7 >= 80 ? ' good' : ' bad') + '"><b>' + pct + '</b><span>נענו תוך 15 דק׳ עבודה, 7 ימים</span><span class="sub">יעד 80%' + (k.pct_prev != null ? ' · שבוע קודם ' + k.pct_prev + '%' : '') + '</span></div>' +
       '<div class="kpi' + (late ? ' bad' : waiting.length ? '' : ' good') + '"><b>' + waiting.length + '</b><span>ממתינים לאדם עכשיו</span><span class="sub">' + (late ? late + ' עברו 15 דק׳' : 'אף אחד לא באיחור') + '</span></div>' +
-      '<div class="kpi"><b>' + (k.quotes7 || 0) + '</b><span>הצעות מחיר, 7 ימים</span><span class="sub">' + (k.open_quotes7 || 0) + ' בלי תשובה מהלקוח</span></div>' +
-      '<div class="kpi"><b>' + (k.won7 || 0) + '</b><span>נסגרו, 7 ימים</span><span class="sub">מסמנים "נסגר" בשיחה</span></div></div>';
+      '<div class="kpi"><b>' + veil(k.quotes7 || 0) + '</b><span>הצעות מחיר, 7 ימים</span><span class="sub">' + veil(k.open_quotes7 || 0) + ' בלי תשובה מהלקוח</span></div>' +
+      '<div class="kpi"><b>' + veil(k.won7 || 0) + '</b><span>נסגרו, 7 ימים</span><span class="sub">מסמנים "נסגר" בשיחה</span></div></div>';
     h += takeHtml();
     // money waiting per customer: unpaid recent orders + open debt + stalled quotes; used to put cash at the top
     var pay = rs[9].data || [], debt = rs[10].data || [], cashOf = {};
@@ -1802,23 +1819,23 @@ function loadToday() {
       .sort(function (a, b) { return b.amt - a.amt; });
     if (rs[9].data || rs[10].data) {
       var ctot = collect.reduce(function (s, c) { return s + c.amt; }, 0);
-      h += '<div class="sect" data-g="money"><h3>כסף שמחכה לגבייה <span class="n">' + collect.length + (ctot ? ' · ' + money(ctot) : '') + '</span></h3><div class="small muted">הזמנות מ-60 הימים האחרונים שממתינות לתשלום, ויתרות חוב פתוחות בפריוריטי. זה הכסף הכי קרוב לקופה: שיחה אחת או לינק לתשלום מהכרטיס.</div>' +
-        (collect.length ? collect.slice(0, 12).map(function (c) { return '<div class="airow"><span class="pill hot">' + money(c.amt) + '</span><div><div class="txt">' + (c.t9 ? '<a href="#card/' + esc(c.t9) + '">' + esc(c.name || 'לקוח') + '</a>' : esc(c.name || 'לקוח')) + '</div><div class="sub">' + esc(c.what) + (c.since ? ' · מ-' + esc(fmtDate(c.since)) : '') + '</div></div></div>'; }).join('') : '<div class="small muted">אין כרגע כסף פתוח לגבייה</div>') + '</div>';
+      h += '<div class="sect" data-g="money"><h3>כסף שמחכה לגבייה <span class="n">' + collect.length + (ctot ? ' · ' + amt(ctot) : '') + '</span></h3><div class="small muted">הזמנות מ-60 הימים האחרונים שממתינות לתשלום, ויתרות חוב פתוחות בפריוריטי. זה הכסף הכי קרוב לקופה: שיחה אחת או לינק לתשלום מהכרטיס.</div>' +
+        (collect.length ? collect.slice(0, 12).map(function (c) { return '<div class="airow"><span class="pill hot">' + amt(c.amt) + '</span><div><div class="txt">' + (c.t9 ? '<a href="#card/' + esc(c.t9) + '">' + esc(c.name || 'לקוח') + '</a>' : esc(c.name || 'לקוח')) + '</div><div class="sub">' + esc(c.what) + (c.since ? ' · מ-' + esc(fmtDate(c.since)) : '') + '</div></div></div>'; }).join('') : '<div class="small muted">אין כרגע כסף פתוח לגבייה</div>') + '</div>';
     }
     var cashRank = function (a) { var c = cashOf[a.tail9] || 0; return a.score + (c > 0 ? 20 + Math.min(30, c / 1000) : 0); };
     var ai = (rs[6].data || []).filter(function (a) { return !noAction(a.next_action) && a.score >= 30; }).sort(function (a, b) { return cashRank(b) - cashRank(a); }).slice(0, 15);
     if (rs[6].data) {
       var nm = {}; convs.forEach(function (c) { if (c.tail9) nm[c.tail9] = c.name || localPhone(c.phone); });
       h += '<div class="sect" data-g="now"><h3>מה לעשות היום <span class="n">ניתוח אוטומטי · ' + ai.length + '</span></h3><div class="small muted">המערכת קוראת כל שיחה שהתחדשה וממיינת לפי מה שהכי קרוב לכסף: קודם לקוחות עם הזמנה שממתינה לתשלום, חוב פתוח או הצעה גדולה, ואחר כך לפי דחיפות. לוחצים על השם לכרטיס, "בוצע" מוריד מהרשימה עד שיקרה משהו חדש.</div>' +
-        (ai.length ? ai.map(function (a) { return '<div class="airow"><span class="pill ' + esc(a.temp) + '">' + esc(TEMP[a.temp] || a.temp) + ' ' + a.score + '</span><div><div class="txt"><a href="#card/' + esc(a.tail9) + '" data-ainame="' + esc(a.tail9) + '">' + esc(nm[a.tail9] || 'לקוח') + '</a>' + (cashOf[a.tail9] ? ' · <b>' + money(cashOf[a.tail9]) + ' על הפרק</b>' : '') + (a.next_due ? ' · <b>' + esc(dueLabel(a.next_due)) + '</b>' : '') + ': ' + esc(a.next_action) + '</div>' + (a.risk ? '<div class="sub" style="color:var(--red)">שימו לב: ' + esc(a.risk) + '</div>' : '') + (a.intent ? '<div class="sub">' + esc(a.intent) + '</div>' : '') + '<button class="btn small" data-aidone="' + esc(a.tail9) + '">בוצע</button></div></div>'; }).join('') : '<div class="small muted">אין כרגע משהו דחוף</div>') + '</div>';
+        (ai.length ? ai.map(function (a) { return '<div class="airow"><span class="pill ' + esc(a.temp) + '">' + esc(TEMP[a.temp] || a.temp) + ' ' + a.score + '</span><div><div class="txt"><a href="#card/' + esc(a.tail9) + '" data-ainame="' + esc(a.tail9) + '">' + esc(nm[a.tail9] || 'לקוח') + '</a>' + (cashOf[a.tail9] ? ' · <b>' + amt(cashOf[a.tail9]) + ' על הפרק</b>' : '') + (a.next_due ? ' · <b>' + esc(dueLabel(a.next_due)) + '</b>' : '') + ': ' + esc(a.next_action) + '</div>' + (a.risk ? '<div class="sub" style="color:var(--red)">שימו לב: ' + esc(a.risk) + '</div>' : '') + (a.intent ? '<div class="sub">' + esc(a.intent) + '</div>' : '') + '<button class="btn small" data-aidone="' + esc(a.tail9) + '">בוצע</button></div></div>'; }).join('') : '<div class="small muted">אין כרגע משהו דחוף</div>') + '</div>';
     }
     var sq = (rs[7].data || []).slice().sort(function (x, y) { return Number(y.total || 0) - Number(x.total || 0); }), ins = rs[8].data && rs[8].data[0];
     if (isOwner() && rs[8].data) {
       h += '<div class="sect" data-g="admin"><h3>תובנות השבוע <span class="n">רק אתה רואה את זה</span></h3>' + (ins ? '<div class="summary">' + mdLite(ins.body) + '</div><div class="small muted">' + esc(fmtDate(ins.period_start)) + '–' + esc(fmtDate(ins.period_end)) + ' · מתעדכן לבד בכל יום ראשון בבוקר</div>' : '<div class="small muted">הסיכום הראשון יגיע ביום ראשון בבוקר.</div>') + '<div class="row"><button class="btn small" id="insNow">הפקה עכשיו</button></div></div>';
     }
     if (rs[7].data) {
-      h += '<div class="sect" data-g="money"><h3>הצעות מחיר תקועות <span class="n">' + sq.length + (sq.length ? ' · ' + money(sq.reduce(function (s, q) { return s + Number(q.total || 0); }, 0)) : '') + '</span></h3><div class="small muted">הצעות מ-30 הימים האחרונים בלי הזמנה אחריהן (ישנות יותר כבר לא רלוונטיות). לכל אחת טיוטת מעקב שהמערכת כתבה לפי השיחה. שולחים ידנית, פעם אחת, ומסמנים "נשלח".</div>' +
-        (sq.length ? sq.slice(0, 20).map(function (q, i) { return '<div class="airow"><span class="pill ' + esc(q.temp || '') + '">' + q.days + ' ימים</span><div><div class="txt">' + (q.tail9 ? '<a href="#card/' + esc(q.tail9) + '">' + esc(q.name || 'לקוח ' + q.cust_no) + '</a>' : esc(q.name || 'לקוח ' + q.cust_no)) + ' · ' + esc(q.pq) + ' · ' + money(q.total) + '</div>' + (q.angle ? '<div class="sub">' + esc(q.angle) + '</div>' : '') +
+      h += '<div class="sect" data-g="money"><h3>הצעות מחיר תקועות <span class="n">' + sq.length + (sq.length ? ' · ' + amt(sq.reduce(function (s, q) { return s + Number(q.total || 0); }, 0)) : '') + '</span></h3><div class="small muted">הצעות מ-30 הימים האחרונים בלי הזמנה אחריהן (ישנות יותר כבר לא רלוונטיות). לכל אחת טיוטת מעקב שהמערכת כתבה לפי השיחה. שולחים ידנית, פעם אחת, ומסמנים "נשלח".</div>' +
+        (sq.length ? sq.slice(0, 20).map(function (q, i) { return '<div class="airow"><span class="pill ' + esc(q.temp || '') + '">' + q.days + ' ימים</span><div><div class="txt">' + (q.tail9 ? '<a href="#card/' + esc(q.tail9) + '">' + esc(q.name || 'לקוח ' + q.cust_no) + '</a>' : esc(q.name || 'לקוח ' + q.cust_no)) + ' · ' + esc(q.pq) + ' · ' + amt(q.total) + '</div>' + (q.angle ? '<div class="sub">' + esc(q.angle) + '</div>' : '') +
           (q.draft ? '<details><summary>טיוטת מעקב</summary><div class="summary">' + esc(q.draft) + '</div></details>' : '<div class="sub">הטיוטה תיכתב בריצה הבאה</div>') +
           '<div class="row">' + (q.draft ? '<button class="btn small" data-qsend="' + i + '">לשיחה עם הטיוטה</button>' : '<button class="btn small" data-qdraft="' + i + '">כתיבת טיוטה</button>') + '<button class="btn small" data-qmark="' + i + '" data-st="sent">נשלח</button><button class="btn small" data-qmark="' + i + '" data-st="dismissed">לא רלוונטי</button></div></div></div>'; }).join('') : '<div class="small muted">אין הצעות תקועות</div>') + '</div>';
     }
@@ -1850,11 +1867,11 @@ function loadToday() {
     $('todayBody').innerHTML = h;
     // groups: what to answer now, money to collect, past customers and new leads, owner-only numbers
     var moneyTot = collect.reduce(function (s, c) { return s + c.amt; }, 0) + sq.reduce(function (s, q) { return s + Number(q.total || 0); }, 0);
-    var segs = [['now', 'עכשיו', waiting.length || ''], ['money', 'כסף', moneyTot ? money(moneyTot) : ''], ['grow', 'לקוחות ופניות', orTodo.length || '']];
+    var segs = [['now', 'עכשיו', waiting.length || ''], ['money', 'כסף', moneyTot ? amt(moneyTot) : ''], ['grow', 'לקוחות ופניות', orTodo.length || '']];
     if (isOwner()) segs.push(['admin', 'ניהול', '']);
     if (!segs.some(function (x) { return x[0] === todayG; })) todayG = 'now';
     $('todayBody').dataset.g = todayG;
-    $('todaySeg').innerHTML = segs.map(function (x) { return '<button type="button" data-g="' + x[0] + '" aria-pressed="' + (x[0] === todayG) + '">' + x[1] + (x[2] !== '' ? '<span class="n">' + esc(x[2]) + '</span>' : '') + '</button>'; }).join('');
+    $('todaySeg').innerHTML = segs.map(function (x) { return '<button type="button" data-g="' + x[0] + '" aria-pressed="' + (x[0] === todayG) + '">' + x[1] + (x[2] !== '' ? '<span class="n">' + x[2] + '</span>' : '') + '</button>'; }).join('');
     $('todaySeg').querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () {
       todayG = b.dataset.g; $('todayBody').dataset.g = todayG; $('todaySeg').querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
       $('today').scrollTo({ top: 0 });
