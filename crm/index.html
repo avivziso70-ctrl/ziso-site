@@ -72,8 +72,8 @@ input::placeholder,textarea::placeholder{color:var(--mute)}
 #login .err{color:var(--red);min-height:1.4em}
 
 /* App shell */
-#app{height:100%;display:grid;grid-template-rows:auto auto 1fr auto}
-#app > header.top{grid-row:1} #app > .pushbar{grid-row:2} #app > main{grid-row:3} #app > nav.tabs{grid-row:4}
+#app{height:100%;display:grid;grid-template-rows:auto auto auto 1fr auto}
+#app > header.top{grid-row:1} #app > .pushbar{grid-row:2} #app > #quickBars{grid-row:3} #app > main{grid-row:4} #app > nav.tabs{grid-row:5}
 header.top{display:flex;align-items:center;gap:12px;padding:10px var(--pad);border-bottom:1px solid var(--line);background:var(--surface);min-height:60px}
 header.top .logo{width:34px;height:34px;border-radius:50%;object-fit:cover}
 header.top h1{font-size:24px}
@@ -345,7 +345,12 @@ svg.ic.dots{stroke-width:3}
 #kupaBar{display:none;align-items:center;justify-content:center;gap:10px;margin:8px 12px 0;min-height:48px;border-radius:12px;background:var(--brass);color:var(--brass-ink);font-weight:700;font-size:17px;text-decoration:none}
 #kupaBar.big{display:flex;min-height:84px;font-size:26px;border-radius:16px;margin:12px 12px 4px}
 #kupaBar.hidden{display:none !important}
-@media (max-width:899px){#kupaBar{display:flex}}
+#voiceBar{display:none;align-items:center;justify-content:center;gap:10px;margin:8px 12px 0;min-height:48px;border-radius:12px;border:2px solid var(--brass);background:var(--brass-soft);color:var(--ink);font:inherit;font-weight:700;font-size:17px;cursor:pointer;width:calc(100% - 24px)}
+#voiceBar.big{display:flex;min-height:84px;font-size:24px;border-radius:16px;margin:8px 12px 4px}
+#voiceBar.hidden{display:none !important}
+#askMic{flex:none;min-width:52px;font-size:20px}#askMic.on{background:var(--red);color:var(--wall);border-color:var(--red)}
+#askHear{margin:0 16px 8px;padding:14px;border-radius:12px;background:var(--red-soft);color:var(--ink);font-weight:700;font-size:18px;text-align:center}
+@media (max-width:899px){#kupaBar,#voiceBar{display:flex}}
 @media (max-width:899px){header.top{flex-wrap:wrap}#takePill{order:9;flex:1 0 100% !important;justify-content:center}}
 @media (max-width:599px){#doneBtn .lbl{display:none}}
 .compose .quick button.aibtn{border-color:var(--brass);background:var(--brass-soft);color:var(--brass);font-weight:600;display:inline-flex;align-items:center;gap:6px}
@@ -396,7 +401,8 @@ svg.ic.dots{stroke-width:3}
     <div class="askhead"><h2 id="askTitle">תשאלו את קלוד</h2><button class="btn small" type="button" id="askNew">שיחה חדשה</button><button class="btn small" type="button" id="askClose">סגירה</button></div>
     <div class="asklog" id="askLog" aria-live="polite"></div>
     <div class="askchips" id="askChips"></div>
-    <form id="askForm" autocomplete="off"><textarea id="askQ" rows="1" placeholder="למשל: מה קבענו עם דני כהן?" aria-label="שאלה לקלוד"></textarea><button class="btn brass" type="submit" id="askSend">שליחה</button></form>
+    <div id="askHear" class="hidden" role="status"></div>
+    <form id="askForm" autocomplete="off"><button class="btn hidden" type="button" id="askMic" aria-label="לשאול בקול" aria-pressed="false">🎤</button><textarea id="askQ" rows="1" placeholder="למשל: מה קבענו עם דני כהן?" aria-label="שאלה לקלוד"></textarea><button class="btn brass" type="submit" id="askSend">שליחה</button></form>
     <p class="small muted">קלוד עונה רק ממה שרשום במערכת: וואטסאפ, הזמנות, הצעות מחיר, פגישות, שיחות טלפון, וגם בנק, תזרים, שיקים וספקים. הוא לא שולח שום דבר ללקוחות. כדאי לוודא פרט חשוב לפני שמבטיחים ללקוח. השאלות נשמרות ביומן המערכת.</p>
   </div>
 </div>
@@ -437,7 +443,10 @@ svg.ic.dots{stroke-width:3}
     <a class="btn small brass pricebtn" href="prices.html" title="חיפוש מחיר במחירוני הספקים"><span aria-hidden="true">₪</span> מחירון ספקים</a>
     <button class="btn small" id="meBtn" title="החשבון שלי"></button>
   </header>
+  <div id="quickBars">
   <a id="kupaBar" class="hidden" href="kupa.html"><span aria-hidden="true">₪</span> קופה · לקחת כסף מלקוח</a>
+  <button id="voiceBar" class="hidden" type="button"><span aria-hidden="true">🎤</span> לשאול את קלוד בקול</button>
+  </div>
 
   <div class="pushbar hidden" id="pushBar" role="region" aria-label="התראות"><span class="grow">לקבל התראה בטלפון על כל הודעה חדשה?</span><button class="btn small brass" id="pushOn" type="button">להפעיל</button><button class="btn icon small" id="pushX" type="button" aria-label="לא עכשיו"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button></div>
   <main data-view="chats">
@@ -614,6 +623,7 @@ function start() {
     $('meBtn').textContent = mine.name;
     // the till button: on every phone, and big on any screen for whoever takes money at the showroom
     $('kupaBar').classList.toggle('hidden', WALL); $('kupaBar').classList.toggle('big', /^zisomosh/i.test(me.email));
+    $('voiceBar').classList.toggle('hidden', WALL); $('voiceBar').classList.toggle('big', /^zisomosh/i.test(me.email));
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
     sb.rpc('crm_log', { p_action: 'login' });
     route(); loadConvs(); loadSync(); pushCheck(); loadAiMap(); stationLoad(); feedLoad(); taskAlertLoad(); takeLoad(); musicLoad();
@@ -1543,8 +1553,8 @@ function aiFn(body, fn) {
    memory only and is gone on reload or "שיחה חדשה". ---------- */
 var askHist = [], askBusy = false;
 var ASK_EX = ['מה קבענו עם ', 'מתי האספקה ל', 'מה פתוח אצל ', 'מי מחכה לסחורה השבוע?', 'אילו פגישות יש היום?', 'אילו שיקים יורדים השבוע?', 'מה המצב בבנק?'];
-function askOpen() { lastFocus = document.activeElement; $('askSheet').classList.remove('hidden'); askRender(); setTimeout(function () { $('askQ').focus(); }, 50); }
-function askClose() { $('askSheet').classList.add('hidden'); if (lastFocus && lastFocus.focus) lastFocus.focus(); }
+function askOpen(voice) { lastFocus = document.activeElement; $('askSheet').classList.remove('hidden'); askRender(); if (voice === true) askListen(); else setTimeout(function () { $('askQ').focus(); }, 50); }
+function askClose() { askQuiet(); $('askSheet').classList.add('hidden'); if (lastFocus && lastFocus.focus) lastFocus.focus(); }
 function askRender() {
   var log = $('askLog');
   log.innerHTML = askHist.length ? askHist.map(function (m) {
@@ -1555,15 +1565,54 @@ function askRender() {
   $('askChips').classList.toggle('hidden', askHist.length > 0);
   $('askSend').disabled = askBusy;
 }
-function askSend(q) {
+function askSend(q, spoken) {
   q = String(q || '').trim(); if (!q || askBusy) return;
   var hist = [];
   for (var i = 0; i < askHist.length - 1; i++) if (askHist[i].role === 'user' && askHist[i + 1].role === 'assistant' && !askHist[i + 1].err) hist.push({ role: 'user', content: askHist[i].content }, { role: 'assistant', content: askHist[i + 1].content });
   askHist.push({ role: 'user', content: q }); askBusy = true; $('askQ').value = ''; askRender();
   aiFn({ q: q, history: hist.slice(-8) }, 'crm-ask').then(function (j) {
     askHist.push(j && j.ok ? { role: 'assistant', content: j.answer, people: j.people || [] } : { role: 'assistant', content: (j && j.error) || 'לא הצלחתי לענות, נסו שוב', err: true });
-  }).catch(function () { askHist.push({ role: 'assistant', content: 'אין חיבור כרגע, נסו שוב', err: true }); }).then(function () { askBusy = false; askRender(); $('askQ').focus(); });
+  }).catch(function () { askHist.push({ role: 'assistant', content: 'אין חיבור כרגע, נסו שוב', err: true }); }).then(function () {
+    askBusy = false; askRender();
+    if (spoken) askSay(askHist[askHist.length - 1].content); else $('askQ').focus();
+  });
 }
+/* Voice: press, speak, the question is sent by itself and the answer is read aloud. Uses the phone's own speech
+   recognition (Chrome sends the audio to Google to turn it into text); nothing is recorded or kept by us. */
+var SR = window.SpeechRecognition || window.webkitSpeechRecognition, askRec = null;
+function askHear(t) { $('askHear').textContent = t || ''; $('askHear').classList.toggle('hidden', !t); }
+function askQuiet() { if (askRec) { try { askRec.abort(); } catch (_) {} askRec = null; } if (window.speechSynthesis) speechSynthesis.cancel(); askHear(''); $('askMic').classList.remove('on'); $('askMic').setAttribute('aria-pressed', 'false'); }
+function askSay(text) {
+  if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) return;
+  var v = speechSynthesis.getVoices().filter(function (x) { return /^(he|iw)/i.test(x.lang); })[0];
+  var u = new SpeechSynthesisUtterance(String(text).replace(/[*_#`]/g, '').slice(0, 900)); u.lang = 'he-IL'; if (v) u.voice = v;
+  try { speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (_) {}
+}
+function askListen() {
+  if (askBusy) return;
+  if (askRec) { askRec.stop(); return; } // a second press ends the recording and sends
+  if (!SR) { askHear('בטלפון הזה אין הקלטה ישירה. לוחצים על המיקרופון במקלדת, מדברים ושולחים.'); $('askQ').focus(); return; }
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  var rec = new SR(), said = '', failed = '';
+  rec.lang = 'he-IL'; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
+  rec.onstart = function () { askHear('🎤 מקשיב… מדברים עכשיו'); $('askMic').classList.add('on'); $('askMic').setAttribute('aria-pressed', 'true'); };
+  rec.onresult = function (e) {
+    said = ''; for (var i = 0; i < e.results.length; i++) said += e.results[i][0].transcript;
+    $('askQ').value = said; askHear('🎤 ' + said);
+  };
+  rec.onerror = function (e) { failed = e.error === 'not-allowed' || e.error === 'service-not-allowed' ? 'צריך לאשר לאפליקציה להשתמש במיקרופון, ואז ללחוץ שוב.' : e.error === 'no-speech' ? 'לא שמעתי כלום. ללחוץ שוב ולדבר.' : e.error === 'aborted' ? '' : 'ההקלטה לא הצליחה. ללחוץ שוב.'; };
+  rec.onend = function () {
+    if (askRec !== rec) return;
+    askRec = null; $('askMic').classList.remove('on'); $('askMic').setAttribute('aria-pressed', 'false');
+    said = said.trim();
+    if (said) { askHear(''); askSend(said, true); } else askHear(failed || 'לא שמעתי כלום. ללחוץ שוב ולדבר.');
+  };
+  askRec = rec;
+  try { rec.start(); } catch (_) { askRec = null; askHear('ההקלטה לא הצליחה. ללחוץ שוב.'); }
+}
+if (SR) $('askMic').classList.remove('hidden');
+$('askMic').addEventListener('click', askListen);
+$('voiceBar').addEventListener('click', function () { askOpen(true); });
 $('askChips').innerHTML = ASK_EX.map(function (t) { return '<button class="btn small" type="button">' + esc(t) + (/\?$/.test(t) ? '' : '…') + '</button>'; }).join('');
 $('askChips').addEventListener('click', function (e) {
   var b = e.target.closest('button'); if (!b) return;
@@ -1573,11 +1622,11 @@ $('askChips').addEventListener('click', function (e) {
 $('askLog').addEventListener('click', function (e) { var b = e.target.closest('button[data-t9]'); if (b) { askClose(); go('card', b.dataset.t9); } });
 $('askForm').addEventListener('submit', function (e) { e.preventDefault(); askSend($('askQ').value); });
 $('askQ').addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && deskKeys()) { e.preventDefault(); askSend($('askQ').value); } });
-$('askNew').addEventListener('click', function () { if (askBusy) return; askHist = []; askRender(); $('askQ').focus(); });
+$('askNew').addEventListener('click', function () { if (askBusy) return; askQuiet(); askHist = []; askRender(); $('askQ').focus(); });
 $('askClose').addEventListener('click', askClose);
 $('askSheet').addEventListener('click', function (e) { if (e.target === $('askSheet')) askClose(); });
-$('deskAsk').addEventListener('click', askOpen);
-$('tabAsk').addEventListener('click', askOpen);
+$('deskAsk').addEventListener('click', function () { askOpen(); });
+$('tabAsk').addEventListener('click', function () { askOpen(); });
 
 /* ---------- AI analyst (crm-ai-triage writes crm_ai; staff only read it and mark "done") ---------- */
 var TEMP = { hot: 'חם', warm: 'פושר', cold: 'קר', none: 'לא לקוח' };
