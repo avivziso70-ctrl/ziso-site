@@ -32,6 +32,7 @@ table{width:100%;border-collapse:collapse;font-size:15px}th,td{text-align:right;
 th{color:var(--mute);font-weight:600}
 .price{font-weight:700;white-space:nowrap}.ltr{direction:ltr;unicode-bidi:isolate}
 .calc{display:flex;gap:8px;align-items:center;margin-top:8px}.calc input{width:90px}
+.supf{display:flex;gap:8px;align-items:center;margin-top:8px}.supf input{flex:1;font-size:16px}
 .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--brass-soft);font-size:13px}
 .hidden{display:none!important}
 .tablewrap{overflow-x:auto}
@@ -50,7 +51,8 @@ th{color:var(--mute);font-weight:600}
   <div id="needLogin" class="card hidden" role="alert">צריך להתחבר קודם. <a href="./">כניסה ל-CRM</a> ואז לחזור לכאן.</div>
 
   <section id="v-search">
-    <input type="search" id="q" placeholder="דגם, מק&quot;ט ספק או מידה, למשל: פורצלן 60x120 שיש" autocomplete="off" aria-label="חיפוש במחירון הספקים">
+    <input type="search" id="q" placeholder="כתבו חופשי: דגם, מידה, מק&quot;ט או שם ספק. למשל: דיאור פורצלן 60x120" autocomplete="off" aria-label="חיפוש במחירון הספקים">
+    <div class="supf"><label for="supF">ספק</label><input id="supF" list="supList" placeholder="כל הספקים (הקלידו חלק מהשם)" autocomplete="off"><button type="button" class="btn small" id="supClr" hidden>× נקה</button><datalist id="supList"></datalist></div>
     <div class="calc"><label for="mk">רווח %</label><input id="mk" type="number" min="0" value="40" inputmode="decimal"><span class="mute">מחיר ללקוח = עלות × (1+רווח) × 1.18 (אם המחיר לפני מע"מ)</span></div>
     <p class="mute" id="sInfo" role="status" aria-live="polite"></p>
     <div class="tablewrap"><table id="sTable" class="hidden"><thead><tr><th>תיאור</th><th>מק"ט ספק</th><th>מידה</th><th>ספק</th><th>עלות</th><th>ללקוח</th><th>עודכן</th></tr></thead><tbody></tbody></table></div>
@@ -119,17 +121,42 @@ function drawSearch() {
   }).join('');
   $('sTable').classList.toggle('hidden', !last.length);
 }
+function norm(t) { return String(t || '').toLowerCase().replace(/["'`׳״.\-]/g, ''); }
+function supIds(word) {
+  var w = norm(word), w2 = w.length > 3 && /^[והבלמש]/.test(w) ? w.slice(1) : null;
+  return Object.keys(suppliers).filter(function (id) { var n = norm(suppliers[id].name); return n.indexOf(w) > -1 || (w2 && n.indexOf(w2) > -1); });
+}
+function supFilter() {
+  var v = $('supF').value.trim(); $('supClr').hidden = !v;
+  return v ? supIds(v) : null;
+}
 function search() {
-  var words = $('q').value.trim().split(/\s+/).map(function (w) { return w.replace(/[,()*%\\]/g, ''); }).filter(Boolean).slice(0, 5);
-  if (!words.length) { last = []; drawSearch(); $('sInfo').textContent = ''; return; }
+  var words = $('q').value.trim().split(/\s+/).map(function (w) { return w.replace(/[,()*%\\"]/g, ''); }).filter(Boolean).slice(0, 6);
+  var only = supFilter();
+  if (!words.length && !only) { last = []; drawSearch(); $('sInfo').textContent = ''; return; }
+  if (only && !only.length) { last = []; drawSearch(); $('sInfo').textContent = 'אין ספק בשם הזה.'; return; }
   var q = sb.from('sp_prices').select('id,supplier_id,supplier_code,description,size,unit,price,currency,vat_included,category,created_at').eq('status', 'active');
-  words.forEach(function (w) { q = q.or('description.ilike.*' + w + '*,supplier_code.ilike.*' + w + '*,size.ilike.*' + w + '*,category.ilike.*' + w + '*'); });
-  q.order('price', { ascending: true, nullsFirst: false }).limit(200).then(function (r) {
+  if (only) q = q.in('supplier_id', only);
+  words.forEach(function (w) {
+    var ids = supIds(w), f = 'description.ilike.*' + w + '*,supplier_code.ilike.*' + w + '*,size.ilike.*' + w + '*,category.ilike.*' + w + '*';
+    if (ids.length) f += ',supplier_id.in.(' + ids.join(',') + ')';
+    q = q.or(f);
+  });
+  q.order('price', { ascending: true, nullsFirst: false }).limit(300).then(function (r) {
     if (r.error) { $('sInfo').textContent = 'שגיאה בחיפוש'; return; }
     last = r.data || []; drawSearch();
-    $('sInfo').textContent = last.length ? last.length + (last.length === 200 ? '+' : '') + ' תוצאות, מהזול ליקר' : 'לא נמצא. נסו מילה אחרת או מק"ט.';
+    $('sInfo').textContent = last.length ? last.length + (last.length === 300 ? '+' : '') + ' תוצאות, מהזול ליקר' : 'לא נמצא. נסו מילה אחרת, מק"ט או שם ספק.';
   });
 }
+function fillSupList() {
+  sb.from('sp_prices').select('supplier_id').eq('status', 'active').limit(20000).then(function (r) {
+    var n = {}; (r.data || []).forEach(function (x) { n[x.supplier_id] = (n[x.supplier_id] || 0) + 1; });
+    $('supList').innerHTML = Object.keys(n).filter(function (id) { return suppliers[id]; }).sort(function (a, b) { return suppliers[a].name.localeCompare(suppliers[b].name, 'he'); })
+      .map(function (id) { return '<option value="' + esc(suppliers[id].name) + '">' + n[id] + ' פריטים</option>'; }).join('');
+  });
+}
+$('supF').addEventListener('input', function () { clearTimeout(sTimer); sTimer = setTimeout(search, 300); });
+$('supClr').addEventListener('click', function () { $('supF').value = ''; search(); $('supF').focus(); });
 $('q').addEventListener('input', function () { clearTimeout(sTimer); sTimer = setTimeout(search, 300); });
 $('mk').addEventListener('input', drawSearch);
 
@@ -221,7 +248,7 @@ sb.auth.getSession().then(function (r) {
   session = r.data.session;
   if (!session) { $('needLogin').classList.remove('hidden'); $('v-search').classList.add('hidden'); return; }
   sb.auth.onAuthStateChange(function (_e, s) { if (s) session = s; });
-  loadSupMap().then(loadPending);
+  loadSupMap().then(function () { loadPending(); fillSupList(); });
   show('search');
   sb.from('priority_suppliers').select('sup,name').eq('active', true).order('name').then(function (p) {
     $('prioSup').innerHTML = (p.data || []).map(function (x) { return '<option value="' + esc(x.name) + '" data-sup="' + esc(x.sup) + '"></option>'; }).join('');
