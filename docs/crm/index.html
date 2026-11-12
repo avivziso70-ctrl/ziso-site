@@ -340,6 +340,8 @@ svg.ic.dots{stroke-width:3}
 @media (max-width:599px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi b{font-size:26px}}
 .kpis{order:-2}
 .sect.take{order:-3;border-color:var(--red);box-shadow:0 0 0 2px var(--red-soft)}
+.pill.payw{background:var(--amber);color:var(--wall)}.pill.payok{background:var(--green);color:var(--wall)}
+.airow.payw{border-inline-start:4px solid var(--amber);padding-inline-start:10px}.airow.payok{border-inline-start:4px solid var(--green);padding-inline-start:10px}
 #kupaBar{display:none;align-items:center;justify-content:center;gap:10px;margin:8px 12px 0;min-height:48px;border-radius:12px;background:var(--brass);color:var(--brass-ink);font-weight:700;font-size:17px;text-decoration:none}
 #kupaBar.big{display:flex;min-height:84px;font-size:26px;border-radius:16px;margin:12px 12px 4px}
 #kupaBar.hidden{display:none !important}
@@ -1369,7 +1371,7 @@ setInterval(taskAlertLoad, 60000);
 /* ---------- money taken at the showroom (phone page kupa.html) ----------
    Every payment Moshe or anyone records there waits here until the office types it into Priority and closes it with the
    receipt/invoice number. The red pill in the header and the red block at the top of "היום" stay until that happens. */
-var takes = [], TAKE_M = { card_link: 'אשראי בלינק', card_terminal: 'אשראי במסוף', cash: 'מזומן', cheque: 'צ׳ק', transfer: 'העברה / ביט' };
+var takes = [], takeSig = null, TAKE_M = { card_link: 'אשראי בלינק', card_terminal: 'אשראי במסוף', cash: 'מזומן', cheque: 'צ׳ק', transfer: 'העברה / ביט' };
 function takeLoad() {
   if (!me) return Promise.resolve([]);
   return sb.from('crm_takings').select('id,at,by,amount,method,payments,payer_name,tail9,reason,goods_taken,goods,pay_pr_id').is('closed_at', null).is('cancelled_at', null).order('at').limit(50).then(function (r) {
@@ -1379,25 +1381,35 @@ function takeLoad() {
       var paid = {}; (p.data || []).forEach(function (x) { if (x.status === 'paid') paid[x.pr_id] = 1; });
       rows.forEach(function (t) { t.unpaid = t.method === 'card_link' && !paid[t.pay_pr_id]; });
       takes = rows;
-      var tot = rows.reduce(function (s, t) { return s + Number(t.amount); }, 0);
+      /* yellow = a card link the customer has not paid yet (no receipt yet); the pill counts only money that really arrived */
+      var ready = rows.filter(function (t) { return !t.unpaid; }), wait = rows.length - ready.length;
+      var tot = ready.reduce(function (s, t) { return s + Number(t.amount); }, 0);
+      var sig = rows.map(function (t) { return t.id + (t.unpaid ? 'w' : 'r'); }).join(',');
+      var changed = takeSig !== null && sig !== takeSig; takeSig = sig;
       $('takePill').classList.toggle('hidden', !rows.length);
-      $('takePill').textContent = rows.length + ' בלי קבלה' + (WALL ? '' : ' · ' + money(tot)); /* wall screen: customers can see it, so no sums */
-      $('takePill').setAttribute('aria-label', rows.length + ' תשלומים שהתקבלו ומחכים לקבלה, ' + money(tot));
+      $('takePill').classList.toggle('hot', !!ready.length); $('takePill').classList.toggle('payw', !ready.length);
+      $('takePill').textContent = (ready.length ? ready.length + ' בלי קבלה' + (WALL ? '' : ' · ' + money(tot)) : '') + (ready.length && wait ? ' · ' : '') + (wait ? wait + (wait === 1 ? ' ממתין לתשלום' : ' ממתינים לתשלום') : ''); /* wall screen: customers can see it, so no sums */
+      $('takePill').setAttribute('aria-label', ready.length + ' תשלומים שהתקבלו ומחכים לקבלה, ' + wait + ' בקשות תשלום שעוד לא שולמו');
+      if (changed && !$('today').classList.contains('hidden')) loadToday();
       return rows;
     });
   });
 }
 function takeHtml() {
   if (!takes.length) return '';
-  var tot = takes.reduce(function (s, t) { return s + Number(t.amount); }, 0);
-  return '<div class="sect take" data-g="now"><h3>כסף שהתקבל ומחכה לקבלה <span class="n">' + takes.length + ' · ' + amt(tot) + '</span></h3><div class="small muted">על כל תשלום חייבים להוציא קבלה או חשבונית. מקלידים בפריוריטי, ואז לוחצים "יצאה קבלה" וכותבים את מספר המסמך. עד אז זה נשאר כאן.</div>' +
+  var ready = takes.filter(function (t) { return !t.unpaid; }), wait = takes.length - ready.length;
+  var tot = ready.reduce(function (s, t) { return s + Number(t.amount); }, 0);
+  return '<div class="sect take" data-g="now"><h3>כסף שהתקבל ומחכה לקבלה <span class="n">' + ready.length + ' · ' + amt(tot) + (wait ? ' · ' + wait + ' בצהוב' : '') + '</span></h3><div class="small muted">על כל תשלום חייבים להוציא קבלה או חשבונית. מקלידים בפריוריטי, ואז לוחצים "יצאה קבלה" וכותבים את מספר המסמך. בקשת תשלום באשראי בצהוב עוד לא שולמה: מוציאים קבלה רק כשהיא הופכת לירוק.</div>' +
     takes.map(function (t) {
-      return '<div class="airow"><span class="pill hot">' + veil('₪' + Number(t.amount).toLocaleString('he-IL', { maximumFractionDigits: 2 })) + '</span><div><div class="txt">' + (t.tail9 ? '<a href="#card/' + esc(t.tail9) + '">' + esc(t.payer_name) + '</a>' : esc(t.payer_name)) + ' · ' + esc(TAKE_M[t.method] || t.method) + (t.payments > 1 ? ', ' + t.payments + ' תשלומים' : '') + ' · רשם ' + esc(nameOf(t.by)) + ' ' + esc(fmtDate(t.at)) + ' ' + esc(fmtTime(t.at)) + '</div>' +
+      var link = t.method === 'card_link', cls = !link ? '' : t.unpaid ? ' payw' : ' payok';
+      return '<div class="airow' + cls + '"><span class="pill ' + (!link ? 'hot' : t.unpaid ? 'payw' : 'payok') + '">' + veil('₪' + Number(t.amount).toLocaleString('he-IL', { maximumFractionDigits: 2 })) + '</span><div><div class="txt">' + (t.tail9 ? '<a href="#card/' + esc(t.tail9) + '">' + esc(t.payer_name) + '</a>' : esc(t.payer_name)) + ' · ' + esc(TAKE_M[t.method] || t.method) + (t.payments > 1 ? ', ' + t.payments + ' תשלומים' : '') + ' · רשם ' + esc(nameOf(t.by)) + ' ' + esc(fmtDate(t.at)) + ' ' + esc(fmtTime(t.at)) + '</div>' +
         '<div class="txt">סיבה: ' + esc(t.reason) + '</div><div class="txt">סחורה שנלקחה: ' + (t.goods_taken ? esc(t.goods) : 'לא נלקחה') + '</div>' +
-        (t.method === 'card_link' ? '<div class="sub"' + (t.unpaid ? ' style="color:var(--red)"' : '') + '>' + (t.unpaid ? 'הלינק עוד לא שולם. לוודא עם הלקוח לפני שמוציאים קבלה.' : 'שולם בלינק ✓') + '</div>' : '') +
-        '<div class="row"><button class="btn small brass" data-tkclose="' + t.id + '">יצאה קבלה</button><button class="btn small" data-tkcancel="' + t.id + '">ביטול (לא התקבל כסף)</button></div></div></div>';
+        (link ? '<div class="sub" style="font-weight:700;color:var(--' + (t.unpaid ? 'amber' : 'green') + ')">' + (t.unpaid ? '● ממתין לתשלום. הלקוח עוד לא שילם, לא מוציאים קבלה.' : '● שולם, אושר בטרנזילה ✓ אפשר להוציא קבלה.') + '</div>' : '') +
+        '<div class="row">' + (t.unpaid ? '' : '<button class="btn small brass" data-tkclose="' + t.id + '">יצאה קבלה</button>') + '<button class="btn small" data-tkcancel="' + t.id + '">ביטול (לא התקבל כסף)</button></div></div></div>';
     }).join('') + '</div>';
 }
+// the yellow rows turn green by themselves: look again every 20 seconds while the screen is on
+setInterval(function () { if (me && (WALL || document.visibilityState === 'visible')) takeLoad(); }, 20000);
 $('takePill').addEventListener('click', function () { todayG = 'now'; go('today'); if (!$('today').classList.contains('hidden')) loadToday(); });
 document.addEventListener('click', function (e) {
   var b = e.target.closest && e.target.closest('[data-tkclose],[data-tkcancel]'); if (!b) return;
