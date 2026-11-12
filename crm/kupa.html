@@ -17,13 +17,13 @@
 :root{
   --wall:#0f1113;--surface:#1d2024;--graphite:#22262a;--line:#3a3f45;
   --ink:#f2efe8;--mute:#b9b3a7;--brass:#cfae74;--brass-ink:#1a1610;--brass-soft:#2d271d;
-  --red:#e07a6a;--red-soft:#3a1f1b;--green:#8fc9a0;--green-soft:#1d2e22;
+  --red:#e07a6a;--red-soft:#3a1f1b;--green:#8fc9a0;--green-soft:#1d2e22;--amber:#e3b86a;--amber-soft:#3a2f17;
   --display:"Bellefair","Times New Roman",serif;--body:"Assistant","Segoe UI",Arial,sans-serif;--r:14px;
 }
 @media (prefers-color-scheme: light){:root{
   --wall:#f3f2ef;--surface:#ffffff;--graphite:#ecebe7;--line:#d2cec5;
   --ink:#1e1b17;--mute:#66645f;--brass:#8a6a35;--brass-ink:#fff;--brass-soft:#efe7da;
-  --red:#b8432f;--red-soft:#fbe9e5;--green:#2e7d4f;--green-soft:#e3f2e8;
+  --red:#b8432f;--red-soft:#fbe9e5;--green:#2e7d4f;--green-soft:#e3f2e8;--amber:#8c6200;--amber-soft:#fbefc9;
 }}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
@@ -60,13 +60,13 @@ input:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{
 a.go{display:flex;align-items:center;justify-content:center;text-decoration:none}
 .done{text-align:center;display:grid;gap:14px}
 .done .big{font-size:64px;line-height:1}
-.state{font-weight:700;font-size:20px;padding:12px;border-radius:12px;background:var(--brass-soft)}
-.state.ok{background:var(--green-soft);color:var(--green)}
+.state{font-weight:700;font-size:20px;padding:12px;border-radius:12px;background:var(--amber-soft);color:var(--amber);border:2px solid var(--amber)}
+.state.ok{background:var(--green-soft);color:var(--green);border-color:var(--green)}
 .row{padding:12px 0;border-bottom:1px solid var(--line);display:grid;gap:2px}
 .row:last-child{border-bottom:0}
 .row b{font-size:20px}
 .tag{display:inline-block;font-size:15px;font-weight:700;padding:2px 10px;border-radius:999px;background:var(--red-soft);color:var(--red)}
-.tag.ok{background:var(--green-soft);color:var(--green)}.tag.off{background:var(--graphite);color:var(--mute)}
+.tag.ok{background:var(--green-soft);color:var(--green)}.tag.wait{background:var(--amber-soft);color:var(--amber)}.tag.off{background:var(--graphite);color:var(--mute)}
 .linkbtn{font:inherit;font-size:16px;background:none;border:0;color:var(--mute);text-decoration:underline;cursor:pointer;min-height:44px;padding:0 4px}
 @media (prefers-reduced-motion: no-preference){.opt,.chip,.go{transition:background .12s,border-color .12s}}
 </style>
@@ -167,7 +167,7 @@ a.go{display:flex;align-items:center;justify-content:center;text-decoration:none
     <h2 id="aTitle" tabindex="-1" style="margin:0;font-size:26px"></h2>
     <p id="aText" class="muted"></p>
     <div id="aPay" class="hidden" style="display:grid;gap:12px">
-      <div class="state" id="aState" role="status">ממתין לתשלום…</div>
+      <div class="state" id="aState" role="status">● ממתין לתשלום</div>
       <a class="go" id="aOpen" target="_blank" rel="noopener">לפתוח דף תשלום ולהקליד כרטיס</a>
       <a class="go line" id="aWa" target="_blank" rel="noopener">לשלוח את הלינק ללקוח בוואטסאפ</a>
       <p class="muted small">פרטי הכרטיס מוקלדים רק בדף המאובטח של טרנזילה. לא לצלם כרטיס ולא לרשום את המספר בשום מקום.</p>
@@ -304,8 +304,8 @@ function finish(v, link) {
   if (link) {
     var got = Number(link.payments) || 1;
     $('aIcon').textContent = '💳'; $('aTitle').textContent = 'נרשם. עכשיו לחייב ' + money(v.amount) + (got > 1 ? ' בעד ' + got + ' תשלומים' : '');
-    $('aText').textContent = (v.payments > 1 && got === 1 ? 'שימו לב: טרנזילה לא אישרה תשלומים בלינק, אז הלינק הוא לתשלום אחד. ' : got > 1 ? 'את מספר התשלומים בוחרים בדף התשלום. ' : '') + 'המשרד כבר קיבל משימה דחופה להוציא קבלה ל' + v.payer_name + '.';
-    $('aState').className = 'state'; $('aState').textContent = 'ממתין לתשלום…';
+    $('aText').textContent = (v.payments > 1 && got === 1 ? 'שימו לב: טרנזילה לא אישרה תשלומים בלינק, אז הלינק הוא לתשלום אחד. ' : got > 1 ? 'את מספר התשלומים בוחרים בדף התשלום. ' : '') + 'כשהתשלום יאושר זה יהפוך לירוק, תגיע התראה, והמשרד יקבל משימה להוציא קבלה ל' + v.payer_name + '.';
+    $('aState').className = 'state'; $('aState').textContent = '● ממתין לתשלום. הלקוח עוד לא שילם.';
     $('aOpen').classList.remove('hidden'); $('aWa').classList.remove('hidden');
     $('aOpen').href = link.pr_link;
     $('aWa').href = 'https://wa.me/972' + v.tail9 + '?text=' + encodeURIComponent('שלום ' + v.payer_name + ', כאן זיסו קרמיקה. לתשלום מאובטח של ' + money(v.amount) + ' בכרטיס אשראי, דרך טרנזילה:\n' + link.pr_link);
@@ -322,7 +322,7 @@ function poll(prId) {
     if (++n > 240) return clearInterval(pollT);
     sb.from('crm_pay_requests').select('status').eq('pr_id', prId).maybeSingle().then(function (r) {
       if (r.data && r.data.status === 'paid') {
-        clearInterval(pollT); $('aState').className = 'state ok'; $('aState').textContent = 'התשלום עבר ✓';
+        clearInterval(pollT); $('aState').className = 'state ok'; $('aState').textContent = '● שולם ✓ התשלום אושר בטרנזילה';
         $('aOpen').classList.add('hidden'); $('aWa').classList.add('hidden'); $('aIcon').textContent = '✓'; say('התשלום עבר');
         if (navigator.vibrate) navigator.vibrate(200);
       }
@@ -331,6 +331,7 @@ function poll(prId) {
   pollT = setInterval(tick, 5000);
 }
 document.addEventListener('visibilitychange', function () { if (!document.hidden && me && !$('form').classList.contains('hidden')) loadMine(); });
+setInterval(function () { if (!document.hidden && me && !$('form').classList.contains('hidden')) loadMine(); }, 20000); // yellow turns green by itself
 $('again').addEventListener('click', function () {
   clearInterval(pollT); method = null; goods = null; cardHow = 'card_link'; pays = 1; press('[data-pays]', 'data-pays', '1');
   ['amount', 'payer', 'phone', 'reason', 'goods'].forEach(function (id) { $(id).value = ''; });
@@ -351,7 +352,7 @@ function loadMine() {
       $('mineList').className = '';
       $('mineList').innerHTML = rows.map(function (t) {
         var d = new Date(t.at), unpaid = t.method === 'card_link' && !paid[t.pay_pr_id] && !t.cancelled_at && !t.closed_at;
-        var tag = t.cancelled_at ? '<span class="tag off">בוטל</span>' : t.closed_at ? '<span class="tag ok">יצאה קבלה ' + esc(t.doc_no) + '</span>' : unpaid ? '<span class="tag">האשראי עוד לא שולם</span>' : '<span class="tag">מחכה לקבלה מהמשרד</span>';
+        var tag = t.cancelled_at ? '<span class="tag off">בוטל</span>' : t.closed_at ? '<span class="tag ok">יצאה קבלה ' + esc(t.doc_no) + '</span>' : unpaid ? '<span class="tag wait">● ממתין לתשלום</span>' : t.method === 'card_link' ? '<span class="tag ok">● שולם ✓ מחכה לקבלה מהמשרד</span>' : '<span class="tag">מחכה לקבלה מהמשרד</span>';
         return '<div class="row"><div><b>' + money(t.amount) + '</b> ' + esc(METHOD[t.method]) + (t.payments > 1 ? ' ' + t.payments + ' תשלומים' : '') + ' · ' + esc(t.payer_name) + '</div><div class="muted small">' + esc(d.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })) + ' ' + esc(d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })) + '</div><div>' + tag +
           (unpaid ? ' <button class="linkbtn" data-cancel="' + t.id + '">הלקוח לא שילם, לבטל</button>' : '') + '</div></div>';
       }).join('');
