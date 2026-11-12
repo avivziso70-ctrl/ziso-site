@@ -98,6 +98,13 @@ footer{margin-top:32px;font-size:14px;color:var(--mute)}footer a{color:var(--bra
   }
   function add(list) { Array.prototype.forEach.call(list, function (file) { files.push({ file: file }); }); render(); }
 
+  if (/^[0-9a-f]{30,35}$/.test(t)) { // the end of the link was cut off when it was copied: ask for the full one
+    fetch('https://ppnjosyraosrdephsksu.supabase.co/rest/v1/rpc/sp_token_fix', { method: 'POST', headers: { apikey: 'sb_publishable_yjpTHQkvH5-l4v-HCcEj4w_ofAYpQmV', 'content-type': 'application/json' }, body: JSON.stringify({ p: t }) })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (full) { if (typeof full === 'string' && full.length === 36) location.replace(location.pathname + '?t=' + full); else $('bad').hidden = false; })
+      .catch(function () { $('bad').hidden = false; });
+    return;
+  }
   if (!/^[0-9a-f]{36}$/.test(t)) { $('bad').hidden = false; return; }
   fetch(FN + '?t=' + encodeURIComponent(t)).then(function (r) { return r.ok ? r.json() : Promise.reject(); }).then(function (j) {
     $('hello').textContent = 'שלום ' + j.name;
