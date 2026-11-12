@@ -24,7 +24,7 @@
 }
 @media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
   --wall:#f3f2ef;--surface:#ffffff;--graphite:#ecebe7;--grout:#dfdcd6;--line:#d2cec5;
-  --ink:#1e1b17;--mute:#66645f;--brass:#8a6a35;--brass-ink:#fff;--brass-soft:#efe7da;
+  --ink:#1e1b17;--mute:#66645f;--brass:#7a5c2c;--brass-ink:#fff;--brass-soft:#efe7da;
   --red:#b8432f;--red-soft:#fbe9e5;--green:#2e7d4f;--green-soft:#e3f2e8;--amber:#8c6200;
   --in:#f1efe9;--out:#efe7da;--me:#e3f2e8;
 }}
@@ -73,13 +73,36 @@ input::placeholder,textarea::placeholder{color:var(--mute)}
 
 /* App shell */
 #app{height:100%;display:grid;grid-template-rows:auto auto auto 1fr auto}
-#app > header.top{grid-row:1} #app > .pushbar{grid-row:2} #app > #quickBars{grid-row:3} #app > main{grid-row:4} #app > nav.tabs{grid-row:5}
+#app > header.top{grid-row:1} #app > #quickBars{grid-row:3} #app > main{grid-row:4} #app > nav.tabs{grid-row:5}
 header.top{display:flex;align-items:center;gap:12px;padding:10px var(--pad);border-bottom:1px solid var(--line);background:var(--surface);min-height:60px}
 header.top .logo{width:34px;height:34px;border-radius:50%;object-fit:cover}
 header.top h1{font-size:24px}
 header.top .spacer{flex:1}
-header.top .pricebtn{text-decoration:none;font-weight:700}
-@media (max-width:520px){header.top .pricebtn{padding:0 12px;font-size:15px}header.top #syncPill{display:none}}
+header.top .pricebtn{text-decoration:none}
+@media (max-width:520px){header.top #syncPill{display:none}}
+/* header order: where am I (screens), what can I open (tools), what needs me (alerts), who am I (account) */
+header.top nav.views{gap:2px;padding:3px;border-radius:999px;background:var(--graphite)}
+header.top nav.views button{min-height:38px;padding:0 14px;border-radius:999px;border:1px solid transparent;background:none;color:var(--mute);font-weight:600;font-size:15px;cursor:pointer}
+header.top nav.views button:hover{color:var(--ink)}
+header.top nav.views button[aria-current="page"]{background:var(--brass-soft);color:var(--brass);border-color:var(--brass)}
+header.top .tools{padding-inline-end:12px;border-inline-end:1px solid var(--line)}
+#bellBtn{gap:6px;flex:none}
+#bellBtn .lbl{display:none}
+#bellBtn .n{min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--amber);color:var(--wall);font-size:12px;font-weight:700;line-height:20px;text-align:center}
+#bellBtn.late{border-color:var(--red)} #bellBtn.late .n{background:var(--red)}
+@media (min-width:1440px){#bellBtn .lbl{display:inline}}
+#meBtn{gap:4px;flex:none} #meBtn svg.ic{width:16px;height:16px}
+/* panels that open under a header button: alerts, music */
+.pop{position:fixed;z-index:45;width:min(400px,calc(100vw - 24px));max-height:min(72vh,640px);overflow:auto;overscroll-behavior:contain;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 12px 36px rgba(0,0,0,.4)}
+.pop .pophead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pop .pophead h2{font-size:18px;margin:0}
+#notifList,#taskAlerts{display:grid}
+#notifList{margin-top:10px}
+.talert,.nrow{display:grid;gap:6px;padding:12px 0;border-top:1px solid var(--line)}
+.talert .w,.nrow .w{font-size:13px;font-weight:700;color:var(--amber)} .talert.late .w,.nrow.late .w{color:var(--red)}
+.talert .x,.nrow .x{font-size:16px;line-height:1.4}
+.talert .row,.nrow .row{display:flex;gap:8px;flex-wrap:wrap}
+#notifEmpty{margin:12px 0 2px;color:var(--mute);font-size:15px;line-height:1.5}
 main{min-height:0;display:grid;grid-template-columns:1fr;overflow:hidden}
 .pane{min-height:0;overflow:auto;display:flex;flex-direction:column}
 .pane > .head{position:sticky;top:0;z-index:2;background:var(--wall);padding:12px var(--pad);border-bottom:1px solid var(--line);display:grid;gap:10px}
@@ -124,9 +147,6 @@ ul.list .meta{grid-column:2 / span 2;display:flex;gap:6px;flex-wrap:wrap;font-si
 .compose .quick .qt{color:var(--brass);border-color:var(--brass)}
 /* "טופל": one tap closes the conversation until the customer writes again */
 /* Push alerts: one line under the header until this device is subscribed */
-.pushbar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--brass-soft);border-bottom:1px solid var(--line);font-size:14px}
-.pushbar.hidden{display:none}
-a.btn.call{text-decoration:none;color:var(--ink)} .head > .row{min-width:0}
 @media (max-width:599px){a.btn.call{padding:0;width:44px} a.btn.call .lbl{display:none}}
 .btn.done{background:transparent;color:var(--ink);border:1.5px solid var(--mute)}
 .btn.done:hover,.btn.done:active{border-color:var(--green);color:var(--green)}
@@ -249,8 +269,7 @@ body.station:not(.amtshow) .amt{cursor:pointer}
 body.station:not(.amtshow) .amt>span{display:none}
 body.station:not(.amtshow) .amt::after{content:'••••';letter-spacing:.15em}
 /* showroom music panel: controls the player on the main office PC through public.showroom_music */
-#musicPanel{position:fixed;z-index:45;width:min(360px,calc(100vw - 24px));background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;display:grid;gap:12px;box-shadow:0 12px 36px rgba(0,0,0,.4)}
-#musicPanel h2{font-size:18px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+#musicPanel{display:grid;gap:12px;width:min(360px,calc(100vw - 24px))}
 #musicPanel .styles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 #musicPanel .styles button[aria-pressed=true]{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
 #musicPanel .ctl{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -270,13 +289,6 @@ body.station:not(.amtshow) .amt::after{content:'••••';letter-spacing:.15
 .call .tr{white-space:pre-wrap;font-size:14px;color:var(--mute);margin-top:6px;max-height:320px;overflow:auto}
 #noteList.hidecalls .callnote{display:none}
 /* task alerts: a task with a set time pops up an hour before, ten minutes before, and when it is late */
-#taskAlerts{position:fixed;inset-inline-start:12px;bottom:12px;z-index:80;display:grid;gap:8px;width:min(440px,calc(100vw - 24px))}
-.talert{background:var(--surface);border:2px solid var(--amber);border-radius:14px;padding:12px 14px;box-shadow:0 8px 28px rgba(0,0,0,.35);display:grid;gap:6px}
-.talert.late{border-color:var(--red)}
-.talert .w{font-size:13px;font-weight:700;color:var(--amber)} .talert.late .w{color:var(--red)}
-.talert .x{font-size:16px;line-height:1.4}
-.talert .row{display:flex;gap:8px;flex-wrap:wrap}
-@media (max-width:900px){#taskAlerts{bottom:calc(70px + env(safe-area-inset-bottom))}}
 #station .hide{border:0;border-radius:14px;background:var(--brass);color:var(--brass-ink);font:inherit;font-size:18px;font-weight:700;cursor:pointer;line-height:1.25}
 body.wall.station{padding-top:188px}
 /* privacy cover: customers in the room. Hold 1 second to come back, so a passing tap does not open it */
@@ -342,16 +354,18 @@ svg.ic.dots{stroke-width:3}
 .sect.take{order:-3;border-color:var(--red);box-shadow:0 0 0 2px var(--red-soft)}
 .pill.payw{background:var(--amber);color:var(--wall)}.pill.payok{background:var(--green);color:var(--wall)}
 .airow.payw{border-inline-start:4px solid var(--amber);padding-inline-start:10px}.airow.payok{border-inline-start:4px solid var(--green);padding-inline-start:10px}
-#kupaBar{display:none;align-items:center;justify-content:center;gap:10px;margin:8px 12px 0;min-height:48px;border-radius:12px;background:var(--brass);color:var(--brass-ink);font-weight:700;font-size:17px;text-decoration:none}
-#kupaBar.big{display:flex;min-height:84px;font-size:26px;border-radius:16px;margin:12px 12px 4px}
-#kupaBar.hidden{display:none !important}
-#voiceBar{display:none;align-items:center;justify-content:center;gap:10px;margin:8px 12px 0;min-height:48px;border-radius:12px;border:2px solid var(--brass);background:var(--brass-soft);color:var(--ink);font:inherit;font-weight:700;font-size:17px;cursor:pointer;width:calc(100% - 24px)}
-#voiceBar.big{display:flex;min-height:84px;font-size:24px;border-radius:16px;margin:8px 12px 4px}
-#voiceBar.hidden{display:none !important}
-#askMic{flex:none;min-width:52px;font-size:20px}#askMic.on{background:var(--red);color:var(--wall);border-color:var(--red)}
+/* phones: one row of the tools that are a header button on a wide screen; big and stacked for whoever takes money at the showroom */
+#quickBars{display:none}
+@media (max-width:1023px){#quickBars{display:flex;gap:8px;margin:8px 12px 0}#quickBars.big{flex-direction:column;margin:12px 12px 4px}}
+#quickBars > *{flex:1 1 auto;display:flex;align-items:center;justify-content:center;gap:8px;min-width:0;min-height:48px;padding:0 10px;white-space:nowrap;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-weight:700;font-size:16px;text-decoration:none;cursor:pointer}
+#quickBars #kupaBar{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
+#quickBars .more{display:none}
+#quickBars.big > *{min-height:84px;font-size:24px;border-radius:16px}
+#quickBars.big .more{display:inline}
+#quickBars.big #priceBar{display:none}
+#quickBars.big svg.ic{width:28px;height:28px}
+#askMic{flex:none;min-width:52px}#askMic.on{background:var(--red);color:var(--wall);border-color:var(--red)}
 #askHear{margin:0 16px 8px;padding:14px;border-radius:12px;background:var(--red-soft);color:var(--ink);font-weight:700;font-size:18px;text-align:center}
-@media (max-width:899px){#kupaBar,#voiceBar{display:flex}}
-@media (max-width:899px){header.top{flex-wrap:wrap}#takePill{order:9;flex:1 0 100% !important;justify-content:center}}
 @media (max-width:599px){#doneBtn .lbl{display:none}}
 .compose .quick button.aibtn{border-color:var(--brass);background:var(--brass-soft);color:var(--brass);font-weight:600;display:inline-flex;align-items:center;gap:6px}
 .compose .quick button.aibtn svg.ic{width:16px;height:16px}
@@ -369,16 +383,30 @@ svg.ic.dots{stroke-width:3}
 <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
 <symbol id="i-back" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
 <symbol id="i-dots" viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/></symbol>
+<symbol id="i-note" viewBox="0 0 24 24"><path d="M9 18V5l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="15" r="2.5"/></symbol>
+<symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></symbol>
+<symbol id="i-cash" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6.5 9.5h.01M17.5 14.5h.01"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
 <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16v4M17 18h4"/></symbol>
 </defs></svg>
 <div class="sr" id="live" role="status" aria-live="polite"></div>
 <button id="wallBar" type="button" class="hidden"></button>
 <div id="station" class="hidden" aria-label="לוח העמדה"></div>
-<div id="taskAlerts" aria-live="polite"></div>
-<div id="musicPanel" class="hidden" role="dialog" aria-label="מוזיקה באולם">
-  <h2>מוזיקה באולם <button class="btn small" id="musicClose" aria-label="סגירה">סגירה</button></h2>
+<div id="notifPanel" class="pop hidden" role="dialog" aria-label="התראות">
+  <div class="pophead"><h2>התראות</h2><button class="btn small" type="button" id="notifClose">סגירה</button></div>
+  <div id="notifList">
+    <div id="taskAlerts" aria-live="polite"></div>
+    <div class="nrow hidden" id="takeRow"><div class="w">תשלומים</div><div class="x" id="takeTxt"></div><div class="row"><button class="btn small" type="button" id="takePill">לרשימת התשלומים</button></div></div>
+    <div class="nrow hidden" id="pushBar"><div class="w">התראות בטלפון</div><div class="x">לקבל התראה בטלפון הזה על כל הודעה חדשה מלקוח?</div><div class="row"><button class="btn small brass" id="pushOn" type="button">להפעיל</button><button class="btn small" id="pushX" type="button">לא עכשיו</button></div></div>
+  </div>
+  <p id="notifEmpty">אין התראות כרגע. משימות שהגיע הזמן שלהן, תשלומים שמחכים לקבלה ומחירונים חדשים מספקים יופיעו כאן.</p>
+</div>
+<div id="musicPanel" class="pop hidden" role="dialog" aria-label="מוזיקה באולם">
+  <div class="pophead"><h2>מוזיקה באולם</h2><button class="btn small" type="button" id="musicClose">סגירה</button></div>
   <div class="styles" id="musicStyles"></div>
-  <div class="ctl"><button class="btn" id="musicPause">השהיה</button><button class="btn" id="musicNext">הבא ⏭</button></div>
+  <div class="ctl"><button class="btn" id="musicPause">השהיה</button><button class="btn" id="musicNext">השיר הבא</button></div>
   <label class="vol"><span>שקט</span><input type="range" id="musicVol" min="0" max="100" step="5" aria-label="עוצמה"><span id="musicVolN"></span></label>
   <div class="now" id="musicNow" aria-live="polite"></div>
 </div>
@@ -402,7 +430,7 @@ svg.ic.dots{stroke-width:3}
     <div class="asklog" id="askLog" aria-live="polite"></div>
     <div class="askchips" id="askChips"></div>
     <div id="askHear" class="hidden" role="status"></div>
-    <form id="askForm" autocomplete="off"><button class="btn hidden" type="button" id="askMic" aria-label="לשאול בקול" aria-pressed="false">🎤</button><textarea id="askQ" rows="1" placeholder="למשל: מה קבענו עם דני כהן?" aria-label="שאלה לקלוד"></textarea><button class="btn brass" type="submit" id="askSend">שליחה</button></form>
+    <form id="askForm" autocomplete="off"><button class="btn hidden" type="button" id="askMic" aria-label="לשאול בקול" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg></button><textarea id="askQ" rows="1" placeholder="למשל: מה קבענו עם דני כהן?" aria-label="שאלה לקלוד"></textarea><button class="btn brass" type="submit" id="askSend">שליחה</button></form>
     <p class="small muted">קלוד עונה רק ממה שרשום במערכת: וואטסאפ, הזמנות, הצעות מחיר, פגישות, שיחות טלפון, וגם בנק, תזרים, שיקים וספקים. הוא לא שולח שום דבר ללקוחות. כדאי לוודא פרט חשוב לפני שמבטיחים ללקוח. השאלות נשמרות ביומן המערכת.</p>
   </div>
 </div>
@@ -430,25 +458,27 @@ svg.ic.dots{stroke-width:3}
   <header class="top">
     <img class="logo" src="../img/logo.jpg" alt="">
     <h1>זיסו צוות</h1>
-    <span class="pill" id="syncPill" title="מתי עודכנו נתוני פריוריטי"></span>
-    <button type="button" class="pill hot hidden" id="takePill" style="border:0;cursor:pointer;font:inherit;font-size:14px;font-weight:700;white-space:nowrap;flex:none;min-height:38px;padding:0 12px"></button>
+    <span class="pill" id="syncPill" title="מתי עודכנו הנתונים מפריוריטי"></span>
+    <nav class="desk views" aria-label="מסכים">
+      <button type="button" id="deskChats" data-nav="chats">שיחות</button>
+      <button type="button" id="deskSearch" data-nav="search">לקוחות</button>
+      <button type="button" id="deskToday" data-nav="today">היום</button>
+    </nav>
     <span class="spacer"></span>
-    <div class="desk">
-      <button class="btn small" id="deskSearch">חיפוש לקוח</button>
-      <button class="btn small" id="deskToday">היום</button>
-      <button class="btn small" id="deskChats">שיחות</button>
-      <button class="btn small" id="musicBtn" aria-expanded="false" aria-controls="musicPanel">♪ מוזיקה</button>
-      <button class="btn small brass" id="deskAsk">תשאלו את קלוד</button>
+    <div class="desk tools" role="group" aria-label="כלים">
+      <button class="btn small brass" type="button" id="deskAsk"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg>תשאלו את קלוד</button>
+      <a class="btn small pricebtn" href="prices.html" title="חיפוש מחיר במחירוני הספקים"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg>מחירון ספקים</a>
+      <button class="btn small" type="button" id="musicBtn" aria-expanded="false" aria-controls="musicPanel"><svg class="ic" aria-hidden="true"><use href="#i-note"/></svg><span id="musicLbl">מוזיקה</span></button>
     </div>
-    <a class="btn small brass pricebtn" href="prices.html" title="חיפוש מחיר במחירוני הספקים"><span aria-hidden="true">₪</span> מחירון ספקים</a>
-    <button class="btn small" id="meBtn" title="החשבון שלי"></button>
+    <button class="btn small" type="button" id="bellBtn" aria-expanded="false" aria-controls="notifPanel" aria-label="התראות"><svg class="ic" aria-hidden="true"><use href="#i-bell"/></svg><span class="lbl" aria-hidden="true">התראות</span><span class="n hidden" id="bellN" aria-hidden="true"></span></button>
+    <button class="btn small" type="button" id="meBtn" aria-haspopup="dialog" title="החשבון שלי"><span id="meName"></span><svg class="ic" aria-hidden="true"><use href="#i-chev"/></svg></button>
   </header>
   <div id="quickBars">
-  <a id="kupaBar" class="hidden" href="kupa.html"><span aria-hidden="true">₪</span> קופה · לקחת כסף מלקוח</a>
-  <button id="voiceBar" class="hidden" type="button"><span aria-hidden="true">🎤</span> לשאול את קלוד בקול</button>
+    <a id="kupaBar" class="hidden" href="kupa.html"><svg class="ic" aria-hidden="true"><use href="#i-cash"/></svg><span>קופה<span class="more"> · לקחת כסף מלקוח</span></span></a>
+    <a id="priceBar" href="prices.html"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg><span>מחירון</span></a>
+    <button id="voiceBar" class="hidden" type="button"><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg><span>לשאול <span class="more">את קלוד </span>בקול</span></button>
   </div>
 
-  <div class="pushbar hidden" id="pushBar" role="region" aria-label="התראות"><span class="grow">לקבל התראה בטלפון על כל הודעה חדשה?</span><button class="btn small brass" id="pushOn" type="button">להפעיל</button><button class="btn icon small" id="pushX" type="button" aria-label="לא עכשיו"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button></div>
   <main data-view="chats">
     <!-- Conversations -->
     <section class="pane" id="chats" aria-label="שיחות">
@@ -602,7 +632,12 @@ function openPw(first) {
   $('pwLater').classList.toggle('hidden', !!first); $('pwErr').textContent = ''; $('pwForm').reset();
   $('pwSheet').classList.remove('hidden'); setTimeout(function () { $('pwForm').p1.focus(); }, 50);
 }
-$('meBtn').addEventListener('click', function () { openPw(false); });
+$('meBtn').addEventListener('click', function () {
+  openMenu('החשבון של ' + $('meName').textContent, [
+    { label: 'החלפת סיסמה', run: function () { openPw(false); } },
+    { label: 'יציאה מהחשבון במכשיר הזה', run: function () { if (confirm('לצאת מהחשבון במכשיר הזה? כדי לחזור צריך אימייל וסיסמה.')) sb.auth.signOut(); } }
+  ]);
+});
 $('pwLater').addEventListener('click', function () { $('pwSheet').classList.add('hidden'); });
 $('pwOut').addEventListener('click', function () { $('pwSheet').classList.add('hidden'); sb.auth.signOut(); });
 $('pwForm').addEventListener('submit', function (e) {
@@ -620,10 +655,10 @@ function start() {
     staff = r.data || [];
     var mine = staff.filter(function (x) { return x.email.toLowerCase() === me.email.toLowerCase(); })[0];
     if (!mine) { $('loginErr').textContent = 'החשבון הזה לא מורשה. פנו לאביב.'; sb.auth.signOut(); return; }
-    $('meBtn').textContent = mine.name;
+    $('meName').textContent = mine.name;
     // the till button: on every phone, and big on any screen for whoever takes money at the showroom
-    $('kupaBar').classList.toggle('hidden', WALL); $('kupaBar').classList.toggle('big', /^zisomosh/i.test(me.email));
-    $('voiceBar').classList.toggle('hidden', WALL); $('voiceBar').classList.toggle('big', /^zisomosh/i.test(me.email));
+    $('kupaBar').classList.toggle('hidden', WALL); $('voiceBar').classList.toggle('hidden', WALL);
+    $('quickBars').classList.toggle('big', /^zisomosh/i.test(me.email));
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
     sb.rpc('crm_log', { p_action: 'login' });
     route(); loadConvs(); loadSync(); pushCheck(); loadAiMap(); stationLoad(); feedLoad(); taskAlertLoad(); takeLoad(); musicLoad();
@@ -649,12 +684,17 @@ function urgency(a, b) { return ((b.flag ? 1 : 0) - (a.flag ? 1 : 0)) || (isHot(
 function loadSync() {
   sb.from('priority_sync').select('key,source_at').then(function (r) {
     var c = (r.data || []).filter(function (x) { return x.key === 'orders'; })[0];
-    $('syncPill').textContent = c && c.source_at ? 'פריוריטי ' + fmtDate(c.source_at) + ' ' + fmtTime(c.source_at) : '';
+    $('syncPill').textContent = c && c.source_at ? 'פריוריטי עודכן ' + (new Date(c.source_at).toDateString() === new Date().toDateString() ? 'היום' : fmtDate(c.source_at)) + ' ' + fmtTime(c.source_at) : '';
   });
 }
 
 /* ---------- routing (hash) ---------- */
-function setView(v) { document.querySelector('main').dataset.view = v; document.querySelectorAll('nav.tabs button').forEach(function (b) { b.setAttribute('aria-current', b.dataset.view === v || (v === 'chat' && b.dataset.view === 'chats') || (v === 'card' && b.dataset.view === 'search') ? 'page' : 'false'); }); }
+function setView(v) {
+  document.querySelector('main').dataset.view = v;
+  document.querySelectorAll('nav.tabs button').forEach(function (b) { b.setAttribute('aria-current', b.dataset.view === v || (v === 'chat' && b.dataset.view === 'chats') || (v === 'card' && b.dataset.view === 'search') ? 'page' : 'false'); });
+  /* wide screen: chats, chat and card share one screen */
+  document.querySelectorAll('header.top [data-nav]').forEach(function (b) { b.setAttribute('aria-current', b.dataset.nav === v || (b.dataset.nav === 'chats' && (v === 'chat' || v === 'card')) ? 'page' : 'false'); });
+}
 function go(v, arg) { location.hash = v + (arg ? '/' + arg : ''); }
 function route() {
   var h = location.hash.replace(/^#/, '').split('/'), v = h[0] || 'chats', arg = h[1];
@@ -933,7 +973,7 @@ function updateActs(c) {
   if (c && needsHuman(c)) h += waitPill(c);
   if (a && a.temp && a.temp !== 'none') h += '<span class="pill ' + esc(a.temp) + '">' + esc(TEMP[a.temp] || a.temp) + '</span>';
   if (c && c.quote_at && !/won|lost/.test(c.lead_stage || '')) h += '<span class="pill bot">הצעה נשלחה ' + esc(ago(c.quote_at)) + '</span>';
-  if (c && c.claimed_by) h += '<span class="pill">' + esc(nameOf(c.claimed_by)) + ' מטפלת</span>';
+  if (c && c.claimed_by) h += '<span class="pill">בטיפול של ' + esc(nameOf(c.claimed_by)) + '</span>';
   if (a && a.risk) h += '<span class="risk">' + esc(a.risk) + '</span>';
   if (a && !noAction(a.next_action)) h += '<span class="next"><b>הצעד הבא:</b> ' + esc(a.next_action) + '</span>';
   $('ctx').innerHTML = h; $('ctx').classList.toggle('hidden', !h);
@@ -972,6 +1012,8 @@ document.addEventListener('keydown', function (e) {
   var m = document.querySelector('.lightbox') || document.querySelector('.menu');
   if (m) { m.remove(); if (lastFocus && lastFocus.focus) lastFocus.focus(); return; }
   if (!$('askSheet').classList.contains('hidden')) { askClose(); return; }
+  if (!$('notifPanel').classList.contains('hidden')) { notifOpen(false); $('bellBtn').focus(); return; }
+  if (!$('musicPanel').classList.contains('hidden')) { musicOpen(false); $('musicBtn').focus(); return; }
   if (!$('docSheet').classList.contains('hidden')) { $('docClose').click(); return; }
   if (!$('pwSheet').classList.contains('hidden') && !$('pwLater').classList.contains('hidden')) $('pwLater').click();
 });
@@ -989,7 +1031,7 @@ $('menuBtn').addEventListener('click', function () {
   if (!cur) return;
   var c = convOf(cur), items = [];
   if (curTail) items.push({ label: 'כרטיס לקוח', run: function () { go('card', curTail); } });
-  items.push({ label: isMine(c) ? 'אני מטפלת (לבטל)' : c && c.claimed_by ? nameOf(c.claimed_by) + ' מטפלת · לקחת אליי' : 'אני מטפלת', on: isMine(c), run: toggleClaim });
+  items.push({ label: isMine(c) ? 'בטיפול שלי (לבטל)' : c && c.claimed_by ? 'בטיפול של ' + nameOf(c.claimed_by) + ' · להעביר אליי' : 'לקחת לטיפול שלי', on: isMine(c), run: toggleClaim });
   if (curTail) {
     if (c && !needsHuman(c)) items.push({ label: 'להחזיר לממתינים', run: function () { sb.rpc('crm_mark', { p_tail9: curTail, p_what: 'undone' }).then(function () { loadConvs(true); toast('חזר לממתינים'); }); } });
     var quoted = !!(c && c.quote_at && Date.now() - new Date(c.quote_at) < 14 * 86400000), won = !!(c && c.lead_stage === 'won');
@@ -1313,9 +1355,10 @@ function musicRender() {
   var m = music; if (!m) return;
   var v = musicView();
   var nm = (MUSIC_STYLES.filter(function (x) { return x[0] === v.style; })[0] || [])[1] || '';
-  $('musicBtn').textContent = '♪ ' + (v.paused ? 'מוזיקה מושהית' : nm || 'מוזיקה');
+  $('musicLbl').textContent = v.paused ? 'מוזיקה מושהית' : 'מוזיקה';
+  $('musicBtn').title = nm ? 'מתנגן באולם: ' + nm : '';
   $('musicStyles').innerHTML = MUSIC_STYLES.map(function (x) { return '<button class="btn" data-mstyle="' + x[0] + '" aria-pressed="' + (v.style === x[0]) + '">' + x[1] + '</button>'; }).join('');
-  $('musicPause').textContent = v.paused ? 'המשך ▶' : 'השהיה ⏸';
+  $('musicPause').textContent = v.paused ? 'המשך' : 'השהיה';
   if (Date.now() - musicVolBusy > 3000) $('musicVol').value = v.volume;
   $('musicVolN').textContent = $('musicVol').value + '%';
   $('musicNow').className = 'now' + (m.alive ? '' : ' off');
@@ -1325,8 +1368,7 @@ function musicOpen(on) {
   var p = $('musicPanel'); p.classList.toggle('hidden', !on); $('musicBtn').setAttribute('aria-expanded', String(on));
   clearInterval(musicT);
   if (!on) return;
-  var r = $('musicBtn').getBoundingClientRect();
-  p.style.top = Math.round(r.bottom + 8) + 'px'; p.style.left = Math.round(Math.max(12, Math.min(r.left, innerWidth - p.offsetWidth - 12))) + 'px';
+  notifOpen(false); popPlace(p, $('musicBtn'));
   musicLoad(); musicT = setInterval(musicLoad, 4000);
 }
 $('musicBtn').addEventListener('click', function () { musicOpen($('musicPanel').classList.contains('hidden')); });
@@ -1355,27 +1397,57 @@ function taskAlertLoad() {
 function taskAlertRender() {
   if (!taskAl) return; /* called once from coverSet before this block has run */
   var seen = taskSeen(), fresh = false, live = {};
-  var list = taskAl.map(function (t) { return { t: t, st: taskStage(t) }; }).filter(function (a) { return a.st && !seen[a.t.id + ':' + a.st]; }).slice(0, 3);
+  var list = taskAl.map(function (t) { return { t: t, st: taskStage(t) }; }).filter(function (a) { return a.st && !seen[a.t.id + ':' + a.st]; }).slice(0, 8);
   $('taskAlerts').innerHTML = list.map(function (a) {
     var t = a.t, m = Math.round((new Date(t.due).getTime() - Date.now()) / 60000), cv = convs.filter(function (x) { return x.tail9 === t.tail9; })[0];
     var sp = t.by === 'פורטל ספקים'; /* a supplier sent a price list (portal or WhatsApp): not a late task, a new item to approve */
-    var when = sp ? 'מחירון ספקים · ' + fmtDate(t.due) + ' ' + fmtTime(t.due) : a.st === 'late' ? 'עבר הזמן: ' + fmtDate(t.due) + ' ' + fmtTime(t.due) : m <= 1 ? 'עכשיו' : 'בעוד ' + m + ' דקות (' + fmtTime(t.due) + ')';
+    var when = sp ? 'מחירון חדש מספק · ' + fmtDate(t.due) + ' ' + fmtTime(t.due) : a.st === 'late' ? 'משימה שעבר הזמן שלה · ' + fmtDate(t.due) + ' ' + fmtTime(t.due) : m <= 1 ? 'משימה לעכשיו' : 'משימה בעוד ' + m + ' דקות · ' + fmtTime(t.due);
     var k = t.id + ':' + a.st; live[k] = 1; if (!taskShown[k]) fresh = true;
     return '<div class="talert' + (a.st === 'late' && !sp ? ' late' : '') + '"><div class="w">' + esc(when) + (cv && cv.name ? ' · ' + esc(cv.name) : '') + '</div><div class="x">' + esc(t.text) + '</div><div class="row">' +
-      (t.tail9 ? '<a class="btn small" href="#card/' + esc(t.tail9) + '">לכרטיס</a>' : '') + (sp ? '<a class="btn small" href="prices.html">למחירון ספקים</a>' : '') + '<button class="btn small" data-tdone="' + t.id + '">בוצע</button><button class="btn small" data-tok="' + esc(k) + '">הבנתי</button></div></div>';
+      (t.tail9 ? '<a class="btn small" href="#card/' + esc(t.tail9) + '" data-nclose="1">לכרטיס הלקוח</a>' : '') + (sp ? '<a class="btn small" href="prices.html">למחירון ספקים</a>' : '') + '<button class="btn small" data-tdone="' + t.id + '" title="סוגר את המשימה לכל הצוות">בוצע</button><button class="btn small" data-tok="' + esc(k) + '" title="מסתיר את ההתראה במכשיר הזה. המשימה נשארת פתוחה">הבנתי</button></div></div>';
   }).join('');
   taskShown = live;
   var idle = coverMode === 'idle';
   $('coverTask').textContent = idle && list.length ? 'יש משימה שהגיע הזמן שלה. לגעת במסך' : '';
   if (fresh && WALL && wallOpenNow() && ($('cover').classList.contains('hidden') || idle)) wallBeep();
+  /* a new alert shows itself in its one place: the panel opens on a wide screen, a phone gets a short line and the number on the bell */
+  if (fresh && $('cover').classList.contains('hidden')) { if (innerWidth >= 1024) notifOpen(true, true); else if ($('notifPanel').classList.contains('hidden')) toast('התראה חדשה. לפתיחה: הפעמון למעלה', 5000); }
 }
+/* ---------- alerts panel: everything that needs attention lands here (timed tasks, new supplier price lists, payments without a receipt, the phone-alerts offer) ---------- */
+function popPlace(p, btn) {
+  var r = btn.getBoundingClientRect();
+  p.style.top = Math.round(r.bottom + 8) + 'px'; p.style.left = Math.round(Math.max(12, Math.min(r.left, innerWidth - p.offsetWidth - 12))) + 'px';
+}
+function notifSync() {
+  var late = document.querySelectorAll('#taskAlerts .talert.late').length + ($('takeRow').classList.contains('hidden') || !$('takeRow').classList.contains('late') ? 0 : 1);
+  var n = document.querySelectorAll('#taskAlerts .talert').length + ($('takeRow').classList.contains('hidden') ? 0 : 1) + ($('pushBar').classList.contains('hidden') ? 0 : 1);
+  $('bellN').textContent = n; $('bellN').classList.toggle('hidden', !n);
+  $('bellBtn').classList.toggle('late', !!late);
+  $('bellBtn').setAttribute('aria-label', n ? (n === 1 ? 'התראה אחת' : n + ' התראות') + (late ? ', יש דחופות' : '') : 'התראות, אין חדשות');
+  $('notifEmpty').classList.toggle('hidden', !!n);
+}
+function notifOpen(on, quiet) {
+  var p = $('notifPanel'); if (on === !p.classList.contains('hidden')) return;
+  p.classList.toggle('hidden', !on); $('bellBtn').setAttribute('aria-expanded', String(on));
+  if (!on) return;
+  musicOpen(false); popPlace(p, $('bellBtn'));
+  if (!quiet) $('notifClose').focus(); /* opened by itself: do not pull the cursor out of a reply being typed */
+}
+$('bellBtn').addEventListener('click', function () { notifOpen($('notifPanel').classList.contains('hidden')); });
+$('notifClose').addEventListener('click', function () { notifOpen(false); $('bellBtn').focus(); });
+$('notifPanel').addEventListener('click', function (e) { if (e.target.closest('[data-nclose]')) notifOpen(false); });
+document.addEventListener('pointerdown', function (e) { if (!$('notifPanel').classList.contains('hidden') && !e.target.closest('#notifPanel,#bellBtn')) notifOpen(false); });
+window.addEventListener('resize', function () { if (!$('notifPanel').classList.contains('hidden')) popPlace($('notifPanel'), $('bellBtn')); if (!$('musicPanel').classList.contains('hidden')) popPlace($('musicPanel'), $('musicBtn')); });
+new MutationObserver(notifSync).observe($('notifList'), { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+notifSync();
 document.addEventListener('click', function (e) {
   var b = e.target.closest && e.target.closest('[data-tok],[data-tdone]'); if (!b) return;
-  if (b.dataset.tok) { var s = taskSeen(), cut = Date.now() - 7 * 86400000; Object.keys(s).forEach(function (k) { if (s[k] < cut) delete s[k]; }); s[b.dataset.tok] = Date.now(); try { localStorage.setItem('crmTaskAl', JSON.stringify(s)); } catch (x) {} taskAlertRender(); return; }
+  var back = function () { if (!$('notifPanel').classList.contains('hidden')) $('notifClose').focus(); }; /* the pressed row is gone: keep the keyboard inside the panel */
+  if (b.dataset.tok) { var s = taskSeen(), cut = Date.now() - 7 * 86400000; Object.keys(s).forEach(function (k) { if (s[k] < cut) delete s[k]; }); s[b.dataset.tok] = Date.now(); try { localStorage.setItem('crmTaskAl', JSON.stringify(s)); } catch (x) {} taskAlertRender(); back(); return; }
   b.disabled = true;
   sb.from('crm_tasks').update({ done_at: new Date().toISOString(), done_by: me.email }).eq('id', b.dataset.tdone).then(function (r) {
-    if (r.error) { toast('לא נשמר'); b.disabled = false; return; }
-    taskAl = taskAl.filter(function (t) { return String(t.id) !== String(b.dataset.tdone); }); taskAlertRender(); toast('סומן כבוצע ✓');
+    if (r.error) { toast('לא נשמר. נסו שוב'); b.disabled = false; return; }
+    taskAl = taskAl.filter(function (t) { return String(t.id) !== String(b.dataset.tdone); }); taskAlertRender(); back(); toast('סומן כבוצע ✓');
   });
 });
 setInterval(taskAlertLoad, 60000);
@@ -1397,10 +1469,9 @@ function takeLoad() {
       var tot = ready.reduce(function (s, t) { return s + Number(t.amount); }, 0);
       var sig = rows.map(function (t) { return t.id + (t.unpaid ? 'w' : 'r'); }).join(',');
       var changed = takeSig !== null && sig !== takeSig; takeSig = sig;
-      $('takePill').classList.toggle('hidden', !rows.length);
-      $('takePill').classList.toggle('hot', !!ready.length); $('takePill').classList.toggle('payw', !ready.length);
-      $('takePill').textContent = (ready.length ? ready.length + ' בלי קבלה' + (WALL ? '' : ' · ' + money(tot)) : '') + (ready.length && wait ? ' · ' : '') + (wait ? wait + (wait === 1 ? ' ממתין לתשלום' : ' ממתינים לתשלום') : ''); /* wall screen: customers can see it, so no sums */
-      $('takePill').setAttribute('aria-label', ready.length + ' תשלומים שהתקבלו ומחכים לקבלה, ' + wait + ' בקשות תשלום שעוד לא שולמו');
+      $('takeRow').classList.toggle('hidden', !rows.length); $('takeRow').classList.toggle('late', !!ready.length);
+      /* wall screen: customers can see it, so no sums */
+      $('takeTxt').textContent = [ready.length ? (ready.length === 1 ? 'תשלום אחד התקבל ומחכה לקבלה' : ready.length + ' תשלומים התקבלו ומחכים לקבלה') + (WALL ? '' : ' · ' + money(tot)) : '', wait ? (wait === 1 ? 'בקשת תשלום אחת עוד לא שולמה' : wait + ' בקשות תשלום עוד לא שולמו') : ''].filter(Boolean).join('. ');
       if (changed && !$('today').classList.contains('hidden')) loadToday();
       return rows;
     });
@@ -1421,14 +1492,14 @@ function takeHtml() {
 }
 // the yellow rows turn green by themselves: look again every 20 seconds while the screen is on
 setInterval(function () { if (me && (WALL || document.visibilityState === 'visible')) takeLoad(); }, 20000);
-$('takePill').addEventListener('click', function () { todayG = 'now'; go('today'); if (!$('today').classList.contains('hidden')) loadToday(); });
+$('takePill').addEventListener('click', function () { notifOpen(false); todayG = 'now'; go('today'); if (!$('today').classList.contains('hidden')) loadToday(); });
 document.addEventListener('click', function (e) {
   var b = e.target.closest && e.target.closest('[data-tkclose],[data-tkcancel]'); if (!b) return;
   var close = !!b.dataset.tkclose, v = prompt(close ? 'מספר הקבלה או החשבונית בפריוריטי:' : 'למה מבטלים? (למשל: הלקוח לא שילם בסוף, נרשם פעמיים)');
   v = (v || '').trim(); if (v.length < (close ? 2 : 3)) { if (v) toast('קצר מדי, לא נשמר'); return; }
   var now = new Date().toISOString();
   sb.from('crm_takings').update(close ? { doc_no: v, closed_at: now, closed_by: me.email } : { cancel_note: v, cancelled_at: now, cancelled_by: me.email }).eq('id', b.dataset.tkclose || b.dataset.tkcancel).then(function (r) {
-    if (r.error) { toast('לא נשמר'); return; }
+    if (r.error) { toast('לא נשמר. נסו שוב'); return; }
     sb.rpc('crm_log', { p_action: close ? 'taking_closed' : 'taking_cancelled', p_detail: { id: Number(b.dataset.tkclose || b.dataset.tkcancel) } });
     toast(close ? 'נסגר עם מסמך ' + v + ' ✓' : 'בוטל'); takeLoad().then(function () { if (!$('today').classList.contains('hidden')) loadToday(); });
   });
@@ -1518,7 +1589,7 @@ function addVisit() {
 }
 function cancelVisit(id) {
   if (!confirm('לבטל את הפגישה?')) return;
-  sb.from('crm_visits').update({ cancelled_at: new Date().toISOString(), cancelled_by: me.email }).eq('id', id).then(function (r) { if (r.error) toast('לא נשמר'); else loadVisits(); });
+  sb.from('crm_visits').update({ cancelled_at: new Date().toISOString(), cancelled_by: me.email }).eq('id', id).then(function (r) { if (r.error) toast('לא נשמר. נסו שוב'); else loadVisits(); });
 }
 
 function addTask() {
@@ -1527,7 +1598,7 @@ function addTask() {
   ensureCust().then(function () { return sb.from('crm_tasks').insert({ tail9: card.tail9, text: text, due: due, by: me.email, assigned_to: me.email }); }).then(function (r) { if (r.error) throw r.error; sb.rpc('crm_log', { p_action: 'task_add', p_tail9: card.tail9 }); openCard(card.tail9); }).catch(function (e) { toast('לא נשמר: ' + (e.message || e)); });
 }
 function doneTask(id, done) {
-  sb.from('crm_tasks').update({ done_at: done ? new Date().toISOString() : null, done_by: done ? me.email : null }).eq('id', id).then(function (r) { if (r.error) toast('לא נשמר'); else openCard(card.tail9); });
+  sb.from('crm_tasks').update({ done_at: done ? new Date().toISOString() : null, done_by: done ? me.email : null }).eq('id', id).then(function (r) { if (r.error) toast('לא נשמר. נסו שוב'); else openCard(card.tail9); });
 }
 function addNote() {
   var text = $('noteText').value.trim(); if (!text) return;
@@ -1596,7 +1667,7 @@ function askListen() {
   if (window.speechSynthesis) speechSynthesis.cancel();
   var rec = new SR(), said = '', failed = '';
   rec.lang = 'he-IL'; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
-  rec.onstart = function () { askHear('🎤 מקשיב… מדברים עכשיו'); $('askMic').classList.add('on'); $('askMic').setAttribute('aria-pressed', 'true'); };
+  rec.onstart = function () { askHear('מקשיב… מדברים עכשיו'); $('askMic').classList.add('on'); $('askMic').setAttribute('aria-pressed', 'true'); };
   rec.onresult = function (e) {
     said = ''; for (var i = 0; i < e.results.length; i++) said += e.results[i][0].transcript;
     $('askQ').value = said; askHear('🎤 ' + said);
@@ -1651,7 +1722,7 @@ function loadAi(t9) {
   });
 }
 function aiDone(t9, then) {
-  sb.from('crm_ai').update({ done_at: new Date().toISOString(), done_by: me.email }).eq('tail9', t9).then(function (r) { if (r.error) toast('לא נשמר'); else { sb.rpc('crm_log', { p_action: 'ai_done', p_tail9: t9 }); then(); } });
+  sb.from('crm_ai').update({ done_at: new Date().toISOString(), done_by: me.email }).eq('tail9', t9).then(function (r) { if (r.error) toast('לא נשמר. נסו שוב'); else { sb.rpc('crm_log', { p_action: 'ai_done', p_tail9: t9 }); then(); } });
 }
 
 /* ---------- customer documents (order detail, balance) ---------- */
@@ -1967,11 +2038,11 @@ function loadToday() {
     $('todayBody').querySelectorAll('[data-qmark]').forEach(function (b) { b.addEventListener('click', function () {
       var q = sq[Number(b.dataset.qmark)];
       if (!q.draft) { toast('אפשר לסמן אחרי שהטיוטה נכתבה'); return; }
-      sb.from('crm_quote_fu').update({ status: b.dataset.st, status_at: new Date().toISOString(), status_by: me.email }).eq('pq', q.pq).then(function (r) { if (r.error) toast('לא נשמר'); else { sb.rpc('crm_log', { p_action: 'quote_fu_' + b.dataset.st, p_tail9: q.tail9, p_detail: { pq: q.pq } }); loadToday(); } });
+      sb.from('crm_quote_fu').update({ status: b.dataset.st, status_at: new Date().toISOString(), status_by: me.email }).eq('pq', q.pq).then(function (r) { if (r.error) toast('לא נשמר. נסו שוב'); else { sb.rpc('crm_log', { p_action: 'quote_fu_' + b.dataset.st, p_tail9: q.tail9, p_detail: { pq: q.pq } }); loadToday(); } });
     }); });
     $('todayBody').querySelectorAll('[data-or]').forEach(function (b) { b.addEventListener('click', function () {
       var o = orl.filter(function (x) { return String(x.id) === b.dataset.or; })[0]; b.disabled = true;
-      sb.from('crm_outreach').update({ status: b.dataset.st, status_at: new Date().toISOString(), status_by: me.email }).eq('id', o.id).then(function (r) { if (r.error) { toast('לא נשמר'); b.disabled = false; } else { sb.rpc('crm_log', { p_action: 'outreach_' + b.dataset.st, p_tail9: o.tail9, p_detail: { campaign: OUTREACH } }); loadToday(); } });
+      sb.from('crm_outreach').update({ status: b.dataset.st, status_at: new Date().toISOString(), status_by: me.email }).eq('id', o.id).then(function (r) { if (r.error) { toast('לא נשמר. נסו שוב'); b.disabled = false; } else { sb.rpc('crm_log', { p_action: 'outreach_' + b.dataset.st, p_tail9: o.tail9, p_detail: { campaign: OUTREACH } }); loadToday(); } });
     }); });
     $('todayBody').querySelectorAll('[data-aidone]').forEach(function (b) { b.addEventListener('click', function () { aiDone(b.dataset.aidone, loadToday); }); });
     var miss = ai.filter(function (a) { return !nm[a.tail9]; }).map(function (a) { return a.tail9; });
