@@ -3,8 +3,10 @@
 // Accepts GET or POST. The notify setting covers the whole terminal: payments without a pr_id of ours are ignored, and every request gets 200 "OK".
 // Only pr_id, sum, Response and ConfirmationCode are read. TranzilaTK (card token) and the raw body are never stored or logged.
 //
-// 12.11.2026: a real payment stayed "waiting" with no alert, because the single look at /v1/transactions did not find it
-// and nothing looked again. Now:
+// 12.11.2026: a real payment (₪550) stayed "waiting" with no alert. Cause: /v1/transactions writes "amount" in AGOROT
+// ("55000"), and the old check looked for 550 anywhere in the record. ₪1 test payments passed only because some other
+// field happened to be "1". Now the record is matched on its own fields: authorization_number = the notify's
+// ConfirmationCode and amount = sum × 100. Also:
 //   - the confirmation code is compared a little wider (leading zeros, letter case) and every page of the day is read;
 //   - the look is repeated after 3 seconds;
 //   - a notify that still can't be confirmed is never silent: the office gets a task in the CRM alerts, the code is kept
@@ -46,33 +48,28 @@ function sameCode(v: string, code: string) {
   return x.length >= 3 && x === y;
 }
 type Diag = { pages: number; records: number; sum_hits: number; code_hits: number; keys: string[] };
-// The transactions response layout isn't documented field by field: look for any record that carries both the
-// confirmation code and the amount. Counts and field names go to the audit row when nothing is found.
-function scan(node: unknown, code: string, sum: number, d: Diag): boolean {
-  if (Array.isArray(node)) { let hit = false; for (const n of node) if (scan(n, code, sum, d)) hit = true; return hit; }
-  if (!node || typeof node !== "object") return false;
-  const entries = Object.entries(node as Record<string, unknown>);
-  const flat = entries.filter(([, v]) => typeof v === "string" || typeof v === "number").map(([, v]) => String(v));
-  let hit = false;
-  if (flat.length >= 4) {
-    const hasSum = flat.some((v) => v.trim() !== "" && Math.abs(Number(v) - sum) < 0.005), hasCode = flat.some((v) => sameCode(v, code));
-    d.records++; if (hasSum) d.sum_hits++; if (hasCode) d.code_hits++;
-    if (!d.keys.length) d.keys = entries.map(([k]) => k).slice(0, 60);
-    hit = hasSum && hasCode;
-  }
-  for (const [, v] of entries) if (v && typeof v === "object" && scan(v, code, sum, d)) hit = true;
-  return hit;
+// One record of the list (layout seen live 12.11.2026): { index, transaction_time, amount: "55000" (agorot),
+// authorization_number, processor_response_code: "000", txn_type: "DEBIT", ... }.
+// A payment counts only when its authorization number is the notify's code, the amount is sum × 100, and it went through.
+const agorot = (sum: number) => Math.round(sum * 100);
+function matches(r: Record<string, unknown>, code: string, sum: number, d: Diag): boolean {
+  d.records++;
+  if (!d.keys.length) d.keys = Object.keys(r).slice(0, 60);
+  const amtOk = Number(r.amount) === agorot(sum), codeOk = sameCode(String(r.authorization_number ?? ""), code);
+  if (amtOk) d.sum_hits++; if (codeOk) d.code_hits++;
+  const passed = (r.processor_response_code === undefined || String(r.processor_response_code) === "000") && String(r.txn_type ?? "DEBIT").toUpperCase() !== "CREDIT";
+  return amtOk && codeOk && passed;
 }
 async function verify(code: string, sum: number) {
   const diag: Diag = { pages: 0, records: 0, sum_hits: 0, code_hits: 0, keys: [] };
   for (const d of [day(0), day(1)]) {
     for (let page = 1; page <= 6; page++) {
       const j = await transactions(d, page).catch(() => null);
-      if (!j) break;
+      const list = j && Array.isArray((j as Record<string, unknown>).transactions) ? (j as Record<string, unknown>).transactions as Record<string, unknown>[] : null;
+      if (!list) break;
       diag.pages++;
-      const before = diag.records;
-      if (scan(j, code, sum, diag)) return { ok: true, diag };
-      if (diag.records === before) break; // an empty page: the day is finished
+      if (list.some((r) => r && typeof r === "object" && matches(r, code, sum, diag))) return { ok: true, diag };
+      if (!list.length) break; // an empty page: the day is finished
     }
   }
   return { ok: false, diag };
@@ -124,7 +121,11 @@ async function shape(body: Record<string, unknown>) {
     for (const [k, v] of Object.entries(j as Record<string, unknown>)) top[k] = Array.isArray(v) ? "array(" + v.length + ")" : v && typeof v === "object" ? "object{" + Object.keys(v).join(",") + "}" : PRIVATE.test(k) ? typeof v : v;
     const recs = records(j);
     const hit = recs.filter((r) => Object.values(r).some((v) => (typeof v === "string" || typeof v === "number") && sum > 0 && Math.abs(Number(v) - sum) < 0.005));
+    // a few non-personal fields of every transaction (number, time, amounts, status), to see how the amount is written
+    const SAFE = ["index", "transaction_time", "amount", "first_payment_amount", "other_payment_amount", "number_of_payments", "currency", "transtatus", "processor_response_code", "tranmode", "txn_type", "txn_payment_method", "child_terminal"];
+    const list = Array.isArray((j as Record<string, unknown>).transactions) ? (j as Record<string, unknown>).transactions as Record<string, unknown>[] : [];
     out.push({ day: day(d), page: p, top, records: recs.length, keys: recs[0] ? Object.keys(recs[0]) : [],
+      rows: list.slice(0, 50).map((r) => Object.fromEntries(SAFE.filter((k) => k in r).map((k) => [k, r[k]]))),
       hits: hit.slice(0, 6).map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, PRIVATE.test(k) ? typeof v : (v && typeof v === "object" ? "object" : v)]))) });
     if (!recs.length) break;
   }
