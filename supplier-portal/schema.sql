@@ -100,12 +100,14 @@ declare u public.sp_uploads; n int;
 begin
   if crm_me() is null then raise exception 'staff only'; end if;
   select * into u from sp_uploads where id = p_upload for update;
-  if u.id is null or u.status <> 'parsed' then raise exception 'upload not ready'; end if;
+  -- a failed upload can only be dismissed; a file still under the WhatsApp placeholder cannot be approved
+  if u.id is null or not (u.status = 'parsed' or (u.status = 'failed' and not p_approve)) then raise exception 'upload not ready'; end if;
   if not p_approve then
     update sp_prices set status = 'rejected' where upload_id = p_upload;
     update sp_uploads set status = 'rejected', decided_by = crm_me(), decided_at = now() where id = p_upload;
     return 0;
   end if;
+  if exists (select 1 from sp_suppliers where id = u.supplier_id and kind = 'wa_inbox') then raise exception 'קודם לשייך את הקובץ לספק'; end if;
   if u.replaces_all then
     update sp_prices set status = 'old' where supplier_id = u.supplier_id and status = 'active';
   else
@@ -145,3 +147,115 @@ returns text language sql stable security definer set search_path = public as $$
 $$;
 revoke all on function public.sp_token_fix(text) from public;
 grant execute on function public.sp_token_fix(text) to anon, authenticated;
+
+-- ---------------------------------------------------------------------------------------------------------------
+-- 12.11.2026: heavy PDFs. supplier-upload hands every PDF to the edge function supplier-parse, which cuts it into
+-- page parts, reads them as a Message Batch and reports page by page. State lives on the upload row.
+alter table public.sp_uploads
+  add column if not exists job jsonb,            -- reader state: phase new/wait/done, batch ids, page ranges
+  add column if not exists job_lease timestamptz, -- a worker holds the row until this time
+  add column if not exists parse_info text,       -- neutral reading summary for staff; parse_note is for problems
+  add column if not exists task_id bigint;        -- the CRM task opened for this upload (sp_upload_alert)
+
+select cron.schedule('supplier-parse', '* * * * *', $cron$
+  select net.http_post(url := 'https://ppnjosyraosrdephsksu.supabase.co/functions/v1/supplier-parse',
+    headers := '{"content-type":"application/json"}'::jsonb, body := '{}'::jsonb, timeout_milliseconds := 5000)
+  where exists (select 1 from public.sp_uploads where status = 'parsing' and job is not null)
+$cron$);
+
+-- WhatsApp channel (12.11.2026, Aviv: "תתקדם לפרוייקט וואטסאפ"): price lists that suppliers send to the business
+-- WhatsApp number go into the same approval queue as portal uploads. Edge function supplier-wa, cron every 2 minutes.
+alter table public.sp_suppliers add column if not exists kind text;           -- 'wa_inbox' = placeholder for files from a number we do not know yet
+alter table public.sp_uploads add column if not exists wa_phone text;         -- sender, for uploads that came through WhatsApp
+
+create or replace function public.sp_phone_key(p text) returns text language sql immutable as $$
+  select regexp_replace(regexp_replace(regexp_replace(coalesce(p, ''), '\D', '', 'g'), '^972', ''), '^0', '')
+$$;
+
+create table if not exists public.sp_supplier_phones (
+  phone_key text primary key,                 -- national number, no leading 0 or 972 (sp_phone_key)
+  supplier_id uuid not null references public.sp_suppliers(id) on delete cascade,
+  source text not null default 'priority',    -- priority = supplier card, staff = assigned from a WhatsApp upload
+  created_at timestamptz not null default now()
+);
+create table if not exists public.sp_wa_log (  -- one row per WhatsApp message the intake looked at, so nothing is taken twice
+  msg_id text primary key,
+  result text not null,                        -- skip | working | ok | failed
+  upload_id uuid,
+  note text,
+  at timestamptz not null default now()
+);
+alter table public.sp_supplier_phones enable row level security;
+alter table public.sp_wa_log enable row level security;
+create policy sp_ph_staff on public.sp_supplier_phones for select using (crm_me() is not null);
+create policy sp_wal_staff on public.sp_wa_log for select using (crm_me() is not null);
+
+insert into public.sp_suppliers (name, kind, created_by)
+select 'וואטסאפ: ספק לא מזוהה', 'wa_inbox', 'system'
+where not exists (select 1 from public.sp_suppliers where kind = 'wa_inbox');
+
+-- business phones from the Priority supplier cards; a number that belongs to two suppliers is left out.
+-- The numbers themselves were loaded once by hand and are not kept in this (public) repository.
+insert into public.sp_supplier_phones (phone_key, supplier_id, source)
+select v.k, s.id, 'priority'
+from (values ('<phone key>', '<priority sup>')) as v(k, sup)
+join public.sp_suppliers s on s.priority_sup = v.sup
+on conflict (phone_key) do nothing;
+
+-- staff: this upload belongs to that supplier. Moves the rows and remembers the sender's number for next time.
+create or replace function public.sp_assign_upload(p_upload uuid, p_supplier uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare u public.sp_uploads; s public.sp_suppliers;
+begin
+  if crm_me() is null then raise exception 'staff only'; end if;
+  select * into u from sp_uploads where id = p_upload for update;
+  if u.id is null or u.status in ('approved', 'rejected') then raise exception 'upload not open'; end if;
+  select * into s from sp_suppliers where id = p_supplier;
+  if s.id is null or s.kind = 'wa_inbox' then raise exception 'pick a supplier'; end if;
+  update sp_prices set supplier_id = p_supplier where upload_id = p_upload;
+  update sp_uploads set supplier_id = p_supplier where id = p_upload;
+  update sp_suppliers set last_upload_at = greatest(coalesce(last_upload_at, u.created_at), u.created_at) where id = p_supplier;
+  if sp_phone_key(u.wa_phone) ~ '^\d{8,12}$' then
+    insert into sp_supplier_phones (phone_key, supplier_id, source) values (sp_phone_key(u.wa_phone), p_supplier, 'staff')
+    on conflict (phone_key) do update set supplier_id = excluded.supplier_id, source = 'staff';
+  end if;
+end $$;
+revoke all on function public.sp_assign_upload(uuid, uuid) from public, anon;
+grant execute on function public.sp_assign_upload(uuid, uuid) to authenticated;
+
+-- CRM alert (Aviv 12.11: "כספק מעלה פרטים חדשים לפורטל ספקים, שתקפוץ התראה במערכת ה crm במשרד ראשי"):
+-- every upload that is not from staff opens a task that pops on the CRM screens, and closes when staff decide.
+create or replace function public.sp_upload_alert()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare v_name text; v_kind text; v_task bigint; v_file text; v_text text;
+begin
+  if tg_op = 'INSERT' then
+    if new.source = 'staff' then return new; end if;
+    select s.name, s.kind into v_name, v_kind from sp_suppliers s where s.id = new.supplier_id;
+    v_file := coalesce(new.file_name, case when new.file_path is null then 'הודעה בטקסט' else 'קובץ' end);
+    if new.status = 'failed' then
+      v_text := 'קובץ מספק בוואטסאפ לא נקלט' || case when v_kind = 'wa_inbox' then '' else ' (' || coalesce(v_name, 'ספק') || ')' end || ' · ' || v_file || '. ' || coalesce(new.parse_note, '');
+    elsif v_kind = 'wa_inbox' then
+      v_text := 'מחירון בוואטסאפ ממספר לא מזוהה' || coalesce(' (' || new.wa_phone || ')', '') || ' · ' || v_file || '. לשייך לספק ולאשר ב"מחירון ספקים", לשונית "לאישור".';
+    else
+      v_text := 'עדכון חדש מספק' || case when new.source = 'whatsapp' then ' בוואטסאפ' else '' end || ': ' || coalesce(v_name, 'ספק') || ' · ' || v_file || '. לבדוק ולאשר ב"מחירון ספקים", לשונית "לאישור".';
+    end if;
+    insert into crm_tasks (text, due, "by") values (v_text, now(), 'פורטל ספקים') returning id into v_task;
+    new.task_id := v_task;
+    return new;
+  end if;
+  if new.status in ('approved', 'rejected') and new.status is distinct from old.status and new.task_id is not null then
+    update crm_tasks set done_at = now(), done_by = coalesce(new.decided_by, 'מחירון ספקים') where id = new.task_id and done_at is null;
+  end if;
+  return new;
+end $$;
+
+create or replace trigger sp_upload_alert_ins before insert on public.sp_uploads for each row execute function public.sp_upload_alert();
+create or replace trigger sp_upload_alert_upd after update of status on public.sp_uploads for each row execute function public.sp_upload_alert();
+
+select cron.schedule('supplier-wa', '*/2 * * * *', $cron$
+  select net.http_post(url := 'https://ppnjosyraosrdephsksu.supabase.co/functions/v1/supplier-wa',
+    headers := '{"content-type":"application/json"}'::jsonb, body := '{}'::jsonb, timeout_milliseconds := 5000)
+  where exists (select 1 from public.wa_messages m where m.dir = 'in' and m.source = 'live' and m.type in ('document', 'image')
+    and m.ts > now() - interval '48 hours' and not exists (select 1 from public.sp_wa_log l where l.msg_id = m.id))
+$cron$);

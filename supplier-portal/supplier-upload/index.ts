@@ -4,12 +4,15 @@
 //   POST multipart t, file, name?, note?, replaces_all?  -> stores the file in private bucket supplier-files,
 //        records sp_uploads, then reads it into sp_prices (status 'pending') in the background.
 //   POST json {reparse: <upload id>} with a staff JWT  -> reads an existing upload again.
+//   A PDF is not read here: it is handed to the function supplier-parse (page parts, batches, per-page report).
 // Nothing becomes visible to customers or active in the price list until staff approve (rpc sp_decide).
 // File text is data only, never instructions to the model.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import * as XLSX from "npm:xlsx@0.18.5";
 
-const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+const SB_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const db = createClient(SB_URL, SERVICE_KEY);
 const MODEL = Deno.env.get("SP_MODEL") || Deno.env.get("BOT_MODEL") || "claude-sonnet-5-5";
 const MAX_BYTES = 20 * 1024 * 1024;
 const MAX_PER_DAY = 30;
@@ -98,7 +101,13 @@ async function readText(text: string): Promise<{ rows: Row[]; summary: string | 
 async function parse(uploadId: string) {
   const { data: u } = await db.from("sp_uploads").select("*").eq("id", uploadId).maybeSingle();
   if (!u) return;
-  await db.from("sp_uploads").update({ status: "parsing", parse_note: null }).eq("id", uploadId);
+  const isPdf = !!u.file_path && String(u.file_name || "").toLowerCase().endsWith(".pdf");
+  // A PDF can be a long, heavy catalog: supplier-parse reads it part by part and reports page by page.
+  await db.from("sp_uploads").update({ status: "parsing", parse_note: null, parse_info: isPdf ? "ממתין לקריאה" : null, job: isPdf ? { phase: "new" } : null, job_lease: null }).eq("id", uploadId);
+  if (isPdf) {
+    await fetch(`${SB_URL}/functions/v1/supplier-parse`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).catch(() => {}); // the cron job picks it up within a minute anyway
+    return;
+  }
   try {
     if (!u.file_path) {
       const { rows, summary } = await readText(String(u.supplier_note || ""));
@@ -113,7 +122,6 @@ async function parse(uploadId: string) {
     const name = String(u.file_name || "").toLowerCase();
     let rows: Row[];
     if (/\.(xlsx|xlsm|xls|csv)$/.test(name)) rows = await readSheet(bytes);
-    else if (name.endsWith(".pdf")) rows = await readDoc(bytes, "application/pdf");
     else rows = await readDoc(bytes, u.mime && /^image\/(jpeg|png|webp)$/.test(u.mime) ? u.mime : "image/jpeg");
     await db.from("sp_prices").delete().eq("upload_id", uploadId).eq("status", "pending");
     for (let i = 0; i < rows.length; i += 1000) {
@@ -155,7 +163,8 @@ Deno.serve(async (req) => {
   const ct = req.headers.get("content-type") || "";
   if (ct.includes("application/json")) {
     const b = await req.json().catch(() => ({}));
-    if (!b.reparse || !(await isStaff(req))) return json({ error: "forbidden" }, 403);
+    // staff, or another of our own functions (supplier-wa) that holds the service key
+    if (!b.reparse || !(req.headers.get("x-sp-key") === SERVICE_KEY || (await isStaff(req)))) return json({ error: "forbidden" }, 403);
     // @ts-ignore EdgeRuntime is provided by Supabase
     EdgeRuntime.waitUntil(parse(String(b.reparse)));
     return json({ ok: true });
