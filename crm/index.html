@@ -217,6 +217,27 @@ details.sect:not([open]){gap:0}
 @keyframes wallblink{50%{background:#5a120a}}
 @media (prefers-reduced-motion: reduce){#wallBar.late{animation:none}}
 body.wall{padding-top:76px}
+/* station tiles (wall mode): touch-sized, under the bar */
+#station{position:fixed;top:76px;inset-inline:0;height:112px;z-index:29;display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) 150px;gap:8px;padding:8px;background:var(--wall);border-bottom:1px solid var(--line)}
+#station .tile{border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);font:inherit;text-align:start;padding:10px 14px;display:grid;align-content:center;gap:2px;cursor:pointer;min-width:0}
+#station .tile:active{transform:scale(.98)}
+#station .tile .k{font-size:14px;color:var(--mute)}
+#station .tile .v{font-size:clamp(20px,2.2vw,30px);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#station .tile .s{font-size:13px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#station .tile.good{border-color:var(--green)} #station .tile.good .v{color:var(--green)}
+#station .tile.mid{border-color:var(--amber)} #station .tile.mid .v{color:var(--amber)}
+#station .tile.bad{border-color:var(--red)} #station .tile.bad .v{color:var(--red)}
+#station .hide{border:0;border-radius:14px;background:var(--brass);color:var(--brass-ink);font:inherit;font-size:18px;font-weight:700;cursor:pointer;line-height:1.25}
+body.wall.station{padding-top:188px}
+/* privacy cover: customers in the room. Hold 1 second to come back, so a passing tap does not open it */
+#cover{position:fixed;inset:0;z-index:90;background:var(--wall);color:var(--ink);display:grid;place-items:center;text-align:center;user-select:none;-webkit-user-select:none;touch-action:none}
+#cover .logo{font-size:clamp(40px,6vw,84px);font-weight:700;letter-spacing:.04em;color:var(--brass)}
+#cover .clock{font-size:clamp(28px,4vw,56px);font-variant-numeric:tabular-nums;margin-top:12px}
+#cover .hint{margin-top:40px;font-size:15px;color:var(--mute)}
+#cover .dot{position:fixed;bottom:18px;inset-inline-start:18px;width:14px;height:14px;border-radius:50%;background:var(--amber)}
+#cover .ring{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 0 0 var(--brass);transition:box-shadow 1s linear}
+#cover.holding .ring{box-shadow:inset 0 0 0 10px var(--brass)}
+@media (max-width:900px){#station{grid-template-columns:repeat(3,minmax(0,1fr));height:auto}#station .tile:nth-child(n+4):not(.hide){display:none}body.wall.station{padding-top:200px}}
 .toast{position:fixed;bottom:80px;inset-inline:16px;margin:auto;max-width:480px;background:var(--surface);border:1px solid var(--brass);border-radius:var(--r);padding:12px 16px;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.3)}
 .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);display:grid;place-items:center;z-index:60;cursor:zoom-out}
 .lightbox img{max-width:96vw;max-height:92vh}
@@ -283,6 +304,8 @@ svg.ic.dots{stroke-width:3}
 </defs></svg>
 <div class="sr" id="live" role="status" aria-live="polite"></div>
 <button id="wallBar" type="button" class="hidden"></button>
+<div id="station" class="hidden" aria-label="לוח העמדה"></div>
+<div id="cover" class="hidden" role="dialog" aria-label="מסך המתנה"><div><div class="logo">זיסו קרמיקה</div><div class="clock" id="coverClock"></div><div class="hint">להחזרת המסך: ללחוץ ולהחזיק שנייה</div></div><span class="dot hidden" id="coverDot"></span><span class="ring"></span></div>
 <div id="login">
   <form id="loginForm" autocomplete="on">
     <img class="logo" src="../img/logo.jpg" alt="">
@@ -504,7 +527,7 @@ function start() {
     $('meBtn').textContent = mine.name;
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
     sb.rpc('crm_log', { p_action: 'login' });
-    route(); loadConvs(); loadSync(); pushCheck(); loadAiMap();
+    route(); loadConvs(); loadSync(); pushCheck(); loadAiMap(); stationLoad();
     if (!(me.user_metadata && me.user_metadata.pw_changed_at)) openPw(true);
     if (timer) clearInterval(timer);
     // open chat every 10s, list every 20s, AI verdicts every 3 minutes; nothing runs while the tab is hidden
@@ -571,7 +594,7 @@ function updateBadge() {
   var w = convs.filter(needsHuman).length;
   $('waitBadge').textContent = w; $('waitBadge').classList.toggle('hidden', !w);
   document.title = (w ? '(' + w + ') ' : '') + 'זיסו צוות';
-  wallUpdate();
+  wallUpdate(); if (WALL && stationData.kpi) stationRender();
 }
 /* ---------- wall screen: open the page as /crm/?wall=1 on the office monitor ----------
    Top bar: green when nobody waits, amber when someone waits, blinking red plus a beep every minute
@@ -602,7 +625,72 @@ function wallUpdate() {
   bar.className = late ? 'late' : w.length ? 'wait' : '';
   bar.innerHTML = !w.length ? 'אין ממתינים. כולם נענו.' :
     '<span>' + (w.length === 1 ? 'לקוח אחד מחכה' : w.length + ' לקוחות מחכים') + ' לתשובה</span><small>הכי הרבה זמן: ' + esc(bizLabel(max)) + (late ? ' · ' + late + ' מעל 15 דקות' : '') + ' · לחצו כדי לענות</small>';
-  if (late && wallOpenNow() && Date.now() - wallLastBeep > 58000) { wallLastBeep = Date.now(); wallBeep(); }
+  if (late && wallOpenNow() && $('cover').classList.contains('hidden') && Date.now() - wallLastBeep > 58000) { wallLastBeep = Date.now(); wallBeep(); }
+  $('coverDot').classList.toggle('hidden', !w.length);
+}
+/* ---------- station tiles (wall mode): today's numbers against the targets ----------
+   Receipts target: ₪16,800 per working day, minimum ₪15,000 (Sun-Thu = 1 day, Fri = half, Sat = 0).
+   Priority data arrives through the bridge, so receipts and orders run to the last update, usually yesterday. */
+var stationData = {}, coverHold = null;
+function ilDate(d) { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' }).format(d || new Date()); }
+function workDays(from, toExcl) {
+  var n = 0, d = new Date(from + 'T12:00:00Z'), end = new Date(toExcl + 'T12:00:00Z');
+  for (; d < end; d.setUTCDate(d.getUTCDate() + 1)) { var w = d.getUTCDay(); n += w === 6 ? 0 : w === 5 ? 0.5 : 1; }
+  return n;
+}
+function stationLoad() {
+  if (!WALL || !me) return;
+  var today = ilDate(), month = today.slice(0, 8) + '01', week = ilDate(new Date(Date.now() - 6 * 864e5));
+  Promise.all([
+    sb.from('priority_receipts').select('date,amount').gte('date', month).limit(5000),
+    sb.from('priority_orders_all').select('date,amount,status').gte('date', month).limit(5000),
+    sb.from('crm_visits').select('at,cancelled_at').gte('at', week + 'T00:00:00+02:00').limit(500),
+    sb.rpc('crm_kpi')
+  ]).then(function (r) {
+    var rec = (r[0].data || []), ord = (r[1].data || []).filter(function (o) { return !/טיוטא|^מבוטל/.test(o.status || ''); });
+    var last = rec.reduce(function (m, x) { return x.date > m ? x.date : m; }, '');
+    var upto = last && last < today ? ilDate(new Date(new Date(last + 'T12:00:00Z').getTime() + 864e5)) : today;
+    var recSum = rec.reduce(function (t, x) { return t + Number(x.amount || 0); }, 0), days = workDays(month, upto);
+    var lastDay = rec.filter(function (x) { return x.date === last; }).reduce(function (t, x) { return t + Number(x.amount || 0); }, 0);
+    var vis = (r[2].data || []).filter(function (v) { return !v.cancelled_at; });
+    stationData = { recSum: recSum, perDay: days ? recSum / days : 0, last: last, lastDay: lastDay,
+      ordSum: ord.reduce(function (t, x) { return t + Number(x.amount || 0); }, 0), ordN: ord.length,
+      visToday: vis.filter(function (v) { return ilDate(new Date(v.at)) === today; }).length, visWeek: vis.length, kpi: r[3].data || {} };
+    stationRender();
+  });
+}
+function stationRender() {
+  var d = stationData, k = d.kpi || {}, w = convs.filter(needsHuman).length;
+  var tone = function (v, good, mid) { return v >= good ? 'good' : v >= mid ? 'mid' : 'bad'; };
+  var lastLbl = d.last ? new Date(d.last + 'T12:00:00Z').toLocaleDateString('he-IL', { weekday: 'short', day: 'numeric', month: 'numeric' }) : '';
+  var tiles = [
+    ['now', w ? 'mid' : 'good', 'ממתינים עכשיו', String(w), k.pct7 != null ? 'נענו תוך 15 דק׳ השבוע: ' + k.pct7 + '%' : ''],
+    ['money', d.perDay ? tone(d.perDay, 16800, 15000) : '', 'קבלות ליום עבודה', d.perDay ? money(d.perDay) : '…', 'יעד ₪16,800 · ' + (lastLbl ? lastLbl + ': ' + money(d.lastDay) : '')],
+    ['money', '', 'קבלות החודש', d.recSum != null ? money(d.recSum) : '…', 'הזמנות החודש ' + money(d.ordSum || 0)],
+    ['money', '', 'הצעות מחיר השבוע', String(k.quotes7 || 0), 'נסגרו ' + (k.won7 || 0) + ' · בלי תשובה ' + (k.open_quotes7 || 0)],
+    ['grow', d.visToday >= 2 ? 'good' : '', 'פגישות באולם היום', String(d.visToday || 0), 'השבוע ' + (d.visWeek || 0)]
+  ];
+  $('station').innerHTML = tiles.map(function (t) { return '<button type="button" class="tile ' + t[1] + '" data-g="' + t[0] + '"><span class="k">' + esc(t[2]) + '</span><span class="v">' + esc(t[3]) + '</span><span class="s">' + esc(t[4]) + '</span></button>'; }).join('') +
+    '<button type="button" class="hide" id="coverBtn">יש לקוחות<br><small>להסתיר מסך</small></button>';
+  $('station').querySelectorAll('.tile').forEach(function (b) { b.addEventListener('click', function () { if (b.dataset.g === 'now') { var f = document.querySelector('.filters button[data-f="waiting"]'); if (f) f.click(); go('chats'); } else { todayG = b.dataset.g; go('today'); } }); });
+  $('coverBtn').addEventListener('click', function () { coverSet(true); });
+}
+function coverSet(on) {
+  $('cover').classList.toggle('hidden', !on);
+  try { localStorage.setItem('crmCover', on ? '1' : ''); } catch (e) {}
+  if (on) coverTick();
+}
+function coverTick() { $('coverClock').textContent = new Date().toLocaleTimeString('he-IL', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit' }); }
+if (WALL) {
+  document.body.classList.add('station'); $('station').classList.remove('hidden');
+  var cv = $('cover');
+  var holdStart = function (e) { e.preventDefault(); cv.classList.add('holding'); coverHold = setTimeout(function () { cv.classList.remove('holding'); coverSet(false); }, 1000); };
+  var holdEnd = function () { cv.classList.remove('holding'); clearTimeout(coverHold); };
+  cv.addEventListener('pointerdown', holdStart); ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { cv.addEventListener(ev, holdEnd); });
+  cv.addEventListener('keydown', function (e) { if (e.key === 'Enter') coverSet(false); });
+  try { if (localStorage.getItem('crmCover')) coverSet(true); } catch (e) {}
+  setInterval(coverTick, 20000);
+  setInterval(stationLoad, 5 * 60000);
 }
 if (WALL) {
   $('wallBar').addEventListener('click', function () { try { wallCtx = wallCtx || new (window.AudioContext || window.webkitAudioContext)(); wallCtx.resume(); } catch (e) {} if (wallTop) go('chat', wallTop); });
