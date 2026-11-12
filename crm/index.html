@@ -194,6 +194,22 @@ details.sect:not([open]){gap:0}
 .sheet form{width:min(420px,100%);background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:24px;display:grid;gap:12px}
 .sheet h2{font-size:24px}.sheet .row{justify-content:flex-start;flex-wrap:wrap}
 .sheet form.docform{grid-template-columns:minmax(0,1fr);width:min(640px,100%);max-height:calc(100vh - 48px);overflow:auto}
+/* "תשאלו את קלוד" */
+#askSheet{z-index:50;padding:16px}
+.askbox{width:min(720px,100%);height:min(760px,calc(100dvh - 32px));background:var(--surface);border:1px solid var(--line);border-radius:20px;display:grid;grid-template-rows:auto minmax(0,1fr) auto auto auto;overflow:hidden}
+.askhead{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.askhead h2{font-size:20px;flex:1}
+.asklog{overflow:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.asklog .msg.q{align-self:flex-end;background:var(--me);border-end-end-radius:4px}
+.asklog .msg.a{align-self:flex-start;background:var(--in);border-end-start-radius:4px;max-width:min(92%,620px);line-height:1.5}
+.asklog .msg.err{color:var(--amber)} .asklog .msg.wait{color:var(--mute)}
+.asklog .who{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.asklog .empty{color:var(--mute);text-align:center;margin:auto;max-width:420px;line-height:1.5}
+.askchips{display:flex;gap:8px;overflow-x:auto;padding:0 16px 10px}
+#askSheet form{width:auto;background:none;border:0;border-top:1px solid var(--line);border-radius:0;padding:12px 16px;display:flex;gap:8px;align-items:flex-end}
+#askQ{flex:1;max-height:140px}
+.askbox > p{padding:0 16px 12px}
+@media (max-width:599px){#askSheet{padding:0}.askbox{height:100dvh;border-radius:0;border:0}}
 .docprev{background:#e9e6e0;border-radius:12px;padding:10px;overflow:hidden auto;max-height:55vh;min-width:0;position:relative}
 .docprev canvas{display:block;margin:10px auto;max-width:calc(100% - 20px);height:auto;box-shadow:0 1px 6px rgba(0,0,0,.25)}
 .docprev .zdoc{transform-origin:top right;position:absolute;top:10px;right:10px}
@@ -326,6 +342,15 @@ svg.ic.dots{stroke-width:3}
   </form>
 </div>
 
+<div id="askSheet" class="sheet hidden" role="dialog" aria-modal="true" aria-labelledby="askTitle">
+  <div class="askbox">
+    <div class="askhead"><h2 id="askTitle">תשאלו את קלוד</h2><button class="btn small" type="button" id="askNew">שיחה חדשה</button><button class="btn small" type="button" id="askClose">סגירה</button></div>
+    <div class="asklog" id="askLog" aria-live="polite"></div>
+    <div class="askchips" id="askChips"></div>
+    <form id="askForm" autocomplete="off"><textarea id="askQ" rows="1" placeholder="למשל: מה קבענו עם דני כהן?" aria-label="שאלה לקלוד"></textarea><button class="btn brass" type="submit" id="askSend">שליחה</button></form>
+    <p class="small muted">קלוד עונה רק ממה שרשום במערכת: וואטסאפ, הזמנות, הצעות מחיר, פגישות, שיחות טלפון, וגם בנק, תזרים, שיקים וספקים. הוא לא שולח שום דבר ללקוחות. כדאי לוודא פרט חשוב לפני שמבטיחים ללקוח. השאלות נשמרות ביומן המערכת.</p>
+  </div>
+</div>
 <div id="docSheet" class="sheet hidden" role="dialog" aria-modal="true" aria-labelledby="docTitle">
   <form id="docForm" class="docform" autocomplete="off">
     <h2 id="docTitle">מסמך ללקוח</h2>
@@ -356,6 +381,7 @@ svg.ic.dots{stroke-width:3}
       <button class="btn small" id="deskSearch">חיפוש לקוח</button>
       <button class="btn small" id="deskToday">היום</button>
       <button class="btn small" id="deskChats">שיחות</button>
+      <button class="btn small brass" id="deskAsk">תשאלו את קלוד</button>
     </div>
     <a class="btn small brass pricebtn" href="prices.html" title="חיפוש מחיר במחירוני הספקים"><span aria-hidden="true">₪</span> מחירון ספקים</a>
     <button class="btn small" id="meBtn" title="החשבון שלי"></button>
@@ -439,6 +465,7 @@ svg.ic.dots{stroke-width:3}
     <button data-view="chats" aria-current="page">שיחות<span class="badge hidden" id="waitBadge"></span></button>
     <button data-view="search">לקוחות</button>
     <button data-view="today">היום</button>
+    <button id="tabAsk" type="button">קלוד</button>
   </nav>
 </div>
 
@@ -574,7 +601,7 @@ function route() {
   else setView('chats');
 }
 window.addEventListener('hashchange', route);
-document.querySelectorAll('nav.tabs button').forEach(function (b) { b.addEventListener('click', function () { go(b.dataset.view); }); });
+document.querySelectorAll('nav.tabs button[data-view]').forEach(function (b) { b.addEventListener('click', function () { go(b.dataset.view); }); });
 $('deskSearch').addEventListener('click', function () { go('search'); });
 $('deskToday').addEventListener('click', function () { go('today'); });
 $('deskChats').addEventListener('click', function () { go(cur ? 'chat' : 'chats', cur); });
@@ -856,6 +883,7 @@ document.addEventListener('keydown', function (e) {
   if (e.key !== 'Escape') return;
   var m = document.querySelector('.lightbox') || document.querySelector('.menu');
   if (m) { m.remove(); if (lastFocus && lastFocus.focus) lastFocus.focus(); return; }
+  if (!$('askSheet').classList.contains('hidden')) { askClose(); return; }
   if (!$('docSheet').classList.contains('hidden')) { $('docClose').click(); return; }
   if (!$('pwSheet').classList.contains('hidden') && !$('pwLater').classList.contains('hidden')) $('pwLater').click();
 });
@@ -1257,6 +1285,47 @@ function aiFn(body, fn) {
     return fetch(FN + (fn || 'crm-ai-triage'), { method: 'POST', headers: { authorization: 'Bearer ' + s.data.session.access_token, 'content-type': 'application/json' }, body: JSON.stringify(body) });
   }).then(function (r) { return r.json(); });
 }
+/* ---------- "תשאלו את קלוד": free questions about the business. crm-ask only reads (WhatsApp, orders, quotes,
+   visits, calls) and answers staff; it writes nothing and sends nothing to a customer. The conversation lives in
+   memory only and is gone on reload or "שיחה חדשה". ---------- */
+var askHist = [], askBusy = false;
+var ASK_EX = ['מה קבענו עם ', 'מתי האספקה ל', 'מה פתוח אצל ', 'מי מחכה לסחורה השבוע?', 'אילו פגישות יש היום?', 'אילו שיקים יורדים השבוע?', 'מה המצב בבנק?'];
+function askOpen() { lastFocus = document.activeElement; $('askSheet').classList.remove('hidden'); askRender(); setTimeout(function () { $('askQ').focus(); }, 50); }
+function askClose() { $('askSheet').classList.add('hidden'); if (lastFocus && lastFocus.focus) lastFocus.focus(); }
+function askRender() {
+  var log = $('askLog');
+  log.innerHTML = askHist.length ? askHist.map(function (m) {
+    if (m.role === 'user') return '<div class="msg q">' + esc(m.content) + '</div>';
+    return '<div class="msg a' + (m.err ? ' err' : '') + '">' + esc(m.content) + (m.people && m.people.length ? '<div class="who">' + m.people.map(function (p) { return '<button class="btn small" type="button" data-t9="' + esc(p.tail9) + '">כרטיס: ' + esc(p.name) + '</button>'; }).join('') + '</div>' : '') + '</div>';
+  }).join('') + (askBusy ? '<div class="msg a wait">קלוד בודק במערכת…</div>' : '') : '<div class="empty">אפשר לשאול כל דבר על העסק: מה סוכם עם לקוח, מתי אספקה, מה הוזמן, מי מחכה לסחורה, אילו פגישות יש.</div>';
+  log.scrollTop = log.scrollHeight;
+  $('askChips').classList.toggle('hidden', askHist.length > 0);
+  $('askSend').disabled = askBusy;
+}
+function askSend(q) {
+  q = String(q || '').trim(); if (!q || askBusy) return;
+  var hist = [];
+  for (var i = 0; i < askHist.length - 1; i++) if (askHist[i].role === 'user' && askHist[i + 1].role === 'assistant' && !askHist[i + 1].err) hist.push({ role: 'user', content: askHist[i].content }, { role: 'assistant', content: askHist[i + 1].content });
+  askHist.push({ role: 'user', content: q }); askBusy = true; $('askQ').value = ''; askRender();
+  aiFn({ q: q, history: hist.slice(-8) }, 'crm-ask').then(function (j) {
+    askHist.push(j && j.ok ? { role: 'assistant', content: j.answer, people: j.people || [] } : { role: 'assistant', content: (j && j.error) || 'לא הצלחתי לענות, נסו שוב', err: true });
+  }).catch(function () { askHist.push({ role: 'assistant', content: 'אין חיבור כרגע, נסו שוב', err: true }); }).then(function () { askBusy = false; askRender(); $('askQ').focus(); });
+}
+$('askChips').innerHTML = ASK_EX.map(function (t) { return '<button class="btn small" type="button">' + esc(t) + (/\?$/.test(t) ? '' : '…') + '</button>'; }).join('');
+$('askChips').addEventListener('click', function (e) {
+  var b = e.target.closest('button'); if (!b) return;
+  var t = ASK_EX[Array.prototype.indexOf.call($('askChips').children, b)];
+  if (/\?$/.test(t)) askSend(t); else { $('askQ').value = t; $('askQ').focus(); }
+});
+$('askLog').addEventListener('click', function (e) { var b = e.target.closest('button[data-t9]'); if (b) { askClose(); go('card', b.dataset.t9); } });
+$('askForm').addEventListener('submit', function (e) { e.preventDefault(); askSend($('askQ').value); });
+$('askQ').addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && deskKeys()) { e.preventDefault(); askSend($('askQ').value); } });
+$('askNew').addEventListener('click', function () { if (askBusy) return; askHist = []; askRender(); $('askQ').focus(); });
+$('askClose').addEventListener('click', askClose);
+$('askSheet').addEventListener('click', function (e) { if (e.target === $('askSheet')) askClose(); });
+$('deskAsk').addEventListener('click', askOpen);
+$('tabAsk').addEventListener('click', askOpen);
+
 /* ---------- AI analyst (crm-ai-triage writes crm_ai; staff only read it and mark "done") ---------- */
 var TEMP = { hot: 'חם', warm: 'פושר', cold: 'קר', none: 'לא לקוח' };
 var STAGE_AI = { new: 'פנייה חדשה', talking: 'בשיחה', visit: 'ביקור באולם', quote: 'קיבל הצעה', order: 'הזמין', done: 'נסגר', lost: 'אבד' };
