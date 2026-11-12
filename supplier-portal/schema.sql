@@ -134,3 +134,14 @@ drop policy if exists sp_files_staff_read on storage.objects;
 create policy sp_files_staff_read on storage.objects for select
   using (bucket_id = 'supplier-files' and public.crm_me() is not null);
 alter table public.sp_uploads add column if not exists supplier_name_typed text; -- 11.11 required supplier name on the upload page
+
+-- A supplier link whose last characters were cut off when it was copied (12.11): the supplier page asks for the full
+-- token. Returned only when a 30-35 character prefix matches exactly one active supplier (still 120 bits).
+create or replace function public.sp_token_fix(p text)
+returns text language sql stable security definer set search_path = public as $$
+  select case when count(*) = 1 then min(token) end
+  from public.sp_suppliers
+  where active and p ~ '^[0-9a-f]{30,35}$' and token like p || '%';
+$$;
+revoke all on function public.sp_token_fix(text) from public;
+grant execute on function public.sp_token_fix(text) to anon, authenticated;
