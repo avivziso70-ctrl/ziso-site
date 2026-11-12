@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0f1113">
+<title>קופה · זיסו</title>
+<link rel="manifest" href="kupa.webmanifest">
+<link rel="apple-touch-icon" href="../img/logo.jpg">
+<link rel="icon" href="../img/logo.jpg">
+<link rel="preconnect" href="https://ppnjosyraosrdephsksu.supabase.co" crossorigin>
+<link rel="stylesheet" href="../fonts.css">
+<style>
+/* "קופה": the phone page for taking money at the showroom. Same tokens as the staff page (index.html).
+   Built for one thumb and no patience: big type, big targets, one column, nothing to configure. */
+:root{
+  --wall:#0f1113;--surface:#1d2024;--graphite:#22262a;--line:#3a3f45;
+  --ink:#f2efe8;--mute:#b9b3a7;--brass:#cfae74;--brass-ink:#1a1610;--brass-soft:#2d271d;
+  --red:#e07a6a;--red-soft:#3a1f1b;--green:#8fc9a0;--green-soft:#1d2e22;
+  --display:"Bellefair","Times New Roman",serif;--body:"Assistant","Segoe UI",Arial,sans-serif;--r:14px;
+}
+@media (prefers-color-scheme: light){:root{
+  --wall:#f3f2ef;--surface:#ffffff;--graphite:#ecebe7;--line:#d2cec5;
+  --ink:#1e1b17;--mute:#66645f;--brass:#8a6a35;--brass-ink:#fff;--brass-soft:#efe7da;
+  --red:#b8432f;--red-soft:#fbe9e5;--green:#2e7d4f;--green-soft:#e3f2e8;
+}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--wall);color:var(--ink);font-family:var(--body);font-size:19px;line-height:1.45;padding:0 16px calc(32px + env(safe-area-inset-bottom));-webkit-tap-highlight-color:transparent}
+main{max-width:520px;margin:0 auto;display:grid;gap:16px}
+h1{font-family:var(--display);font-weight:400;font-size:30px;margin:0}
+h2{font-size:22px;margin:0 0 10px;font-weight:700}
+p{margin:0}
+.hidden{display:none !important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.muted{color:var(--mute)}.small{font-size:16px}
+header{display:flex;align-items:center;gap:12px;padding:calc(14px + env(safe-area-inset-top)) 0 4px;max-width:520px;margin:0 auto}
+header img{width:44px;height:44px;border-radius:10px}
+header .who{margin-inline-start:auto;font-size:16px;color:var(--mute)}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.box.bad{border-color:var(--red);box-shadow:0 0 0 2px var(--red-soft)}
+label{display:block;font-weight:600;margin-bottom:6px}
+input,textarea{width:100%;font:inherit;color:var(--ink);background:var(--wall);border:2px solid var(--line);border-radius:12px;padding:14px;min-height:58px}
+textarea{min-height:96px;resize:vertical}
+input:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+#amount{font-size:44px;font-weight:700;text-align:center;direction:ltr;min-height:84px}
+.amt{position:relative}.amt span{position:absolute;inset-inline-start:18px;top:50%;transform:translateY(-50%);font-size:30px;color:var(--mute);pointer-events:none}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opt{font:inherit;font-weight:700;font-size:20px;min-height:68px;border-radius:12px;border:2px solid var(--line);background:var(--wall);color:var(--ink);cursor:pointer;padding:8px}
+.opt[aria-pressed="true"]{background:var(--brass);border-color:var(--brass);color:var(--brass-ink)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.chip{font:inherit;font-size:17px;font-weight:600;min-height:48px;padding:0 16px;border-radius:999px;border:2px solid var(--line);background:var(--wall);color:var(--ink);cursor:pointer}
+.err{color:var(--red);font-weight:700;font-size:17px;margin-top:8px}
+.err:empty{display:none}
+.go{font:inherit;font-weight:700;font-size:24px;min-height:76px;width:100%;border-radius:16px;border:0;background:var(--brass);color:var(--brass-ink);cursor:pointer}
+.go[disabled]{opacity:.6}
+.go.line{background:transparent;color:var(--ink);border:2px solid var(--line);font-size:20px;min-height:64px}
+a.go{display:flex;align-items:center;justify-content:center;text-decoration:none}
+.done{text-align:center;display:grid;gap:14px}
+.done .big{font-size:64px;line-height:1}
+.state{font-weight:700;font-size:20px;padding:12px;border-radius:12px;background:var(--brass-soft)}
+.state.ok{background:var(--green-soft);color:var(--green)}
+.row{padding:12px 0;border-bottom:1px solid var(--line);display:grid;gap:2px}
+.row:last-child{border-bottom:0}
+.row b{font-size:20px}
+.tag{display:inline-block;font-size:15px;font-weight:700;padding:2px 10px;border-radius:999px;background:var(--red-soft);color:var(--red)}
+.tag.ok{background:var(--green-soft);color:var(--green)}.tag.off{background:var(--graphite);color:var(--mute)}
+.linkbtn{font:inherit;font-size:16px;background:none;border:0;color:var(--mute);text-decoration:underline;cursor:pointer;min-height:44px;padding:0 4px}
+@media (prefers-reduced-motion: no-preference){.opt,.chip,.go{transition:background .12s,border-color .12s}}
+</style>
+</head>
+<body>
+<div class="sr" id="live" role="status" aria-live="polite"></div>
+<header><img src="../img/logo.jpg" alt=""><h1>קופה</h1><span class="who" id="who"></span></header>
+
+<main id="login" class="hidden">
+  <form id="loginForm" class="box" autocomplete="on">
+    <h2>כניסה</h2>
+    <p class="muted small" style="margin-bottom:12px">פעם אחת בלבד. אחר כך הטלפון זוכר.</p>
+    <label for="lEmail">אימייל</label><input id="lEmail" type="email" name="email" autocomplete="username" required inputmode="email" dir="ltr">
+    <label for="lPw" style="margin-top:12px">סיסמה</label><input id="lPw" type="password" name="password" autocomplete="current-password" required dir="ltr">
+    <div class="err" id="loginErr" role="alert"></div>
+    <button class="go" type="submit" style="margin-top:16px">כניסה</button>
+  </form>
+</main>
+
+<main id="form" class="hidden">
+  <section class="box" id="bAmount">
+    <label for="amount" style="font-size:22px">כמה כסף קיבלת?</label>
+    <div class="amt"><span aria-hidden="true">₪</span><input id="amount" inputmode="decimal" autocomplete="off" placeholder="0" aria-describedby="eAmount"></div>
+    <div class="err" id="eAmount" role="alert"></div>
+  </section>
+
+  <section class="box" id="bMethod">
+    <h2 id="hMethod">איך שילמו?</h2>
+    <div class="grid2" role="group" aria-labelledby="hMethod">
+      <button type="button" class="opt" data-method="card" aria-pressed="false">אשראי</button>
+      <button type="button" class="opt" data-method="cash" aria-pressed="false">מזומן</button>
+      <button type="button" class="opt" data-method="cheque" aria-pressed="false">צ׳ק</button>
+      <button type="button" class="opt" data-method="transfer" aria-pressed="false">העברה / ביט</button>
+    </div>
+    <div id="cardHow" class="hidden" style="margin-top:12px">
+      <div class="grid2" role="group" aria-label="איך מחייבים את הכרטיס">
+        <button type="button" class="opt" data-card="card_link" aria-pressed="true" style="font-size:17px">לחייב עכשיו בטלפון</button>
+        <button type="button" class="opt" data-card="card_terminal" aria-pressed="false" style="font-size:17px">כבר חייבתי במסוף</button>
+      </div>
+    </div>
+    <div class="err" id="eMethod" role="alert"></div>
+  </section>
+
+  <section class="box" id="bPayer">
+    <label for="payer" style="font-size:22px">מי שילם?</label>
+    <input id="payer" autocomplete="off" placeholder="שם הלקוח" aria-describedby="ePayer">
+    <label for="phone" style="margin-top:12px">טלפון של הלקוח <span class="muted" id="phoneOpt">(אם יש)</span></label>
+    <input id="phone" type="tel" inputmode="tel" autocomplete="off" dir="ltr" placeholder="05X-XXXXXXX" aria-describedby="ePayer">
+    <div class="err" id="ePayer" role="alert"></div>
+  </section>
+
+  <section class="box" id="bReason">
+    <label for="reason" style="font-size:22px">על מה הכסף?</label>
+    <div class="chips" role="group" aria-label="סיבות נפוצות">
+      <button type="button" class="chip" data-chip="מקדמה על הזמנה">מקדמה על הזמנה</button>
+      <button type="button" class="chip" data-chip="תשלום על סחורה שנלקחה">סחורה שנלקחה</button>
+      <button type="button" class="chip" data-chip="יתרה על הזמנה קיימת">יתרה על הזמנה</button>
+      <button type="button" class="chip" data-chip="סגירת חוב ישן">חוב ישן</button>
+    </div>
+    <textarea id="reason" placeholder="לכתוב בקצרה. אפשר גם להכתיב עם המיקרופון של המקלדת." aria-describedby="eReason"></textarea>
+    <div class="err" id="eReason" role="alert"></div>
+  </section>
+
+  <section class="box" id="bGoods">
+    <h2 id="hGoods">הלקוח לקח סחורה?</h2>
+    <div class="grid2" role="group" aria-labelledby="hGoods">
+      <button type="button" class="opt" data-goods="yes" aria-pressed="false">כן, לקח</button>
+      <button type="button" class="opt" data-goods="no" aria-pressed="false">לא לקח</button>
+    </div>
+    <div id="goodsWrap" class="hidden" style="margin-top:12px">
+      <label for="goods">איזו סחורה, וכמה?</label>
+      <textarea id="goods" placeholder="למשל: 2 ברזים שחורים, 6 קרטונים אריח 60/60 אפור" aria-describedby="eGoods"></textarea>
+    </div>
+    <div class="err" id="eGoods" role="alert"></div>
+  </section>
+
+  <div>
+    <button class="go" id="save" type="button">שמירה</button>
+    <div class="err" id="eSave" role="alert" style="text-align:center"></div>
+  </div>
+
+  <section class="box" id="mine" aria-labelledby="hMine">
+    <h2 id="hMine">מה רשמתי לאחרונה</h2>
+    <div id="mineList" class="muted small">טוען…</div>
+  </section>
+  <p style="text-align:center"><button class="linkbtn" id="out" type="button">יציאה מהחשבון</button></p>
+</main>
+
+<main id="after" class="hidden">
+  <section class="box done">
+    <div class="big" id="aIcon" aria-hidden="true">✓</div>
+    <h2 id="aTitle" tabindex="-1" style="margin:0;font-size:26px"></h2>
+    <p id="aText" class="muted"></p>
+    <div id="aPay" class="hidden" style="display:grid;gap:12px">
+      <div class="state" id="aState" role="status">ממתין לתשלום…</div>
+      <a class="go" id="aOpen" target="_blank" rel="noopener">לפתוח דף תשלום ולהקליד כרטיס</a>
+      <a class="go line" id="aWa" target="_blank" rel="noopener">לשלוח את הלינק ללקוח בוואטסאפ</a>
+      <p class="muted small">פרטי הכרטיס מוקלדים רק בדף המאובטח של טרנזילה. לא לצלם כרטיס ולא לרשום את המספר בשום מקום.</p>
+    </div>
+    <button class="go line" id="again" type="button">תשלום חדש</button>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+<script>
+(function () {
+'use strict';
+var SB_URL = 'https://ppnjosyraosrdephsksu.supabase.co';
+var SB_KEY = 'sb_publishable_yjpTHQkvH5-l4v-HCcEj4w_ofAYpQmV';
+var sb = supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+var $ = function (id) { return document.getElementById(id); };
+var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+var money = function (n) { return '₪' + Number(n).toLocaleString('he-IL', { maximumFractionDigits: 2 }); };
+var METHOD = { card_link: 'אשראי', card_terminal: 'אשראי (מסוף)', cash: 'מזומן', cheque: 'צ׳ק', transfer: 'העברה / ביט' };
+var me = null, method = null, cardHow = 'card_link', goods = null, pollT = null, busy = false;
+var say = function (t) { $('live').textContent = ''; setTimeout(function () { $('live').textContent = t; }, 50); };
+function show(id) { ['login', 'form', 'after'].forEach(function (x) { $(x).classList.toggle('hidden', x !== id); }); window.scrollTo(0, 0); }
+
+/* ---------- sign-in: the same staff account as the CRM, remembered on the phone ---------- */
+$('loginForm').addEventListener('submit', function (e) {
+  e.preventDefault(); $('loginErr').textContent = '';
+  sb.auth.signInWithPassword({ email: e.target.email.value.trim(), password: e.target.password.value }).then(function (r) {
+    if (r.error) $('loginErr').textContent = 'הכניסה נכשלה. לבדוק אימייל וסיסמה.';
+  });
+});
+sb.auth.onAuthStateChange(function (ev, session) {
+  if (session && session.user) { if (!me || me.email !== session.user.email) { me = session.user; start(); } }
+  else { me = null; $('who').textContent = ''; show('login'); }
+});
+$('out').addEventListener('click', function () { if (confirm('לצאת מהחשבון?')) sb.auth.signOut(); });
+function start() {
+  sb.from('crm_staff').select('email,name').then(function (r) {
+    var mine = (r.data || []).filter(function (x) { return x.email.toLowerCase() === me.email.toLowerCase(); })[0];
+    if (!mine) { $('loginErr').textContent = 'החשבון הזה לא מורשה. לפנות לאביב.'; sb.auth.signOut(); return; }
+    $('who').textContent = mine.name; show('form'); loadMine();
+  });
+}
+
+/* ---------- the form ---------- */
+function press(sel, attr, val) { document.querySelectorAll(sel).forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute(attr) === val)); }); }
+function phoneRule() { $('phoneOpt').textContent = method === 'card' && cardHow === 'card_link' ? '(חובה, ללינק התשלום)' : '(אם יש)'; }
+document.querySelectorAll('[data-method]').forEach(function (b) { b.addEventListener('click', function () {
+  method = b.dataset.method; press('[data-method]', 'data-method', method);
+  $('cardHow').classList.toggle('hidden', method !== 'card'); phoneRule(); clearErr('Method');
+}); });
+document.querySelectorAll('[data-card]').forEach(function (b) { b.addEventListener('click', function () { cardHow = b.dataset.card; press('[data-card]', 'data-card', cardHow); phoneRule(); }); });
+document.querySelectorAll('[data-goods]').forEach(function (b) { b.addEventListener('click', function () {
+  goods = b.dataset.goods; press('[data-goods]', 'data-goods', goods);
+  $('goodsWrap').classList.toggle('hidden', goods !== 'yes'); clearErr('Goods');
+  if (goods === 'yes') $('goods').focus();
+}); });
+document.querySelectorAll('[data-chip]').forEach(function (b) { b.addEventListener('click', function () {
+  var r = $('reason'), t = b.dataset.chip;
+  if (r.value.indexOf(t) < 0) r.value = r.value.trim() ? r.value.trim() + '. ' + t + ': ' : t + ': ';
+  r.focus(); clearErr('Reason');
+}); });
+$('amount').addEventListener('input', function () { this.value = this.value.replace(/[^\d.,]/g, ''); clearErr('Amount'); });
+['payer', 'phone'].forEach(function (id) { $(id).addEventListener('input', function () { clearErr('Payer'); }); });
+$('reason').addEventListener('input', function () { clearErr('Reason'); });
+$('goods').addEventListener('input', function () { clearErr('Goods'); });
+function clearErr(k) { $('e' + k).textContent = ''; $('b' + k).classList.remove('bad'); }
+function tail9(p) { p = String(p || '').replace(/\D/g, ''); if (/^972/.test(p)) p = p.slice(3); return p.length >= 9 ? p.slice(-9) : null; }
+function read() {
+  var v = {
+    amount: Math.round(Number($('amount').value.replace(/,/g, '')) * 100) / 100,
+    method: method === 'card' ? cardHow : method,
+    payer_name: $('payer').value.trim(), phone: $('phone').value.trim(), tail9: tail9($('phone').value),
+    reason: $('reason').value.trim().replace(/[:\s]+$/, ''), goods_taken: goods === 'yes', goods: goods === 'yes' ? $('goods').value.trim() : null
+  };
+  var bad = [];
+  if (!(v.amount >= 1 && v.amount <= 200000)) bad.push(['Amount', 'לכתוב את הסכום בשקלים.']);
+  if (!method) bad.push(['Method', 'לבחור איך שילמו.']);
+  if (v.payer_name.length < 2) bad.push(['Payer', 'לכתוב את שם הלקוח.']);
+  else if (v.phone && !v.tail9) bad.push(['Payer', 'מספר הטלפון קצר מדי.']);
+  else if (v.method === 'card_link' && !v.tail9) bad.push(['Payer', 'כדי לחייב אשראי בטלפון צריך את מספר הטלפון של הלקוח.']);
+  if (v.reason.length < 3) bad.push(['Reason', 'חייבים לכתוב על מה הכסף. בלי זה אי אפשר להוציא קבלה.']);
+  if (!goods) bad.push(['Goods', 'לבחור: לקח סחורה או לא.']);
+  else if (v.goods_taken && v.goods.length < 3) bad.push(['Goods', 'לכתוב איזו סחורה הלקוח לקח.']);
+  ['Amount', 'Method', 'Payer', 'Reason', 'Goods'].forEach(clearErr);
+  bad.forEach(function (b) { $('e' + b[0]).textContent = b[1]; $('b' + b[0]).classList.add('bad'); });
+  if (bad.length) { $('b' + bad[0][0]).scrollIntoView({ behavior: 'smooth', block: 'center' }); say(bad[0][1]); return null; }
+  return v;
+}
+function fn(name, body) {
+  return sb.auth.getSession().then(function (s) {
+    return fetch(SB_URL + '/functions/v1/' + name, { method: 'POST', headers: { authorization: 'Bearer ' + s.data.session.access_token, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  }).then(function (r) { return r.json(); });
+}
+var pending = null;  // a created payment link whose row was not saved yet: a second tap must not create another link
+$('save').addEventListener('click', function () {
+  if (busy) return;
+  var v = read(); if (!v) return;
+  busy = true; $('save').disabled = true; $('save').textContent = 'שומר…'; $('eSave').textContent = '';
+  var key = v.tail9 + '|' + v.amount, link;
+  var step = v.method !== 'card_link' ? Promise.resolve(null)
+    : pending && pending.key === key ? Promise.resolve(pending.j)
+    : fn('crm-pay', { action: 'create', tail9: v.tail9, amount: v.amount, description: v.reason }).then(function (j) {
+        if (!j.ok) throw new Error(j.error || 'לא נוצר לינק תשלום');
+        pending = { key: key, j: j }; return j;
+      });
+  step.then(function (j) {
+    link = j;
+    return sb.from('crm_takings').insert({ by: me.email, amount: v.amount, method: v.method, payer_name: v.payer_name, tail9: v.tail9, reason: v.reason, goods_taken: v.goods_taken, goods: v.goods, pay_pr_id: j ? String(j.pr_id) : null }).select('id').single();
+  }).then(function (r) {
+    if (r.error) throw new Error(r.error.message);
+    pending = null; finish(v, link);
+  }).catch(function (e) {
+    $('eSave').textContent = 'לא נשמר. לבדוק שיש קליטה ולנסות שוב. (' + (e.message || e) + ')'; say('לא נשמר');
+  }).then(function () { busy = false; $('save').disabled = false; $('save').textContent = 'שמירה'; });
+});
+function finish(v, link) {
+  show('after');
+  $('aPay').classList.toggle('hidden', !link); $('aPay').style.display = link ? 'grid' : '';
+  if (link) {
+    $('aIcon').textContent = '💳'; $('aTitle').textContent = 'נרשם. עכשיו לחייב ' + money(v.amount);
+    $('aText').textContent = 'המשרד כבר קיבל משימה דחופה להוציא קבלה ל' + v.payer_name + '.';
+    $('aState').className = 'state'; $('aState').textContent = 'ממתין לתשלום…';
+    $('aOpen').classList.remove('hidden'); $('aWa').classList.remove('hidden');
+    $('aOpen').href = link.pr_link;
+    $('aWa').href = 'https://wa.me/972' + v.tail9 + '?text=' + encodeURIComponent('שלום ' + v.payer_name + ', כאן זיסו קרמיקה. לתשלום מאובטח של ' + money(v.amount) + ' בכרטיס אשראי, דרך טרנזילה:\n' + link.pr_link);
+    poll(String(link.pr_id));
+  } else {
+    $('aIcon').textContent = '✓'; $('aTitle').textContent = 'נשמר: ' + money(v.amount) + ' ' + METHOD[v.method];
+    $('aText').textContent = 'המשרד קיבל משימה דחופה להוציא קבלה ל' + v.payer_name + '. אין צורך לעשות שום דבר נוסף.';
+  }
+  $('aTitle').focus(); say($('aTitle').textContent);
+}
+function poll(prId) {
+  clearInterval(pollT); var n = 0;
+  var tick = function () {
+    if (++n > 240) return clearInterval(pollT);
+    sb.from('crm_pay_requests').select('status').eq('pr_id', prId).maybeSingle().then(function (r) {
+      if (r.data && r.data.status === 'paid') {
+        clearInterval(pollT); $('aState').className = 'state ok'; $('aState').textContent = 'התשלום עבר ✓';
+        $('aOpen').classList.add('hidden'); $('aWa').classList.add('hidden'); $('aIcon').textContent = '✓'; say('התשלום עבר');
+        if (navigator.vibrate) navigator.vibrate(200);
+      }
+    });
+  };
+  pollT = setInterval(tick, 5000);
+}
+document.addEventListener('visibilitychange', function () { if (!document.hidden && me && !$('form').classList.contains('hidden')) loadMine(); });
+$('again').addEventListener('click', function () {
+  clearInterval(pollT); method = null; goods = null; cardHow = 'card_link';
+  ['amount', 'payer', 'phone', 'reason', 'goods'].forEach(function (id) { $(id).value = ''; });
+  press('[data-method]', 'data-method', ''); press('[data-goods]', 'data-goods', ''); press('[data-card]', 'data-card', 'card_link');
+  $('cardHow').classList.add('hidden'); $('goodsWrap').classList.add('hidden'); phoneRule();
+  show('form'); loadMine();
+});
+
+/* ---------- my last entries: what still waits for a receipt, and undoing a card charge that never happened ---------- */
+function loadMine() {
+  sb.from('crm_takings').select('id,at,amount,method,payer_name,doc_no,closed_at,cancelled_at,pay_pr_id').ilike('by', me.email).order('at', { ascending: false }).limit(8).then(function (r) {
+    if (r.error) { $('mineList').textContent = 'הרשימה לא נטענה.'; return; }
+    var rows = r.data || [];
+    if (!rows.length) { $('mineList').textContent = 'עוד לא נרשם כלום.'; return; }
+    var prs = rows.filter(function (t) { return t.pay_pr_id && !t.cancelled_at; }).map(function (t) { return t.pay_pr_id; });
+    (prs.length ? sb.from('crm_pay_requests').select('pr_id,status').in('pr_id', prs) : Promise.resolve({ data: [] })).then(function (p) {
+      var paid = {}; (p.data || []).forEach(function (x) { if (x.status === 'paid') paid[x.pr_id] = 1; });
+      $('mineList').className = '';
+      $('mineList').innerHTML = rows.map(function (t) {
+        var d = new Date(t.at), unpaid = t.method === 'card_link' && !paid[t.pay_pr_id] && !t.cancelled_at && !t.closed_at;
+        var tag = t.cancelled_at ? '<span class="tag off">בוטל</span>' : t.closed_at ? '<span class="tag ok">יצאה קבלה ' + esc(t.doc_no) + '</span>' : unpaid ? '<span class="tag">האשראי עוד לא שולם</span>' : '<span class="tag">מחכה לקבלה מהמשרד</span>';
+        return '<div class="row"><div><b>' + money(t.amount) + '</b> ' + esc(METHOD[t.method]) + ' · ' + esc(t.payer_name) + '</div><div class="muted small">' + esc(d.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })) + ' ' + esc(d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })) + '</div><div>' + tag +
+          (unpaid ? ' <button class="linkbtn" data-cancel="' + t.id + '">הלקוח לא שילם, לבטל</button>' : '') + '</div></div>';
+      }).join('');
+    });
+  });
+}
+$('mineList').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-cancel]'); if (!b) return;
+  if (!confirm('לבטל את הרישום? רק אם הלקוח באמת לא שילם.')) return;
+  sb.from('crm_takings').update({ cancelled_at: new Date().toISOString(), cancelled_by: me.email, cancel_note: 'הלקוח לא שילם בלינק' }).eq('id', b.dataset.cancel).then(function (r) {
+    if (r.error) alert('לא בוטל. לנסות שוב.'); loadMine();
+  });
+});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
+})();
+</script>
+</body>
+</html>
