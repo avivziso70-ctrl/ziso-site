@@ -67,6 +67,12 @@ a.go{display:flex;align-items:center;justify-content:center;text-decoration:none
 .row b{font-size:20px}
 .tag{display:inline-block;font-size:15px;font-weight:700;padding:2px 10px;border-radius:999px;background:var(--red-soft);color:var(--red)}
 .tag.ok{background:var(--green-soft);color:var(--green)}.tag.wait{background:var(--amber-soft);color:var(--amber)}.tag.off{background:var(--graphite);color:var(--mute)}
+.go.danger{background:var(--red);color:#fff}
+.txrow{font:inherit;color:var(--ink);text-align:start;width:100%;display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:center;padding:14px;border:2px solid var(--line);border-radius:12px;background:var(--wall);cursor:pointer;min-height:64px}
+.txrow[aria-pressed="true"]{border-color:var(--brass);box-shadow:0 0 0 2px var(--brass-soft)}
+.txrow[disabled]{opacity:.55;cursor:default}
+.txrow .t{font-weight:700;direction:ltr}.txrow .s{font-weight:700;font-size:21px;direction:ltr}.txrow .n{grid-column:1/-1;font-size:16px;color:var(--mute)}
+.txlist{display:grid;gap:8px}
 .linkbtn{font:inherit;font-size:16px;background:none;border:0;color:var(--mute);text-decoration:underline;cursor:pointer;min-height:44px;padding:0 4px}
 @media (prefers-reduced-motion: no-preference){.opt,.chip,.go{transition:background .12s,border-color .12s}}
 </style>
@@ -154,6 +160,8 @@ a.go{display:flex;align-items:center;justify-content:center;text-decoration:none
     <div class="err" id="eSave" role="alert" style="text-align:center"></div>
   </div>
 
+  <button class="go line" id="toRefund" type="button">החזר כסף ללקוח לכרטיס אשראי</button>
+
   <section class="box" id="mine" aria-labelledby="hMine">
     <h2 id="hMine">מה רשמתי לאחרונה</h2>
     <div id="mineList" class="muted small">טוען…</div>
@@ -176,6 +184,60 @@ a.go{display:flex;align-items:center;justify-content:center;text-decoration:none
   </section>
 </main>
 
+<main id="refund" class="hidden">
+  <section class="box">
+    <h2 id="rfTitle" tabindex="-1">החזר כסף לכרטיס אשראי</h2>
+    <p class="muted small">בוחרים את התשלום המקורי מהרשימה של טרנזילה. אפשר להחזיר את כולו או חלק ממנו, לא יותר ממה ששולם.</p>
+    <div class="state" id="rfOff" role="status" style="margin-top:12px" hidden></div>
+  </section>
+
+  <section class="box hidden" id="rfSecret" aria-labelledby="hSecret">
+    <h2 id="hSecret">פעם אחת: סיסמאות המסוף לזיכוי</h2>
+    <p class="muted small">טרנזילה מבקשת שתי סיסמאות כדי לבצע זיכוי. הן נשמרות בשרת בלבד, אף אחד לא רואה אותן אחרי השמירה.</p>
+    <label for="rfPw" style="margin-top:12px">סיסמת המסוף (TranzilaPW)</label><input id="rfPw" type="password" autocomplete="off" dir="ltr">
+    <label for="rfCp" style="margin-top:12px">סיסמת זיכוי (CreditPass)</label><input id="rfCp" type="password" autocomplete="off" dir="ltr">
+    <button class="go" id="rfSecretSave" type="button" style="margin-top:14px">שמירת הסיסמאות</button>
+    <div class="err" id="eSecret" role="alert"></div>
+  </section>
+
+  <section class="box" id="bDay" aria-labelledby="hDay">
+    <h2 id="hDay">מתי הלקוח שילם?</h2>
+    <div class="chips" role="group" aria-labelledby="hDay">
+      <button class="chip" type="button" data-day="0" aria-pressed="true">היום</button>
+      <button class="chip" type="button" data-day="1" aria-pressed="false">אתמול</button>
+      <label class="sr" for="rfDate">תאריך אחר</label><input id="rfDate" type="date" style="min-height:48px;width:auto;padding:6px 12px">
+    </div>
+    <div id="rfList" class="txlist" aria-live="polite"><p class="muted small">טוען…</p></div>
+  </section>
+
+  <section class="box hidden" id="bRf" aria-labelledby="hRf">
+    <h2 id="hRf">כמה להחזיר?</h2>
+    <p id="rfPick" class="muted small"></p>
+    <div class="amt" style="margin-top:10px"><span aria-hidden="true">₪</span><input id="rfAmount" inputmode="decimal" autocomplete="off" aria-label="סכום להחזרה" aria-describedby="eRf"></div>
+    <label for="rfReason" style="margin-top:14px">למה מחזירים? (חובה)</label>
+    <textarea id="rfReason" placeholder="למשל: הלקוח החזיר 2 ברזים, אריח פגום" aria-describedby="eRf"></textarea>
+    <div class="err" id="eRf" role="alert"></div>
+    <button class="go" id="rfNext" type="button" style="margin-top:14px">המשך</button>
+  </section>
+
+  <section class="box hidden" id="bRfOk" aria-labelledby="hRfOk">
+    <h2 id="hRfOk" tabindex="-1"></h2>
+    <p class="muted small">הכסף יוחזר לכרטיס שבו הלקוח שילם. אחרי האישור אי אפשר לבטל.</p>
+    <button class="go danger" id="rfDo" type="button" style="margin-top:14px"></button>
+    <button class="go line" id="rfBack" type="button" style="margin-top:10px">לא, חזרה</button>
+    <div class="err" id="eRfDo" role="alert"></div>
+  </section>
+
+  <section class="box done hidden" id="bRfDone">
+    <div class="big" id="rfIcon" aria-hidden="true">✓</div>
+    <h2 id="rfDoneT" tabindex="-1" style="margin:0;font-size:26px"></h2>
+    <p id="rfDoneX" class="muted"></p>
+    <button class="go line" id="rfAgain" type="button">החזר נוסף</button>
+  </section>
+
+  <p style="text-align:center"><button class="linkbtn" id="rfExit" type="button">חזרה לקופה</button></p>
+</main>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
 <script src="piggy.js"></script>
 <script>
@@ -192,7 +254,7 @@ var money = function (n) { return '₪' + Number(n).toLocaleString('he-IL', { ma
 var METHOD = { card_link: 'אשראי', card_terminal: 'אשראי (מסוף)', cash: 'מזומן', cheque: 'צ׳ק', transfer: 'העברה / ביט' };
 var me = null, method = null, cardHow = 'card_link', pays = 1, goods = null, pollT = null, busy = false;
 var say = function (t) { $('live').textContent = ''; setTimeout(function () { $('live').textContent = t; }, 50); };
-function show(id) { ['login', 'form', 'after'].forEach(function (x) { $(x).classList.toggle('hidden', x !== id); }); window.scrollTo(0, 0); }
+function show(id) { ['login', 'form', 'after', 'refund'].forEach(function (x) { $(x).classList.toggle('hidden', x !== id); }); window.scrollTo(0, 0); }
 
 /* ---------- sign-in: the same staff account as the CRM, remembered on the phone ---------- */
 var loginT = null;
@@ -370,6 +432,90 @@ $('mineList').addEventListener('click', function (e) {
     if (r.error) alert('לא בוטל. לנסות שוב.'); loadMine();
   });
 });
+/* ---------- refund to the card (edge function crm-refund) ----------
+   The list comes from Tranzila itself; the server checks again what is left of the charge before refunding. */
+var rf = { day: null, rows: [], pick: null, amount: 0, busy: false, st: null };
+var ilDay = function (back) { var d = new Date(Date.now() - (back || 0) * 864e5); return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' }); };
+function rfShow(step) { ['bRf', 'bRfOk', 'bRfDone'].forEach(function (x) { $(x).classList.toggle('hidden', x !== step); }); $('bDay').classList.toggle('hidden', step === 'bRfDone'); }
+$('toRefund').addEventListener('click', function () {
+  show('refund'); rfShow(null); $('rfTitle').focus();
+  $('rfDate').max = ilDay(0); $('rfDate').min = ilDay(60);
+  fn('crm-refund', { action: 'status' }).then(function (j) { rf.st = j; rfState(); }).catch(function () {});
+  rfLoad(ilDay(0));
+});
+$('rfExit').addEventListener('click', function () { show('form'); loadMine(); });
+function rfState() {
+  var j = rf.st || {}, off = $('rfOff');
+  var msg = !j.ok ? '' : !j.ready ? (j.owner ? 'כדי להתחיל צריך פעם אחת את שתי סיסמאות המסוף, כאן למטה.' : 'ההחזרים עוד לא מוכנים: חסרות סיסמאות המסוף. אביב מזין אותן פעם אחת.') : !j.on ? (j.owner ? 'מצב בדיקה: רק אתה יכול להחזיר עכשיו. אחרי החזר מוצלח של שקל אחד זה נפתח לכולם.' : 'ההחזרים עוד לא הופעלו. אביב צריך לאשר אחרי בדיקה של שקל אחד.') : '';
+  off.hidden = !msg; off.textContent = msg;
+  $('rfSecret').classList.toggle('hidden', !(j.ok && j.owner && !j.ready));
+}
+$('rfSecretSave').addEventListener('click', function () {
+  var pw = $('rfPw').value.trim(), cp = $('rfCp').value.trim();
+  if (!pw || !cp) { $('eSecret').textContent = 'צריך את שתי הסיסמאות'; return; }
+  this.disabled = true;
+  fn('crm-refund', { action: 'secret', tranzila_pw: pw, credit_pass: cp }).then(function (j) {
+    $('rfSecretSave').disabled = false;
+    if (!j.ok) { $('eSecret').textContent = j.error || 'לא נשמר. לנסות שוב'; return; }
+    $('rfPw').value = ''; $('rfCp').value = ''; rf.st.ready = true; rfState(); say('הסיסמאות נשמרו');
+  }).catch(function () { $('rfSecretSave').disabled = false; $('eSecret').textContent = 'אין חיבור. לנסות שוב'; });
+});
+document.querySelectorAll('[data-day]').forEach(function (b) { b.addEventListener('click', function () { $('rfDate').value = ''; rfLoad(ilDay(Number(b.dataset.day))); }); });
+$('rfDate').addEventListener('change', function () { if (this.value) rfLoad(this.value); });
+function rfLoad(day) {
+  rf.day = day; rf.pick = null; rfShow(null);
+  document.querySelectorAll('[data-day]').forEach(function (b) { b.setAttribute('aria-pressed', String(ilDay(Number(b.dataset.day)) === day && !$('rfDate').value)); });
+  $('rfList').innerHTML = '<p class="muted small">טוען את התשלומים מטרנזילה…</p>';
+  fn('crm-refund', { action: 'list', day: day }).then(function (j) {
+    if (rf.day !== day) return;
+    if (!j.ok) { $('rfList').innerHTML = '<p class="err">' + esc(j.error || 'לא הצלחתי לטעון. לנסות שוב') + '</p>'; return; }
+    rf.rows = j.rows || [];
+    if (!rf.rows.length) { $('rfList').innerHTML = '<p class="muted small">אין תשלומים באשראי ביום הזה.</p>'; return; }
+    $('rfList').innerHTML = rf.rows.map(function (t, i) {
+      var left = Math.round((t.amount - t.refunded) * 100) / 100, gone = left <= 0 || t.open;
+      var note = [t.name ? esc(t.name) : '', t.payments > 1 ? t.payments + ' תשלומים' : '', t.refunded ? 'הוחזר כבר ' + money(t.refunded) : '', t.open ? 'יש זיכוי שמחכה לבדיקה' : ''].filter(Boolean).join(' · ');
+      return '<button class="txrow" type="button" data-tx="' + i + '" aria-pressed="false"' + (gone ? ' disabled' : '') + '><span class="t">' + esc(t.time) + '</span><span>' + (left <= 0 ? '<span class="tag off">הוחזר</span>' : '') + '</span><span class="s">' + money(t.amount) + '</span>' + (note ? '<span class="n">' + note + '</span>' : '') + '</button>';
+    }).join('');
+  }).catch(function () { $('rfList').innerHTML = '<p class="err">אין חיבור. לנסות שוב</p>'; });
+}
+$('rfList').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-tx]'); if (!b || b.disabled) return;
+  rf.pick = rf.rows[Number(b.dataset.tx)];
+  document.querySelectorAll('[data-tx]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+  var left = Math.round((rf.pick.amount - rf.pick.refunded) * 100) / 100;
+  $('rfPick').textContent = 'תשלום של ' + money(rf.pick.amount) + ' בשעה ' + rf.pick.time + (rf.pick.name ? ' · ' + rf.pick.name : '') + '. אפשר להחזיר עד ' + money(left) + '.';
+  $('rfAmount').value = String(left); $('eRf').textContent = ''; rfShow('bRf'); $('rfAmount').focus();
+});
+$('rfAmount').addEventListener('input', function () { this.value = this.value.replace(/[^\d.,]/g, ''); $('eRf').textContent = ''; });
+$('rfNext').addEventListener('click', function () {
+  var a = Math.round(Number($('rfAmount').value.replace(',', '.')) * 100) / 100, left = Math.round((rf.pick.amount - rf.pick.refunded) * 100) / 100;
+  var why = $('rfReason').value.trim();
+  if (!(a >= 1)) { $('eRf').textContent = 'סכום לא תקין'; return; }
+  if (a > left) { $('eRf').textContent = 'אפשר להחזיר עד ' + money(left); return; }
+  if (why.length < 3) { $('eRf').textContent = 'צריך לכתוב למה מחזירים'; return; }
+  if (rf.st && rf.st.ok && !((rf.st.on || rf.st.owner) && rf.st.ready)) { $('eRf').textContent = $('rfOff').textContent || 'ההחזרים עוד לא הופעלו'; return; }
+  rf.amount = a;
+  $('hRfOk').textContent = 'להחזיר ' + money(a) + (rf.pick.name ? ' ל' + rf.pick.name : '') + '?';
+  $('rfDo').textContent = 'כן, להחזיר ' + money(a); $('eRfDo').textContent = '';
+  rfShow('bRfOk'); $('hRfOk').focus();
+});
+$('rfBack').addEventListener('click', function () { rfShow('bRf'); });
+$('rfDo').addEventListener('click', function () {
+  if (rf.busy) return; rf.busy = true; var btn = this; btn.disabled = true; btn.textContent = 'מחזיר…';
+  fn('crm-refund', { action: 'refund', day: rf.day, index: rf.pick.index, amount: rf.amount, reason: $('rfReason').value.trim() }).then(function (j) {
+    rfShow('bRfDone');
+    $('rfIcon').textContent = j.ok ? '✓' : '!';
+    $('rfDoneT').textContent = j.ok ? 'הוחזרו ' + money(j.amount) + ' לכרטיס' : j.unknown ? 'לא ברור אם הזיכוי עבר' : 'הזיכוי לא בוצע';
+    $('rfDoneX').textContent = j.ok ? 'נפתחה משימה למשרד להוציא חשבונית זיכוי בפריוריטי.' : (j.error || 'לנסות שוב');
+    $('rfDoneT').focus(); say($('rfDoneT').textContent);
+    if (j.ok) $('rfReason').value = '';
+  }).catch(function () {
+    rfShow('bRfDone'); $('rfIcon').textContent = '!'; $('rfDoneT').textContent = 'לא ברור אם הזיכוי עבר';
+    $('rfDoneX').textContent = 'החיבור נפל באמצע. לא לנסות שוב: לבדוק ברשימה (או במסוף) אם הזיכוי מופיע.'; $('rfDoneT').focus();
+  }).then(function () { rf.busy = false; btn.disabled = false; });
+});
+$('rfAgain').addEventListener('click', function () { rfLoad(rf.day); });
+
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
 })();
 </script>
