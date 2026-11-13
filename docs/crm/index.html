@@ -1093,7 +1093,9 @@ function loadChat(phone, quiet) {
     var grew = quiet && chatMsgs.length && r.data.length > chatMsgs.length; chatMsgs = r.data; if (!same) renderChat(grew);
   });
 }
-function mediaId(m) { var r = m.raw || {}; var o = r.image || r.document || r.audio || r.video || r.sticker; return o && o.id; }
+// incoming media carry raw.<type>.id; documents we sent (bot, robot, invoice templates) keep raw.media_id + raw.filename
+function mediaId(m) { var r = m.raw || {}; var o = r.image || r.document || r.audio || r.video || r.sticker; return (o && o.id) || r.media_id; }
+function fileLink(mid, name) { return '<a class="file" href="#" data-media="' + esc(mid) + '" data-name="' + esc(name) + '">קובץ: ' + esc(name) + '</a>'; }
 function renderChat(same) {
   var box = $('msgs'), html = '', lastDay = '';
   if (!chatMsgs.length) html = '<div class="empty">אין הודעות</div>';
@@ -1101,7 +1103,8 @@ function renderChat(same) {
     var day = fmtDate(m.ts); if (day !== lastDay) { html += '<div class="day">' + esc(fmtDay(m.ts)) + '</div>'; lastDay = day; }
     var body = '', mid = mediaId(m), r = m.raw || {};
     if (m.type === 'image' || m.type === 'sticker') body = mid ? '<img data-media="' + esc(mid) + '" alt="תמונה מהלקוח" loading="lazy">' : '(תמונה)';
-    else if (m.type === 'document') body = mid ? '<a class="file" href="#" data-media="' + esc(mid) + '" data-name="' + esc((r.document || {}).filename || 'קובץ') + '">קובץ: ' + esc((r.document || {}).filename || 'קובץ') + '</a>' : '(קובץ)';
+    else if (m.type === 'document') body = mid ? fileLink(mid, (r.document || {}).filename || r.filename || 'קובץ') : '(קובץ)';
+    else if (m.type === 'template' && r.media_id) body = esc(m.text || '') + '<div>' + fileLink(r.media_id, r.filename || 'קובץ') + '</div>';
     else if (m.type === 'audio') body = mid ? '<audio controls data-media="' + esc(mid) + '"></audio>' : '(הודעה קולית)';
     else if (m.type === 'media_placeholder') body = '<span class="muted">(תמונה או קובץ שנשלח לפני החיבור, רואים בטלפון)</span>';
     else if (m.type === 'location') body = '(מיקום)';
