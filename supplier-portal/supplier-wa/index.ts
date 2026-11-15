@@ -3,6 +3,8 @@
 // A cron job calls this every 2 minutes when wa_messages holds a file this function has not looked at yet.
 // It never sends anything on WhatsApp and never changes wa-webhook or the customer bot.
 //   sender known as a supplier (sp_supplier_phones): every document, and an image whose caption says price list;
+//     any other picture a supplier sends (15.11: New Star sent 75 photos of new products, prices to follow) is kept as
+//     received under archive/<supplier>/photos/ and noted in sp_wa_log (result 'photo', note = its path). It is not read as a price list;
 //   sender not known: only a spreadsheet, or a file whose name or caption says price list / catalog. It goes to the
 //     placeholder supplier (kind 'wa_inbox'); staff assign it once (rpc sp_assign_upload) and the number is remembered.
 //   anything else (customers' photos and documents) is not downloaded at all, only its message id is noted as skipped.
@@ -17,6 +19,7 @@ const GRAPH = "https://graph.facebook.com/v23.0";
 const MAX_BYTES = 20 * 1024 * 1024; // same limit as the portal and the bucket
 const BIG_MAX = 100 * 1024 * 1024; // WhatsApp's own limit for a document
 const PER_TICK = 4;
+const PHOTOS_PER_TICK = 15; // a supplier's product photos are light: only stored, not read
 const OK_EXT = /\.(xlsx|xlsm|xls|csv|pdf|jpg|jpeg|png|webp)$/i;
 const SHEET = /\.(xlsx|xlsm|xls|csv)$/i;
 const WORDS = /מחירון|מחירים|קטלוג|price[\s_-]*list|catalog|listino|tarifa/i;
@@ -43,6 +46,18 @@ async function take(m: Msg, token: string, inboxId: string) {
   const says = WORDS.test(name + " " + caption);
   const { data: ph } = await db.from("sp_supplier_phones").select("supplier_id").eq("phone_key", key(m.phone)).maybeSingle();
   const known = !!ph;
+  if (m.type === "image" && known && !says) {
+    const auth = { authorization: `Bearer ${token}` };
+    const info = await fetch(`${GRAPH}/${media.id}`, { headers: auth }).then((r) => r.json()).catch(() => null);
+    const res = info?.url ? await fetch(info.url, { headers: auth }) : null;
+    if (!res?.ok) return { result: "failed", note: "תמונה מספק: ההורדה מוואטסאפ נכשלה" };
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if (!bytes.length || bytes.length > MAX_BYTES) return { result: "failed", note: "תמונה מספק: ריקה או גדולה מדי" };
+    const path = `archive/${ph!.supplier_id}/photos/${String(m.ts).slice(0, 10)}/${String(media.id).replace(/\W/g, "")}${EXT[mime] || ".jpg"}`;
+    const { error } = await db.storage.from("supplier-files").upload(path, bytes, { contentType: mime || "image/jpeg", upsert: true });
+    if (error) return { result: "failed", note: "תמונה מספק: השמירה נכשלה" };
+    return { result: "photo", note: path };
+  }
   if (m.type === "image" ? !says : !(known || says || SHEET.test(name))) return { result: "skip" };
 
   const supplierId = ph?.supplier_id || inboxId;
@@ -98,15 +113,15 @@ async function tick() {
   }
   const { data: ph } = await db.from("sp_supplier_phones").select("phone_key").limit(5000);
   const phones = new Set((ph || []).map((r) => r.phone_key));
-  const again = msgs.filter((m) => skipped.has(m.id) && m.type === "document" && phones.has(key(m.phone)));
+  const again = msgs.filter((m) => skipped.has(m.id) && phones.has(key(m.phone)));
   const fresh = [...again, ...msgs.filter((m) => !seen.has(m.id))];
   if (!fresh.length) return;
   const { data: cfg } = await db.from("wa_config").select("token").limit(1).maybeSingle();
   const { data: inbox } = await db.from("sp_suppliers").select("id").eq("kind", "wa_inbox").limit(1).maybeSingle();
   if (!cfg?.token || !inbox?.id) return;
-  let taken = 0;
+  let taken = 0, photos = 0;
   for (const m of fresh) {
-    if (taken >= PER_TICK) break;
+    if (taken >= PER_TICK || photos >= PHOTOS_PER_TICK) break;
     // claim the message first: a second run at the same moment gets a conflict and leaves it alone
     if (skipped.has(m.id)) {
       const { data: mine } = await db.from("sp_wa_log").update({ result: "working" }).eq("msg_id", m.id).eq("result", "skip").select("msg_id");
@@ -118,7 +133,7 @@ async function tick() {
     let out: { result: string; upload_id?: string | null; note?: string };
     try { out = await take(m, cfg.token, inbox.id); } catch (e) { out = { result: "failed", note: String((e as Error).message || e).slice(0, 200) }; }
     await db.from("sp_wa_log").update({ result: out.result, upload_id: out.upload_id || null, note: out.note || null }).eq("msg_id", m.id);
-    if (out.result !== "skip") taken++;
+    if (out.result === "photo") photos++; else if (out.result !== "skip") taken++;
   }
 }
 
