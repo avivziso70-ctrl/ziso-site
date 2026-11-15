@@ -24,6 +24,7 @@ const EXT: Record<string, string> = {
 };
 const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { "content-type": "application/json" } });
 const key = (p: unknown) => String(p || "").replace(/\D/g, "").replace(/^972/, "").replace(/^0/, "");
+const safeKey = (n: string) => { const ext = (n.match(/\.[a-z0-9]{2,5}$/i)?.[0] || "").toLowerCase(); const base = n.slice(0, n.length - ext.length).replace(/[^A-Za-z0-9.\-]+/g, "_").replace(/^_+|_+$/g, "").slice(-60); return (base || "file") + ext; };
 const str = (v: unknown, n: number) => (v == null || String(v).trim() === "" ? null : String(v).trim().slice(0, n));
 
 // deno-lint-ignore no-explicit-any
@@ -72,7 +73,8 @@ async function take(m: Msg, token: string, inboxId: string) {
   const bytes = new Uint8Array(await res.arrayBuffer());
   if (bytes.length > MAX_BYTES) return await fail("הקובץ גדול מדי (עד 20MB). בקשו מהספק לפצל אותו או לשלוח אקסל.");
 
-  const path = `${supplierId}/${Date.now()}_${name.replace(/[^\w.\-א-ת]+/g, "_").slice(-80)}`;
+  // storage keys must be plain ASCII (15.11: a Hebrew file name was refused); the real name stays in file_name
+  const path = `${supplierId}/${Date.now()}_${safeKey(name)}`;
   const { error: upErr } = await db.storage.from("supplier-files").upload(path, bytes, { contentType: mime || "application/octet-stream" });
   if (upErr) return await fail("שמירת הקובץ נכשלה. בקשו מהספק לשלוח אותו שוב.");
   const { data: row, error } = await db.from("sp_uploads").insert({ ...base, file_path: path, size_bytes: bytes.length }).select("id").single();

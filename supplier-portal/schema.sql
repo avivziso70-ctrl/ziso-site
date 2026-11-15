@@ -294,3 +294,56 @@ end $$;
 revoke all on function public.sp_apply_discount(uuid, numeric) from public, anon, authenticated;
 revoke all on function public.sp_set_discount(uuid, numeric) from public, anon;
 grant execute on function public.sp_set_discount(uuid, numeric) to authenticated;
+
+-- ---------------------------------------------------------------------------------------------------------------
+-- 15.11.2026 (Aviv: "תוודא גם שכל המחירונים שנשלחים אליך מכל הספקים נמצאים במקום בטוח"): every original file is kept
+-- in the private bucket, whatever channel brought it. Edge function supplier-archive, cron every 2 minutes when needed.
+alter table public.sp_uploads
+  add column if not exists archive_paths text[],      -- where the original file is kept in supplier-files (several = byte parts in order)
+  add column if not exists archived_at timestamptz,
+  add column if not exists archive_note text,
+  add column if not exists archive_tries int not null default 0;
+
+create or replace function public.sp_archive_self()
+returns trigger language plpgsql set search_path = public as $$
+begin
+  if new.file_path is not null and new.file_path not like 'wa:%' and new.file_path not like 'http%' and new.archive_paths is null then
+    new.archive_paths := array[new.file_path];
+    new.archived_at := now();
+  end if;
+  return new;
+end $$;
+create or replace trigger sp_archive_self before insert or update of file_path on public.sp_uploads
+  for each row execute function public.sp_archive_self();
+
+-- files that reach us outside the portal and WhatsApp (e.g. a supplier's email), handed in by a Claude session:
+-- as base64 (small files) or as an AES-256-CBC encrypted blob at fetch_url; the key is cleared once the file is stored
+create table if not exists public.sp_stash (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  supplier_id uuid not null references public.sp_suppliers(id),
+  file_name text,
+  mime text,
+  b64 text,
+  fetch_url text,
+  key_hex text,
+  iv_hex text,
+  source text not null default 'email',
+  uploader_name text,
+  supplier_name_typed text,
+  note text,
+  upload_id uuid references public.sp_uploads(id),
+  done_at timestamptz,
+  error text
+);
+alter table public.sp_stash enable row level security;
+
+-- the project allows 50MB a file; bigger WhatsApp PDFs are archived in parts
+update storage.buckets set file_size_limit = 52428800 where id = 'supplier-files';
+
+select cron.schedule('supplier-archive', '*/2 * * * *', $cron$
+  select net.http_post(url := 'https://ppnjosyraosrdephsksu.supabase.co/functions/v1/supplier-archive',
+    headers := '{"content-type":"application/json"}'::jsonb, body := '{}'::jsonb, timeout_milliseconds := 5000)
+  where exists (select 1 from public.sp_stash where upload_id is null and error is null)
+     or exists (select 1 from public.sp_uploads where file_path like 'wa:%' and archive_paths is null and archive_tries < 5)
+$cron$);
