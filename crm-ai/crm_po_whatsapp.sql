@@ -18,7 +18,7 @@ begin
   if new.dir <> 'in' or coalesce(new.source, '') <> 'live' then return new; end if;
   t9 := right(regexp_replace(coalesce(new.phone, ''), '\D', '', 'g'), 9);
   if length(t9) < 9 then return new; end if;
-  select id into v_po from crm_po where channel = 'whatsapp' and right(regexp_replace(coalesce(to_phone, ''), '\D', '', 'g'), 9) = t9
+  select id into v_po from crm_po where channel in ('whatsapp', 'both') and right(regexp_replace(coalesce(to_phone, ''), '\D', '', 'g'), 9) = t9
     and status in ('sent', 'attention', 'confirmed') and sent_at > now() - interval '45 days' order by sent_at desc limit 1;
   if v_po is null then return new; end if;
   begin
@@ -33,3 +33,10 @@ begin
   return new;
 end $$;
 create trigger crm_po_wa_in_trg after insert on public.wa_messages for each row execute function public.crm_po_wa_in();
+
+-- Aviv 15.11: Sanitec also by email to dudi@sanitec.co.il (cc Eilat + Shir) in addition to WhatsApp -> channel 'both'.
+-- order_paused blocks ordering while a supplier's price list is being fixed (Sanitec 15.11: prices were read from model codes).
+alter table public.sp_suppliers add column if not exists order_paused boolean not null default false;
+alter table public.crm_po add column if not exists email_state text; -- 'both' only: queued / sending / sent / failed / unknown
+alter table public.crm_po add column if not exists wa_msg_id text;   -- outbound WhatsApp message id
+-- crm_po_wa_in (above) matches channel in ('whatsapp', 'both') since 15.11.

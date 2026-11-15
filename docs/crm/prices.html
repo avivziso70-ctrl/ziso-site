@@ -365,7 +365,7 @@ var CART_KEY = 'ziso-po-cart';
 var cart = { sup: null, items: {}, note: '' };
 try { var c0 = JSON.parse(localStorage.getItem(CART_KEY) || 'null'); if (c0 && c0.items) cart = c0; } catch (e) { }
 function saveCart() { try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch (e) { } }
-function canOrder(r) { var s = suppliers[r.supplier_id]; return !!(s && (s.order_email || s.order_wa_phone) && r.price != null && (!r.currency || r.currency === 'ILS')); }
+function canOrder(r) { var s = suppliers[r.supplier_id]; return !!(s && !s.order_paused && (s.order_email || s.order_wa_phone) && r.price != null && (!r.currency || r.currency === 'ILS')); }
 function isWa(s) { return !!(s && s.order_wa_phone); }
 function fmtPhone(p) { var d = String(p || '').replace(/\D/g, ''); if (d.indexOf('972') === 0) d = '0' + d.slice(3); return d.length === 10 ? d.slice(0, 3) + '-' + d.slice(3) : d; }
 function net(r) { return r.vat_included ? r.price / 1.18 : Number(r.price); }
@@ -427,9 +427,9 @@ $('cClear').addEventListener('click', function () { cart = { sup: null, items: {
 function closeAsk() { $('cStep2').classList.add('hidden'); $('cStep1').classList.remove('hidden'); }
 $('cGo').addEventListener('click', function () {
   var list = cartList(), s = suppliers[cart.sup] || {};
-  $('cHow').textContent = isWa(s)
-    ? 'וואטסאפ ל' + contact() + ' (' + fmtPhone(s.order_wa_phone) + ') מהמספר העסקי של זיסו, עם כל הפריטים והמחירים'
-    : 'מייל ל' + contact() + ' (' + (s.order_email || '') + '), עם העתק לאילת ולשיר' + ((s.order_cc || []).length ? ' וגם ל-' + s.order_cc.join(', ') : '');
+  var mailTxt = 'מייל ל' + contact() + ' (' + (s.order_email || '') + '), עם העתק לאילת ולשיר' + ((s.order_cc || []).length ? ' וגם ל-' + s.order_cc.join(', ') : '');
+  var waTxt = 'וואטסאפ ל' + contact() + ' (' + fmtPhone(s.order_wa_phone) + ') מהמספר העסקי של זיסו, עם כל הפריטים והמחירים';
+  $('cHow').textContent = isWa(s) && s.order_email ? waTxt + ', וגם ' + mailTxt : isWa(s) ? waTxt : mailTxt;
   $('cSum').textContent = list.length + ' שורות, ' + list.reduce(function (n, it) { return n + (Number(it.qty) || 0); }, 0).toLocaleString('he-IL') + ' יחידות, ' + money(cartTotal()) + ' לפני מע"מ';
   $('cStep1').classList.add('hidden'); $('cStep2').classList.remove('hidden'); $('cYes').focus();
 });
@@ -442,9 +442,12 @@ $('cYes').addEventListener('click', function () {
     .then(function (j) {
       b.disabled = false; b.textContent = 'כן, לשלוח';
       if (!j.ok) { $('cMsg').textContent = 'לא נשלח: ' + (j.error || 'שגיאה'); $('cMsg').className = 'err'; if (j.po) loadOrders(); return; }
-      var wa = j.po.channel === 'whatsapp', who = contact();
+      var ch = j.po.channel, who = contact();
       cart = { sup: null, items: {}, note: '' }; saveCart(); closeAsk(); drawCart(); drawSearch();
-      $('cHint').textContent = 'הזמנה ' + j.po.po_no + (wa ? ' נשלחה ל' + who + ' בוואטסאפ.' : ' נקלטה. המייל יוצא בדקות הקרובות.'); $('cHint').className = 'ok';
+      $('cHint').textContent = 'הזמנה ' + j.po.po_no + (ch === 'whatsapp' ? ' נשלחה ל' + who + ' בוואטסאפ.'
+        : ch === 'both' ? (j.warn ? ': הוואטסאפ ל' + who + ' לא יצא (' + j.warn + '), המייל יוצא בדקות הקרובות.' : ' נשלחה ל' + who + ' בוואטסאפ, והמייל יוצא בדקות הקרובות.')
+        : ' נקלטה. המייל יוצא בדקות הקרובות.');
+      $('cHint').className = j.warn ? 'err' : 'ok';
       loadOrders();
     }, function () { b.disabled = false; b.textContent = 'כן, לשלוח'; $('cMsg').textContent = 'אין חיבור. נסו שוב.'; $('cMsg').className = 'err'; });
 });
@@ -469,7 +472,7 @@ function loadOrders() {
       else if (o.status !== 'cancelled' && o.status !== 'sending') acts = (o.status !== 'confirmed' ? '<button class="btn small" data-po="confirmed" data-id="' + o.id + '">סמן אושר</button> ' : '') +
         (o.status !== 'attention' ? '<button class="btn small" data-po="attention" data-id="' + o.id + '">סמן לבדוק</button>' : '');
       return '<div class="card po ' + st[0] + '"><div class="row"><b class="grow">' + esc(o.po_no) + ' · ' + esc(o.supplier_name) + '</b><span class="st ' + st[0] + '">' + st[1] + '</span></div>' +
-        '<div class="mute">' + lines.length + ' שורות · ' + money(o.total_cost) + ' לפני מע"מ · נוצרה ' + fmtTime(o.created_at) + (o.by_name ? ' ע"י ' + esc(o.by_name) : '') + (o.sent_at ? ' · נשלחה ' + fmtTime(o.sent_at) + (o.channel === 'whatsapp' ? ' בוואטסאפ' : '') : '') + '</div>' +
+        '<div class="mute">' + lines.length + ' שורות · ' + money(o.total_cost) + ' לפני מע"מ · נוצרה ' + fmtTime(o.created_at) + (o.by_name ? ' ע"י ' + esc(o.by_name) : '') + (o.sent_at ? ' · נשלחה ' + fmtTime(o.sent_at) + (o.channel === 'whatsapp' ? ' בוואטסאפ' : o.channel === 'both' ? ' בוואטסאפ' + (o.email_state === 'sent' ? ' ובמייל' : o.email_state === 'failed' || o.email_state === 'unknown' ? ' (המייל לא יצא)' : ', המייל בדרך') : '') : '') + '</div>' +
         (o.summary ? '<p style="margin:6px 0"><b>' + esc(o.summary) + '</b></p>' : '') + (o.error ? '<p class="err" style="margin:6px 0">' + esc(o.error) + '</p>' : '') +
         (rep && rep.text ? '<div class="quote">' + esc(rep.text.slice(0, 600)) + '</div>' : '') +
         '<details><summary class="mute">הפריטים</summary><div class="tablewrap"><table><tbody>' + lines.map(function (l) {
