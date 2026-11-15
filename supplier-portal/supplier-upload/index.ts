@@ -201,7 +201,9 @@ Deno.serve(async (req) => {
   const { count } = await db.from("sp_uploads").select("id", { count: "exact", head: true }).eq("supplier_id", sup.id).gte("created_at", since);
   if ((count || 0) >= MAX_PER_DAY) return json({ error: "limit" }, 429);
 
-  const safe = file.name.replace(/[^\w.\-א-ת]+/g, "_").slice(-80);
+  // storage keys must be plain ASCII (15.11: a Hebrew file name was refused); the real name stays in file_name
+  const ext = (file.name.match(/\.[a-z0-9]{2,5}$/i)?.[0] || "").toLowerCase();
+  const safe = (file.name.slice(0, file.name.length - ext.length).replace(/[^A-Za-z0-9.\-]+/g, "_").replace(/^_+|_+$/g, "").slice(-60) || "file") + ext;
   const path = `${sup.id}/${Date.now()}_${safe}`;
   const bytes = new Uint8Array(await file.arrayBuffer());
   const { error: upErr } = await db.storage.from("supplier-files").upload(path, bytes, { contentType: file.type || "application/octet-stream" });

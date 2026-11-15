@@ -73,6 +73,10 @@ textarea{width:100%;min-height:64px}
     <p class="mute">כל קובץ שספק מעלה בפורטל או שולח לוואטסאפ העסקי נקרא אוטומטית. המחירים נכנסים למחירון רק אחרי אישור כאן.</p>
     <datalist id="asgOpts"></datalist>
     <div id="pendList"></div>
+    <details id="arch" style="margin-top:18px"><summary>ארכיון הקבצים המקוריים מכל הספקים</summary>
+      <p class="mute">כל קובץ שספק שלח, בפורטל, בוואטסאפ או במייל, שמור כאן כמו שהגיע, גם אחרי אישור או דחייה. קובץ גדול מאוד שמור בכמה חלקים, שמחברים לפי הסדר.</p>
+      <div id="archList"></div>
+    </details>
   </section>
 
   <section id="v-orders" class="hidden">
@@ -198,9 +202,33 @@ $('q').addEventListener('input', function () { clearTimeout(sTimer); sTimer = se
 $('mk').addEventListener('input', drawSearch);
 
 /* ---------- pending ---------- */
-var ST = { received: 'התקבל', parsing: 'בקריאה...', parsed: 'מוכן לאישור', failed: 'לא נקרא' };
+var ST = { received: 'התקבל', parsing: 'בקריאה...', parsed: 'מוכן לאישור', failed: 'לא נקרא', approved: 'אושר', rejected: 'נדחה' };
 var pendTimer = null;
 function pendTick() { if (!$('v-pending').classList.contains('hidden') && !$('pendList').contains(document.activeElement)) loadPending(); else pendTimer = setTimeout(pendTick, 20000); }
+// 15.11: the original file of every upload is kept in the bucket (archive_paths); a very big one in byte parts
+function fileBtns(u) {
+  var p = u.archive_paths || [];
+  if (!p.length) return u.file_path && !/^(wa:|http)/.test(u.file_path) ? '<button class="btn small" data-a="file" data-i="0">פתיחת הקובץ</button>' : '';
+  return p.length === 1 ? '<button class="btn small" data-a="file" data-i="0">פתיחת הקובץ</button>' : p.map(function (x, i) { return '<button class="btn small" data-a="file" data-i="' + i + '">קובץ, חלק ' + (i + 1) + '</button>'; }).join('');
+}
+function openArch(id, i) {
+  sb.from('sp_uploads').select('file_path,archive_paths').eq('id', id).single().then(function (r) {
+    var path = (r.data.archive_paths || [])[i] || r.data.file_path;
+    return sb.storage.from('supplier-files').createSignedUrl(path, 300);
+  }).then(function (r) { if (r && r.data) window.open(r.data.signedUrl, '_blank', 'noopener'); });
+}
+var SRC = { supplier: 'פורטל', whatsapp: 'וואטסאפ', email: 'מייל', staff: 'צוות' };
+function loadArchive() {
+  sb.from('sp_uploads').select('id,supplier_id,file_name,file_path,created_at,source,status,archive_paths').not('archive_paths', 'is', null).order('created_at', { ascending: false }).limit(200).then(function (r) {
+    var l = r.data || [];
+    $('archList').innerHTML = l.length ? l.map(function (u) {
+      var s = suppliers[u.supplier_id] || {};
+      return '<div class="card" data-id="' + u.id + '"><div class="row"><span class="grow">' + esc(s.name) + ' · ' + esc(u.file_name || 'קובץ') + '</span><span class="mute">' + fmtDate(u.created_at) + ' · ' + esc(SRC[u.source] || u.source) + ' · ' + esc(ST[u.status] || u.status) + '</span>' + fileBtns(u) + '</div></div>';
+    }).join('') : '<p class="mute">עוד אין קבצים בארכיון.</p>';
+  });
+}
+$('arch').addEventListener('toggle', function () { if (this.open) loadArchive(); });
+$('archList').addEventListener('click', function (e) { var b = e.target.closest('button[data-a="file"]'); if (b) openArch(b.closest('[data-id]').dataset.id, +b.dataset.i || 0); });
 function loadPending() {
   clearTimeout(pendTimer);
   sb.from('sp_uploads').select('*').in('status', ['received', 'parsing', 'parsed', 'failed']).order('created_at', { ascending: false }).limit(50).then(function (r) {
@@ -211,15 +239,15 @@ function loadPending() {
     if (list.some(function (u) { return u.status === 'parsing' || u.status === 'received'; })) pendTimer = setTimeout(pendTick, 20000);
     $('pendList').innerHTML = list.map(function (u) {
       var s = suppliers[u.supplier_id] || {}, inbox = s.kind === 'wa_inbox';
-      return '<div class="card" data-id="' + u.id + '"><div class="row"><strong class="grow">' + esc(s.name) + ' · ' + (u.file_name ? esc(u.file_name) : 'הודעה בטקסט') + '</strong>' + (u.source === 'whatsapp' ? '<span class="badge">וואטסאפ</span>' : '') + '<span class="badge">' + esc(ST[u.status] || u.status) + '</span></div>' +
+      return '<div class="card" data-id="' + u.id + '"><div class="row"><strong class="grow">' + esc(s.name) + ' · ' + (u.file_name ? esc(u.file_name) : 'הודעה בטקסט') + '</strong>' + (u.source === 'whatsapp' ? '<span class="badge">וואטסאפ</span>' : u.source === 'email' ? '<span class="badge">מייל</span>' : '') + '<span class="badge">' + esc(ST[u.status] || u.status) + '</span></div>' +
         '<p class="mute">' + fmtDate(u.created_at) + (u.supplier_name_typed && u.supplier_name_typed !== s.name ? ' · <span class="warn">כתב: ' + esc(u.supplier_name_typed) + '</span>' : '') + (u.uploader_name ? ' · ' + esc(u.uploader_name) : '') + (u.replaces_all ? ' · <strong>מחליף את כל המחירון</strong>' : '') + (u.rows_count != null ? ' · ' + u.rows_count + ' שורות' : '') + '</p>' +
-        (u.supplier_note ? '<p style="white-space:pre-wrap">' + (u.file_path ? 'הערת הספק: ' : '') + esc(u.supplier_note) + '</p>' : '') + (u.file_path && u.file_path.indexOf('wa:') === 0 ? '<p class="mute">קובץ כבד (' + Math.round((u.size_bytes || 0) / 1048576) + 'MB): נקרא ישר מהוואטסאפ העסקי, ושם אפשר לפתוח אותו.</p>' : '') + (u.parse_info ? '<p class="mute">' + esc(u.parse_info) + '</p>' : '') + (u.parse_note ? '<p class="' + (u.file_path || u.status === 'failed' ? 'err' : 'mute') + '">' + (u.file_path || u.status === 'failed' ? '' : 'סיכום: ') + esc(u.parse_note) + '</p>' : '') +
+        (u.supplier_note ? '<p style="white-space:pre-wrap">' + (u.file_path ? 'הערת הספק: ' : '') + esc(u.supplier_note) + '</p>' : '') + (u.file_path && u.file_path.indexOf('wa:') === 0 ? '<p class="mute">קובץ כבד (' + Math.round((u.size_bytes || 0) / 1048576) + 'MB). ' + (u.archive_paths ? 'העותק המקורי שמור בארכיון' + (u.archive_paths.length > 1 ? ' ב-' + u.archive_paths.length + ' חלקים' : '') + '.' : 'נשמר לארכיון בדקות הקרובות.') + '</p>' : '') + (u.parse_info ? '<p class="mute">' + esc(u.parse_info) + '</p>' : '') + (u.parse_note ? '<p class="' + (u.file_path || u.status === 'failed' ? 'err' : 'mute') + '">' + (u.file_path || u.status === 'failed' ? '' : 'סיכום: ') + esc(u.parse_note) + '</p>' : '') +
         (inbox ? '<div class="row" style="margin-top:8px"><input class="grow" list="asgOpts" data-asg placeholder="מאיזה ספק הקובץ? הקלידו שם" aria-label="שיוך לספק"><button class="btn small brass" data-a="asg">שיוך לספק</button></div><p class="mute">אחרי השיוך המספר נשמר, והקבצים הבאים ממנו ייכנסו ישר לספק הזה.</p>' : '') +
         (u.status === 'parsed' && u.rows_count && !inbox ? '<div class="row" style="margin-top:8px"><label class="mute" for="dc' + u.id + '">הקובץ הוא מחירון לצרכן? ההנחה שלנו באחוזים:</label><input id="dc' + u.id + '" data-disc type="number" min="0" max="99" step="0.5" inputmode="decimal" style="width:90px" value="' + esc(u.discount_pct != null ? u.discount_pct : (s.discount_pct != null ? s.discount_pct : '')) + '"><button class="btn small" data-a="disc">חישוב מחיר קנייה</button></div>' +
           '<p class="mute">' + (u.discount_pct != null ? 'הוחלה הנחה של ' + esc(u.discount_pct) + '%: המחיר בטבלה הוא מחיר הקנייה שלנו, ומחירון הצרכן נשמר לידו. 0 מבטל.' : 'בלי הנחה, המחיר שבקובץ נכנס כמחיר הקנייה שלנו.') + '</p>' : '') +
         '<div class="prev"></div><div class="row" style="margin-top:8px">' +
         (u.status === 'parsed' ? (u.rows_count ? (inbox ? '' : '<button class="btn small brass" data-a="ok">אישור והכנסה למחירון</button>') + '<button class="btn small red" data-a="no">דחייה</button>' : '<button class="btn small brass" data-a="' + (inbox ? 'no' : 'ok') + '">טופל</button>') : '') + (u.status === 'failed' ? '<button class="btn small red" data-a="no">הסרה מהרשימה</button>' : '') +
-        (u.file_path && u.file_path.indexOf('wa:') !== 0 ? '<button class="btn small" data-a="file">פתיחת הקובץ</button>' : '') + (u.status !== 'parsing' && (u.file_path || !u.file_name) ? '<button class="btn small" data-a="again">לקרוא שוב</button>' : '') + '</div></div>';
+        fileBtns(u) + (u.status !== 'parsing' && (u.file_path || !u.file_name) ? '<button class="btn small" data-a="again">לקרוא שוב</button>' : '') + '</div></div>';
     }).join('');
     list.filter(function (u) { return u.status === 'parsed' && u.rows_count; }).forEach(function (u) {
       sb.from('sp_prices').select('supplier_code,description,size,unit,price,list_price,currency').eq('upload_id', u.id).order('id').limit(15).then(function (p) {
@@ -258,9 +286,7 @@ $('pendList').addEventListener('click', function (e) {
       loadPending();
     });
   } else if (a === 'file') {
-    sb.from('sp_uploads').select('file_path').eq('id', id).single().then(function (r) {
-      return sb.storage.from('supplier-files').createSignedUrl(r.data.file_path, 300);
-    }).then(function (r) { if (r && r.data) window.open(r.data.signedUrl, '_blank', 'noopener'); });
+    openArch(id, +b.dataset.i || 0);
   } else if (a === 'again') {
     fetch(FN, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + session.access_token }, body: JSON.stringify({ reparse: id }) })
       .then(function () { setTimeout(loadPending, 1500); });
