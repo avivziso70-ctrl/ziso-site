@@ -37,7 +37,7 @@ create policy shop_orders_staff_read on public.shop_orders for select to authent
 -- One row per product: newest list wins; upgrade options, measuring, installation, delivery, drilling and made-to-measure rows are not sold.
 create or replace function public.shop_catalog(p_ids bigint[] default null)
 returns table (id bigint, code text, name text, size text, unit text, category text, price numeric, image_path text)
-language sql stable security definer set search_path = public as $$
+language sql stable security invoker set search_path = public as $$
   with st as (select vat, multipliers from shop_settings where id = 1),
   src as (
     select p.*, u.created_at up_at, (st.multipliers ->> p.supplier_id::text)::numeric mult, st.vat
@@ -54,8 +54,8 @@ language sql stable security definer set search_path = public as $$
          one.image_path
     from one where p_ids is null or one.id = any(p_ids);
 $$;
-revoke all on function public.shop_catalog(bigint[]) from public, anon, authenticated;
-grant execute on function public.shop_catalog(bigint[]) to service_role;
+-- security invoker: only the service role (the shop edge function) gets rows; anon is stopped by RLS on shop_settings / sp_prices.
+-- No drop / revoke statements here: they raise a Supabase confirmation nobody sees and the migration hangs.
 
 -- When Tranzila confirms the payment (crm-pay-notify sets crm_pay_requests.status = 'paid'), the order turns paid.
 create or replace function public.shop_order_paid() returns trigger language plpgsql security definer set search_path = public as $$
@@ -65,5 +65,4 @@ begin
   end if;
   return new;
 end $$;
-drop trigger if exists shop_order_paid on public.crm_pay_requests;
-create trigger shop_order_paid after update of status on public.crm_pay_requests for each row execute function public.shop_order_paid();
+create or replace trigger shop_order_paid after update of status on public.crm_pay_requests for each row execute function public.shop_order_paid();
