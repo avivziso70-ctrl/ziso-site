@@ -18,6 +18,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { autoRefreshToken: false, persistSession: false } });
 const IMPORT_SHA256 = "f34768d670cc85ef42eb41294bd0d101707b94e00ad2659ecf28439dbc6852d0";
 const TEAM_CC = ["eilatziso50@gmail.com", "shirziso1605@gmail.com"]; // Aviv 15.11: every order mail and every answer goes to Eilat and Shir too
+// plus the supplier's own cc list (sp_suppliers.order_cc), e.g. Dior's sales agent Ilan Beni (Aviv 15.11)
 const MODEL = Deno.env.get("PO_MODEL") || "claude-haiku-5-5";
 const ORIGINS = ["https://www.zisoceramics.com", "https://zisoceramics.com", "http://localhost:8000"];
 function cors(req: Request) {
@@ -113,7 +114,7 @@ async function staffAction(req: Request, body: any) {
   const now = new Date().toISOString();
 
   if (body.action === "create") {
-    const { data: sup } = await admin.from("sp_suppliers").select("id, name, order_email, order_contact, active").eq("id", String(body.supplier_id || "")).maybeSingle();
+    const { data: sup } = await admin.from("sp_suppliers").select("id, name, order_email, order_contact, order_cc, active").eq("id", String(body.supplier_id || "")).maybeSingle();
     if (!sup || !sup.active || !sup.order_email) return json(req, { ok: false, error: "לספק הזה אין מייל להזמנות" }, 400);
     const want = Array.isArray(body.lines) ? body.lines : [];
     if (!want.length || want.length > 60) return json(req, { ok: false, error: "צריך בין שורה אחת ל-60 שורות" }, 400);
@@ -136,7 +137,7 @@ async function staffAction(req: Request, body: any) {
     const total = r2(lines.reduce((s, l) => s + l.total, 0));
     const note = typeof body.note === "string" ? body.note.trim().slice(0, 500) || null : null;
     const { data: po, error } = await admin.from("crm_po").insert({
-      supplier_id: sup.id, supplier_name: sup.name, to_email: sup.order_email, cc: TEAM_CC, contact: sup.order_contact, lines, total_cost: total, note,
+      supplier_id: sup.id, supplier_name: sup.name, to_email: sup.order_email, cc: [...new Set([...TEAM_CC, ...((sup.order_cc || []) as string[]).map((e) => String(e).trim().toLowerCase()).filter(Boolean)])], contact: sup.order_contact, lines, total_cost: total, note,
       status: "queued", by: email, by_name: staff.name, updated_at: now,
     }).select("*").single();
     if (error) return json(req, { ok: false, error: error.message }, 500);
@@ -197,7 +198,10 @@ async function bridgeAction(req: Request, body: any) {
     const msgId = String(body.msg_id || "");
     if (!msgId || (po.replies || []).some((x: any) => x.msg_id === msgId) || msgId === po.gmail_msg_id) return json(req, { ok: true, dup: true, forward: false });
     const from = String(body.from || "").slice(0, 200);
-    const fromSupplier = domainOf(from) !== "" && domainOf(from) === domainOf(po.to_email);
+    const addr = ((from.match(/<([^>]+)>/) || [])[1] || from).trim().toLowerCase();
+    // the supplier side: the order address's domain, or a supplier cc such as Dior's sales agent (never our own team)
+    const supplierCc = ((po.cc || []) as string[]).map((e) => e.toLowerCase()).filter((e) => !TEAM_CC.includes(e));
+    const fromSupplier = (domainOf(from) !== "" && domainOf(from) === domainOf(po.to_email)) || supplierCc.includes(addr);
     const text = newPart(String(body.text || ""));
     const at = body.date && !isNaN(Date.parse(body.date)) ? new Date(body.date).toISOString() : now;
     const entry: Record<string, unknown> = { msg_id: msgId, from, at, text };
