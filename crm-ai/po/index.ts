@@ -33,6 +33,9 @@
 //   thread, the cancellation mail's own thread (watched with a negative id, so the Apps Script needs no change) and WhatsApp.
 //   No answer in time -> crm_po_overdue() (pg_cron, working hours) opens a call-the-supplier task + push; an answer closes it.
 //   Staff can also mark a phone confirmation: { action: "mark", id, status: "cancel_confirmed" }.
+// A question to a supplier's order contact (Aviv 15.11: "תראיין אותה, תשאל אותה האם לכלול עוד מישהו? האם יש מיילים"):
+//   { action: "wa_ask", supplier_id, text, by } with x-hook-token, called only by the database function crm_po_ask.
+//   Free text to sp_suppliers.order_wa_phone, so only inside Meta's 24h window; kept in wa_messages (source 'crm') and crm_audit.
 // The WhatsApp token is read here through the service role only, never returned or logged; wa_config is never written.
 // Priority is never written.
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -510,6 +513,26 @@ async function bridgeAction(req: Request, body: any) {
   return json(req, { ok: false, error: "unknown action" }, 400);
 }
 
+// A question to the supplier's order contact on WhatsApp. Never opens a conversation: without a message from the supplier
+// in the last 24 hours it is refused (a template would be needed).
+export async function waAsk(body: any) {
+  const text = String(body.text || "").trim().slice(0, 1500);
+  const by = String(body.by || "").trim().slice(0, 80) || "crm-po";
+  const { data: sup } = await admin.from("sp_suppliers").select("id, name, order_wa_phone, active").eq("id", String(body.supplier_id || "")).maybeSingle();
+  const t9 = tail9(sup?.order_wa_phone);
+  if (!sup || !sup.active || !t9) return { ok: false, error: "no whatsapp order contact for this supplier" };
+  if (text.length < 5) return { ok: false, error: "empty text" };
+  const cfg = await waCfg();
+  if (!cfg?.token || !cfg?.phone_number_id) return { ok: false, error: "whatsapp not connected" };
+  if (!(await windowOpen(t9))) return { ok: false, error: "window closed: the supplier has not written in the last 24 hours" };
+  let to = digits(sup.order_wa_phone); if (to.startsWith("0")) to = "972" + to.slice(1);
+  const res = await waPost(cfg, { messaging_product: "whatsapp", to, type: "text", text: { body: text, preview_url: false } });
+  if (!res.ok || !res.id) return { ok: false, error: (res.error || "error").slice(0, 250) };
+  await waRecord({ to_phone: sup.order_wa_phone, supplier_name: sup.name, po_no: null }, res.id, "text", text, by, { ask: true });
+  await admin.from("crm_audit").insert({ who: by, action: "po_wa_ask", detail: { supplier: sup.name, wamid: res.id, text } });
+  return { ok: true, id: res.id };
+}
+
 // A WhatsApp message from the supplier contact (trigger crm_po_wa_in on wa_messages).
 export async function waReply(body: any) {
   const now = new Date().toISOString();
@@ -575,8 +598,8 @@ Deno.serve(async (req: Request) => {
     if (hk) {
       const { data: keys } = await admin.from("crm_push_keys").select("hook_token").eq("id", 1).maybeSingle();
       if (!keys?.hook_token || hk !== keys.hook_token) return json(req, { ok: false, error: "forbidden" }, 403);
-      if (body?.action !== "wa_reply") return json(req, { ok: false, error: "unknown action" }, 400);
-      const out = await waReply(body);
+      if (body?.action !== "wa_reply" && body?.action !== "wa_ask") return json(req, { ok: false, error: "unknown action" }, 400);
+      const out = body.action === "wa_ask" ? await waAsk(body) : await waReply(body);
       return json(req, out, out.ok ? 200 : 400);
     }
     const k = req.headers.get("x-import-key");

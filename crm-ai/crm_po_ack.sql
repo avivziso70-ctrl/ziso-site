@@ -1,5 +1,6 @@
 -- 15.11.2026 (Aviv): "שהמערכת תאזין תמיד לפידבק מהספק. אם ביטלתי, שגורם מטעמו יאשר שבוטל. אם הזמנתי, שגורם מטעמו יאשר שההזמנה אושרה."
--- Applied as migration crm_po_ack.
+-- Applied 15.11.2026 as migration crm_po_ack (no DROP: a destructive statement makes the Supabase tool wait for a confirmation nobody sees).
+-- The two UPDATEs of existing rows were run separately as plain SQL.
 alter table public.crm_po
   add column if not exists cancel_ack text,                 -- waiting | confirmed | attention (null = the supplier was never told)
   add column if not exists cancel_ack_at timestamptz,
@@ -11,7 +12,8 @@ alter table public.crm_po
   add column if not exists nudge_task_id bigint,            -- "no answer yet, call him" task for the order
   add column if not exists nudged_at timestamptz,
   add column if not exists cancel_nudge_task_id bigint,
-  add column if not exists cancel_nudged_at timestamptz;
+  add column if not exists cancel_nudged_at timestamptz,
+  add column if not exists deal_id bigint;                  -- the deal (crm_deals) this order belongs to
 
 -- cancellations already sent before this release: still waiting for the supplier
 update public.crm_po set cancel_ack = 'waiting'
@@ -69,8 +71,7 @@ begin
     coalesce(new.cancel_summary, case when new.cancel_ack = 'confirmed' then 'הספק אישר שההזמנה בוטלה.' else 'צריך לבדוק את תשובת הספק לביטול.' end));
   return new;
 end $$;
-drop trigger if exists crm_po_cancel_notify_trg on public.crm_po;
-create trigger crm_po_cancel_notify_trg after update of cancel_ack on public.crm_po for each row execute function public.crm_po_cancel_notify();
+create or replace trigger crm_po_cancel_notify_trg after update of cancel_ack on public.crm_po for each row execute function public.crm_po_cancel_notify();
 
 -- no answer in time (working hours only): one call-the-supplier task + push per order and per cancellation.
 -- Order: 3 hours without any answer. Cancellation: 2 hours without a confirmation.
@@ -101,3 +102,17 @@ begin
 end $$;
 revoke all on function public.crm_po_overdue() from public, anon, authenticated;
 select cron.schedule('crm-po-overdue', '*/15 * * * *', 'select public.crm_po_overdue()');
+
+-- A question to a supplier's order contact on WhatsApp (crm-po action wa_ask). Not callable from the browser.
+-- The answer of the edge function lands in net._http_response under the returned id.
+create or replace function public.crm_po_ask(p_supplier text, p_text text, p_by text) returns bigint language plpgsql security definer set search_path to 'public' as $$
+declare v_token text; v_id bigint;
+begin
+  select hook_token into v_token from crm_push_keys where id = 1;
+  select net.http_post(
+    url := 'https://ppnjosyraosrdephsksu.supabase.co/functions/v1/crm-po',
+    headers := jsonb_build_object('content-type', 'application/json', 'x-hook-token', v_token),
+    body := jsonb_build_object('action', 'wa_ask', 'supplier_id', p_supplier, 'text', p_text, 'by', p_by)) into v_id;
+  return v_id;
+end $$;
+revoke all on function public.crm_po_ask(text, text, text) from public, anon, authenticated;
