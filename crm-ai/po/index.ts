@@ -16,6 +16,9 @@
 //   right away from the business number (staff pressed "כן, לשלוח" = the yes): free text inside Meta's 24h window, otherwise the
 //   approved UTILITY template ziso_supplier_order. The row goes into wa_messages (source 'crm', bot stays quiet).
 //   His answers arrive from the wa_messages trigger crm_po_wa_in -> { action: "wa_reply" } with x-hook-token (crm_push_keys).
+//   Supplier with both order_wa_phone and order_email (Sanitec, Aviv 15.11): channel "both" = the WhatsApp goes at once and the
+//   email (cc Eilat + Shir) goes through the outbox, tracked in email_state; answers on either channel update the same order.
+//   sp_suppliers.order_paused (e.g. while a price list is being fixed) blocks "create".
 //   Owner only: { action: "wa_template", submit? } shows the template's status at Meta, and submits it once on his click.
 // The WhatsApp token is read here through the service role only, never returned or logged; wa_config is never written.
 // Priority is never written.
@@ -176,7 +179,7 @@ export async function sendWa(po: Po, by: string) {
   }
   if (!res.ok || !res.id) return fail("השליחה בוואטסאפ נכשלה: " + (res.error || "שגיאה").slice(0, 250));
   await waRecord(po, res.id, type, full, by, extra);
-  const patch = { status: "sent", sent_at: now, gmail_msg_id: res.id, wa_truncated: truncated, error: null, updated_at: now };
+  const patch = { status: "sent", sent_at: now, wa_msg_id: res.id, wa_truncated: truncated, error: null, updated_at: now };
   await admin.from("crm_po").update(patch).eq("id", po.id);
   return { ...po, ...patch };
 }
@@ -191,9 +194,12 @@ async function staffAction(req: Request, body: any) {
   const now = new Date().toISOString();
 
   if (body.action === "create") {
-    const { data: sup } = await admin.from("sp_suppliers").select("id, name, order_email, order_contact, order_cc, order_wa_phone, active").eq("id", String(body.supplier_id || "")).maybeSingle();
+    const { data: sup } = await admin.from("sp_suppliers").select("id, name, order_email, order_contact, order_cc, order_wa_phone, order_paused, active").eq("id", String(body.supplier_id || "")).maybeSingle();
     const wa = !!(sup && sup.order_wa_phone && tail9(sup.order_wa_phone));
-    if (!sup || !sup.active || (!sup.order_email && !wa)) return json(req, { ok: false, error: "לספק הזה אין מייל או וואטסאפ להזמנות" }, 400);
+    const mail = !!(sup && sup.order_email);
+    if (!sup || !sup.active || (!mail && !wa)) return json(req, { ok: false, error: "לספק הזה אין מייל או וואטסאפ להזמנות" }, 400);
+    if (sup.order_paused) return json(req, { ok: false, error: "ההזמנות לספק הזה מושהות עד שהמחירון יתוקן" }, 409);
+    const channel = wa && mail ? "both" : wa ? "whatsapp" : "email";
     const want = Array.isArray(body.lines) ? body.lines : [];
     if (!want.length || want.length > 60) return json(req, { ok: false, error: "צריך בין שורה אחת ל-60 שורות" }, 400);
     const qtyById = new Map<number, number>();
@@ -215,15 +221,16 @@ async function staffAction(req: Request, body: any) {
     const total = r2(lines.reduce((s, l) => s + l.total, 0));
     const note = typeof body.note === "string" ? body.note.trim().slice(0, 500) || null : null;
     const { data: po, error } = await admin.from("crm_po").insert({
-      supplier_id: sup.id, supplier_name: sup.name, channel: wa ? "whatsapp" : "email", to_phone: wa ? sup.order_wa_phone : null,
-      to_email: wa ? null : sup.order_email, cc: wa ? [] : [...new Set([...TEAM_CC, ...((sup.order_cc || []) as string[]).map((e) => String(e).trim().toLowerCase()).filter(Boolean)])], contact: sup.order_contact, lines, total_cost: total, note,
+      supplier_id: sup.id, supplier_name: sup.name, channel, to_phone: wa ? sup.order_wa_phone : null,
+      to_email: mail ? sup.order_email : null, email_state: channel === "both" ? "queued" : null, cc: !mail ? [] : [...new Set([...TEAM_CC, ...((sup.order_cc || []) as string[]).map((e) => String(e).trim().toLowerCase()).filter(Boolean)])], contact: sup.order_contact, lines, total_cost: total, note,
       status: wa ? "sending" : "queued", claimed_at: wa ? now : null, by: email, by_name: staff.name, updated_at: now,
     }).select("*").single();
     if (error) return json(req, { ok: false, error: error.message }, 500);
     await admin.from("crm_audit").insert({ who: email, action: "po_create", detail: { id: po.id, po: po.po_no, supplier: sup.name, lines: lines.length, total, channel: po.channel } });
     if (wa) {
       const out = await sendWa(po, email);
-      if (out.status !== "sent") return json(req, { ok: false, po: out, error: out.error }, 502);
+      // "both": the email still goes out through the outbox even if the WhatsApp failed
+      if (out.status !== "sent") return channel === "both" ? json(req, { ok: true, po: out, warn: out.error }) : json(req, { ok: false, po: out, error: out.error }, 502);
       return json(req, { ok: true, po: out });
     }
     return json(req, { ok: true, po });
@@ -273,17 +280,34 @@ async function bridgeAction(req: Request, body: any) {
     const stale = new Date(Date.now() - 20 * 60e3).toISOString();
     await admin.from("crm_po").update({ status: "attention", error: "לא ברור אם המייל נשלח. לבדוק בתיבת דואר יוצא לפני שליחה חוזרת.", updated_at: now })
       .eq("status", "sending").eq("channel", "email").lt("claimed_at", stale);
-    const { data: claimed } = await admin.from("crm_po").update({ status: "sending", claimed_at: now, updated_at: now }).eq("status", "queued").eq("channel", "email").select("*");
-    const orders = (claimed || []).map((po: Po) => ({ id: po.id, po_no: po.po_no, to: po.to_email, cc: po.cc || [], ...renderEmail(po) }));
+    await admin.from("crm_po").update({ email_state: "unknown", error: "לא ברור אם המייל נשלח (הוואטסאפ כן). לבדוק בתיבת דואר יוצא.", updated_at: now })
+      .eq("email_state", "sending").eq("channel", "both").lt("claimed_at", stale);
+    const { data: claimed1 } = await admin.from("crm_po").update({ status: "sending", claimed_at: now, updated_at: now }).eq("status", "queued").eq("channel", "email").select("*");
+    const { data: claimed2 } = await admin.from("crm_po").update({ email_state: "sending", claimed_at: now, updated_at: now }).eq("email_state", "queued").eq("channel", "both").neq("status", "cancelled").select("*");
+    const claimed = [...(claimed1 || []), ...(claimed2 || [])];
+    const orders = claimed.map((po: Po) => ({ id: po.id, po_no: po.po_no, to: po.to_email, cc: po.cc || [], ...renderEmail(po) }));
     return json(req, { ok: true, orders });
   }
   const id = Number(body.id);
   if (body.action === "watch") {
     const since = new Date(Date.now() - 45 * 864e5).toISOString();
-    const { data } = await admin.from("crm_po").select("id, gmail_thread_id, gmail_msg_id, replies").in("status", ["sent", "attention", "confirmed"]).eq("channel", "email").not("gmail_thread_id", "is", null).gt("sent_at", since).limit(100);
+    const { data } = await admin.from("crm_po").select("id, gmail_thread_id, gmail_msg_id, replies").in("status", ["sent", "attention", "confirmed"]).in("channel", ["email", "both"]).not("gmail_thread_id", "is", null).gt("sent_at", since).limit(100);
     return json(req, { ok: true, orders: (data || []).map((o: Po) => ({ id: o.id, thread_id: o.gmail_thread_id, seen: [o.gmail_msg_id, ...(o.replies || []).map((x: any) => x.msg_id)].filter(Boolean) })) });
   }
   if (!Number.isInteger(id)) return json(req, { ok: false, error: "missing id" }, 400);
+  if (body.action === "sent" || body.action === "send_failed") {
+    const { data: cur } = await admin.from("crm_po").select("id, channel, status, error").eq("id", id).maybeSingle();
+    if (cur?.channel === "both") {
+      if (body.action === "sent") {
+        const patch: Record<string, unknown> = { email_state: "sent", gmail_thread_id: String(body.thread_id || "") || null, gmail_msg_id: String(body.msg_id || "") || null, updated_at: now };
+        if (cur.status === "failed") Object.assign(patch, { status: "sent", sent_at: now }); // WhatsApp failed, the email went out: now waiting for him
+        const { data } = await admin.from("crm_po").update(patch).eq("id", id).in("email_state", ["sending", "unknown"]).select("id").maybeSingle();
+        return json(req, { ok: !!data });
+      }
+      await admin.from("crm_po").update({ email_state: "failed", error: ("המייל נכשל: " + String(body.error || "")).slice(0, 300), updated_at: now }).eq("id", id).eq("email_state", "sending");
+      return json(req, { ok: true });
+    }
+  }
   if (body.action === "sent") {
     const { data } = await admin.from("crm_po").update({ status: "sent", sent_at: now, gmail_thread_id: String(body.thread_id || "") || null, gmail_msg_id: String(body.msg_id || "") || null, error: null, updated_at: now })
       .eq("id", id).in("status", ["sending", "attention"]).select("id").maybeSingle();
@@ -329,10 +353,10 @@ async function bridgeAction(req: Request, body: any) {
 export async function waReply(body: any) {
   const now = new Date().toISOString();
   const id = Number(body.id);
-  const { data: po } = await admin.from("crm_po").select("*").eq("id", id).eq("channel", "whatsapp").maybeSingle();
+  const { data: po } = await admin.from("crm_po").select("*").eq("id", id).in("channel", ["whatsapp", "both"]).maybeSingle();
   if (!po) return { ok: false, error: "no order" };
   const msgId = String(body.msg_id || "");
-  if (!msgId || msgId === po.gmail_msg_id || (po.replies || []).some((x: any) => x.msg_id === msgId)) return { ok: true, dup: true };
+  if (!msgId || msgId === po.wa_msg_id || (po.replies || []).some((x: any) => x.msg_id === msgId)) return { ok: true, dup: true };
   if (tail9(body.from) !== tail9(po.to_phone)) return { ok: false, error: "not the supplier" };
   const text = String(body.text || "").trim().slice(0, 3000);
   const at = body.date && !isNaN(Date.parse(body.date)) ? new Date(body.date).toISOString() : now;
