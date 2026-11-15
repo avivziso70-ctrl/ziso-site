@@ -46,6 +46,11 @@ body.has-cart main{padding-bottom:110px}
 .quote{white-space:pre-wrap;background:var(--graphite);border-radius:8px;padding:8px 10px;margin:6px 0;font-size:15px}
 textarea{width:100%;min-height:64px}
 .cl{border-bottom:1px solid var(--line);padding:10px 0}.cl .row{margin-top:6px}
+fieldset.fs{border:1px solid var(--line);border-radius:12px;margin:12px 0;padding:10px 12px}fieldset.fs legend{padding:0 6px;font-weight:700}
+.chk{display:flex;align-items:center;gap:8px;min-height:44px;cursor:pointer}.chk input{min-height:0;width:22px;height:22px;accent-color:var(--brass)}
+.fld{display:block;margin-top:8px}.fld input{width:100%;margin-top:2px}
+ul.pick{list-style:none;margin:6px 0 0;padding:0;border:1px solid var(--line);border-radius:10px;overflow:hidden}ul.pick button{display:block;width:100%;text-align:right;font:inherit;color:inherit;background:var(--surface);border:0;border-bottom:1px solid var(--line);min-height:44px;padding:6px 12px;cursor:pointer}ul.pick li:last-child button{border-bottom:0}
+.ask{background:var(--graphite);border-radius:10px;padding:10px 12px;margin-top:8px}
 td.pic,th.pic{width:60px;padding:4px 0 4px 6px}
 .thumb{width:56px;height:56px;border-radius:8px;border:1px solid var(--line);background:#fff;padding:0;display:block;cursor:zoom-in;overflow:hidden}
 .thumb img{width:100%;height:100%;object-fit:contain;display:block}
@@ -91,20 +96,39 @@ table.nopic .pic{display:none}
     <div id="cartBox" class="card hidden">
       <h2 style="margin-top:0">הזמנה חדשה ל<span id="cSup"></span></h2>
       <div id="cRows"></div>
+      <fieldset class="fs"><legend>ההזמנה עבור</legend>
+        <input id="cuQ" type="search" placeholder="שם הלקוח או טלפון" autocomplete="off" aria-label="הלקוח של ההזמנה" style="margin-top:0">
+        <ul id="cuList" class="pick hidden"></ul>
+        <p id="cuSel" class="mute" role="status" style="margin:6px 0 0"></p>
+        <label class="chk"><input type="checkbox" id="cuStock"> למלאי, בלי לקוח</label>
+      </fieldset>
+      <fieldset class="fs"><legend>לאן לספק את הסחורה</legend>
+        <label class="chk"><input type="radio" name="dv" value="business" checked> לבית העסק (טירת כרמל)</label>
+        <label class="chk"><input type="radio" name="dv" value="customer"> ישירות לבית הלקוח</label>
+        <div id="dvBox" class="hidden">
+          <label class="fld">שם למסירה <input id="dvName" autocomplete="off"></label>
+          <label class="fld">טלפון <input id="dvPhone" inputmode="tel" autocomplete="off" class="ltr"></label>
+          <label class="fld">כתובת מלאה <input id="dvAddr" autocomplete="off" placeholder="רחוב, מספר, עיר"></label>
+          <label class="fld">הערה למסירה (לא חובה) <input id="dvNote" autocomplete="off" placeholder="קומה, קוד כניסה, שעות"></label>
+          <p class="mute" style="margin:8px 0 0">הפרטים נלקחים מכרטיס הלקוח ואפשר לתקן. לספק נשלחים רק השם, הטלפון והכתובת.</p>
+        </div>
+      </fieldset>
       <label for="cNote" class="mute">הערה לספק (לא חובה)</label>
       <textarea id="cNote" maxlength="500" placeholder="למשל: אספקה למחסן, דחוף, לפי הזמנת לקוח"></textarea>
       <p><b>סה"כ עלות: <span id="cTotal"></span> לפני מע"מ</b> <span class="mute">(<span id="cTotalVat"></span> כולל מע"מ) · תנאי תשלום מול הספק: שוטף+120</span></p>
       <div id="cStep1" class="row"><button class="btn brass" id="cGo">שליחת ההזמנה ל<span class="cTo"></span></button><button class="btn small red" id="cClear">ניקוי ההזמנה</button></div>
       <div id="cStep2" class="card hidden" role="alertdialog" aria-labelledby="cAsk">
-        <p id="cAsk" style="margin-top:0"><b>לשלוח עכשיו?</b> מייל ל<span class="cTo"></span> (<span id="cMail" class="ltr"></span>), עם העתק לאילת ולשיר<span id="cCc"></span>: <span id="cSum"></span>. התשובה שלה תסומן כאן אוטומטית.</p>
+        <p id="cAsk" style="margin-top:0"><b>לשלוח עכשיו?</b> <span id="cHow"></span>: <span id="cSum"></span>. <span id="cFor"></span> התשובה תסומן כאן אוטומטית.</p>
         <div class="row"><button class="btn brass" id="cYes">כן, לשלוח</button><button class="btn small" id="cNo">חזרה</button></div>
       </div>
       <p id="cMsg" role="status" aria-live="polite"></p>
     </div>
-    <p class="mute" id="cHint">כדי להזמין: מחפשים בלשונית "חיפוש מחיר" פריט של ספק שיש לו מייל להזמנות (כרגע דיאור) ולוחצים "+ להזמנה".</p>
+    <p class="mute" id="cHint">כדי להזמין: מחפשים בלשונית "חיפוש מחיר" פריט של ספק שמזמינים ממנו דרך המערכת (דיאור במייל, סניטק בוואטסאפ לדודי) ולוחצים "+ להזמנה".</p>
+    <div id="waTpl" class="card hidden" role="status"></div>
     <h2>הזמנות שנשלחו</h2>
     <p class="mute"><span class="st yellow">ממתין</span> נשלח וממתין לאישור · <span class="st green">אושר</span> הספק אישר · <span class="st orange">לבדוק</span> הספק שאל משהו או שחסר פריט</p>
     <div id="ordList"></div>
+    <div id="leadBox" class="card hidden"></div>
   </section>
 
   <section id="v-suppliers" class="hidden">
@@ -361,10 +385,13 @@ $('nsAdd').addEventListener('click', function () {
 /* ---------- supplier orders (crm-po) ---------- */
 var PO_FN = SB_URL + '/functions/v1/crm-po';
 var CART_KEY = 'ziso-po-cart';
-var cart = { sup: null, items: {}, note: '' };
-try { var c0 = JSON.parse(localStorage.getItem(CART_KEY) || 'null'); if (c0 && c0.items) cart = c0; } catch (e) { }
+var cart = { sup: null, items: {}, note: '', cu: {}, dv: { to: 'business' } };
+function emptyCart() { return { sup: null, items: {}, note: '', cu: {}, dv: { to: 'business' } }; }
+try { var c0 = JSON.parse(localStorage.getItem(CART_KEY) || 'null'); if (c0 && c0.items) { cart = c0; cart.cu = cart.cu || {}; cart.dv = cart.dv || { to: 'business' }; } } catch (e) { }
 function saveCart() { try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch (e) { } }
-function canOrder(r) { var s = suppliers[r.supplier_id]; return !!(s && s.order_email && r.price != null && (!r.currency || r.currency === 'ILS')); }
+function canOrder(r) { var s = suppliers[r.supplier_id]; return !!(s && !s.order_paused && (s.order_email || s.order_wa_phone) && r.price != null && (!r.currency || r.currency === 'ILS')); }
+function isWa(s) { return !!(s && s.order_wa_phone); }
+function fmtPhone(p) { var d = String(p || '').replace(/\D/g, ''); if (d.indexOf('972') === 0) d = '0' + d.slice(3); return d.length === 10 ? d.slice(0, 3) + '-' + d.slice(3) : d; }
 function net(r) { return r.vat_included ? r.price / 1.18 : Number(r.price); }
 function cartList() { return Object.keys(cart.items).map(function (k) { return cart.items[k]; }); }
 function cartTotal() { return Math.round(cartList().reduce(function (s, it) { return s + net(it.r) * (Number(it.qty) || 0); }, 0) * 100) / 100; }
@@ -402,7 +429,77 @@ function drawCart() {
       '<button type="button" class="btn small red" data-del="' + r.id + '" aria-label="להוריד ' + esc(r.supplier_code) + '">הסרה</button></div></div>';
   }).join('');
   $('cNote').value = cart.note || '';
+  drawFor();
   drawTotal();
+}
+/* the customer of the order + where the goods go */
+function digits(v) { return String(v || '').replace(/\D/g, ''); }
+function drawFor() {
+  var cu = cart.cu, dv = cart.dv;
+  $('cuStock').checked = !!cu.stock; $('cuQ').disabled = !!cu.stock;
+  if (document.activeElement !== $('cuQ')) $('cuQ').value = cu.stock ? '' : (cu.name || '');
+  $('cuSel').textContent = cu.stock ? '' : cu.tail9 ? 'נבחר מכרטיס לקוח: ' + cu.name + ' · ' + fmtPhone(cu.phone || cu.tail9) : cu.name ? 'שם שהוקלד (לא מכרטיס לקוח)' : '';
+  document.querySelectorAll('input[name=dv]').forEach(function (r) { r.checked = r.value === (dv.to || 'business'); });
+  $('dvBox').classList.toggle('hidden', dv.to !== 'customer');
+  [['dvName', 'name'], ['dvPhone', 'phone'], ['dvAddr', 'address'], ['dvNote', 'note']].forEach(function (f) { if (document.activeElement !== $(f[0])) $(f[0]).value = dv[f[1]] || ''; });
+}
+function fillDelivery() { /* take what the customer card knows; staff can fix it */
+  var cu = cart.cu, dv = cart.dv;
+  if (dv.to !== 'customer' || cu.stock) return;
+  if (!dv.name) dv.name = cu.name || ''; if (!dv.phone) dv.phone = cu.phone ? fmtPhone(cu.phone) : cu.tail9 ? '0' + cu.tail9 : ''; if (!dv.address) dv.address = cu.address || '';
+  saveCart(); drawFor();
+}
+var cuTimer = null;
+$('cuQ').addEventListener('input', function () {
+  var q = $('cuQ').value.trim();
+  cart.cu = { name: q }; saveCart(); closeAsk(); $('cuSel').textContent = q ? 'שם שהוקלד (לא מכרטיס לקוח)' : '';
+  clearTimeout(cuTimer);
+  if (q.length < 2) { $('cuList').classList.add('hidden'); return; }
+  cuTimer = setTimeout(function () {
+    sb.rpc('crm_search', { p_q: q, p_limit: 8 }).then(function (r) {
+      var seen = {}, rows = (r.data || []).filter(function (x) { if (!x.tail9 || seen[x.tail9]) return false; seen[x.tail9] = 1; return true; }).slice(0, 6);
+      if ($('cuQ').value.trim() !== q) return;
+      $('cuList').innerHTML = rows.map(function (x) { return '<li><button type="button" data-t9="' + esc(x.tail9) + '" data-name="' + esc(x.name || '') + '" data-phone="' + esc(x.phone || '') + '" data-city="' + esc(x.city || '') + '"><b>' + esc(x.name || fmtPhone(x.phone || x.tail9)) + '</b> <span class="mute ltr">' + esc(fmtPhone(x.phone || '0' + x.tail9)) + '</span>' + (x.city ? ' <span class="mute">· ' + esc(x.city) + '</span>' : '') + '</button></li>'; }).join('');
+      $('cuList').classList.toggle('hidden', !rows.length);
+    });
+  }, 250);
+});
+$('cuList').addEventListener('click', function (e) {
+  var b = e.target.closest('button[data-t9]'); if (!b) return;
+  var t9 = b.dataset.t9;
+  cart.cu = { name: b.dataset.name || fmtPhone(b.dataset.phone || '0' + t9), tail9: t9, phone: b.dataset.phone || '0' + t9, address: b.dataset.city || '' };
+  cart.dv.name = ''; cart.dv.phone = ''; cart.dv.address = '';
+  $('cuList').classList.add('hidden'); saveCart(); closeAsk(); drawFor(); fillDelivery();
+  /* the full address lives on the Priority customer; the card itself keeps only the city */
+  sb.from('priority_customers').select('name,phone,address,city').eq('tail9', t9).limit(1).then(function (r) {
+    var pc = (r.data || [])[0]; if (!pc || cart.cu.tail9 !== t9) return;
+    var addr = [pc.address, pc.city].filter(Boolean).join(', ');
+    if (addr) { cart.cu.address = addr; if (cart.dv.to === 'customer' && (!cart.dv.address || cart.dv.address === (b.dataset.city || ''))) cart.dv.address = addr; }
+    if (!cart.cu.name && pc.name) cart.cu.name = pc.name;
+    saveCart(); drawFor();
+  });
+});
+$('cuStock').addEventListener('change', function () {
+  cart.cu = $('cuStock').checked ? { stock: true } : {};
+  if (cart.cu.stock && cart.dv.to === 'customer') cart.dv = { to: 'business' };
+  $('cuList').classList.add('hidden'); saveCart(); closeAsk(); drawFor();
+});
+document.querySelectorAll('input[name=dv]').forEach(function (r) { r.addEventListener('change', function () {
+  if (!r.checked) return;
+  cart.dv.to = r.value; saveCart(); closeAsk(); drawFor(); fillDelivery();
+}); });
+[['dvName', 'name'], ['dvPhone', 'phone'], ['dvAddr', 'address'], ['dvNote', 'note']].forEach(function (f) {
+  $(f[0]).addEventListener('input', function () { cart.dv[f[1]] = $(f[0]).value; saveCart(); closeAsk(); });
+});
+function forProblem() {
+  var cu = cart.cu, dv = cart.dv;
+  if (!cu.stock && !(cu.name || '').trim()) return 'צריך לבחור את הלקוח של ההזמנה, או לסמן "למלאי".';
+  if (dv.to === 'customer') {
+    if (!(dv.name || '').trim()) return 'חסר שם למסירה.';
+    if (digits(dv.phone).length < 9) return 'חסר טלפון למסירה.';
+    if ((dv.address || '').trim().length < 5) return 'חסרה כתובת מלאה למסירה.';
+  }
+  return '';
 }
 function drawTotal() {
   var t = cartTotal(); $('cTotal').textContent = money(t); $('cTotalVat').textContent = money(t * 1.18);
@@ -420,12 +517,19 @@ $('cRows').addEventListener('click', function (e) {
   delete cart.items[b.dataset.del]; if (!cartList().length) cart.sup = null; saveCart(); closeAsk(); drawCart();
 });
 $('cNote').addEventListener('input', function () { cart.note = $('cNote').value; saveCart(); });
-$('cClear').addEventListener('click', function () { cart = { sup: null, items: {}, note: '' }; saveCart(); closeAsk(); drawCart(); });
-function closeAsk() { $('cStep2').classList.add('hidden'); $('cStep1').classList.remove('hidden'); }
+$('cClear').addEventListener('click', function () { cart = emptyCart(); saveCart(); closeAsk(); drawCart(); });
+function closeAsk() { $('cStep2').classList.add('hidden'); $('cStep1').classList.remove('hidden'); drawTotal(); }
 $('cGo').addEventListener('click', function () {
   var list = cartList(), s = suppliers[cart.sup] || {};
-  $('cMail').textContent = s.order_email || '';
-  $('cCc').textContent = (s.order_cc || []).length ? ' וגם ל-' + s.order_cc.join(', ') : '';
+  var prob = forProblem();
+  if (prob) { $('cMsg').textContent = prob; $('cMsg').className = 'err'; return; }
+  $('cMsg').textContent = '';
+  var dv = cart.dv;
+  $('cFor').textContent = (cart.cu.stock ? 'ההזמנה למלאי.' : 'ההזמנה עבור ' + cart.cu.name.trim() + '.') + ' ' +
+    (dv.to === 'customer' ? 'אספקה ישירות ללקוח: ' + dv.name.trim() + ', ' + dv.address.trim() + ', ' + fmtPhone(dv.phone) + (dv.note ? ' (' + dv.note.trim() + ')' : '') + '.' : 'אספקה לבית העסק.');
+  var mailTxt = 'מייל ל' + contact() + ' (' + (s.order_email || '') + '), עם העתק לאילת ולשיר' + ((s.order_cc || []).length ? ' וגם ל-' + s.order_cc.join(', ') : '');
+  var waTxt = 'וואטסאפ ל' + contact() + ' (' + fmtPhone(s.order_wa_phone) + ') מהמספר העסקי של זיסו, עם כל הפריטים והמחירים';
+  $('cHow').textContent = isWa(s) && s.order_email ? waTxt + ', וגם ' + mailTxt : isWa(s) ? waTxt : mailTxt;
   $('cSum').textContent = list.length + ' שורות, ' + list.reduce(function (n, it) { return n + (Number(it.qty) || 0); }, 0).toLocaleString('he-IL') + ' יחידות, ' + money(cartTotal()) + ' לפני מע"מ';
   $('cStep1').classList.add('hidden'); $('cStep2').classList.remove('hidden'); $('cYes').focus();
 });
@@ -433,20 +537,27 @@ $('cNo').addEventListener('click', closeAsk);
 $('cYes').addEventListener('click', function () {
   var b = $('cYes'); b.disabled = true; b.textContent = 'שולח...';
   fetch(PO_FN, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + session.access_token },
-    body: JSON.stringify({ action: 'create', supplier_id: cart.sup, note: cart.note || '', lines: cartList().map(function (it) { return { price_id: it.r.id, qty: Number(it.qty) }; }) }) })
+    body: JSON.stringify({ action: 'create', supplier_id: cart.sup, note: cart.note || '',
+      customer: cart.cu.stock ? { stock: true } : { name: cart.cu.name.trim(), tail9: cart.cu.tail9 || null },
+      deliver: cart.dv.to === 'customer' ? { to: 'customer', name: cart.dv.name, phone: cart.dv.phone, address: cart.dv.address, note: cart.dv.note || '', tail9: cart.cu.tail9 || null } : { to: 'business' },
+      lines: cartList().map(function (it) { return { price_id: it.r.id, qty: Number(it.qty) }; }) }) })
     .then(function (r) { return r.json().catch(function () { return { ok: false, error: 'תקלה בשרת' }; }); })
     .then(function (j) {
       b.disabled = false; b.textContent = 'כן, לשלוח';
-      if (!j.ok) { $('cMsg').textContent = 'לא נשלח: ' + (j.error || 'שגיאה'); $('cMsg').className = 'err'; return; }
-      cart = { sup: null, items: {}, note: '' }; saveCart(); closeAsk(); drawCart(); drawSearch();
-      $('cHint').textContent = 'הזמנה ' + j.po.po_no + ' נקלטה. המייל יוצא בדקות הקרובות.'; $('cHint').className = 'ok';
+      if (!j.ok) { $('cMsg').textContent = 'לא נשלח: ' + (j.error || 'שגיאה'); $('cMsg').className = 'err'; if (j.po) loadOrders(); return; }
+      var ch = j.po.channel, who = contact();
+      cart = emptyCart(); saveCart(); closeAsk(); drawCart(); drawSearch();
+      $('cHint').textContent = 'הזמנה ' + j.po.po_no + (ch === 'whatsapp' ? ' נשלחה ל' + who + ' בוואטסאפ.'
+        : ch === 'both' ? (j.warn ? ': הוואטסאפ ל' + who + ' לא יצא (' + j.warn + '), המייל יוצא בדקות הקרובות.' : ' נשלחה ל' + who + ' בוואטסאפ, והמייל יוצא בדקות הקרובות.')
+        : ' נקלטה. המייל יוצא בדקות הקרובות.');
+      $('cHint').className = j.warn ? 'err' : 'ok';
       loadOrders();
     }, function () { b.disabled = false; b.textContent = 'כן, לשלוח'; $('cMsg').textContent = 'אין חיבור. נסו שוב.'; $('cMsg').className = 'err'; });
 });
 
 var ST = { queued: ['grey', 'יוצא בדקות הקרובות'], sending: ['grey', 'נשלח עכשיו'], sent: ['yellow', 'ממתין לאישור'], confirmed: ['green', 'אושר'],
   attention: ['orange', 'לבדוק'], failed: ['red', 'השליחה נכשלה'], cancelled: ['grey', 'בוטל'] };
-var ordTimer = null;
+var ordTimer = null, askCancel = null;
 function fmtTime(d) { return d ? new Date(d).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''; }
 function loadOrders() {
   clearTimeout(ordTimer);
@@ -454,32 +565,90 @@ function loadOrders() {
     var list = r.data || [];
     var open = list.filter(function (o) { return o.status === 'sent' || o.status === 'attention' || o.status === 'queued' || o.status === 'sending'; }).length;
     $('ordN').textContent = open ? '(' + open + ')' : '';
-    if (!$('v-orders').classList.contains('hidden')) ordTimer = setTimeout(loadOrders, 30000);
+    if (!$('v-orders').classList.contains('hidden')) { ordTimer = setTimeout(loadOrders, 30000); loadLead(); }
     if ($('ordList').contains(document.activeElement)) return;
     $('ordList').innerHTML = list.length ? list.map(function (o) {
       var st = ST[o.status] || ['grey', o.status], lines = o.lines || [];
+      if (o.channel === 'both' && o.status === 'failed' && (o.email_state === 'queued' || o.email_state === 'sending')) st = ['grey', 'המייל יוצא בדקות הקרובות']; // WhatsApp failed, the email still goes
       var rep = (o.replies || []).filter(function (x) { return !x.ignored; }).slice(-1)[0];
-      var acts = '';
-      if (o.status === 'queued') acts = '<button class="btn small red" data-po="cancel" data-id="' + o.id + '">ביטול לפני שליחה</button>';
-      else if (o.status !== 'cancelled' && o.status !== 'sending') acts = (o.status !== 'confirmed' ? '<button class="btn small" data-po="confirmed" data-id="' + o.id + '">סמן אושר</button> ' : '') +
-        (o.status !== 'attention' ? '<button class="btn small" data-po="attention" data-id="' + o.id + '">סמן לבדוק</button>' : '');
-      return '<div class="card po ' + st[0] + '"><div class="row"><b class="grow">' + esc(o.po_no) + ' · ' + esc(o.supplier_name) + '</b><span class="st ' + st[0] + '">' + st[1] + '</span></div>' +
-        '<div class="mute">' + lines.length + ' שורות · ' + money(o.total_cost) + ' לפני מע"מ · נוצרה ' + fmtTime(o.created_at) + (o.by_name ? ' ע"י ' + esc(o.by_name) : '') + (o.sent_at ? ' · נשלחה ' + fmtTime(o.sent_at) : '') + '</div>' +
+      var acts = '', live = o.status !== 'cancelled' && o.status !== 'sending' && o.status !== 'queued';
+      if (live) acts = (o.status !== 'confirmed' ? '<button class="btn small" data-po="confirmed" data-id="' + o.id + '">סמן אושר</button> ' : '') +
+        (o.status !== 'attention' ? '<button class="btn small" data-po="attention" data-id="' + o.id + '">סמן לבדוק</button> ' : '') +
+        '<a class="btn small" href="receive.html?po=' + o.id + '" style="display:inline-flex;align-items:center;text-decoration:none">' + (o.received_at ? 'לצלם עוד מסמך' : 'הגיעה סחורה? לצלם') + '</a> ';
+      if ((live || o.status === 'queued') && !o.received_at) acts += '<button class="btn small red" data-po="askcancel" data-id="' + o.id + '">ביטול הזמנה</button>';
+      var RC = { full: ['green', 'הגיעה'], partial: ['yellow', 'הגיע חלק'], gap: ['orange', 'הגיעה עם הבדלים'] }[o.receive_state];
+      var leadD = o.received_at && o.sent_at ? Math.round((new Date(o.received_at) - new Date(o.sent_at)) / 864e5 * 10) / 10 : null;
+      var dvr = o.deliver || {};
+      var forLine = (o.customer_name ? 'עבור ' + esc(o.customer_name) : o.deliver_to ? 'למלאי' : '') + (o.deliver_to === 'customer' ? ' · אספקה ישירות ללקוח: ' + esc(dvr.address || '') : o.customer_name ? ' · אספקה לבית העסק' : '');
+      var cancelLine = o.status !== 'cancelled' || !o.cancelled_at ? '' : 'בוטלה ' + fmtTime(o.cancelled_at) +
+        (o.cancel_email_state ? ' · מייל ביטול: ' + ({ queued: 'יוצא בדקות הקרובות', sending: 'נשלח עכשיו', sent: 'נשלח', failed: 'לא יצא', unknown: 'לא ברור אם יצא' }[o.cancel_email_state] || '') : '') +
+        (o.cancel_wa_state ? ' · וואטסאפ ביטול: ' + (o.cancel_wa_state === 'sent' ? 'נשלח' : 'לא יצא') : '') + (!o.cancel_email_state && !o.cancel_wa_state ? ' · הספק לא קיבל את ההזמנה, אז לא נשלחה הודעה' : '');
+      var askHtml = askCancel !== o.id ? '' : '<div class="ask" role="alertdialog" aria-label="ביטול הזמנה"><p style="margin:0 0 8px"><b>לבטל את ' + esc(o.po_no) + '?</b> ' +
+        (o.status === 'queued' ? 'ההזמנה עוד לא נשלחה, הספק לא יקבל כלום.' : 'לספק תישלח הודעת ביטול' + (o.channel === 'both' ? ' במייל ובוואטסאפ' : o.channel === 'whatsapp' ? ' בוואטסאפ' : ' במייל, עם אותם מכותבים') + '.' +
+          (o.status === 'confirmed' ? ' הספק כבר אישר את ההזמנה, אז כדאי גם להתקשר ולוודא שהסחורה לא יצאה.' : '')) +
+        '</p><div class="row"><button class="btn small red" data-po="cancel" data-id="' + o.id + '">כן, לבטל</button><button class="btn small" data-po="nocancel" data-id="' + o.id + '">לא, להשאיר</button></div></div>';
+      return '<div class="card po ' + st[0] + '"><div class="row"><b class="grow">' + esc(o.po_no) + ' · ' + esc(o.supplier_name) + '</b><span class="st ' + st[0] + '">' + st[1] + '</span>' + (RC ? '<span class="st ' + RC[0] + '">' + RC[1] + '</span>' : '') + '</div>' +
+        (forLine ? '<div>' + forLine + '</div>' : '') +
+        '<div class="mute">' + lines.length + ' שורות · ' + money(o.total_cost) + ' לפני מע"מ · נוצרה ' + fmtTime(o.created_at) + (o.by_name ? ' ע"י ' + esc(o.by_name) : '') + (o.sent_at ? ' · נשלחה ' + fmtTime(o.sent_at) + (o.channel === 'whatsapp' ? ' בוואטסאפ' : o.channel === 'both' ? ' בוואטסאפ' + (o.email_state === 'sent' ? ' ובמייל' : o.email_state === 'failed' || o.email_state === 'unknown' ? ' (המייל לא יצא)' : ', המייל בדרך') : '') : '') + '</div>' +
+        (o.received_at ? '<div class="mute">סחורה התקבלה ' + fmtTime(o.received_at) + (leadD != null ? ' · ' + leadD + ' ימים מההזמנה' : '') + (o.receive_summary ? ' · ' + esc(o.receive_summary) : '') + '</div>' : '') +
+        (cancelLine ? '<div class="mute">' + cancelLine + '</div>' : '') + (o.cancel_error ? '<p class="err" style="margin:6px 0">' + esc(o.cancel_error) + '. כדאי להתקשר לספק.</p>' : '') +
         (o.summary ? '<p style="margin:6px 0"><b>' + esc(o.summary) + '</b></p>' : '') + (o.error ? '<p class="err" style="margin:6px 0">' + esc(o.error) + '</p>' : '') +
         (rep && rep.text ? '<div class="quote">' + esc(rep.text.slice(0, 600)) + '</div>' : '') +
         '<details><summary class="mute">הפריטים</summary><div class="tablewrap"><table><tbody>' + lines.map(function (l) {
           return '<tr><td class="ltr">' + esc(l.sku) + '</td><td>' + esc(l.desc) + (l.size ? ' ' + esc(l.size) : '') + '</td><td>' + esc(l.qty) + ' ' + esc(l.unit || '') + '</td><td class="price">' + money(l.total) + '</td></tr>';
         }).join('') + '</tbody></table></div>' + (o.note ? '<p class="mute">הערה: ' + esc(o.note) + '</p>' : '') + '</details>' +
-        (acts ? '<div class="row" style="margin-top:8px">' + acts + '</div>' : '') + '</div>';
+        (acts ? '<div class="row" style="margin-top:8px">' + acts + '</div>' : '') + askHtml + '</div>';
     }).join('') : '<p class="mute">עוד לא נשלחו הזמנות.</p>';
   });
 }
 $('ordList').addEventListener('click', function (e) {
   var b = e.target.closest('[data-po]'); if (!b) return;
+  if (b.dataset.po === 'askcancel' || b.dataset.po === 'nocancel') { askCancel = b.dataset.po === 'askcancel' ? Number(b.dataset.id) : null; b.blur(); loadOrders(); return; }
+  if (b.dataset.po === 'cancel') askCancel = null;
   var a = b.dataset.po, body = a === 'cancel' ? { action: 'cancel', id: Number(b.dataset.id) } : { action: 'mark', id: Number(b.dataset.id), status: a };
   b.disabled = true;
   fetch(PO_FN, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + session.access_token }, body: JSON.stringify(body) })
-    .then(function (r) { return r.json(); }).then(function (j) { if (!j.ok) { b.disabled = false; b.textContent = j.error || 'לא הצליח'; return; } b.blur(); loadOrders(); }, function () { b.disabled = false; });
+    .then(function (r) { return r.json(); }).then(function (j) { if (!j.ok) { b.disabled = false; b.textContent = j.error || 'לא הצליח'; return; } b.blur(); loadOrders(); if (a === 'cancel') { tplChecked = false; checkTpl(); } }, function () { b.disabled = false; });
+});
+/* real lead time per supplier: from the order going out to the goods being photographed */
+function loadLead() {
+  sb.from('crm_po_lead_times').select('*').order('supplier_name').then(function (r) {
+    var rows = r.data || [];
+    $('leadBox').classList.toggle('hidden', !rows.length);
+    $('leadBox').innerHTML = '<h2 style="margin-top:0">זמני אספקה בפועל</h2><p class="mute" style="margin-top:0">מרגע שההזמנה יצאה ועד שצולמה תעודת המשלוח או החשבונית.</p>' + rows.map(function (x) {
+      return '<div class="cl"><b>' + esc(x.supplier_name) + '</b>: ' + esc(x.avg_days) + ' ימים בממוצע <span class="mute">(' + esc(x.orders) + ' הזמנות' + (x.orders > 1 ? ', בין ' + esc(x.min_days) + ' ל-' + esc(x.max_days) + ' ימים' : '') + ')</span></div>';
+    }).join('');
+  });
+}
+
+/* WhatsApp template (owner only): the first message to a supplier, or one after 24h of silence, needs a template Meta approved */
+var TPL_ST = { APPROVED: 'מאושרת', PENDING: 'ממתינה לאישור של מטא (בדרך כלל דקות עד כמה שעות)', REJECTED: 'נדחתה', PAUSED: 'מושהית', DISABLED: 'מושבתת' };
+var tplChecked = false;
+function tplCall(submit, which) {
+  return fetch(PO_FN, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + session.access_token }, body: JSON.stringify({ action: 'wa_template', submit: !!submit, which: which || 'order' }) })
+    .then(function (r) { return r.json().catch(function () { return { ok: false, error: 'תקלה בשרת' }; }); });
+}
+function drawTpl(j) {
+  var box = $('waTpl');
+  var all = j.templates || { order: { exists: j.exists, status: j.status, reason: j.reason } };
+  if (!j.ok && !j.templates) { box.innerHTML = '<b>תבניות וואטסאפ לספקים:</b> ' + esc(j.error || 'לא הצלחתי לבדוק') + ' <button class="btn small tplGo" data-which="order">לנסות שוב</button>'; box.classList.remove('hidden'); return; }
+  var NAMES = { order: ['תבנית הזמנה לספק', 'ההודעה הראשונה לספק בוואטסאפ (וכל הודעה אחרי 24 שעות שהוא לא כתב) חייבת תבנית שמטא אישרה.'], cancel: ['תבנית הודעת ביטול', 'כדי שביטול הזמנה יגיע לספק גם בוואטסאפ, צריך תבנית נוספת שמטא אישרה.'] };
+  var html = ['order', 'cancel'].map(function (k) {
+    var t = all[k]; if (!t || t.status === 'APPROVED') return '';
+    if (t.exists) return '<p style="margin:6px 0"><b>' + NAMES[k][0] + ':</b> ' + esc(TPL_ST[t.status] || t.status || 'נשלחה לאישור') + (t.reason && t.reason !== 'NONE' ? ' (' + esc(t.reason) + ')' : '') + (k === 'order' ? '. עד שהיא מאושרת, הזמנה בוואטסאפ יוצאת רק אם הספק כתב לנו ב-24 השעות האחרונות.' : '. עד אז ביטול יוצא במייל, ובוואטסאפ רק אם הספק כתב לנו ב-24 השעות האחרונות.') + '</p>';
+    return '<p style="margin:6px 0"><b>צריך לחיצה אחת שלך, ' + NAMES[k][0] + ':</b> ' + NAMES[k][1] + ' ההגשה בלי עלות, וכל הודעה בתבנית עולה כמה אגורות למטא.' + (t.error ? ' <span class="err">' + esc(t.error) + '</span>' : '') + ' <button class="btn brass small tplGo" data-which="' + k + '">הגשה לאישור מטא</button></p>';
+  }).join('');
+  box.innerHTML = html; box.classList.toggle('hidden', !html);
+}
+function checkTpl() {
+  if (tplChecked || !session || (session.user || {}).email !== 'avivziso70@gmail.com') return;
+  if (!Object.keys(suppliers).some(function (k) { return isWa(suppliers[k]); })) return;
+  tplChecked = true; tplCall(false).then(drawTpl, function () { tplChecked = false; });
+}
+$('waTpl').addEventListener('click', function (e) {
+  var b = e.target.closest('.tplGo'); if (!b) return;
+  b.disabled = true; b.textContent = 'שולח למטא...';
+  tplCall(true, b.dataset.which).then(drawTpl, function () { b.disabled = false; b.textContent = 'אין חיבור. לנסות שוב'; });
 });
 
 /* ---------- start ---------- */
@@ -487,7 +656,7 @@ sb.auth.getSession().then(function (r) {
   session = r.data.session;
   if (!session) { $('needLogin').classList.remove('hidden'); $('v-search').classList.add('hidden'); return; }
   sb.auth.onAuthStateChange(function (_e, s) { if (s) session = s; });
-  loadSupMap().then(function () { loadPending(); fillSupList(); drawBar(); loadOrders(); });
+  loadSupMap().then(function () { loadPending(); fillSupList(); drawBar(); loadOrders(); checkTpl(); });
   show('search');
   sb.from('priority_suppliers').select('sup,name').eq('active', true).order('name').then(function (p) {
     $('prioSup').innerHTML = (p.data || []).map(function (x) { return '<option value="' + esc(x.name) + '" data-sup="' + esc(x.sup) + '"></option>'; }).join('');
