@@ -8,6 +8,8 @@
 
 alter table public.sp_suppliers add column if not exists order_email text;
 alter table public.sp_suppliers add column if not exists order_contact text;
+alter table public.sp_suppliers add column if not exists order_cc text[] not null default '{}'; -- supplier-side cc (Dior: sales agent)
+update public.sp_suppliers set order_cc = array['ilanbeni10@gmail.com'] where id = 'ab86c0a9-c86c-4563-92ca-1a2ec7ed3808';
 update public.sp_suppliers set order_email = 'irena@di-or.co.il', order_contact = 'אירנה'
   where id = 'ab86c0a9-c86c-4563-92ca-1a2ec7ed3808' and order_email is null;
 

@@ -84,7 +84,7 @@ textarea{width:100%;min-height:64px}
       <p><b>סה"כ עלות: <span id="cTotal"></span> לפני מע"מ</b> <span class="mute">(<span id="cTotalVat"></span> כולל מע"מ) · תנאי תשלום מול הספק: שוטף+120</span></p>
       <div id="cStep1" class="row"><button class="btn brass" id="cGo">שליחת ההזמנה ל<span class="cTo"></span></button><button class="btn small red" id="cClear">ניקוי ההזמנה</button></div>
       <div id="cStep2" class="card hidden" role="alertdialog" aria-labelledby="cAsk">
-        <p id="cAsk" style="margin-top:0"><b>לשלוח עכשיו?</b> מייל ל<span class="cTo"></span> (<span id="cMail" class="ltr"></span>), עם העתק לאילת ולשיר: <span id="cSum"></span>. התשובה שלה תסומן כאן אוטומטית.</p>
+        <p id="cAsk" style="margin-top:0"><b>לשלוח עכשיו?</b> מייל ל<span class="cTo"></span> (<span id="cMail" class="ltr"></span>), עם העתק לאילת ולשיר<span id="cCc"></span>: <span id="cSum"></span>. התשובה שלה תסומן כאן אוטומטית.</p>
         <div class="row"><button class="btn brass" id="cYes">כן, לשלוח</button><button class="btn small" id="cNo">חזרה</button></div>
       </div>
       <p id="cMsg" role="status" aria-live="polite"></p>
@@ -372,6 +372,7 @@ function closeAsk() { $('cStep2').classList.add('hidden'); $('cStep1').classList
 $('cGo').addEventListener('click', function () {
   var list = cartList(), s = suppliers[cart.sup] || {};
   $('cMail').textContent = s.order_email || '';
+  $('cCc').textContent = (s.order_cc || []).length ? ' וגם ל-' + s.order_cc.join(', ') : '';
   $('cSum').textContent = list.length + ' שורות, ' + list.reduce(function (n, it) { return n + (Number(it.qty) || 0); }, 0).toLocaleString('he-IL') + ' יחידות, ' + money(cartTotal()) + ' לפני מע"מ';
   $('cStep1').classList.add('hidden'); $('cStep2').classList.remove('hidden'); $('cYes').focus();
 });
