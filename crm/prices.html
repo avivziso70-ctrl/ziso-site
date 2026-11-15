@@ -35,6 +35,27 @@ th{color:var(--mute);font-weight:600}
 .supf{display:flex;gap:8px;align-items:center;margin-top:8px}.supf input{flex:1;font-size:16px}
 .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--brass-soft);font-size:13px}
 .hidden{display:none!important}
+@media (pointer:coarse),(max-width:700px){.btn.small{min-height:44px;padding:0 16px}nav.seg button{min-height:48px}details>summary{padding-block:10px;cursor:pointer}}
+a.btn{display:inline-flex;align-items:center;text-decoration:none}
+/* price results on a phone: one card per item instead of a nine-column table */
+@media (max-width:600px){
+  #sTable thead{display:none}
+  #sTable,#sTable tbody{display:block}
+  #sTable tr{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;padding:12px 0;border-bottom:1px solid var(--line)}
+  #sTable td{border:0;padding:0}
+  #sTable td.pic{width:56px;padding:0;align-self:flex-start}
+  #sTable td:nth-child(2){flex:1 1 calc(100% - 72px);font-weight:600;font-size:16px}
+  #sTable.nopic td:nth-child(2){flex-basis:100%}
+  #sTable td:nth-child(3),#sTable td:nth-child(4),#sTable td:nth-child(5),#sTable td:nth-child(8){font-size:14px;color:var(--mute)}
+  #sTable td:nth-child(4):empty{display:none}
+  #sTable td:nth-child(6),#sTable td:nth-child(7){flex:1 1 40%}
+  #sTable td:nth-child(6)::before{content:"עלות: ";font-weight:400;color:var(--mute)}
+  #sTable td:nth-child(7)::before{content:"ללקוח: ";font-weight:400;color:var(--mute)}
+  #sTable td:nth-child(9):empty{display:none}
+  #sTable td:nth-child(9){flex-basis:100%}
+  #sTable td:nth-child(9) .btn{width:100%;min-height:44px}
+}
+@media (max-width:520px){nav.seg{display:grid;grid-template-columns:1fr 1fr;overflow:visible}nav.seg button{white-space:normal;line-height:1.2;padding:4px 10px}}
 .tablewrap{overflow-x:auto}
 .st{display:inline-block;padding:2px 10px;border-radius:999px;font-size:14px;font-weight:700}
 .st.yellow{background:#f3d36b;color:#2a2205}.st.green{background:#7fcf97;color:#0d2a17}.st.orange{background:#f0a35e;color:#2b1503}.st.red{background:var(--red);color:#fff}.st.grey{background:var(--line);color:var(--ink)}
