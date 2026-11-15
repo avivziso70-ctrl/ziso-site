@@ -31,37 +31,71 @@
   var OTHER = 'אביזרים ועוד';
   function classify(name, category) {
     for (var i = 0; i < TREE.length; i++) if (TREE[i][1].test(name)) return sub(TREE[i], name);
+    if (/אסל/.test(category || '')) return sub(TREE[1], name);
     if (/כיור/.test(category || '') || SINK_SERIES.test(name)) return [TREE[6][0], 'כיורים מונחים'];
     return [OTHER, ''];
   }
   function sub(node, name) { for (var j = 0; j < node[2].length; j++) if (node[2][j][1].test(name)) return [node[0], node[2][j][0]]; return [node[0], '']; }
   function tidy(name) {
-    return String(name || '').replace(/^כיורים מונחים לבחירה\s*-\s*/, '').replace(/אלומ(?:['׳’\-]\s*|\s+)(?=כסוף|שחור)/g, 'אלומיניום ').replace(/\s+/g, ' ').trim();
+    return String(name || '').replace(/^כיורים מונחים לבחירה\s*-\s*/, '').replace(/אלומ(?:['׳’\-]\s*|\s+)(?=כסוף|שחור)/g, 'אלומיניום ').replace(/ווטיל/g, 'ונטיל').replace(/מימווה/g, 'מימוזה')
+      .replace(/,?\s*גווני מט: ([^|]*)$/, function (t, list) { return ' - גוונים מט (' + list.trim() + ')'; }).replace(/\s+/g, ' ').trim();
   }
   function firstNum(s) { var m = /\d+(\.\d+)?/.exec(String(s || '')); return m ? Number(m[0]) : 1e9; }
   // Every catalogue row becomes a variant {item, attrs}; rows that are the same model in another colour, size, depth or top share one card.
   function buildModels(items) {
     var map = {}, list = [];
     items.forEach(function (it) {
-      var name = tidy(it.name), attrs = {}, title = name, m;
-      if ((m = /^(.+?) (\d{2}) תחתון \+ (.+)$/.exec(name))) { title = 'ארון אמבטיה ' + m[1]; attrs['עומק'] = m[2] + ' ס״מ'; attrs['כיור / משטח'] = m[3]; }
-      else if ((m = /^(.+?) תחתון \+ (.+)$/.exec(name))) { title = 'ארון אמבטיה ' + m[1]; attrs['כיור / משטח'] = m[2]; }
-      else if ((m = COLOR_RE.exec(name))) { attrs['צבע'] = m[1]; title = (name.slice(0, m.index) + name.slice(m.index + m[0].length)).replace(/\s+\|\s*$/, '').trim(); }
-      if (it.size) attrs[/^ארון אמבטיה/.test(title) || /מראה/.test(title) ? 'רוחב' : 'מידה'] = String(it.size).replace(/\s+/g, ' ').trim();
+      var name = tidy(it.name), attrs = {}, title = name, desc = '', m, size = it.size ? String(it.size).replace(/\s+/g, ' ').trim() : '';
       var cls = classify(name, it.category);
+      if ((m = /^(.+?) (\d{2}) תחתון \+ (.+)$/.exec(name))) { title = 'ארון אמבטיה ' + m[1]; attrs['עומק'] = m[2] + ' ס״מ'; attrs['כיור / משטח'] = m[3]; if (size) attrs['רוחב'] = size; }
+      else if ((m = /^(.+?) תחתון \+ (.+)$/.exec(name))) { title = 'ארון אמבטיה ' + m[1]; attrs['כיור / משטח'] = m[2]; if (size) attrs['רוחב'] = size; }
+      else if (cls[0] === 'מראות') {
+        // one mirror is listed again under every cabinet series and per height: one card, width and height as options
+        title = name.replace(/^[^,]*? - (?=מראה)/, '').replace(/\s*\(סדרת [^)]*\)/, '').replace(/ - [^,\-]+$/, '');
+        var hs = [], w = null, re = /,?\s*גובה(?: מראה)? (\d+)(?: ס"מ)?/g, x;
+        while ((x = re.exec(title))) hs.push(x[1]);
+        title = title.replace(re, '').replace(/[\s,]+$/, '');
+        if ((x = /גובה (\d+)/.exec(size))) hs.push(x[1]);
+        if ((x = /רוחב (\d+)/.exec(size)) || (x = /^(\d+)(?: ס"מ)?$/.exec(size))) w = x[1];
+        if (w) attrs['רוחב'] = w + ' ס״מ'; else if (size) attrs['מידה'] = size;
+        if (hs.length) attrs['גובה'] = hs[hs.length - 1] + ' ס״מ';
+      }
+      else if (/^ארון עמוד/.test(name) && (m = /^([^,]+), (.+)$/.exec(name))) { title = m[1]; desc = m[2]; if (size) attrs['מידה'] = size; }
+      else if (cls[0] === 'מקלחונים') {
+        // "model - description": the card shows the model, the description goes under it, the size becomes an option
+        var nm = name.replace(/ - מחיר למידה .*$/, ''), i = nm.indexOf(' - ');
+        if (i > 0) { var a = nm.slice(0, i), b = nm.slice(i + 3); if (/מקלחון|אמבטיון|דופן/.test(a)) { title = a; desc = b; } else { var c = b.indexOf(', '); title = a + ' - ' + (c > 0 ? b.slice(0, c) : b); desc = c > 0 ? b.slice(c + 2) : ''; } }
+        else if ((i = nm.indexOf(', ')) > 0) { title = nm.slice(0, i); desc = nm.slice(i + 2); }
+        else title = nm;
+        var num = /\s(\d{2,3}(?:\.\d)?(?:\/\d{2,3}(?:\.\d)?)?)(?: ס"מ)?(?=\s|\)|$)/.exec(title), base = /במידות (\d+)/.exec(desc);
+        if (num) { title = title.split(num[1]).join('').replace(/ ס"מ(?=\s|$)/, '').replace(/\s+\)/g, ')').replace(/\s+/g, ' ').trim(); attrs['מידה'] = num[1] + ' ס״מ'; }
+        else if (base) { attrs['מידה'] = 'בסיס ' + base[1] + (size ? ' (פתח ' + size + ')' : ''); desc = desc.replace(/,? ?מתאים לבסיס[^,]*במידות \d+/, '').replace(/^, /, ''); }
+        else if (size) attrs['מידה'] = size;
+        if (num && size && !/כל המידות/.test(size)) desc = (desc ? desc + ' · ' : '') + size;
+      }
+      else {
+        if (cls[0] === 'כיורים') {
+          name = name.replace(/, ניתן לתליה ע"ג קיר$/, function (t) { desc = 'ניתן לתליה על הקיר'; return ''; })
+            .replace(/^(\S+) - כיור רחצה מונח/, 'כיור $1').replace(/^כיור רחצה מונח (\S+)/, 'כיור $1').replace(/^(\S+) כיור רחצה מונח/, 'כיור $1')
+            .replace(/^\S+(?: \S+)? (\d{2,3}(?:\/\d{2,3})?) (.+?) - ((?:כיור|משטח) .+)$/, '$3 $1 - $2');
+        }
+        if ((m = COLOR_RE.exec(name))) { attrs['צבע'] = m[1]; title = (name.slice(0, m.index) + name.slice(m.index + m[0].length)).replace(/\s+\|\s*$/, '').trim(); if (/גוונים מט/.test(m[1]) && /\(([^)]*)\)/.test(m[0])) desc = 'גוונים: ' + /\(([^)]*)\)/.exec(m[0])[1]; } else title = name;
+        if (cls[0] === 'כיורים' && (m = /\s(\d{2,3}(?:\/\d{2,3})?)(?=\s|$)/.exec(title)) && !/שירותים/.test(title)) { title = title.replace(m[0], '').trim(); attrs['מידה'] = m[1] + ' ס״מ'; if (size) desc = (desc ? desc + ' · ' : '') + size; }
+        else if (size) attrs['מידה'] = size;
+      }
       if (cls[0] === 'כיורים' && !/כיור|משטח|קוריאן|ונטיל|ווטיל/.test(title)) title = 'כיור ' + title;
       var key = cls[0] + '|' + title.toLowerCase().replace(/["'״׳.,()\-|\/]/g, ' ').replace(/\s+/g, ' ').trim();
       var mod = map[key];
       if (!mod) { mod = map[key] = { key: key, title: title, group: cls[0], sub: cls[1], variants: [] }; list.push(mod); }
       var sig = JSON.stringify(attrs), dup = null;
       mod.variants.forEach(function (v) { if (v.sig === sig) dup = v; });
-      if (dup) { if ((!dup.item.img && it.img) || (!!dup.item.img === !!it.img && it.id > dup.item.id)) dup.item = it; } // the same product listed in two catalogues: keep one
-      else mod.variants.push({ item: it, attrs: attrs, sig: sig });
+      if (dup) {  if ((!dup.item.img && it.img) || (!!dup.item.img === !!it.img && it.id > dup.item.id)) dup.item = it; } // the same product listed in two catalogues: keep one
+      else mod.variants.push({ item: it, attrs: attrs, sig: sig, desc: desc });
     });
     list.forEach(function (mod) {
       var dims = {};
       mod.variants.forEach(function (v) { Object.keys(v.attrs).forEach(function (k) { (dims[k] = dims[k] || []).indexOf(v.attrs[k]) < 0 && dims[k].push(v.attrs[k]); }); });
-      mod.dims = ['צבע', 'עומק', 'כיור / משטח', 'רוחב', 'מידה'].filter(function (k) { return dims[k] && dims[k].length > 1; }).map(function (k) {
+      mod.dims = ['צבע', 'עומק', 'כיור / משטח', 'רוחב', 'גובה', 'מידה'].filter(function (k) { return dims[k] && dims[k].length > 1; }).map(function (k) {
         if (k !== 'צבע' && k !== 'כיור / משטח') dims[k].sort(function (a, b) { return firstNum(a) - firstNum(b); });
         return { name: k, values: dims[k] };
       });
@@ -213,7 +247,7 @@
     return '<li class="card" id="m' + m.n + '"><div class="ph">' + (it.img ? '<img loading="lazy" src="' + esc(it.img) + '" alt="' + esc(m.title) + '">' : '<span class="none" aria-hidden="true">זיסו</span>') +
       (m.variants.length > 1 ? '<span class="badge">' + (m.colors.length > 1 ? m.colors.length + ' צבעים' : m.variants.length + ' אפשרויות') + '</span>' : '') + '</div>' +
       '<div class="body"><span class="kicker">' + esc(m.sub || m.group) + '</span><h2>' + esc(m.title) + '</h2>' +
-      (facts.length ? '<span class="small">' + esc(facts.join(' · ')) + '</span>' : '') + controls +
+      (facts.length ? '<span class="small">' + esc(facts.join(' · ')) + '</span>' : '') + (v.desc ? '<p class="desc">' + esc(v.desc) + '</p>' : '') + controls +
       '<div class="price" aria-live="polite">' + money(it.price) + ' <small>כולל מע״מ</small></div>' +
       '<div class="add"><select aria-label="כמות" data-qty="' + m.n + '">' + opts + '</select>' +
       '<button class="btn brass" type="button" data-add="' + m.n + '">הוספה לסל</button></div></div></li>';
