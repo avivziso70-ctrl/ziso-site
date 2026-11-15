@@ -466,6 +466,7 @@ function loadOrders() {
     if ($('ordList').contains(document.activeElement)) return;
     $('ordList').innerHTML = list.length ? list.map(function (o) {
       var st = ST[o.status] || ['grey', o.status], lines = o.lines || [];
+      if (o.channel === 'both' && o.status === 'failed' && (o.email_state === 'queued' || o.email_state === 'sending')) st = ['grey', 'המייל יוצא בדקות הקרובות']; // WhatsApp failed, the email still goes
       var rep = (o.replies || []).filter(function (x) { return !x.ignored; }).slice(-1)[0];
       var acts = '';
       if (o.status === 'queued') acts = '<button class="btn small red" data-po="cancel" data-id="' + o.id + '">ביטול לפני שליחה</button>';
