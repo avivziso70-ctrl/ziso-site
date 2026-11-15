@@ -31,7 +31,7 @@ async function tranzila(path: string, body: unknown, scheme: "A" | "B") {
 }
 const ilDate = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jerusalem" });
 const clean = (v: unknown, n: number) => String(v ?? "").replace(/[\u0000-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, n);
-const settings = async () => (await admin.from("shop_settings").select("live, vat, delivery_fee, lead_text").eq("id", 1).single()).data!;
+const settings = async () => (await admin.from("shop_settings").select("live, vat, delivery_fee, lead_text, preview_key").eq("id", 1).single()).data!;
 
 async function staffEmail(req: Request) {
   const jwt = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
@@ -52,7 +52,21 @@ Deno.serve(async (req: Request) => {
   if (action === "catalog") {
     const st = await settings();
     // while the store is closed, products are shown only to signed-in staff
-    if (!st.live && !(await staffEmail(req))) return json(req, { ok: true, live: false, gated: true, lead_text: st.lead_text, delivery_fee: st.delivery_fee, items: [] });
+    // a one-time preview key (shop_settings.preview_key, set and cleared by the store thread) lets an automated check read the catalogue
+    const pk = req.headers.get("x-preview-key") || "", keyOk = !!st.preview_key && pk.length >= 20 && pk === st.preview_key;
+    if (!st.live && !keyOk && !(await staffEmail(req))) return json(req, { ok: true, live: false, gated: true, lead_text: st.lead_text, delivery_fee: st.delivery_fee, items: [] });
+    if (keyOk && body.pictures === true) {
+      // every catalogue picture of the suppliers on sale, with the codes it was linked to: used to match a picture to each finish
+      const { data: sp } = await admin.from("shop_settings").select("multipliers").eq("id", 1).single();
+      const { data: pics } = await admin.from("sp_images").select("path, upload_id, page, idx, w, h, codes").in("supplier_id", Object.keys(sp!.multipliers || {})).order("upload_id").order("page").order("idx").limit(5000);
+      const out: Record<string, unknown>[] = [];
+      for (let i = 0; i < (pics || []).length; i += 400) {
+        const part = pics!.slice(i, i + 400);
+        const { data: sg } = await admin.storage.from("supplier-files").createSignedUrls(part.map((x) => x.path), 3600);
+        part.forEach((x, k) => out.push({ ...x, url: sg?.[k]?.signedUrl || null }));
+      }
+      return json(req, { ok: true, pictures: out });
+    }
     const { data, error } = await admin.rpc("shop_catalog");
     if (error) return json(req, { ok: false, error: "catalog" }, 500);
     const rows = (data || []) as Record<string, any>[];
