@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#25292c">
+<title>ההזמנה שלכם | זיסו קרמיקה</title>
+<meta property="og:title" content="ההזמנה שלכם בזיסו קרמיקה">
+<meta property="og:description" content="מצב ההזמנה, מועדי אספקה, תשלומים ומסמכים. מתעדכן חי.">
+<meta property="og:image" content="https://www.zisoceramics.com/img/logo.jpg">
+<link rel="icon" href="../img/logo.jpg">
+<link rel="stylesheet" href="../fonts.css">
+<style>
+/* A dark showroom wall up top, porcelain below. Brass marks only what you can act on. Each product advances along four tiles. */
+:root{--porcelain:#f3f2ef;--surface:#fff;--graphite:#22262a;--stone:#5f5d58;--grout:#dfdcd6;--brass:#8a6a35;--brass-ink:#fff;--brass-soft:#efe7da;
+  --wall:#25292c;--wall-ink:#f2efe8;--wall-mute:#c9c3b7;--gold:#cfae74;--ok:#2e7d4f;--ok-soft:#e3f1e8;--due:#a23b2a;--due-soft:#f8e6e1;
+  --display:"Bellefair","Times New Roman",serif;--body:"Assistant","Segoe UI",Arial,sans-serif}
+@media (prefers-color-scheme:dark){:root{--porcelain:#15171a;--surface:#1d2024;--graphite:#ecebe7;--stone:#a8a49d;--grout:#30343a;--brass:#cfae74;--brass-ink:#1a1610;--brass-soft:#2d271d;
+  --wall:#0f1113;--ok:#8fc9a0;--ok-soft:#1c2c23;--due:#ec9183;--due-soft:#36201c;color-scheme:dark}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--porcelain);color:var(--graphite);font:17px/1.55 var(--body);-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+.hidden{display:none!important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.wrap{max-width:720px;margin-inline:auto;padding-inline:18px}
+.ltr{direction:ltr;unicode-bidi:isolate}
+.num{font-variant-numeric:tabular-nums}
+
+.wall{background:var(--wall);color:var(--wall-ink);padding:calc(14px + env(safe-area-inset-top)) 0 34px}
+.mark{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.mark b{font:400 1.5rem/1 var(--display);letter-spacing:.3em;direction:ltr}
+.mark span{font-size:.85rem;color:var(--wall-mute)}
+.hero{margin-top:30px}
+.hero .hi{color:var(--gold);font-weight:600;font-size:.95rem;margin:0 0 6px}
+.hero h1{font-size:clamp(2rem,8.4vw,3rem);line-height:1.1}
+.hero .sub{color:var(--wall-mute);margin:10px 0 0;max-width:46ch}
+.course{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:26px 0 8px;padding:0;list-style:none}
+.course li{height:10px;background:rgba(255,255,255,.12);border-radius:2px;overflow:hidden}
+.course i{display:block;height:100%;width:0;background:var(--gold);transition:width .9s cubic-bezier(.2,.7,.2,1)}
+.legend{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;font-size:.78rem;color:var(--wall-mute);text-align:center}
+.live{display:inline-flex;align-items:center;gap:7px;font-size:.82rem;color:var(--wall-mute);margin-top:18px}
+.live::before{content:"";width:8px;height:8px;border-radius:50%;background:#7fd39b;animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+.teamnote{margin-top:22px;border-inline-start:3px solid var(--gold);padding:4px 14px;color:var(--wall-ink)}
+.teamnote small{display:block;color:var(--wall-mute)}
+
+main section{padding:30px 0 6px}
+main h2{font-size:1.75rem;line-height:1.15;margin-bottom:12px}
+.lead{color:var(--stone);margin:-6px 0 14px}
+.tile{background:var(--surface);border:1px solid var(--grout);border-radius:4px;padding:16px;margin-bottom:10px}
+.prod h3{font:600 1.05rem/1.35 var(--body)}
+.prod .meta{color:var(--stone);font-size:.93rem;margin-top:2px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:14px 0 6px;padding:0;list-style:none}
+.steps li{height:6px;border-radius:2px;background:var(--grout)}
+.steps li.on{background:var(--brass)}.steps li.half{background:linear-gradient(to left,var(--brass) 50%,var(--grout) 50%)}
+.state{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:.95rem}
+.state b{font-weight:700}.state .eta{color:var(--stone)}
+.prod.done{opacity:.75}
+.sumrow{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:14px 2px 0;font-weight:600}
+.sumrow .big{font:400 1.7rem var(--display)}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--grout)}
+.kv:last-child{border-bottom:0}
+.bal .lab{color:var(--stone);font-size:.93rem}.bal .sum{font:400 2.2rem/1.1 var(--display)}
+.bal.due .sum{color:var(--due)}.bal.fine .sum{color:var(--ok)}
+.fine-print{color:var(--stone);font-size:.86rem;margin:8px 0 0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:0 22px;border-radius:3px;border:1px solid var(--grout);background:var(--surface);color:inherit;font:600 1rem var(--body);cursor:pointer;text-decoration:none}
+.btn.brass{background:var(--brass);border-color:var(--brass);color:var(--brass-ink)}
+.btn.wide{width:100%}
+.btn[disabled]{opacity:.55;cursor:default}
+details{border-top:1px solid var(--grout)}
+details summary{cursor:pointer;padding:14px 2px;font-weight:600;min-height:48px;list-style:none;display:flex;justify-content:space-between}
+details summary::-webkit-details-marker{display:none}
+details summary::after{content:"+";color:var(--stone);font-size:1.2rem}details[open] summary::after{content:"–"}
+.docs{margin:0 0 10px;padding:0;list-style:none;font-size:.95rem}
+.docs li{display:flex;justify-content:space-between;gap:10px;padding:8px 2px;border-top:1px dashed var(--grout)}
+.docs .d{color:var(--stone)}
+.thread{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:8px}
+.thread li{max-width:88%;padding:10px 14px;border-radius:4px;background:var(--surface);border:1px solid var(--grout);white-space:pre-wrap;overflow-wrap:anywhere}
+.thread li.team{justify-self:end;background:var(--brass-soft);border-color:transparent}
+.thread small{display:block;color:var(--stone);font-size:.8rem;margin-top:3px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px;padding:0;border:0}
+.chips label{position:relative}
+.chips input{position:absolute;opacity:0;inset:0}
+.chips span{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border:1px solid var(--grout);border-radius:999px;background:var(--surface);cursor:pointer;font-size:.95rem}
+.chips input:checked+span{background:var(--graphite);color:var(--porcelain);border-color:var(--graphite)}
+.chips input:focus-visible+span{outline:2px solid var(--gold);outline-offset:3px}
+textarea{width:100%;min-height:110px;font:inherit;color:inherit;background:var(--surface);border:1px solid var(--grout);border-radius:4px;padding:12px;resize:vertical}
+.msg{margin:10px 0 0;font-weight:600}.msg.ok{color:var(--ok)}.msg.err{color:var(--due)}
+.review{background:var(--wall);color:var(--wall-ink);border:0;text-align:center;padding:28px 18px}
+.review h2{margin-bottom:6px}.review p{color:var(--wall-mute);margin:0 0 16px}
+.review .btn{background:var(--gold);border-color:var(--gold);color:#1a1610}
+footer{margin-top:30px;padding:26px 0 calc(30px + env(safe-area-inset-bottom));border-top:1px solid var(--grout);color:var(--stone);font-size:.92rem}
+footer .acts{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+footer .acts .btn{flex:1;min-width:150px}
+footer nav{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
+
+.gate{min-height:100dvh;background:var(--wall);color:var(--wall-ink);display:grid;place-items:center;padding:24px}
+.gate .box{width:min(380px,100%);text-align:center}
+.gate b.z{font:400 1.6rem/1 var(--display);letter-spacing:.3em;direction:ltr;display:block;margin-bottom:34px}
+.gate h1{font-size:1.9rem;line-height:1.15}
+.gate p{color:var(--wall-mute);margin:10px 0 22px}
+.gate input{width:100%;min-height:62px;text-align:center;font:400 2rem var(--display);letter-spacing:.5em;direction:ltr;background:transparent;color:var(--wall-ink);border:1px solid rgba(255,255,255,.28);border-radius:3px;padding-inline-start:.5em}
+.gate .btn{margin-top:12px;background:var(--gold);border-color:var(--gold);color:#1a1610}
+.gate .msg{color:#f0a89b;min-height:1.6em}
+.demo{background:var(--gold);color:#1a1610;text-align:center;font-weight:600;font-size:.9rem;padding:6px 12px}
+@media (prefers-reduced-motion:reduce){.course i{transition:none}.live::before{animation:none}}
+@media (min-width:760px){body{font-size:18px}.wall{padding-bottom:46px}.cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}.cols .tile{margin:0}}
+</style>
+</head>
+<body>
+<div id="gate" class="gate hidden">
+  <form class="box" id="pinForm" novalidate>
+    <b class="z" aria-hidden="true">ZISO</b>
+    <h1 id="gTitle">ההזמנה שלכם מחכה כאן</h1>
+    <p id="gText">כדי לשמור על הפרטיות שלכם: 4 הספרות האחרונות של הטלפון שנתתם לנו.</p>
+    <label class="sr" for="pin">4 הספרות האחרונות של הטלפון</label>
+    <input id="pin" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-describedby="gMsg">
+    <button class="btn wide" id="pinGo">כניסה</button>
+    <p class="msg" id="gMsg" role="alert"></p>
+  </form>
+</div>
+
+<div id="page" class="hidden">
+  <div class="demo hidden" id="demoBar">דף לדוגמה. הפרטים כאן אינם של לקוח אמיתי.</div>
+  <header class="wall"><div class="wrap">
+    <div class="mark"><b aria-label="זיסו קרמיקה">ZISO</b><span id="dealNo"></span></div>
+    <div class="hero">
+      <p class="hi" id="hi"></p>
+      <h1 id="headline" aria-live="polite"></h1>
+      <p class="sub" id="sub"></p>
+      <ol class="course" id="course" aria-hidden="true"><li><i></i></li><li><i></i></li><li><i></i></li><li><i></i></li></ol>
+      <div class="legend" aria-hidden="true"><span>הוזמן</span><span>הספק אישר</span><span>אצלנו</span><span>נמסר</span></div>
+      <div class="teamnote hidden" id="teamNote"><small>עדכון מהצוות</small><span id="teamNoteT"></span></div>
+      <div class="live" id="live">מתעדכן חי</div>
+    </div>
+  </div></header>
+
+  <main class="wrap">
+    <section aria-labelledby="hProd">
+      <h2 id="hProd">המוצרים שלכם</h2>
+      <div id="prods"></div>
+      <div class="sumrow"><span>סה"כ העסקה, כולל מע"מ</span><span class="big num" id="total"></span></div>
+      <p class="fine-print" id="dest"></p>
+    </section>
+
+    <section aria-labelledby="hMoney">
+      <h2 id="hMoney">חשבון ותשלומים</h2>
+      <div id="payBox"></div>
+      <div class="tile bal hidden" id="bal"><div class="lab" id="balLab"></div><div class="sum num" id="balSum"></div><p class="fine-print" id="balAs"></p></div>
+      <div id="paidBox"></div>
+      <div id="docBox"></div>
+      <p class="fine-print">התשלום נעשה בעמוד מאובטח של חברת הסליקה. פרטי הכרטיס לא נשמרים אצלנו. <a href="../terms.html">תנאים, ביטולים והחזרות</a>.</p>
+    </section>
+
+    <section aria-labelledby="hTalk">
+      <h2 id="hTalk">בקשות ושאלות</h2>
+      <p class="lead">שיניתם דעה? צריך לתאם אספקה? משהו הגיע לא כמו שצריך? כותבים כאן וזה מגיע מיד לצוות.</p>
+      <ul class="thread" id="thread" aria-label="ההתכתבות עם הצוות"></ul>
+      <form id="noteForm" novalidate>
+        <fieldset class="chips"><legend class="sr">סוג הפנייה</legend>
+          <label><input type="radio" name="kind" value="question" checked><span>שאלה</span></label>
+          <label><input type="radio" name="kind" value="change"><span>שינוי במוצר</span></label>
+          <label><input type="radio" name="kind" value="delivery"><span>תיאום אספקה</span></label>
+          <label><input type="radio" name="kind" value="problem"><span>בעיה במוצר</span></label>
+        </fieldset>
+        <label class="sr" for="noteT">ההודעה שלכם</label>
+        <textarea id="noteT" maxlength="1000" placeholder="מה תרצו שנדע?"></textarea>
+        <button class="btn brass wide" id="noteGo" style="margin-top:10px">שליחה לצוות</button>
+        <p class="msg" id="noteMsg" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section class="hidden" id="reviewSec" aria-labelledby="hRev">
+      <div class="tile review"><h2 id="hRev">נהנים מהבית החדש?</h2><p>ביקורת קצרה בגוגל עוזרת למשפחות אחרות למצוא אותנו. תודה מראש.</p>
+        <a class="btn" href="https://g.page/r/CewpRPPNS-JNEAE/review" target="_blank" rel="noopener noreferrer">לכתוב ביקורת בגוגל</a></div>
+    </section>
+  </main>
+
+  <footer><div class="wrap">
+    <div class="acts"><a class="btn" href="https://wa.me/972504770040" target="_blank" rel="noopener noreferrer">וואטסאפ לצוות</a><a class="btn" href="tel:0504770040">חיוג 050-4770040</a></div>
+    <div>זיסו קרמיקה, עוצמה 5, טירת כרמל. א׳ עד ה׳ 08:00 עד 18:00, ו׳ 08:00 עד 13:30.</div>
+    <nav aria-label="מידע משפטי"><a href="../accessibility.html">הצהרת נגישות</a><a href="../privacy.html">פרטיות</a><a href="../terms.html">תנאים</a></nav>
+  </div></footer>
+</div>
+
+<div id="dead" class="gate hidden"><div class="box"><b class="z" aria-hidden="true">ZISO</b><h1 id="deadT">הקישור לא בתוקף</h1><p id="deadP">בקשו מאיתנו קישור חדש ונשלח מיד.</p>
+  <a class="btn wide" href="https://wa.me/972504770040" style="background:var(--gold);border-color:var(--gold);color:#1a1610">וואטסאפ לזיסו קרמיקה</a></div></div>
+
+<script>
+(function () {
+'use strict';
+var SB = 'https://ppnjosyraosrdephsksu.supabase.co/rest/v1/rpc/', KEY = 'sb_publishable_yjpTHQkvH5-l4v-HCcEj4w_ofAYpQmV';
+var token = decodeURIComponent((location.hash || '').replace(/^#/, '')), demo = token === 'demo', pin = '', data = null, timer = null;
+var $ = function (id) { return document.getElementById(id); };
+var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+var nis = function (n) { return '₪' + (Math.round((Number(n) || 0) * 100) / 100).toLocaleString('he-IL', { maximumFractionDigits: 2 }); };
+var day = function (d) { return d ? new Date(d).toLocaleDateString('he-IL', { day: 'numeric', month: 'long' }) : ''; };
+var dayS = function (d) { return d ? new Date(d).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric', year: '2-digit' }) : ''; };
+var store = { get: function () { try { return localStorage.getItem('ziso-my-' + token.slice(0, 10)) || ''; } catch (e) { return ''; } }, set: function (v) { try { v ? localStorage.setItem('ziso-my-' + token.slice(0, 10), v) : localStorage.removeItem('ziso-my-' + token.slice(0, 10)); } catch (e) { } } };
+function show(id) { ['gate', 'page', 'dead'].forEach(function (x) { $(x).classList.toggle('hidden', x !== id); }); }
+function rpc(fn, body) {
+  return fetch(SB + fn, { method: 'POST', headers: { apikey: KEY, authorization: 'Bearer ' + KEY, 'content-type': 'application/json' }, body: JSON.stringify(body) })
+    .then(function (r) { return r.ok ? r.json() : { ok: false, error: 'net' }; }, function () { return { ok: false, error: 'net' }; });
+}
+
+/* ---------- sample for #demo ---------- */
+function sample() {
+  var d = function (n) { return new Date(Date.now() + n * 864e5).toISOString(); };
+  return { ok: true, deal: { no: 'D0042', name: 'דנה כהן', status: 'ordered', total: 14260, note: 'הארון הגיע מוקדם מהצפוי. נתאם איתכם אספקה אחת לכל המוצרים.', deliver_to: 'customer', address: 'הגפן 12, חיפה' },
+    lines: [
+      { desc: 'אריח פורצלן אפור מט', size: '60/120', unit: 'מ"ר', qty: 42, sell: 189, stage: 'ready', ordered_at: d(-12), arrived_at: d(-2) },
+      { desc: 'ארון אמבטיה תלוי אגוז', size: '80 ס"מ', unit: 'יח\'', qty: 1, sell: 3290, stage: 'ready', ordered_at: d(-12), arrived_at: d(-1) },
+      { desc: 'סוללה סמויה 3 דרך שחור מט', unit: 'יח\'', qty: 1, sell: 1840, stage: 'confirmed', ordered_at: d(-5), confirmed_at: d(-4), eta: d(6), eta_from: 'stats' },
+      { desc: 'אסלה תלויה ללא שפה', unit: 'יח\'', qty: 1, sell: 1192, stage: 'ordered', ordered_at: d(-1) },
+      { desc: 'דבק לבן C2TE, שק 25 ק"ג', unit: 'יח\'', qty: 12, sell: 0, stage: 'delivered', delivered_at: d(-3) } ],
+    money: { known: true, balance: 6260, as_of: d(0), to_pay: [{ amount: 6260, what: 'יתרה לפני אספקה', link: '#demo' }], paid: [{ amount: 8000, what: 'מקדמה על ההזמנה', at: d(-12) }],
+      invoices: [{ doc: 'IN26001234', date: d(-12), amount: 8000 }], receipts: [{ doc: 'RC26005678', date: d(-12), amount: 8000, method: 'אשראי' }] },
+    notes: [{ side: 'customer', kind: 'delivery', text: 'אפשר לקבל הכול ביום חמישי בבוקר?', at: d(-1) }, { side: 'team', by: 'אילת', text: 'בשמחה. נתאם סופית ברגע שהאסלה מגיעה.', at: d(-1) }] };
+}
+
+/* ---------- draw ---------- */
+var RANK = { chosen: 0, ordered: 1, confirmed: 2, partial: 2.5, ready: 3, delivered: 4 };
+var LABEL = { chosen: 'נבחר, בטיפול אצלנו', ordered: 'הוזמן מהספק', confirmed: 'הספק אישר את ההזמנה', partial: 'חלק כבר הגיע אלינו', ready: 'אצלנו, מוכן בשבילכם', delivered: 'נמסר' };
+function stateLine(l) {
+  var when = l.stage === 'delivered' ? l.delivered_at : l.stage === 'ready' || l.stage === 'partial' ? l.arrived_at : l.stage === 'confirmed' ? l.confirmed_at : l.stage === 'ordered' ? l.ordered_at : null;
+  var eta = '';
+  if (RANK[l.stage] < 3) eta = l.eta ? (l.eta_from === 'stats' ? 'צפוי להגיע סביב ' : 'צפוי להגיע ב-') + day(l.eta) : RANK[l.stage] >= 1 ? 'נעדכן כאן כשיהיה מועד הגעה' : '';
+  return '<div class="state"><span><b>' + LABEL[l.stage] + '</b>' + (when ? ' · ' + day(when) : '') + '</span>' + (eta ? '<span class="eta">' + eta + '</span>' : '') + '</div>';
+}
+function draw(j) {
+  data = j; var d = j.deal, L = j.lines || [], n = L.length, m = j.money || {};
+  var first = String(d.name || '').trim().split(/\s+/)[0];
+  $('dealNo').textContent = 'עסקה ' + d.no; $('hi').textContent = first ? 'שלום ' + first : 'שלום';
+  var cnt = function (r) { return L.filter(function (l) { return RANK[l.stage] >= r; }).length; };
+  var del = cnt(4), rdy = cnt(3), ord = cnt(1), h, s;
+  if (!n) { h = 'הרשימה שלכם בבנייה'; s = 'ברגע שנבחר יחד את המוצרים, הם יופיעו כאן.'; }
+  else if (del === n) { h = 'הכול נמסר. תתחדשו!'; s = 'כל המוצרים אצלכם. אנחנו כאן לכל שאלה גם אחרי.'; }
+  else if (rdy === n) { h = 'הכול כבר אצלנו ומחכה לכם'; s = d.deliver_to === 'customer' ? 'נתאם איתכם מועד אספקה.' : 'אפשר לתאם איסוף או אספקה.'; }
+  else if (rdy) { h = rdy + ' מתוך ' + n + ' מוצרים כבר הגיעו'; s = 'השאר בדרך. כל שינוי מופיע כאן באותו רגע.'; }
+  else if (ord) { h = 'ההזמנה שלכם בדרך'; s = ord === n ? 'כל המוצרים הוזמנו מהספקים. נעדכן כאן על כל התקדמות.' : ord + ' מתוך ' + n + ' מוצרים כבר הוזמנו מהספקים.'; }
+  else { h = 'הרשימה שלכם מוכנה'; s = 'אנחנו מתחילים להזמין. כל התקדמות תופיע כאן.'; }
+  if ($('headline').textContent !== h) $('headline').textContent = h; $('sub').textContent = s;
+  [1, 2, 3, 4].forEach(function (r, i) { $('course').children[i].firstChild.style.width = (n ? Math.round(cnt(r) / n * 100) : 0) + '%'; });
+  $('teamNote').classList.toggle('hidden', !d.note); $('teamNoteT').textContent = d.note || '';
+  $('prods').innerHTML = L.map(function (l) {
+    var r = RANK[l.stage], q = Number(l.qty) || 0, tot = (Number(l.sell) || 0) * q;
+    return '<article class="tile prod' + (r === 4 ? ' done' : '') + '"><h3>' + esc(l.desc) + (l.size ? ' <span class="ltr">' + esc(l.size) + '</span>' : '') + '</h3>' +
+      '<div class="meta"><span>' + q.toLocaleString('he-IL') + (l.unit ? ' ' + esc(l.unit) : '') + '</span>' + (tot ? '<span class="num">' + nis(tot) + '</span>' : '') + '</div>' +
+      '<ol class="steps" aria-hidden="true">' + [1, 2, 3, 4].map(function (k) { return '<li class="' + (r >= k ? 'on' : r > k - 1 ? 'half' : '') + '"></li>'; }).join('') + '</ol>' + stateLine(l) + '</article>';
+  }).join('') || '<p class="lead">עוד אין מוצרים ברשימה.</p>';
+  $('total').textContent = nis(d.total);
+  $('dest').textContent = d.deliver_to === 'customer' ? 'אספקה לכתובת: ' + (d.address || 'נתאם איתכם') + '.' : 'איסוף או אספקה מאולם התצוגה בטירת כרמל.';
+
+  var pay = m.to_pay || [], paid = m.paid || [];
+  $('payBox').innerHTML = pay.map(function (p) { return '<div class="tile"><div class="kv" style="border:0;padding-top:0"><span>' + esc(p.what || 'תשלום') + '</span><b class="num">' + nis(p.amount) + '</b></div><a class="btn brass wide" href="' + esc(p.link) + '" target="_blank" rel="noopener noreferrer">לתשלום מאובטח ' + nis(p.amount) + '</a></div>'; }).join('');
+  $('bal').classList.toggle('hidden', !m.known);
+  if (m.known) {
+    var b = Math.abs(m.balance) < 10 ? 0 : Number(m.balance);
+    $('bal').className = 'tile bal ' + (b > 0 ? 'due' : 'fine');
+    $('balLab').textContent = b > 0 ? 'יתרה לתשלום' : b < 0 ? 'יתרת זכות לטובתכם' : 'החשבון מאוזן';
+    $('balSum').textContent = b ? nis(Math.abs(b)) : 'אין יתרה פתוחה';
+    $('balAs').textContent = 'לפי חשבוניות וקבלות שהופקו' + (m.as_of ? ', נכון ל-' + new Date(m.as_of).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : '') + '. תשלום שנעשה עכשיו יופיע אחרי העדכון הבא.';
+  }
+  $('paidBox').innerHTML = paid.length ? '<div class="tile">' + paid.map(function (p) { return '<div class="kv"><span>✓ שולם · ' + esc(p.what || '') + ' <span class="d">' + dayS(p.at) + '</span></span><b class="num">' + nis(p.amount) + '</b></div>'; }).join('') + '</div>' : '';
+  var docs = function (t, a) { return a && a.length ? '<details><summary>' + t + ' (' + a.length + ')</summary><ul class="docs">' + a.map(function (x) { return '<li><span><span class="ltr">' + esc(x.doc) + '</span> <span class="d">· ' + dayS(x.date) + (x.method ? ' · ' + esc(x.method) : '') + '</span></span><b class="num">' + nis(x.amount) + '</b></li>'; }).join('') + '</ul></details>' : ''; };
+  var dh = docs('קבלות', m.receipts) + docs('חשבוניות', m.invoices);
+  $('docBox').innerHTML = dh ? dh + '<p class="fine-print">צריכים העתק של מסמך? כתבו לנו למטה ונשלח.</p>' : (!pay.length && !paid.length && !m.known ? '<p class="lead">תשלומים ומסמכים יופיעו כאן.</p>' : '');
+  $('thread').innerHTML = (j.notes || []).map(function (x) { return '<li class="' + (x.side === 'team' ? 'team' : 'me') + '">' + esc(x.text) + '<small>' + (x.side === 'team' ? esc(x.by || 'הצוות') : 'אתם') + ' · ' + new Date(x.at).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</small></li>'; }).join('');
+  $('reviewSec').classList.toggle('hidden', !(n && del === n));
+  show('page');
+}
+
+/* ---------- load ---------- */
+function load(first) {
+  if (demo) { $('demoBar').classList.remove('hidden'); draw(sample()); return; }
+  rpc('crm_my', { p_token: token, p_pin: pin || null }).then(function (j) {
+    if (j.ok) { store.set(pin); draw(j); return; }
+    if (j.error === 'net') { if (first && !data) { $('deadT').textContent = 'אין חיבור כרגע'; $('deadP').textContent = 'בדקו את האינטרנט ונסו שוב בעוד רגע.'; show('dead'); } return; }
+    if (j.error === 'not_found') { show('dead'); return; }
+    store.set(''); clearInterval(timer);
+    $('gMsg').textContent = j.error === 'locked' ? 'יותר מדי ניסיונות. אפשר לנסות שוב בעוד רבע שעה.' : j.error === 'pin_wrong' ? 'הספרות לא תואמות. נשארו ' + (j.tries_left || 0) + ' ניסיונות.' : '';
+    $('pinGo').disabled = j.error === 'locked'; $('pin').value = ''; pin = ''; show('gate'); $('pin').focus();
+  });
+}
+$('pinForm').addEventListener('submit', function (e) {
+  e.preventDefault(); var v = $('pin').value.replace(/\D/g, '');
+  if (v.length !== 4) { $('gMsg').textContent = 'צריך 4 ספרות.'; return; }
+  pin = v; $('gMsg').textContent = ''; load(true); poll();
+});
+$('noteForm').addEventListener('submit', function (e) {
+  e.preventDefault(); var t = $('noteT').value.trim(), m = $('noteMsg'), b = $('noteGo');
+  if (t.length < 2) { m.className = 'msg err'; m.textContent = 'כתבו כמה מילים ואז שלחו.'; $('noteT').focus(); return; }
+  var kind = document.querySelector('input[name=kind]:checked').value;
+  if (demo) { data.notes.push({ side: 'customer', text: t, at: new Date().toISOString() }); $('noteT').value = ''; draw(data); m.className = 'msg ok'; m.textContent = 'בדף אמיתי ההודעה מגיעה מיד לצוות.'; return; }
+  b.disabled = true; b.textContent = 'שולח...';
+  rpc('crm_my_note', { p_token: token, p_pin: pin, p_kind: kind, p_text: t }).then(function (j) {
+    b.disabled = false; b.textContent = 'שליחה לצוות';
+    if (j.ok) { $('noteT').value = ''; m.className = 'msg ok'; m.textContent = 'התקבל. הצוות רואה את זה עכשיו ויחזור אליכם.'; load(); }
+    else { m.className = 'msg err'; m.textContent = j.error === 'too_many' ? 'קיבלנו כבר כמה הודעות היום. דחוף? עדיף בוואטסאפ או בטלפון.' : 'ההודעה לא נשלחה. נסו שוב, או כתבו לנו בוואטסאפ.'; }
+  });
+});
+function poll() { clearInterval(timer); if (!demo) timer = setInterval(function () { if (!document.hidden && pin) load(); }, 45000); }
+document.addEventListener('visibilitychange', function () { if (!document.hidden && pin && !demo) load(); });
+window.addEventListener('hashchange', function () { location.reload(); });
+
+if (!token) show('dead');
+else if (demo) load(true);
+else { pin = store.get(); if (pin) { load(true); poll(); } else load(true); }
+})();
+</script>
+</body>
+</html>
