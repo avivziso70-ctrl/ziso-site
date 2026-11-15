@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0f1113">
+<title>קבלת סחורה | זיסו צוות</title>
+<link rel="icon" href="../img/logo.jpg">
+<link rel="stylesheet" href="../fonts.css">
+<style>
+:root{--wall:#0f1113;--surface:#1d2024;--graphite:#22262a;--line:#3a3f45;--ink:#f2efe8;--mute:#b9b3a7;--brass:#cfae74;--brass-ink:#1a1610;--brass-soft:#2d271d;
+  --red:#e07a6a;--green:#8fc9a0;--amber:#e3b86a;--display:"Bellefair","Times New Roman",serif;--body:"Assistant","Segoe UI",Arial,sans-serif}
+@media (prefers-color-scheme: light){:root{--wall:#f3f2ef;--surface:#fff;--graphite:#ecebe7;--line:#d2cec5;--ink:#1e1b17;--mute:#5f5d58;--brass:#8a6a35;--brass-ink:#fff;--brass-soft:#efe7da;--red:#b8432f;--green:#2e7d4f;--amber:#8c6200}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--wall);color:var(--ink);font-family:var(--body);font-size:18px;line-height:1.45}
+header{position:sticky;top:0;z-index:2;background:var(--wall);border-bottom:1px solid var(--line);padding:12px 16px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.grow{flex:1}
+h1,h2{font-family:var(--display);font-weight:400;margin:0}h1{font-size:26px}h2{font-size:22px;margin:24px 0 8px}
+a{color:var(--brass)}
+main{max-width:640px;margin:0 auto;padding:0 16px 48px}
+.btn{font:inherit;color:inherit;min-height:48px;padding:0 18px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:600;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.btn.brass{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
+.btn.small{min-height:40px;padding:0 14px;font-size:16px}.btn.red{color:var(--red)}
+.btn[disabled]{opacity:.5;cursor:default}
+.shoot{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:100%;min-height:150px;margin-top:16px;border-radius:18px;background:var(--brass);color:var(--brass-ink);font-size:24px;font-weight:700;cursor:pointer;text-align:center;padding:16px}
+.shoot small{font-size:16px;font-weight:600}
+.shoot svg{width:44px;height:44px}
+.file{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+.file:focus-visible + label{outline:3px solid var(--ink);outline-offset:3px}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+select{font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:48px;width:100%}
+.mute{color:var(--mute);font-size:16px}.err{color:var(--red)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0}
+.hidden{display:none!important}
+.st{display:inline-block;padding:2px 10px;border-radius:999px;font-size:15px;font-weight:700;white-space:nowrap}
+.st.yellow{background:#f3d36b;color:#2a2205}.st.green{background:#7fcf97;color:#0d2a17}.st.orange{background:#f0a35e;color:#2b1503}.st.red{background:var(--red);color:#fff}.st.grey{background:var(--line);color:var(--ink)}
+#result{scroll-margin-top:76px}
+.rc{border-inline-start:6px solid var(--line)}.rc.yellow{border-inline-start-color:#f3d36b}.rc.green{border-inline-start-color:#7fcf97}.rc.orange{border-inline-start-color:#f0a35e}.rc.red{border-inline-start-color:var(--red)}
+.pages{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
+.pg{position:relative;width:84px;height:110px;border-radius:10px;border:1px solid var(--line);background:var(--graphite) center/cover no-repeat;display:flex;align-items:flex-end;justify-content:center;font-size:14px;font-weight:700}
+.pg span{background:rgba(0,0,0,.6);color:#fff;border-radius:6px;padding:0 6px;margin-bottom:4px}
+.pg button{position:absolute;top:-10px;left:-10px;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--red);font:inherit;font-weight:700;cursor:pointer}
+.ln{border-top:1px solid var(--line);padding:8px 0;font-size:16px}.ln b{font-weight:700}
+.ln .bad{color:var(--red);font-weight:700}.ln .fine{color:var(--green)}.ln .odd{color:var(--amber);font-weight:700}
+.ltr{direction:ltr;unicode-bidi:isolate}
+details summary{cursor:pointer;min-height:44px;display:flex;align-items:center;color:var(--brass);font-weight:600}
+.spin{display:inline-block;width:18px;height:18px;border:3px solid var(--line);border-top-color:var(--brass);border-radius:50%;animation:sp 1s linear infinite;vertical-align:-3px}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.spin{animation:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="row"><h1 class="grow">קבלת סחורה</h1><a class="btn small" href="./">חזרה ל-CRM</a></div>
+</header>
+<main>
+  <div id="needLogin" class="card hidden" role="alert">צריך להתחבר קודם. <a href="./">כניסה ל-CRM</a> ואז לחזור לכאן.</div>
+  <div id="app" class="hidden">
+    <div id="poBox" class="card hidden"></div>
+    <input class="file" type="file" id="cam" accept="image/*" capture="environment">
+    <label class="shoot" for="cam" id="camLbl">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+      <span id="camTxt">לצלם חשבונית או תעודת משלוח</span>
+      <small id="camSub">מצלמים את הדף שהגיע עם הסחורה, ואני בודק אותו מול ההזמנה</small>
+    </label>
+    <p style="text-align:center;margin:10px 0 0"><input class="file" type="file" id="pick" accept="image/*,application/pdf" multiple><label class="btn small" for="pick">לבחור תמונה או PDF מהמכשיר</label></p>
+    <div id="draft" class="card hidden">
+      <b id="draftT"></b>
+      <div class="pages" id="pages"></div>
+      <p class="mute" style="margin:0 0 10px">יש עוד דף באותו מסמך? לצלם אותו עכשיו. מסמך אחר מצלמים בנפרד.</p>
+      <button class="btn brass" id="go" style="width:100%">סיימתי לצלם, לבדוק</button>
+    </div>
+    <p id="msg" role="status" aria-live="polite"></p>
+    <div id="result"></div>
+    <h2>מסמכים אחרונים</h2>
+    <div id="list"><p class="mute">טוען...</p></div>
+  </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+<script>
+(function () {
+'use strict';
+var SB_URL = 'https://ppnjosyraosrdephsksu.supabase.co';
+var sb = supabase.createClient(SB_URL, 'sb_publishable_yjpTHQkvH5-l4v-HCcEj4w_ofAYpQmV', { auth: { persistSession: true, autoRefreshToken: true } });
+var FN = SB_URL + '/functions/v1/crm-receive', BUCKET = 'goods-receipts', MAX = 4;
+var $ = function (id) { return document.getElementById(id); };
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function money(n) { return '₪' + Number(n || 0).toLocaleString('he-IL', { maximumFractionDigits: 2 }); }
+function qn(n) { return Number(n).toLocaleString('he-IL', { maximumFractionDigits: 2 }); }
+function fmtTime(t) { var d = new Date(t); return d.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' }) + ' ' + d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }); }
+var session = null, pages = [], busy = false, lastId = null, openPos = null, timer = null;
+var poId = Number(new URLSearchParams(location.search).get('po')) || null;
+
+var ST = { reading: ['grey', 'קורא את המסמך'], ok: ['green', 'תקין'], gap: ['orange', 'יש פער'], check: ['yellow', 'לבדוק'], failed: ['red', 'הקריאה נכשלה'] };
+var FLAGS = { sum_mismatch: 'סכום השורות לא מתאים לסה"כ שכתוב במסמך.', no_allocation: 'חשבונית מעל ₪5,000 בלי מספר הקצאה. לבדוק מול הספק לפני שמעבירים להנהלת החשבונות.',
+  supplier_unknown: 'לא זיהיתי את הספק מתוך הרשימה שלנו.', hard_to_read: 'חלק מהשורות קשות לקריאה. כדאי לעבור עליהן מול הדף.' };
+function badge(r) {
+  var s = ST[r.status] || ['grey', r.status];
+  if (r.status === 'ok' && r.result && r.result.basis === 'none') s = ['grey', 'נשמר'];
+  return s;
+}
+function lineHtml(l, basis) {
+  var bits = [], name = '<b>' + esc(l.desc || l.sku || 'פריט') + '</b>' + (l.sku && l.desc ? ' <span class="mute ltr">' + esc(l.sku) + '</span>' : '');
+  if (basis === 'order') {
+    if (l.qty === 'missing') bits.push('<span class="bad">לא הגיע (הוזמנו ' + qn(l.ordered) + ')</span>');
+    else if (l.qty === 'short') bits.push('<span class="bad">הגיעו ' + qn(l.got) + ' מתוך ' + qn(l.ordered) + '</span>');
+    else if (l.qty === 'over') bits.push('<span class="odd">הגיעו ' + qn(l.got) + ', הוזמנו ' + qn(l.ordered) + '</span>');
+    else if (l.qty === 'ok') bits.push('<span class="fine">הגיעו ' + qn(l.got) + ', כמו שהוזמן</span>');
+    else bits.push('<span class="odd">הכמות לא ברורה במסמך (הוזמנו ' + qn(l.ordered) + ')</span>');
+  } else if (l.got != null) bits.push('כמות ' + qn(l.got));
+  var agreed = basis === 'order' ? l.po_price : l.list_price, word = basis === 'order' ? 'סוכם' : 'במחירון';
+  if (l.price === 'up') bits.push('<span class="bad">מחיר ' + money(l.doc_price) + ', ' + word + ' ' + money(agreed) + '</span>');
+  else if (l.price === 'down') bits.push('<span class="odd">מחיר ' + money(l.doc_price) + ', נמוך מ' + (basis === 'order' ? 'מה שסוכם' : 'המחירון') + ' (' + money(agreed) + ')</span>');
+  else if (l.price === 'ok') bits.push('<span class="fine">מחיר ' + money(l.doc_price) + ', כמו ש' + (basis === 'order' ? 'סוכם' : 'במחירון') + '</span>');
+  else if (l.doc_price != null) bits.push('מחיר ' + money(l.doc_price) + (l.price === 'unknown' ? ' (אין במחירון להשוואה)' : ''));
+  if (l.sure === false) bits.push('<span class="odd">קריאה לא בטוחה</span>');
+  return '<div class="ln">' + name + '<br>' + bits.join(' · ') + '</div>';
+}
+function detailHtml(r) {
+  var res = r.result || {}, lines = res.lines || [], extras = res.extras || [], flags = (res.flags || []).filter(function (f) { return FLAGS[f]; });
+  var h = flags.map(function (f) { return '<p class="err" style="margin:6px 0">' + FLAGS[f] + '</p>'; }).join('');
+  h += lines.map(function (l) { return lineHtml(l, res.basis); }).join('');
+  h += extras.map(function (x) { return '<div class="ln"><b>' + esc(x.desc || x.sku || 'פריט') + '</b><br><span class="bad">הגיע בלי שהוזמן' + (x.got != null ? ' (כמות ' + qn(x.got) + ')' : '') + '</span>' + (x.doc_price != null ? ' · מחיר ' + money(x.doc_price) : '') + '</div>'; }).join('');
+  return h;
+}
+function cardHtml(r, open) {
+  var b = badge(r), res = r.result || {}, det = detailHtml(r);
+  var head = '<div class="row"><b class="grow">' + esc(r.supplier_name || 'ספק לא מזוהה') + (res.po_no ? ' · ' + esc(res.po_no) : '') + '</b><span class="st ' + b[0] + '">' + (r.status === 'reading' ? '<span class="spin" aria-hidden="true"></span> ' : '') + b[1] + '</span></div>';
+  var h = '<div class="card rc ' + b[0] + '" data-rc="' + r.id + '">' + head +
+    '<p style="margin:6px 0">' + esc(r.summary || (r.status === 'reading' ? 'קורא את המסמך, זה לוקח עד דקה...' : '')) + '</p>' +
+    (res.lead_days != null ? '<p class="mute" style="margin:0">הגיע ' + qn(res.lead_days) + ' ימים אחרי שההזמנה נשלחה.</p>' : '') +
+    '<p class="mute" style="margin:0">' + esc(r.rc_no || '') + ' · ' + fmtTime(r.created_at) + (r.by_name ? ' · צילם/ה ' + esc(r.by_name) : '') + '</p>' +
+    (det ? '<details' + (open ? ' open' : '') + '><summary>הפירוט שורה שורה</summary>' + det + '</details>' : '');
+  var acts = '<button class="btn small" data-act="view" data-id="' + r.id + '">לראות את הצילום</button>';
+  var stuck = r.status === 'reading' && Date.now() - new Date(r.updated_at || r.created_at).getTime() > 3 * 60e3;
+  if (r.status === 'failed' || stuck) acts += '<button class="btn small brass" data-act="retry" data-id="' + r.id + '">לנסות לקרוא שוב</button>';
+  if (r.status !== 'reading' && r.status !== 'failed' && !r.po_id && !r.dup_of && r.supplier_id) acts += '<button class="btn small" data-act="link" data-id="' + r.id + '" data-sup="' + esc(r.supplier_id) + '">לשייך להזמנה</button>';
+  return h + '<div class="row" style="margin-top:8px">' + acts + '</div><div data-slot="' + r.id + '"></div></div>';
+}
+
+function call(body) {
+  return fetch(FN, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + session.access_token }, body: JSON.stringify(body) })
+    .then(function (r) { return r.json().catch(function () { return { ok: false, error: 'תקלה בשרת' }; }); });
+}
+function loadList() {
+  return sb.from('crm_receipts').select('*').order('created_at', { ascending: false }).limit(20).then(function (r) {
+    var rows = r.data || [];
+    $('list').innerHTML = rows.length ? rows.filter(function (x) { return x.id !== lastId; }).map(function (x) { return cardHtml(x, false); }).join('') || '<p class="mute">אין מסמכים קודמים.</p>' : '<p class="mute">עוד לא צולמו מסמכים.</p>';
+    clearTimeout(timer);
+    if (rows.some(function (x) { return x.status === 'reading'; })) timer = setTimeout(loadList, 15000);
+  });
+}
+
+/* ---------- taking the photos ---------- */
+function uid() { return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'x' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12); }
+var EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic', 'image/heif': 'heif', 'application/pdf': 'pdf' };
+function shrink(file) {
+  return new Promise(function (ok, bad) {
+    var url = URL.createObjectURL(file), img = new Image();
+    img.onload = function () {
+      var k = Math.min(1, 2200 / Math.max(img.naturalWidth, img.naturalHeight)), c = document.createElement('canvas');
+      c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(function (b) { URL.revokeObjectURL(url); b ? ok(b) : bad(new Error('blob')); }, 'image/jpeg', 0.85);
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); bad(new Error('img')); };
+    img.src = url;
+  });
+}
+function say(t, cls) { $('msg').textContent = t || ''; $('msg').className = cls || ''; }
+function drawDraft() {
+  $('draft').classList.toggle('hidden', !pages.length);
+  $('draftT').textContent = pages.length === 1 ? 'צולם דף אחד' : 'צולמו ' + pages.length + ' דפים';
+  $('pages').innerHTML = pages.map(function (p, i) { return '<div class="pg"' + (p.thumb ? ' style="background-image:url(' + p.thumb + ')"' : '') + '><span>' + (p.pdf ? 'PDF' : 'דף ' + (i + 1)) + '</span><button type="button" data-rm="' + i + '" aria-label="להסיר דף ' + (i + 1) + '">✕</button></div>'; }).join('');
+  $('camTxt').textContent = pages.length ? 'לצלם עוד דף' : 'לצלם חשבונית או תעודת משלוח';
+  $('camSub').classList.toggle('hidden', !!pages.length);
+  $('camLbl').style.minHeight = pages.length ? '84px' : '';
+  var full = pages.length >= MAX; $('cam').disabled = $('pick').disabled = full || busy; $('camLbl').style.opacity = full ? .5 : 1;
+}
+function addFiles(list) {
+  var files = Array.prototype.slice.call(list || []); if (!files.length || busy) return;
+  say('');
+  files.forEach(function (f) {
+    if (pages.length >= MAX) { say('אפשר עד ' + MAX + ' דפים למסמך.', 'err'); return; }
+    var pdf = f.type === 'application/pdf';
+    if (!pdf && f.type.indexOf('image/') !== 0) { say('אפשר לצלם תמונה או לבחור PDF.', 'err'); return; }
+    if (f.size > 24 * 1024 * 1024) { say('הקובץ גדול מדי.', 'err'); return; }
+    if (pdf && pages.length) { say('PDF שולחים לבד, בלי דפים נוספים.', 'err'); return; }
+    if (!pdf && pages.some(function (p) { return p.pdf; })) { say('PDF שולחים לבד, בלי דפים נוספים.', 'err'); return; }
+    pages.push({ file: f, pdf: pdf, thumb: pdf ? '' : URL.createObjectURL(f) });
+  });
+  drawDraft();
+}
+$('cam').addEventListener('change', function () { addFiles(this.files); this.value = ''; });
+$('pick').addEventListener('change', function () { addFiles(this.files); this.value = ''; });
+$('pages').addEventListener('click', function (e) { var b = e.target.closest('[data-rm]'); if (!b || busy) return; pages.splice(Number(b.dataset.rm), 1); drawDraft(); });
+
+$('go').addEventListener('click', function () {
+  if (busy || !pages.length) return;
+  busy = true; $('go').disabled = true; drawDraft();
+  say('מעלה את הצילום...');
+  var d = new Date(), month = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  var ups = pages.map(function (p) {
+    var id = uid(), ext = EXT[p.file.type] || 'jpg', orig = 'orig/' + month + '/' + id + '.' + ext;
+    /* the untouched original is always kept; a lighter copy is what gets read */
+    var keep = sb.storage.from(BUCKET).upload(orig, p.file, { contentType: p.file.type || 'image/jpeg', upsert: false }).then(function (r) { if (r.error) throw r.error; });
+    if (p.pdf) return keep.then(function () { return { orig: orig, read: orig, mime: 'application/pdf', size: p.file.size }; });
+    var read = 'read/' + month + '/' + id + '.jpg';
+    return Promise.all([keep, shrink(p.file).then(function (b) { return sb.storage.from(BUCKET).upload(read, b, { contentType: 'image/jpeg', upsert: false }); }).then(function (r) { if (r.error) throw r.error; })])
+      .then(function () { return { orig: orig, read: read, mime: p.file.type || 'image/jpeg', size: p.file.size }; });
+  });
+  Promise.all(ups).then(function (files) {
+    $('msg').innerHTML = '<span class="spin" aria-hidden="true"></span> קורא את המסמך ובודק מול ההזמנה. זה לוקח עד דקה, לא לסגור.';
+    var body = { action: 'read', files: files }; if (poId) body.po_id = poId;
+    return call(body);
+  }).then(function (j) {
+    busy = false; $('go').disabled = false;
+    if (!j.receipt) { say((j.error || 'לא הצליח') + '. הצילום נשמר, אפשר לנסות שוב.', 'err'); drawDraft(); loadList(); return; }
+    pages.forEach(function (p) { if (p.thumb) URL.revokeObjectURL(p.thumb); }); pages = []; drawDraft();
+    say(''); showResult(j.receipt);
+  }, function (e) {
+    busy = false; $('go').disabled = false; drawDraft();
+    say(e && e.message === 'img' ? 'לא הצלחתי לפתוח את התמונה. לצלם שוב.' : 'ההעלאה לא הצליחה. לבדוק חיבור לאינטרנט ולנסות שוב.', 'err');
+  });
+});
+function showResult(r) {
+  lastId = r.id;
+  $('result').innerHTML = cardHtml(r, r.status !== 'ok');
+  $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  loadList(); if (poId) loadPo();
+}
+
+/* ---------- actions on a document ---------- */
+function onAct(e) {
+  var b = e.target.closest('[data-act]'); if (!b) return;
+  var id = Number(b.dataset.id), slot = document.querySelector('[data-slot="' + id + '"]'), a = b.dataset.act;
+  if (a === 'view') {
+    b.disabled = true;
+    sb.from('crm_receipts').select('files').eq('id', id).maybeSingle().then(function (r) {
+      var files = (r.data && r.data.files) || [];
+      return Promise.all(files.map(function (f) { return sb.storage.from(BUCKET).createSignedUrl(f.orig, 600); }));
+    }).then(function (rs) {
+      b.disabled = false;
+      var links = rs.filter(function (x) { return x.data && x.data.signedUrl; }).map(function (x, i) { return '<a class="btn small" target="_blank" rel="noopener" href="' + esc(x.data.signedUrl) + '">דף ' + (i + 1) + '</a>'; });
+      slot.innerHTML = '<div class="row" style="margin-top:8px">' + (links.join('') || '<span class="err">לא הצלחתי לפתוח את הצילום</span>') + '</div>';
+    });
+    return;
+  }
+  if (a === 'retry') {
+    b.disabled = true; b.innerHTML = '<span class="spin" aria-hidden="true"></span> קורא...';
+    call({ action: 'retry', id: id }).then(function (j) { if (j.receipt) showResult(j.receipt); else { b.disabled = false; b.textContent = j.error || 'לא הצליח. לנסות שוב'; } }, function () { b.disabled = false; b.textContent = 'אין חיבור. לנסות שוב'; });
+    return;
+  }
+  if (a === 'link') {
+    sb.from('crm_po').select('id,po_no,supplier_id,created_at,total_cost,status,receive_state').eq('supplier_id', b.dataset.sup).order('created_at', { ascending: false }).limit(15).then(function (r) {
+      var rows = (r.data || []).filter(function (o) { return o.status !== 'cancelled' && o.status !== 'queued'; });
+      if (!rows.length) { slot.innerHTML = '<p class="mute" style="margin:8px 0 0">אין הזמנה פתוחה לספק הזה במערכת.</p>'; return; }
+      slot.innerHTML = '<label style="display:block;margin-top:8px">לאיזו הזמנה המסמך שייך?<select data-sel="' + id + '"><option value="">לבחור הזמנה</option>' + rows.map(function (o) { return '<option value="' + o.id + '">' + esc(o.po_no) + ' · ' + fmtTime(o.created_at) + ' · ' + money(o.total_cost) + '</option>'; }).join('') + '</select></label>';
+    });
+    return;
+  }
+}
+function onSel(e) {
+  var s = e.target.closest('[data-sel]'); if (!s || !s.value) return;
+  s.disabled = true;
+  call({ action: 'assign', id: Number(s.dataset.sel), po_id: Number(s.value) }).then(function (j) { if (j.receipt) showResult(j.receipt); else { s.disabled = false; } }, function () { s.disabled = false; });
+}
+['result', 'list'].forEach(function (k) { $(k).addEventListener('click', onAct); $(k).addEventListener('change', onSel); });
+
+function loadPo() {
+  if (!poId) return;
+  sb.from('crm_po').select('id,po_no,supplier_name,lines,receive_state,receive_summary,customer_name').eq('id', poId).maybeSingle().then(function (r) {
+    var o = r.data; if (!o) { poId = null; return; }
+    $('poBox').innerHTML = '<b>מצלמים סחורה של הזמנה ' + esc(o.po_no) + ' · ' + esc(o.supplier_name) + '</b>' + (o.customer_name ? '<br><span class="mute">עבור ' + esc(o.customer_name) + '</span>' : '') +
+      '<br><span class="mute">' + ((o.lines || []).length) + ' שורות בהזמנה' + (o.receive_summary ? ' · ' + esc(o.receive_summary) : '') + '</span>';
+    $('poBox').classList.remove('hidden');
+  });
+}
+
+sb.auth.getSession().then(function (r) {
+  session = r.data.session;
+  if (!session) { $('needLogin').classList.remove('hidden'); return; }
+  sb.auth.onAuthStateChange(function (_e, s) { if (s) session = s; });
+  $('app').classList.remove('hidden'); loadPo(); loadList(); drawDraft();
+});
+})();
+</script>
+</body>
+</html>

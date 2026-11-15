@@ -40,3 +40,16 @@ alter table public.sp_suppliers add column if not exists order_paused boolean no
 alter table public.crm_po add column if not exists email_state text; -- 'both' only: queued / sending / sent / failed / unknown
 alter table public.crm_po add column if not exists wa_msg_id text;   -- outbound WhatsApp message id
 -- crm_po_wa_in (above) matches channel in ('whatsapp', 'both') since 15.11.
+
+-- 15.11.2026 (Aviv): delivery method, customer per order, cancel from the CRM. Applied as migrations crm_po_delivery_cancel + crm_po_customer.
+alter table public.crm_po
+  add column if not exists deliver_to text not null default 'business',   -- business | customer
+  add column if not exists deliver jsonb,                                  -- { name, phone, address, note, tail9 } when deliver_to = customer
+  add column if not exists customer_name text,                             -- who the order is for; null = stock
+  add column if not exists customer_tail9 text,
+  add column if not exists cancelled_at timestamptz,
+  add column if not exists cancelled_by text,
+  add column if not exists cancel_email_state text,                        -- queued | sending | sent | failed
+  add column if not exists cancel_claimed_at timestamptz,
+  add column if not exists cancel_wa_state text,                           -- sent | failed
+  add column if not exists cancel_error text;

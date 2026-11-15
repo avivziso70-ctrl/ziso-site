@@ -20,6 +20,14 @@
 //   email (cc Eilat + Shir) goes through the outbox, tracked in email_state; answers on either channel update the same order.
 //   sp_suppliers.order_paused (e.g. while a price list is being fixed) blocks "create".
 //   Owner only: { action: "wa_template", submit? } shows the template's status at Meta, and submits it once on his click.
+// Delivery (Aviv 15.11): every order says where the goods go: deliver_to 'business' (default) or 'customer' with
+//   deliver { name, phone, address, note, tail9 } taken from the customer card or typed by staff. Only what the delivery needs
+//   goes to the supplier (name, phone, address).
+// Customer (Aviv 15.11): every order carries the customer it is for (customer_name, from the customer card or typed), or is
+//   marked as stock. The name goes to the supplier as the order's reference.
+// Cancel (Aviv 15.11): { action: "cancel", id } on an order that already went out marks it cancelled and tells the supplier on the
+//   channels the order used: WhatsApp at once (free text in the 24h window, otherwise template ziso_supplier_cancel), email through
+//   the outbox (same cc), returned there with a negative id (-order id) so the Apps Script needs no change.
 // The WhatsApp token is read here through the service role only, never returned or logged; wa_config is never written.
 // Priority is never written.
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -33,7 +41,18 @@ const OWNER = "avivziso70@gmail.com";
 const GRAPH = "https://graph.facebook.com/v23.0";
 const WA_TEMPLATE = "ziso_supplier_order";
 const WA_TEMPLATE_BODY = 'שלום {{1}}, זו הזמנת רכש {{2}} מזיסו קרמיקה:\n{{3}}\nסה"כ {{4}} לפני מע"מ.\nנא לאשר את ההזמנה בתשובה להודעה הזו, ולציין אם חסר פריט או שהמחיר השתנה.';
+const WA_CANCEL = "ziso_supplier_cancel";
+const WA_CANCEL_BODY = 'שלום {{1}}, אנחנו מבטלים את הזמנת רכש {{2}} מזיסו קרמיקה (סה"כ {{3}} לפני מע"מ). נא לא לספק אותה, ולאשר בתשובה להודעה הזו שהביטול התקבל.';
 const WINDOW_MS = 23.5 * 3600 * 1000;
+const BUSINESS_ADDR = "זיסו קרמיקה, עוצמה 5, טירת כרמל";
+const localPhone = (s: unknown) => { let d = String(s ?? "").replace(/\D/g, ""); if (d.startsWith("972")) d = "0" + d.slice(3); return d.length === 10 ? d.slice(0, 3) + "-" + d.slice(3) : d; };
+export const customerLine = (po: Record<string, any>) => (po.customer_name ? "עבור לקוח: " + po.customer_name : "");
+// one line for the supplier: where the goods go
+export function deliverLine(po: Record<string, any>) {
+  const d = po.deliver || {};
+  if (po.deliver_to !== "customer") return "אספקה: לבית העסק, " + BUSINESS_ADDR;
+  return `אספקה ישירות ללקוח: ${d.name}, ${d.address}, טלפון ${localPhone(d.phone)}${d.note ? " (" + d.note + ")" : ""}`;
+}
 const digits = (s: unknown) => String(s ?? "").replace(/\D/g, "");
 const tail9 = (s: unknown) => { const d = digits(s); return d.length >= 9 ? d.slice(-9) : ""; };
 const ORIGINS = ["https://www.zisoceramics.com", "https://zisoceramics.com", "http://localhost:8000"];
@@ -66,13 +85,32 @@ export function renderEmail(po: Po) {
 <tbody>${rows}</tbody>
 <tfoot><tr><td ${td} colspan="6"><b>סה"כ לפני מע"מ</b></td><td ${td}><b>${ils(po.total_cost)}</b></td></tr></tfoot></table>
 <p style="color:#555">המחירים לפי המחירון שלכם, לפני מע"מ.</p>
+${po.customer_name ? `<p>${esc(customerLine(po))}</p>` : ""}<p><b>${esc(deliverLine(po))}</b></p>
 ${note}<p><b>נא אשרו את ההזמנה וזמינות הפריטים במייל חוזר.</b> אם פריט חסר או שהמחיר השתנה, נא לציין בתשובה.</p>
 <p>תודה,<br>זיסו קרמיקה בע"מ<br>עוצמה 5, טירת כרמל · 050-4770040</p></div>`;
   const text = [hello, "", `מצורפת הזמנת רכש מס' ${po.po_no} מזיסו קרמיקה:`, "",
     ...lines.map((l, i) => `${i + 1}. ${l.sku ? "מק\"ט " + l.sku + " | " : ""}${l.desc}${l.size ? " " + l.size : ""} | כמות ${l.qty}${l.unit ? " " + l.unit : ""} | ${ils(l.price)} ליח' | ${ils(l.total)}`),
     "", `סה"כ לפני מע"מ: ${ils(po.total_cost)}`, "המחירים לפי המחירון שלכם, לפני מע\"מ.",
+    "", ...(po.customer_name ? [customerLine(po)] : []), deliverLine(po),
     ...(po.note ? ["", "הערה: " + po.note] : []),
     "", "נא אשרו את ההזמנה וזמינות הפריטים במייל חוזר. אם פריט חסר או שהמחיר השתנה, נא לציין בתשובה.", "", "תודה,", "זיסו קרמיקה בע\"מ", "עוצמה 5, טירת כרמל · 050-4770040"].join("\n");
+  return { subject, html, text };
+}
+
+export function renderCancelEmail(po: Po) {
+  const lines = po.lines as Line[];
+  const hello = po.contact ? `שלום ${po.contact},` : "שלום רב,";
+  const day = new Date(po.sent_at || po.created_at).toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" });
+  const subject = `זיסו קרמיקה - ביטול הזמנת רכש ${po.po_no}`;
+  const items = lines.map((l, i) => `${i + 1}. ${l.sku ? "מק\"ט " + l.sku + " | " : ""}${l.desc}${l.size ? " " + l.size : ""} | כמות ${l.qty}${l.unit ? " " + l.unit : ""}`);
+  const text = [hello, "", `אנחנו מבטלים את הזמנת רכש מס' ${po.po_no} מיום ${day} (סה"כ ${ils(po.total_cost)} לפני מע"מ):`, "", ...items, "",
+    "נא לא לספק את ההזמנה, ולאשר במייל חוזר שהביטול התקבל.", "", "תודה,", "זיסו קרמיקה בע\"מ", "עוצמה 5, טירת כרמל · 050-4770040"].join("\n");
+  const html = `<div dir="rtl" style="font-family:Arial,sans-serif;font-size:15px;color:#222">
+<p>${esc(hello)}</p>
+<p>אנחנו <b>מבטלים</b> את הזמנת רכש מס' <b>${esc(po.po_no)}</b> מיום ${esc(day)} (סה"כ ${ils(po.total_cost)} לפני מע"מ):</p>
+<ol>${lines.map((l) => `<li>${l.sku ? '<span dir="ltr">' + esc(l.sku) + "</span> " : ""}${esc(l.desc)}${l.size ? " " + esc(l.size) : ""} · כמות ${l.qty}${l.unit ? " " + esc(l.unit) : ""}</li>`).join("")}</ol>
+<p><b>נא לא לספק את ההזמנה, ולאשר במייל חוזר שהביטול התקבל.</b></p>
+<p>תודה,<br>זיסו קרמיקה בע"מ<br>עוצמה 5, טירת כרמל · 050-4770040</p></div>`;
   return { subject, html, text };
 }
 
@@ -125,7 +163,7 @@ export function waFullText(po: Po) {
   const lines = po.lines as Line[];
   return [`שלום ${po.contact || ""}, זו הזמנת רכש ${po.po_no} מזיסו קרמיקה:`.replace(/\s+,/, ","), "",
     ...lines.map((l) => `• ${lineText(l)} · ${ils(l.price)} ליח' = ${ils(l.total)}`), "",
-    `סה"כ ${ils(po.total_cost)} לפני מע"מ.`, ...(po.note ? ["הערה: " + po.note] : []), "",
+    `סה"כ ${ils(po.total_cost)} לפני מע"מ.`, ...(po.customer_name ? [customerLine(po)] : []), deliverLine(po), ...(po.note ? ["הערה: " + po.note] : []), "",
     "נא לאשר את ההזמנה בתשובה להודעה הזו, ולציין אם חסר פריט או שהמחיר השתנה.", "זיסו קרמיקה"].join("\n");
 }
 // Template parameters cannot hold new lines, tabs or more than 4 spaces in a row; keep {{3}} under 900 characters.
@@ -134,9 +172,11 @@ export function waTemplateParams(po: Po) {
   const lines = po.lines as Line[];
   const parts = lines.map((l) => flat(`${lineText(l)} (${ils(l.total)})`));
   let items = "", n = 0;
-  for (const p of parts) { const next = items ? items + " · " + p : p; if (next.length > 820) break; items = next; n++; }
+  for (const p of parts) { const next = items ? items + " · " + p : p; if (next.length > 620) break; items = next; n++; }
   const truncated = n < parts.length;
   if (truncated) items += ` · ועוד ${parts.length - n} שורות, הפירוט המלא יישלח מיד אחרי תשובתך`;
+  if (po.customer_name && po.deliver_to !== "customer") items = flat(items + " · " + customerLine(po));
+  items = flat(items + " · " + deliverLine(po).slice(0, 200));
   if (po.note) items = flat(items + " · הערה: " + String(po.note).slice(0, 60));
   return { params: [flat(po.contact || "שלום"), String(po.po_no), items.slice(0, 950), ils(po.total_cost)], truncated };
 }
@@ -184,6 +224,26 @@ export async function sendWa(po: Po, by: string) {
   return { ...po, ...patch };
 }
 
+// Tell the supplier on WhatsApp that an order is cancelled. Returns "sent" or the Hebrew reason it did not go.
+export async function sendWaCancel(po: Po, by: string): Promise<{ ok: boolean; error?: string }> {
+  const cfg = await waCfg();
+  const t9 = tail9(po.to_phone);
+  if (!cfg?.token || !cfg?.phone_number_id || !t9) return { ok: false, error: "וואטסאפ לא מחובר" };
+  let to = digits(po.to_phone); if (to.startsWith("0")) to = "972" + to.slice(1);
+  const text = `שלום ${po.contact || ""}, אנחנו מבטלים את הזמנת רכש ${po.po_no} מזיסו קרמיקה (סה"כ ${ils(po.total_cost)} לפני מע"מ). נא לא לספק אותה, ולאשר בתשובה להודעה הזו שהביטול התקבל.`.replace(/\s+,/, ",");
+  let res, type = "text", extra: Record<string, unknown> = {};
+  if (await windowOpen(t9)) res = await waPost(cfg, { messaging_product: "whatsapp", to, type: "text", text: { body: text, preview_url: false } });
+  else {
+    type = "template"; extra = { template: WA_CANCEL };
+    res = await waPost(cfg, { messaging_product: "whatsapp", to, type: "template", template: { name: WA_CANCEL, language: { code: "he" },
+      components: [{ type: "body", parameters: [String(po.contact || "שלום"), String(po.po_no), ils(po.total_cost)].map((x) => ({ type: "text", text: x })) }] } });
+    if (!res.ok && /template|132\d{3}/i.test(res.error)) res.error = "תבנית הודעת הביטול עוד לא מאושרת במטא. " + res.error;
+  }
+  if (!res.ok || !res.id) return { ok: false, error: (res.error || "שגיאה").slice(0, 250) };
+  await waRecord(po, res.id, type, text, by, extra);
+  return { ok: true };
+}
+
 async function staffAction(req: Request, body: any) {
   const jwt = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   const { data: u } = await admin.auth.getUser(jwt);
@@ -219,10 +279,19 @@ async function staffAction(req: Request, body: any) {
       lines.push({ price_id: id, sku: p.supplier_code, desc: p.description, size: p.size, unit: p.unit, qty, price, total: r2(price * qty) });
     }
     const total = r2(lines.reduce((s, l) => s + l.total, 0));
+    const dv = body.deliver && typeof body.deliver === "object" ? body.deliver : {};
+    const toCustomer = dv.to === "customer";
+    const clip = (v: unknown, n: number) => String(v ?? "").replace(/[\r\n\t]+/g, " ").trim().slice(0, n);
+    const cu = body.customer && typeof body.customer === "object" ? body.customer : {};
+    const customerName = clip(cu.name, 80) || (toCustomer ? clip(dv.name, 80) : "") || null;
+    const customerT9 = tail9(cu.tail9) || (toCustomer ? tail9(dv.tail9) : "") || null;
+    if (!customerName && cu.stock !== true) return json(req, { ok: false, error: "צריך לבחור לקוח להזמנה, או לסמן שהיא למלאי" }, 400);
+    const deliver = toCustomer ? { name: clip(dv.name, 80), phone: digits(dv.phone).slice(0, 15), address: clip(dv.address, 160), note: clip(dv.note, 120) || null, tail9: tail9(dv.tail9) || null } : null;
+    if (deliver && (!deliver.name || deliver.phone.length < 9 || deliver.address.length < 5)) return json(req, { ok: false, error: "לאספקה לבית הלקוח צריך שם, טלפון וכתובת מלאה" }, 400);
     const note = typeof body.note === "string" ? body.note.trim().slice(0, 500) || null : null;
     const { data: po, error } = await admin.from("crm_po").insert({
       supplier_id: sup.id, supplier_name: sup.name, channel, to_phone: wa ? sup.order_wa_phone : null,
-      to_email: mail ? sup.order_email : null, email_state: channel === "both" ? "queued" : null, cc: !mail ? [] : [...new Set([...TEAM_CC, ...((sup.order_cc || []) as string[]).map((e) => String(e).trim().toLowerCase()).filter(Boolean)])], contact: sup.order_contact, lines, total_cost: total, note,
+      to_email: mail ? sup.order_email : null, email_state: channel === "both" ? "queued" : null, cc: !mail ? [] : [...new Set([...TEAM_CC, ...((sup.order_cc || []) as string[]).map((e) => String(e).trim().toLowerCase()).filter(Boolean)])], contact: sup.order_contact, lines, total_cost: total, note, deliver_to: toCustomer ? "customer" : "business", deliver, customer_name: customerName, customer_tail9: customerT9,
       status: wa ? "sending" : "queued", claimed_at: wa ? now : null, by: email, by_name: staff.name, updated_at: now,
     }).select("*").single();
     if (error) return json(req, { ok: false, error: error.message }, 500);
@@ -241,25 +310,56 @@ async function staffAction(req: Request, body: any) {
     const cfg = await waCfg();
     if (!cfg?.token || !cfg?.waba_id) return json(req, { ok: false, error: "וואטסאפ לא מחובר" }, 503);
     const h = { authorization: `Bearer ${cfg.token}` };
-    const ex = await (await fetch(`${GRAPH}/${cfg.waba_id}/message_templates?name=${WA_TEMPLATE}&fields=name,status,category,rejected_reason`, { headers: h })).json().catch(() => ({}));
-    const found = (ex.data || []).find((t: any) => t.name === WA_TEMPLATE);
-    if (found || !body.submit) return json(req, { ok: true, exists: !!found, status: found?.status || null, category: found?.category || null, reason: found?.rejected_reason || null });
-    const r = await fetch(`${GRAPH}/${cfg.waba_id}/message_templates`, { method: "POST", headers: { ...h, "content-type": "application/json" }, body: JSON.stringify({
-      name: WA_TEMPLATE, language: "he", category: "UTILITY",
-      components: [{ type: "BODY", text: WA_TEMPLATE_BODY, example: { body_text: [["דודי", "Z0002", "MP1009CB צינור פלקס גולד × 2 יח' (₪148.00) · WT-2305 סבוניה × 1 יח' (₪150.00)", "₪298.00"]] } }],
-    }) });
-    const j = await r.json().catch(() => ({}));
-    await admin.from("crm_audit").insert({ who: email, action: "po_wa_template", detail: { ok: r.ok, id: j.id || null, status: j.status || null, error: j.error?.message || null } });
-    return json(req, { ok: r.ok, exists: r.ok, status: j.status || null, error: j.error ? (j.error.error_user_msg || j.error.message) : null });
+    // two templates: the order itself and the cancellation notice. body.which picks one to submit; the answer lists both.
+    const DEFS: Record<string, { name: string; text: string; example: string[] }> = {
+      order: { name: WA_TEMPLATE, text: WA_TEMPLATE_BODY, example: ["דודי", "Z0002", "MP1009CB צינור פלקס גולד × 2 יח' (₪148.00) · WT-2305 סבוניה × 1 יח' (₪150.00)", "₪298.00"] },
+      cancel: { name: WA_CANCEL, text: WA_CANCEL_BODY, example: ["דודי", "Z0002", "₪298.00"] },
+    };
+    const look = async (name: string) => {
+      const ex = await (await fetch(`${GRAPH}/${cfg.waba_id}/message_templates?name=${name}&fields=name,status,category,rejected_reason`, { headers: h })).json().catch(() => ({}));
+      const f = (ex.data || []).find((t: any) => t.name === name);
+      return { exists: !!f, status: f?.status || null, category: f?.category || null, reason: f?.rejected_reason || null } as Record<string, unknown>;
+    };
+    const all: Record<string, Record<string, unknown>> = { order: await look(WA_TEMPLATE), cancel: await look(WA_CANCEL) };
+    const which = body.which === "cancel" ? "cancel" : "order";
+    if (body.submit && !all[which].exists) {
+      const d = DEFS[which];
+      const r = await fetch(`${GRAPH}/${cfg.waba_id}/message_templates`, { method: "POST", headers: { ...h, "content-type": "application/json" }, body: JSON.stringify({
+        name: d.name, language: "he", category: "UTILITY", components: [{ type: "BODY", text: d.text, example: { body_text: [d.example] } }] }) });
+      const j = await r.json().catch(() => ({}));
+      await admin.from("crm_audit").insert({ who: email, action: "po_wa_template", detail: { which, ok: r.ok, id: j.id || null, status: j.status || null, error: j.error?.message || null } });
+      all[which] = { exists: r.ok, status: j.status || null, error: j.error ? (j.error.error_user_msg || j.error.message) : null };
+      if (!r.ok) return json(req, { ok: false, ...all.order, templates: all, error: all[which].error });
+    }
+    return json(req, { ok: true, ...all.order, templates: all });
   }
 
   const id = Number(body.id);
   if (!Number.isInteger(id)) return json(req, { ok: false, error: "חסר מספר הזמנה" }, 400);
   if (body.action === "cancel") {
-    const { data } = await admin.from("crm_po").update({ status: "cancelled", updated_at: now }).eq("id", id).eq("status", "queued").select("id").maybeSingle();
-    if (!data) return json(req, { ok: false, error: "ההזמנה כבר נשלחה, אי אפשר לבטל מכאן" }, 409);
-    await admin.from("crm_audit").insert({ who: email, action: "po_cancel", detail: { id } });
-    return json(req, { ok: true });
+    // not sent yet: just stop it, the supplier never heard of it
+    const { data: quiet } = await admin.from("crm_po").update({ status: "cancelled", cancelled_at: now, cancelled_by: email, updated_at: now }).eq("id", id).eq("status", "queued").select("id").maybeSingle();
+    if (quiet) { await admin.from("crm_audit").insert({ who: email, action: "po_cancel", detail: { id, notified: false } }); return json(req, { ok: true, notified: [] }); }
+    const { data: po } = await admin.from("crm_po").select("*").eq("id", id).maybeSingle();
+    if (!po) return json(req, { ok: false, error: "ההזמנה לא נמצאה" }, 404);
+    if (po.status === "cancelled") return json(req, { ok: false, error: "ההזמנה כבר בוטלה" }, 409);
+    if (po.status === "sending" || po.email_state === "sending") return json(req, { ok: false, error: "ההזמנה נשלחת ממש עכשיו. נסו שוב בעוד דקה" }, 409);
+    if (po.received_at) return json(req, { ok: false, error: "הסחורה של ההזמנה כבר התקבלה, אי אפשר לבטל מכאן" }, 409);
+    const mailWent = !!po.to_email && (po.channel === "email" ? ["sent", "confirmed", "attention"].includes(po.status) : po.email_state === "sent" || po.email_state === "unknown");
+    const waWent = !!po.wa_msg_id;
+    // mark cancelled first (only once), then tell the supplier
+    const patch: Record<string, unknown> = { status: "cancelled", cancelled_at: now, cancelled_by: email, cancel_email_state: mailWent ? "queued" : null, updated_at: now,
+      summary: `בוטלה ע"י ${staff.name || email}` };
+    if (po.email_state === "queued") patch.email_state = "cancelled"; // the order email never left: do not send it
+    const { data: done } = await admin.from("crm_po").update(patch).eq("id", id).in("status", ["sent", "confirmed", "attention", "failed"]).select("id").maybeSingle();
+    if (!done) return json(req, { ok: false, error: "אי אפשר לבטל את ההזמנה במצב הזה" }, 409);
+    let wa: { ok: boolean; error?: string } | null = null;
+    if (waWent) {
+      wa = await sendWaCancel(po, email);
+      await admin.from("crm_po").update({ cancel_wa_state: wa.ok ? "sent" : "failed", cancel_error: wa.ok ? null : "הודעת הביטול בוואטסאפ לא יצאה: " + wa.error }).eq("id", id);
+    }
+    await admin.from("crm_audit").insert({ who: email, action: "po_cancel", detail: { id, po: po.po_no, mail: mailWent, wa: wa ? wa.ok : null } });
+    return json(req, { ok: true, notified: [...(mailWent ? ["email"] : []), ...(wa?.ok ? ["whatsapp"] : [])], wa_error: wa && !wa.ok ? wa.error : null, mail: mailWent });
   }
   if (body.action === "mark") {
     const st = String(body.status);
@@ -286,6 +386,10 @@ async function bridgeAction(req: Request, body: any) {
     const { data: claimed2 } = await admin.from("crm_po").update({ email_state: "sending", claimed_at: now, updated_at: now }).eq("email_state", "queued").eq("channel", "both").neq("status", "cancelled").select("*");
     const claimed = [...(claimed1 || []), ...(claimed2 || [])];
     const orders = claimed.map((po: Po) => ({ id: po.id, po_no: po.po_no, to: po.to_email, cc: po.cc || [], ...renderEmail(po) }));
+    // cancellation notices: the same sender, reported back with a negative id
+    await admin.from("crm_po").update({ cancel_email_state: "unknown", cancel_error: "לא ברור אם מייל הביטול נשלח. לבדוק בתיבת דואר יוצא.", updated_at: now }).eq("cancel_email_state", "sending").lt("cancel_claimed_at", stale);
+    const { data: canc } = await admin.from("crm_po").update({ cancel_email_state: "sending", cancel_claimed_at: now, updated_at: now }).eq("cancel_email_state", "queued").eq("status", "cancelled").select("*");
+    for (const po of (canc || []) as Po[]) orders.push({ id: -po.id, po_no: po.po_no, to: po.to_email, cc: po.cc || [], ...renderCancelEmail(po) });
     return json(req, { ok: true, orders });
   }
   const id = Number(body.id);
@@ -295,6 +399,11 @@ async function bridgeAction(req: Request, body: any) {
     return json(req, { ok: true, orders: (data || []).map((o: Po) => ({ id: o.id, thread_id: o.gmail_thread_id, seen: [o.gmail_msg_id, ...(o.replies || []).map((x: any) => x.msg_id)].filter(Boolean) })) });
   }
   if (!Number.isInteger(id)) return json(req, { ok: false, error: "missing id" }, 400);
+  if (id < 0 && (body.action === "sent" || body.action === "send_failed")) {
+    const patch = body.action === "sent" ? { cancel_email_state: "sent", updated_at: now } : { cancel_email_state: "failed", cancel_error: ("מייל הביטול נכשל: " + String(body.error || "")).slice(0, 300), updated_at: now };
+    const { data } = await admin.from("crm_po").update(patch).eq("id", -id).in("cancel_email_state", ["sending", "unknown"]).select("id").maybeSingle();
+    return json(req, { ok: !!data });
+  }
   if (body.action === "sent" || body.action === "send_failed") {
     const { data: cur } = await admin.from("crm_po").select("id, channel, status, error").eq("id", id).maybeSingle();
     if (cur?.channel === "both") {
