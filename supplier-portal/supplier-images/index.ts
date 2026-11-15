@@ -3,7 +3,7 @@
 // Pulls the product pictures out of a supplier's PDF catalog, keeps a small JPEG of each in the private bucket
 // (supplier-files/img/<upload>/), and links each picture to the item codes it shows. The CRM supplier price search
 // shows the picture next to the code. supplier-parse calls this when a file has been read. A file that is already in
-// starts when its sp_uploads.img_job is set to {"phase":"refs"} ('hold' = not yet; a new file over 20 MB gets 'hold').
+// starts when its sp_uploads.img_job is set to {"phase":"refs"} ('hold' = not yet).
 // The work is cut into slices, one slice per worker: a worker has 256 MB and about two seconds of CPU for its whole
 // life, and a call that comes soon after another lands on the same worker. A slice works until its share is used up
 // (also in the middle of a page) and then asks supplier-wake to call again a little later, when this worker is gone
@@ -46,7 +46,6 @@ const DOC_MAX = 12 * 1024 * 1024; // one page as PDF; heavier pages are matched 
 const GROUP_BYTES = 6 * 1024 * 1024;
 const LEASE_MS = 60_000; // a call that died is picked up again after this
 const MEMORY = 190 * 1024 * 1024; // of the worker's 256 MB, for the PDF and the picture being decoded
-const AUTO_MAX = 20 * 1024 * 1024; // a heavier catalog does not start by itself ('hold'): its pictures cost about twice its size in monthly traffic
 
 const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { "content-type": "application/json" } });
 const b64 = (u: Uint8Array) => Buffer.from(u.buffer, u.byteOffset, u.byteLength).toString("base64");
@@ -311,8 +310,8 @@ async function wait(u: Upload, job: Job) {
 async function tick() {
   const now = new Date().toISOString();
   // a parsed PDF that has not been searched for pictures yet starts here
-  const { data: fresh } = await db.from("sp_uploads").select("id, size_bytes").is("img_job", null).in("status", ["parsed", "approved"]).gt("rows_count", 0).or("mime.eq.application/pdf,file_name.ilike.%.pdf").not("archive_paths", "is", null).limit(5);
-  for (const f of fresh || []) await db.from("sp_uploads").update({ img_job: { phase: (f.size_bytes || 0) > AUTO_MAX ? "hold" : "refs" } }).eq("id", f.id).is("img_job", null);
+  const { data: fresh } = await db.from("sp_uploads").select("id").is("img_job", null).in("status", ["parsed", "approved"]).gt("rows_count", 0).or("mime.eq.application/pdf,file_name.ilike.%.pdf").not("archive_paths", "is", null).limit(5);
+  for (const f of fresh || []) await db.from("sp_uploads").update({ img_job: { phase: "refs" } }).eq("id", f.id).is("img_job", null);
   const { data: pr } = await db.from("sp_uploads").select("*").eq("img_job->>phase", "probe").limit(1);
   for (const u of pr || []) {
     await save(u, { img_job: { ...u.img_job, phase: "probing" } });
