@@ -12,6 +12,12 @@
 //       Claude reads it: confirmed -> green, question / partial / refusal / unclear -> attention (never green), auto-reply -> no change.
 //       Returns { forward } = true when it is the supplier's message (the script forwards it to Eilat + Shir if they were not on it).
 // An order stuck in "sending" for 20 minutes (send result never reported) becomes attention: check Gmail before resending.
+// WhatsApp suppliers (Sanitec, Aviv 15.11: "סניטק עובדים דרך דודי בוואטסאפ"): sp_suppliers.order_wa_phone set -> "create" sends
+//   right away from the business number (staff pressed "כן, לשלוח" = the yes): free text inside Meta's 24h window, otherwise the
+//   approved UTILITY template ziso_supplier_order. The row goes into wa_messages (source 'crm', bot stays quiet).
+//   His answers arrive from the wa_messages trigger crm_po_wa_in -> { action: "wa_reply" } with x-hook-token (crm_push_keys).
+//   Owner only: { action: "wa_template", submit? } shows the template's status at Meta, and submits it once on his click.
+// The WhatsApp token is read here through the service role only, never returned or logged; wa_config is never written.
 // Priority is never written.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -20,6 +26,13 @@ const IMPORT_SHA256 = "f34768d670cc85ef42eb41294bd0d101707b94e00ad2659ecf28439db
 const TEAM_CC = ["eilatziso50@gmail.com", "shirziso1605@gmail.com"]; // Aviv 15.11: every order mail and every answer goes to Eilat and Shir too
 // plus the supplier's own cc list (sp_suppliers.order_cc), e.g. Dior's sales agent Ilan Beni (Aviv 15.11)
 const MODEL = Deno.env.get("PO_MODEL") || "claude-haiku-5-5";
+const OWNER = "avivziso70@gmail.com";
+const GRAPH = "https://graph.facebook.com/v23.0";
+const WA_TEMPLATE = "ziso_supplier_order";
+const WA_TEMPLATE_BODY = 'שלום {{1}}, זו הזמנת רכש {{2}} מזיסו קרמיקה:\n{{3}}\nסה"כ {{4}} לפני מע"מ.\nנא לאשר את ההזמנה בתשובה להודעה הזו, ולציין אם חסר פריט או שהמחיר השתנה.';
+const WINDOW_MS = 23.5 * 3600 * 1000;
+const digits = (s: unknown) => String(s ?? "").replace(/\D/g, "");
+const tail9 = (s: unknown) => { const d = digits(s); return d.length >= 9 ? d.slice(-9) : ""; };
 const ORIGINS = ["https://www.zisoceramics.com", "https://zisoceramics.com", "http://localhost:8000"];
 function cors(req: Request) {
   const o = req.headers.get("origin") || "";
@@ -104,6 +117,70 @@ summary: one short Hebrew sentence (max 20 words) of what the supplier said, nam
   }
 }
 
+const lineText = (l: Line) => `${l.sku} ${l.desc ?? ""}${l.size ? " " + l.size : ""} × ${l.qty}${l.unit ? " " + l.unit : ""}`.replace(/\s+/g, " ").trim();
+export function waFullText(po: Po) {
+  const lines = po.lines as Line[];
+  return [`שלום ${po.contact || ""}, זו הזמנת רכש ${po.po_no} מזיסו קרמיקה:`.replace(/\s+,/, ","), "",
+    ...lines.map((l) => `• ${lineText(l)} · ${ils(l.price)} ליח' = ${ils(l.total)}`), "",
+    `סה"כ ${ils(po.total_cost)} לפני מע"מ.`, ...(po.note ? ["הערה: " + po.note] : []), "",
+    "נא לאשר את ההזמנה בתשובה להודעה הזו, ולציין אם חסר פריט או שהמחיר השתנה.", "זיסו קרמיקה"].join("\n");
+}
+// Template parameters cannot hold new lines, tabs or more than 4 spaces in a row; keep {{3}} under 900 characters.
+export function waTemplateParams(po: Po) {
+  const flat = (t: string) => t.replace(/[\r\n\t]+/g, " ").replace(/ {2,}/g, " ").trim();
+  const lines = po.lines as Line[];
+  const parts = lines.map((l) => flat(`${lineText(l)} (${ils(l.total)})`));
+  let items = "", n = 0;
+  for (const p of parts) { const next = items ? items + " · " + p : p; if (next.length > 820) break; items = next; n++; }
+  const truncated = n < parts.length;
+  if (truncated) items += ` · ועוד ${parts.length - n} שורות, הפירוט המלא יישלח מיד אחרי תשובתך`;
+  if (po.note) items = flat(items + " · הערה: " + String(po.note).slice(0, 60));
+  return { params: [flat(po.contact || "שלום"), String(po.po_no), items.slice(0, 950), ils(po.total_cost)], truncated };
+}
+async function waCfg() {
+  const { data } = await admin.from("wa_config").select("token, phone_number_id, waba_id").eq("id", 1).maybeSingle();
+  return data;
+}
+async function waPost(cfg: any, payload: unknown) {
+  const r = await fetch(`${GRAPH}/${cfg.phone_number_id}/messages`, { method: "POST", headers: { authorization: `Bearer ${cfg.token}`, "content-type": "application/json" }, body: JSON.stringify(payload) });
+  const j = await r.json().catch(() => ({}));
+  return { ok: r.ok && !!j?.messages?.[0]?.id, id: j?.messages?.[0]?.id as string | undefined, error: j?.error ? `${j.error.message || ""}${j.error.code ? " (" + j.error.code + ")" : ""}` : (r.ok ? "" : "HTTP " + r.status) };
+}
+async function waRecord(po: Po, wamid: string, type: string, text: string, by: string, extra: Record<string, unknown> = {}) {
+  let d = digits(po.to_phone); if (d.startsWith("0")) d = "972" + d.slice(1);
+  const local = d.startsWith("972") ? "0" + d.slice(3) : d;
+  await admin.from("wa_messages").upsert({ id: wamid, ts: new Date().toISOString(), phone: local, dir: "out", type, text, name: po.supplier_name, source: "crm", biz_phone: "972504770040",
+    raw: { crm: { by, po: po.po_no }, ...extra } }, { onConflict: "id", ignoreDuplicates: true });
+}
+async function windowOpen(t9: string) {
+  const { data } = await admin.from("wa_messages").select("ts").like("phone", "%" + t9).eq("dir", "in").eq("source", "live").neq("type", "errors").order("ts", { ascending: false }).limit(1).maybeSingle();
+  return !!data && Date.now() - new Date(data.ts).getTime() < WINDOW_MS;
+}
+// Send one WhatsApp order. Called once per order, right after "create" (status sending).
+export async function sendWa(po: Po, by: string) {
+  const now = new Date().toISOString();
+  const cfg = await waCfg();
+  const fail = async (error: string) => { await admin.from("crm_po").update({ status: "failed", error, updated_at: now }).eq("id", po.id); return { ...po, status: "failed", error }; };
+  if (!cfg?.token || !cfg?.phone_number_id) return fail("וואטסאפ לא מחובר");
+  const t9 = tail9(po.to_phone);
+  if (!t9) return fail("אין מספר וואטסאפ לספק");
+  let to = digits(po.to_phone); if (to.startsWith("0")) to = "972" + to.slice(1);
+  const full = waFullText(po);
+  let res, type = "text", truncated = false, extra: Record<string, unknown> = {};
+  if (await windowOpen(t9)) {
+    res = await waPost(cfg, { messaging_product: "whatsapp", to, type: "text", text: { body: full.slice(0, 4000), preview_url: false } });
+  } else {
+    const t = waTemplateParams(po); truncated = t.truncated; type = "template"; extra = { template: WA_TEMPLATE };
+    res = await waPost(cfg, { messaging_product: "whatsapp", to, type: "template", template: { name: WA_TEMPLATE, language: { code: "he" }, components: [{ type: "body", parameters: t.params.map((x) => ({ type: "text", text: x })) }] } });
+    if (!res.ok && /template|132\d{3}/i.test(res.error)) res.error = "תבנית ההודעה לספקים עוד לא מאושרת במטא, אז אי אפשר לפתוח שיחה עם הספק. " + res.error;
+  }
+  if (!res.ok || !res.id) return fail("השליחה בוואטסאפ נכשלה: " + (res.error || "שגיאה").slice(0, 250));
+  await waRecord(po, res.id, type, full, by, extra);
+  const patch = { status: "sent", sent_at: now, gmail_msg_id: res.id, wa_truncated: truncated, error: null, updated_at: now };
+  await admin.from("crm_po").update(patch).eq("id", po.id);
+  return { ...po, ...patch };
+}
+
 async function staffAction(req: Request, body: any) {
   const jwt = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   const { data: u } = await admin.auth.getUser(jwt);
@@ -114,8 +191,9 @@ async function staffAction(req: Request, body: any) {
   const now = new Date().toISOString();
 
   if (body.action === "create") {
-    const { data: sup } = await admin.from("sp_suppliers").select("id, name, order_email, order_contact, order_cc, active").eq("id", String(body.supplier_id || "")).maybeSingle();
-    if (!sup || !sup.active || !sup.order_email) return json(req, { ok: false, error: "לספק הזה אין מייל להזמנות" }, 400);
+    const { data: sup } = await admin.from("sp_suppliers").select("id, name, order_email, order_contact, order_cc, order_wa_phone, active").eq("id", String(body.supplier_id || "")).maybeSingle();
+    const wa = !!(sup && sup.order_wa_phone && tail9(sup.order_wa_phone));
+    if (!sup || !sup.active || (!sup.order_email && !wa)) return json(req, { ok: false, error: "לספק הזה אין מייל או וואטסאפ להזמנות" }, 400);
     const want = Array.isArray(body.lines) ? body.lines : [];
     if (!want.length || want.length > 60) return json(req, { ok: false, error: "צריך בין שורה אחת ל-60 שורות" }, 400);
     const qtyById = new Map<number, number>();
@@ -137,12 +215,35 @@ async function staffAction(req: Request, body: any) {
     const total = r2(lines.reduce((s, l) => s + l.total, 0));
     const note = typeof body.note === "string" ? body.note.trim().slice(0, 500) || null : null;
     const { data: po, error } = await admin.from("crm_po").insert({
-      supplier_id: sup.id, supplier_name: sup.name, to_email: sup.order_email, cc: [...new Set([...TEAM_CC, ...((sup.order_cc || []) as string[]).map((e) => String(e).trim().toLowerCase()).filter(Boolean)])], contact: sup.order_contact, lines, total_cost: total, note,
-      status: "queued", by: email, by_name: staff.name, updated_at: now,
+      supplier_id: sup.id, supplier_name: sup.name, channel: wa ? "whatsapp" : "email", to_phone: wa ? sup.order_wa_phone : null,
+      to_email: wa ? null : sup.order_email, cc: wa ? [] : [...new Set([...TEAM_CC, ...((sup.order_cc || []) as string[]).map((e) => String(e).trim().toLowerCase()).filter(Boolean)])], contact: sup.order_contact, lines, total_cost: total, note,
+      status: wa ? "sending" : "queued", claimed_at: wa ? now : null, by: email, by_name: staff.name, updated_at: now,
     }).select("*").single();
     if (error) return json(req, { ok: false, error: error.message }, 500);
-    await admin.from("crm_audit").insert({ who: email, action: "po_create", detail: { id: po.id, po: po.po_no, supplier: sup.name, lines: lines.length, total } });
+    await admin.from("crm_audit").insert({ who: email, action: "po_create", detail: { id: po.id, po: po.po_no, supplier: sup.name, lines: lines.length, total, channel: po.channel } });
+    if (wa) {
+      const out = await sendWa(po, email);
+      if (out.status !== "sent") return json(req, { ok: false, po: out, error: out.error }, 502);
+      return json(req, { ok: true, po: out });
+    }
     return json(req, { ok: true, po });
+  }
+
+  if (body.action === "wa_template") {
+    if (email !== OWNER) return json(req, { ok: false, error: "רק אביב" }, 403);
+    const cfg = await waCfg();
+    if (!cfg?.token || !cfg?.waba_id) return json(req, { ok: false, error: "וואטסאפ לא מחובר" }, 503);
+    const h = { authorization: `Bearer ${cfg.token}` };
+    const ex = await (await fetch(`${GRAPH}/${cfg.waba_id}/message_templates?name=${WA_TEMPLATE}&fields=name,status,category,rejected_reason`, { headers: h })).json().catch(() => ({}));
+    const found = (ex.data || []).find((t: any) => t.name === WA_TEMPLATE);
+    if (found || !body.submit) return json(req, { ok: true, exists: !!found, status: found?.status || null, category: found?.category || null, reason: found?.rejected_reason || null });
+    const r = await fetch(`${GRAPH}/${cfg.waba_id}/message_templates`, { method: "POST", headers: { ...h, "content-type": "application/json" }, body: JSON.stringify({
+      name: WA_TEMPLATE, language: "he", category: "UTILITY",
+      components: [{ type: "BODY", text: WA_TEMPLATE_BODY, example: { body_text: [["דודי", "Z0002", "MP1009CB צינור פלקס גולד × 2 יח' (₪148.00) · WT-2305 סבוניה × 1 יח' (₪150.00)", "₪298.00"]] } }],
+    }) });
+    const j = await r.json().catch(() => ({}));
+    await admin.from("crm_audit").insert({ who: email, action: "po_wa_template", detail: { ok: r.ok, id: j.id || null, status: j.status || null, error: j.error?.message || null } });
+    return json(req, { ok: r.ok, exists: r.ok, status: j.status || null, error: j.error ? (j.error.error_user_msg || j.error.message) : null });
   }
 
   const id = Number(body.id);
@@ -171,15 +272,15 @@ async function bridgeAction(req: Request, body: any) {
   if (body.action === "outbox") {
     const stale = new Date(Date.now() - 20 * 60e3).toISOString();
     await admin.from("crm_po").update({ status: "attention", error: "לא ברור אם המייל נשלח. לבדוק בתיבת דואר יוצא לפני שליחה חוזרת.", updated_at: now })
-      .eq("status", "sending").lt("claimed_at", stale);
-    const { data: claimed } = await admin.from("crm_po").update({ status: "sending", claimed_at: now, updated_at: now }).eq("status", "queued").select("*");
+      .eq("status", "sending").eq("channel", "email").lt("claimed_at", stale);
+    const { data: claimed } = await admin.from("crm_po").update({ status: "sending", claimed_at: now, updated_at: now }).eq("status", "queued").eq("channel", "email").select("*");
     const orders = (claimed || []).map((po: Po) => ({ id: po.id, po_no: po.po_no, to: po.to_email, cc: po.cc || [], ...renderEmail(po) }));
     return json(req, { ok: true, orders });
   }
   const id = Number(body.id);
   if (body.action === "watch") {
     const since = new Date(Date.now() - 45 * 864e5).toISOString();
-    const { data } = await admin.from("crm_po").select("id, gmail_thread_id, gmail_msg_id, replies").in("status", ["sent", "attention", "confirmed"]).not("gmail_thread_id", "is", null).gt("sent_at", since).limit(100);
+    const { data } = await admin.from("crm_po").select("id, gmail_thread_id, gmail_msg_id, replies").in("status", ["sent", "attention", "confirmed"]).eq("channel", "email").not("gmail_thread_id", "is", null).gt("sent_at", since).limit(100);
     return json(req, { ok: true, orders: (data || []).map((o: Po) => ({ id: o.id, thread_id: o.gmail_thread_id, seen: [o.gmail_msg_id, ...(o.replies || []).map((x: any) => x.msg_id)].filter(Boolean) })) });
   }
   if (!Number.isInteger(id)) return json(req, { ok: false, error: "missing id" }, 400);
@@ -224,12 +325,62 @@ async function bridgeAction(req: Request, body: any) {
   return json(req, { ok: false, error: "unknown action" }, 400);
 }
 
+// A WhatsApp message from the supplier contact (trigger crm_po_wa_in on wa_messages).
+export async function waReply(body: any) {
+  const now = new Date().toISOString();
+  const id = Number(body.id);
+  const { data: po } = await admin.from("crm_po").select("*").eq("id", id).eq("channel", "whatsapp").maybeSingle();
+  if (!po) return { ok: false, error: "no order" };
+  const msgId = String(body.msg_id || "");
+  if (!msgId || msgId === po.gmail_msg_id || (po.replies || []).some((x: any) => x.msg_id === msgId)) return { ok: true, dup: true };
+  if (tail9(body.from) !== tail9(po.to_phone)) return { ok: false, error: "not the supplier" };
+  const text = String(body.text || "").trim().slice(0, 3000);
+  const at = body.date && !isNaN(Date.parse(body.date)) ? new Date(body.date).toISOString() : now;
+  const entry: Record<string, unknown> = { msg_id: msgId, from: String(body.from || ""), at, text, channel: "whatsapp" };
+  const patch: Record<string, unknown> = { updated_at: now };
+  const firstAnswer = !(po.replies || []).some((x: any) => !x.ignored);
+  if (!text || po.status === "cancelled") {
+    entry.ignored = true; // a file or sticker: not an answer to the order
+  } else {
+    if (po.wa_truncated && firstAnswer) {
+      // the template held only part of the lines; now that he wrote, the 24h window is open: send the full order
+      const cfg = await waCfg();
+      if (cfg?.token) {
+        let to = digits(po.to_phone); if (to.startsWith("0")) to = "972" + to.slice(1);
+        const full = waFullText(po);
+        const r = await waPost(cfg, { messaging_product: "whatsapp", to, type: "text", text: { body: full.slice(0, 4000), preview_url: false } });
+        if (r.ok && r.id) await waRecord(po, r.id, "text", full, "crm-po");
+      }
+    }
+    const c = await classify(po, text);
+    entry.verdict = c.verdict; entry.summary = c.summary;
+    if (c.verdict !== "auto") {
+      let verdict = c.verdict, summary = c.summary;
+      if (verdict === "confirmed" && po.wa_truncated && firstAnswer) { verdict = "unclear"; summary = "אישר את ההודעה המקוצרת. נשלח לו הפירוט המלא, לוודא שאישר את כל השורות"; }
+      patch.verdict = verdict; patch.summary = summary; patch.reply_at = at;
+      patch.status = verdict === "confirmed" ? "confirmed" : "attention";
+      if (verdict === "confirmed") patch.confirmed_at = now;
+    }
+  }
+  patch.replies = [...(po.replies || []), entry];
+  await admin.from("crm_po").update(patch).eq("id", id);
+  return { ok: true, status: patch.status || po.status };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors(req) });
   if (req.method !== "POST") return json(req, { ok: false, error: "POST only" }, 405);
   let body: any;
   try { body = await req.json(); } catch { return json(req, { ok: false, error: "bad json" }, 400); }
   try {
+    const hk = req.headers.get("x-hook-token");
+    if (hk) {
+      const { data: keys } = await admin.from("crm_push_keys").select("hook_token").eq("id", 1).maybeSingle();
+      if (!keys?.hook_token || hk !== keys.hook_token) return json(req, { ok: false, error: "forbidden" }, 403);
+      if (body?.action !== "wa_reply") return json(req, { ok: false, error: "unknown action" }, 400);
+      const out = await waReply(body);
+      return json(req, out, out.ok ? 200 : 400);
+    }
     const k = req.headers.get("x-import-key");
     if (k) {
       if ((await sha256(k)) !== IMPORT_SHA256) return json(req, { ok: false, error: "forbidden" }, 403);
