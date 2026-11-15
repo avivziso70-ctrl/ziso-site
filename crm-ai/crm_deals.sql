@@ -20,8 +20,7 @@ alter table public.crm_deals enable row level security;
 create policy crm_deals_read on public.crm_deals for select using (crm_me() is not null);
 create policy crm_deals_add on public.crm_deals for insert with check (crm_me() is not null);
 create policy crm_deals_edit on public.crm_deals for update using (crm_me() is not null) with check (crm_me() is not null);
-revoke all on public.crm_deals from anon;
+-- anon has no policy, so row level security already shuts it out
 grant select, insert, update on public.crm_deals to authenticated;
 grant usage on sequence public.crm_deals_id_seq, public.crm_deal_no to authenticated;
-alter table public.crm_po add column if not exists deal_id bigint;
-create index if not exists crm_po_deal_idx on public.crm_po (deal_id) where deal_id is not null;
+-- crm_po.deal_id links a purchase order to its deal (column added in crm_po_ack.sql)
