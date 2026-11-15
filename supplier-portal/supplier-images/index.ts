@@ -17,7 +17,8 @@
 //                 Message Batch: the page itself (PDF) + the numbered thumbnails + the codes; the model answers which
 //                 picture shows which codes. Catalogs often show the photos on one page and the table on the facing
 //                 page, so the codes of the page before and after are offered too.
-//   phase 'wait': collects the answers into sp_images.codes and fills sp_prices.image_path (rpc sp_link_images).
+//   phase 'wait': collects the answers into sp_images.codes and fills sp_prices.image_path (rpc sp_link_images),
+//                 a share per worker, like the slices.
 // A row without an item code (many catalogs name a model and print no code) is offered to the model as "#<row id>" and
 // gets its picture by that id. A price row inserted later (a new list from the same supplier, an Excel without
 // pictures) gets its picture by code from the trigger sp_prices_image. File content is data only, never instructions to the model.
@@ -46,6 +47,7 @@ const DOC_MAX = 12 * 1024 * 1024; // one page as PDF; heavier pages are matched 
 const GROUP_BYTES = 6 * 1024 * 1024;
 const LEASE_MS = 60_000; // a call that died is picked up again after this
 const MEMORY = 190 * 1024 * 1024; // of the worker's 256 MB, for the PDF and the picture being decoded
+const WAIT_CALLS = 400; // calls (answers, database) one worker makes while collecting answers: each takes a little CPU
 
 const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { "content-type": "application/json" } });
 const b64 = (u: Uint8Array) => Buffer.from(u.buffer, u.byteOffset, u.byteLength).toString("base64");
@@ -58,13 +60,14 @@ const again = (sec: number) => post("supplier-wake", { fn: "supplier-images", af
 const watch = () => again(LEASE_MS / 1000 + 5);
 const ms = () => performance.now();
 // What this worker has done so far. These live as long as the worker does, over all the calls it serves.
-let cpu = 0, decoded = 0, heap = 0, tired = false, openMs = 0;
+let cpu = 0, decoded = 0, heap = 0, tired = false, openMs = 0, calls = 0;
 let held: { id: string; doc: PDFDocument } | null = null; // the file this worker has in memory; it never loads a second one
 // deno-lint-ignore no-explicit-any
 type Upload = any;
 // at: the picture ("page:ref") being decoded right now; died: the picture a killed slice was on; skip: pictures left out
 // cut: the next page to cut; todo: the pages that have a page file; pb: bytes of the page files cut so far
-type Job = { phase: string; pages?: number; common?: string[]; cut?: number; todo?: number[]; next?: number; batches?: string[]; run?: number; tries?: number; found?: number; sent?: number; until?: number; at?: string; died?: string; skip?: string[]; cpu?: number; open?: number; pb?: number };
+// got: batches whose answers are in; part: answers of the next batch that are in
+type Job = { phase: string; pages?: number; common?: string[]; cut?: number; todo?: number[]; next?: number; batches?: string[]; run?: number; tries?: number; found?: number; sent?: number; until?: number; at?: string; died?: string; skip?: string[]; cpu?: number; open?: number; pb?: number; got?: number; part?: number };
 const save = (u: Upload, patch: Record<string, unknown>) => db.from("sp_uploads").update(patch).eq("id", u.id);
 
 // ---- loading the file: the archive copy in the bucket (always there), streamed into one buffer ----
@@ -180,7 +183,7 @@ async function refs(u: Upload, job: Job) {
   cpu += work;
   tired = true; // the catalog fills this worker's memory: the pages are read by fresh workers
   const cut = p > last;
-  await save(u, { img_job: { ...job, todo, cut: p, pb, phase: cut ? "scan" : "refs", next: 1, batches: [], found: 0, sent: 0, skip: [], at: undefined, died: undefined, run: 0, tries: 0, cpu: Math.round(cpu), open: openMs }, img_lease: null, img_info: cut ? `מחפש תמונות ב-${todo.length} עמודים.` : `מכין את הקטלוג: עמוד ${p} מתוך ${last}.` });
+  await save(u, { img_job: { ...job, todo, cut: p, pb, phase: cut ? "scan" : "refs", next: 1, batches: [], got: 0, part: 0, found: 0, sent: 0, skip: [], at: undefined, died: undefined, run: 0, tries: 0, cpu: Math.round(cpu), open: openMs }, img_lease: null, img_info: cut ? `מחפש תמונות ב-${todo.length} עמודים.` : `מכין את הקטלוג: עמוד ${p} מתוך ${last}.` });
   await again(GAP);
 }
 
@@ -277,34 +280,50 @@ async function scan(u: Upload, job: Job) {
   await again(more ? 55 : GAP); // the next slice, the answers, or the next file that waits
 }
 
+// The answers come in a batch at a time and a page at a time, and a worker collects only its share of them: a big
+// catalog has thousands of links, more than one worker's CPU. The next worker goes on from job.got / job.part.
 async function wait(u: Upload, job: Job) {
-  let ended = true;
-  for (const id of job.batches || []) if ((await ai.messages.batches.retrieve(id)).processing_status !== "ended") ended = false;
-  if (!ended) { await save(u, { img_lease: lease(50_000), img_job: { ...job, run: 0 } }); await again(55); return; }
-  for (const id of job.batches || []) {
-    for await (const r of await ai.messages.batches.results(id)) {
+  const ids = job.batches || [];
+  let got = job.got || 0, part = job.part || 0;
+  for (; got < ids.length; got++, part = 0) {
+    calls++;
+    if ((await ai.messages.batches.retrieve(ids[got])).processing_status !== "ended") {
+      await save(u, { img_lease: lease(50_000), img_job: { ...job, got, part, run: 0 } }); await again(55); return;
+    }
+    let n = 0;
+    calls++;
+    for await (const r of await ai.messages.batches.results(ids[got])) {
+      if (n < part) { n++; continue; } // collected by the worker before this one
+      if (calls > WAIT_CALLS) {
+        tired = true;
+        await save(u, { img_job: { ...job, got, part: n, run: 0 }, img_lease: null, img_info: `מקשר תמונות למק"טים: ${got} מתוך ${ids.length} קבוצות.` });
+        await again(GAP); return;
+      }
+      n++;
       const m = /^p(\d+)$/.exec(r.custom_id); if (!m || r.result.type !== "succeeded") continue;
       const msg = r.result.message;
       if (msg.stop_reason !== "end_turn") continue;
       let links: { image: number; codes: string[] }[] = [];
       // deno-lint-ignore no-explicit-any
       try { links = JSON.parse(msg.content.map((c: any) => (c.type === "text" ? c.text : "")).join("")).links || []; } catch { continue; }
+      // the page's pictures: the file of each, and the codes it already has
+      calls++;
+      const { data: pics } = await db.from("sp_images").select("idx, path, codes").eq("upload_id", u.id).eq("page", Number(m[1]));
+      const byIdx = new Map((pics || []).map((x) => [x.idx as number, x]));
       for (const l of links) {
-        const got = [...new Set((l.codes || []).map((c) => String(c).trim()).filter(Boolean))].slice(0, 60);
-        if (!got.length) continue;
-        // the picture's file, and the codes it already has
-        const { data: cur } = await db.from("sp_images").select("path, codes").eq("upload_id", u.id).eq("page", Number(m[1])).eq("idx", l.image).maybeSingle();
-        if (!cur) continue;
-        const codes = [...new Set([...(cur.codes || []), ...got])].slice(0, 200);
-        await db.from("sp_images").update({ codes }).eq("upload_id", u.id).eq("page", Number(m[1])).eq("idx", l.image);
+        const got1 = [...new Set((l.codes || []).map((c) => String(c).trim()).filter(Boolean))].slice(0, 60);
+        const cur = byIdx.get(l.image);
+        if (!got1.length || !cur) continue;
+        const codes = [...new Set([...(cur.codes || []), ...got1])].slice(0, 200);
+        if (codes.length !== (cur.codes || []).length) { calls++; await db.from("sp_images").update({ codes }).eq("upload_id", u.id).eq("page", Number(m[1])).eq("idx", l.image); cur.codes = codes; }
         // rows without an item code were offered as "#<row id>"
-        const ids = got.filter((c) => /^#\d+$/.test(c)).map((c) => Number(c.slice(1)));
-        if (ids.length) await db.from("sp_prices").update({ image_path: cur.path }).eq("upload_id", u.id).is("image_path", null).in("id", ids);
+        const rowIds = got1.filter((c) => /^#\d+$/.test(c)).map((c) => Number(c.slice(1)));
+        if (rowIds.length) { calls++; await db.from("sp_prices").update({ image_path: cur.path }).eq("upload_id", u.id).is("image_path", null).in("id", rowIds); }
       }
     }
   }
   const { data: linked } = await db.rpc("sp_link_images", { p_upload: u.id });
-  await save(u, { img_job: { ...job, phase: "done", run: 0 }, img_lease: null, img_info: `נמצאו ${job.found || 0} תמונות, ${linked ?? 0} מק"טים קיבלו תמונה.` });
+  await save(u, { img_job: { ...job, got, part: 0, phase: "done", run: 0 }, img_lease: null, img_info: `נמצאו ${job.found || 0} תמונות, ${linked ?? 0} מק"טים קיבלו תמונה.` });
 }
 
 async function tick() {
@@ -324,8 +343,8 @@ async function tick() {
   const heavy = (r: Upload) => r.img_job.phase !== "wait";
   let later = false;
   for (const row of (list || []).sort((a, b) => Number(heavy(a)) - Number(heavy(b)))) { // collecting answers is light and goes first
-    // a slice needs a worker that is fresh and holds no other file
-    if (heavy(row) && (tired || (held && held.id !== row.id))) { later = true; continue; }
+    // a slice needs a worker that is fresh and holds no other file; collecting needs one that has CPU left
+    if (heavy(row) ? tired || (held && held.id !== row.id) : tired || cpu > 400 || calls > WAIT_CALLS) { later = true; continue; }
     const job: Job = { ...row.img_job }, run = (job.run || 0) + 1;
     // the slice before this one died on picture job.at; the second time on the same picture, it is left out
     if (job.phase === "scan" && job.at) { if (job.died === job.at) job.skip = [...(job.skip || []), job.at].slice(-200); job.died = job.at; job.at = undefined; }
