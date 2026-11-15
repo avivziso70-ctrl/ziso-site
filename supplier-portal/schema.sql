@@ -347,3 +347,53 @@ select cron.schedule('supplier-archive', '*/2 * * * *', $cron$
   where exists (select 1 from public.sp_stash where upload_id is null and error is null)
      or exists (select 1 from public.sp_uploads where file_path like 'wa:%' and archive_paths is null and archive_tries < 5)
 $cron$);
+
+-- ---- product pictures (15.11.2026): a thumbnail per item code, taken from the supplier's PDF catalog ----
+-- supplier-images fills sp_images (one row per picture on a page, stored at supplier-files/img/<upload>/) and the
+-- model's answer goes to sp_images.codes. sp_prices.image_path is what the CRM shows next to the code.
+-- sp_uploads.img_job is the state of the search ('hold', 'refs', 'scan', 'wait', 'done', 'failed').
+alter table public.sp_uploads add column if not exists img_job jsonb, add column if not exists img_lease timestamptz, add column if not exists img_info text;
+alter table public.sp_prices add column if not exists image_path text;
+create table if not exists public.sp_images (
+  id bigserial primary key,
+  upload_id uuid not null references public.sp_uploads(id) on delete cascade,
+  supplier_id uuid not null,
+  page int not null, idx int not null, ref text not null,
+  path text not null, w int, h int, box real[], codes text[],
+  created_at timestamptz not null default now(),
+  unique (upload_id, page, ref)
+);
+create index if not exists sp_images_codes on public.sp_images using gin (codes);
+create index if not exists sp_images_supplier on public.sp_images (supplier_id);
+alter table public.sp_images enable row level security;
+drop policy if exists sp_img_staff on public.sp_images;
+create policy sp_img_staff on public.sp_images for select using (crm_me() is not null);
+create or replace function public.sp_image_for(p_upload uuid, p_supplier uuid, p_page text, p_code text) returns text
+language sql stable as $$
+  select path from public.sp_images
+  where p_code is not null and codes @> array[p_code] and supplier_id = p_supplier
+  order by (upload_id = p_upload) desc, (page::text = p_page) desc, created_at desc, idx
+  limit 1
+$$;
+create or replace function public.sp_prices_image() returns trigger language plpgsql as $$
+begin
+  if new.image_path is null and new.supplier_code is not null then
+    new.image_path := public.sp_image_for(new.upload_id, new.supplier_id, new.page_ref, new.supplier_code);
+  end if;
+  return new;
+end $$;
+drop trigger if exists sp_prices_image on public.sp_prices;
+create trigger sp_prices_image before insert on public.sp_prices for each row execute function public.sp_prices_image();
+create or replace function public.sp_link_images(p_upload uuid) returns int language plpgsql security definer set search_path = public as $$
+declare v_sup uuid; n int;
+begin
+  select supplier_id into v_sup from sp_uploads where id = p_upload;
+  update sp_prices p set image_path = sp_image_for(p.upload_id, p.supplier_id, p.page_ref, p.supplier_code)
+  where p.supplier_id = v_sup and p.supplier_code is not null and (p.image_path is null or p.upload_id = p_upload)
+    and exists (select 1 from sp_images i where i.supplier_id = v_sup and i.codes @> array[p.supplier_code]);
+  select count(*) into n from sp_prices where upload_id = p_upload and image_path is not null;
+  return n;
+end $$;
+revoke all on function public.sp_link_images(uuid) from public, anon, authenticated;
+-- files that were already in when this was added wait until started by hand: img_job = '{"phase":"refs"}'
+update public.sp_uploads set img_job = '{"phase":"hold"}' where img_job is null;

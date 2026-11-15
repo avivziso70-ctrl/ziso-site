@@ -161,6 +161,8 @@ async function finish(u: Upload, job: Job) {
   if (pages && empty.length && empty.length < pages) info += ` עמודים בלי פריטים: ${spans(empty)}.`;
   const note = missing.length ? `לא נקראו עמודים ${spans(missing)}. כדאי לבדוק אותם בקובץ, או ללחוץ "לקרוא שוב".` : total ? null : "לא נמצאו שורות עם מחיר";
   await save(u, { status: total ? "parsed" : "failed", rows_count: total, parsed_at: new Date().toISOString(), parse_note: note, parse_info: info, job: { phase: "done", pages, round: job.round || 0 }, job_lease: null });
+  // the product pictures of a catalog are looked for once its rows are in (supplier-images, works on its own)
+  if (total) await fetch(`${SB_URL}/functions/v1/supplier-images`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).then((r) => r.body?.cancel()).catch(() => {});
 }
 
 const openPdf = async (path: string) => openBytes(await load(path));
