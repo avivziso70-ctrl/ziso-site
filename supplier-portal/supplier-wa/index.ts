@@ -6,6 +6,8 @@
 //   sender not known: only a spreadsheet, or a file whose name or caption says price list / catalog. It goes to the
 //     placeholder supplier (kind 'wa_inbox'); staff assign it once (rpc sp_assign_upload) and the number is remembered.
 //   anything else (customers' photos and documents) is not downloaded at all, only its message id is noted as skipped.
+//   A document that was skipped because its sender was not known is looked at again once the number is linked to a
+//   supplier (15.11: Ambin's agent sent two files named "PDF.pdf" before her number was linked).
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
@@ -89,12 +91,15 @@ async function tick() {
   const since = new Date(Date.now() - 48 * 3600_000).toISOString();
   const { data: msgs } = await db.from("wa_messages").select("id, ts, phone, name, type, raw").eq("dir", "in").eq("source", "live").in("type", ["document", "image"]).gte("ts", since).order("ts").limit(300);
   if (!msgs?.length) return;
-  const seen = new Set<string>();
+  const seen = new Set<string>(), skipped = new Set<string>();
   for (let i = 0; i < msgs.length; i += 100) {
-    const { data } = await db.from("sp_wa_log").select("msg_id").in("msg_id", msgs.slice(i, i + 100).map((m) => m.id));
-    (data || []).forEach((r) => seen.add(r.msg_id));
+    const { data } = await db.from("sp_wa_log").select("msg_id, result").in("msg_id", msgs.slice(i, i + 100).map((m) => m.id));
+    (data || []).forEach((r) => { seen.add(r.msg_id); if (r.result === "skip") skipped.add(r.msg_id); });
   }
-  const fresh = msgs.filter((m) => !seen.has(m.id));
+  const { data: ph } = await db.from("sp_supplier_phones").select("phone_key").limit(5000);
+  const phones = new Set((ph || []).map((r) => r.phone_key));
+  const again = msgs.filter((m) => skipped.has(m.id) && m.type === "document" && phones.has(key(m.phone)));
+  const fresh = [...again, ...msgs.filter((m) => !seen.has(m.id))];
   if (!fresh.length) return;
   const { data: cfg } = await db.from("wa_config").select("token").limit(1).maybeSingle();
   const { data: inbox } = await db.from("sp_suppliers").select("id").eq("kind", "wa_inbox").limit(1).maybeSingle();
@@ -103,8 +108,13 @@ async function tick() {
   for (const m of fresh) {
     if (taken >= PER_TICK) break;
     // claim the message first: a second run at the same moment gets a conflict and leaves it alone
-    const { error: claim } = await db.from("sp_wa_log").insert({ msg_id: m.id, result: "working" });
-    if (claim) continue;
+    if (skipped.has(m.id)) {
+      const { data: mine } = await db.from("sp_wa_log").update({ result: "working" }).eq("msg_id", m.id).eq("result", "skip").select("msg_id");
+      if (!mine?.length) continue;
+    } else {
+      const { error: claim } = await db.from("sp_wa_log").insert({ msg_id: m.id, result: "working" });
+      if (claim) continue;
+    }
     let out: { result: string; upload_id?: string | null; note?: string };
     try { out = await take(m, cfg.token, inbox.id); } catch (e) { out = { result: "failed", note: String((e as Error).message || e).slice(0, 200) }; }
     await db.from("sp_wa_log").update({ result: out.result, upload_id: out.upload_id || null, note: out.note || null }).eq("msg_id", m.id);
