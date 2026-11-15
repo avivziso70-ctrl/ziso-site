@@ -28,6 +28,11 @@
 // Cancel (Aviv 15.11): { action: "cancel", id } on an order that already went out marks it cancelled and tells the supplier on the
 //   channels the order used: WhatsApp at once (free text in the 24h window, otherwise template ziso_supplier_cancel), email through
 //   the outbox (same cc), returned there with a negative id (-order id) so the Apps Script needs no change.
+// Loop closing (Aviv 15.11: "שגורם מטעמו יאשר"): every order waits for a supplier rep to confirm it, every cancellation waits
+//   for a rep to confirm the cancel (cancel_ack waiting -> confirmed / attention). Answers count on both channels: the order
+//   thread, the cancellation mail's own thread (watched with a negative id, so the Apps Script needs no change) and WhatsApp.
+//   No answer in time -> crm_po_overdue() (pg_cron, working hours) opens a call-the-supplier task + push; an answer closes it.
+//   Staff can also mark a phone confirmation: { action: "mark", id, status: "cancel_confirmed" }.
 // The WhatsApp token is read here through the service role only, never returned or logged; wa_config is never written.
 // Priority is never written.
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -126,7 +131,7 @@ export function newPart(t: string) {
   return out.join("\n").trim().slice(0, 3000);
 }
 
-export async function classify(po: Po, text: string, fetcher: typeof fetch = fetch): Promise<{ verdict: string; summary: string }> {
+export async function classify(po: Po, text: string, fetcher: typeof fetch = fetch, kind: "order" | "cancel" = "order"): Promise<{ verdict: string; summary: string }> {
   const key = Deno.env.get("ANTHROPIC_API_KEY");
   if (!key) return { verdict: "unclear", summary: "לא הצלחתי לקרוא את התשובה אוטומטית, לבדוק במייל" };
   const items = (po.lines as Line[]).map((l) => `${l.sku ?? ""} ${l.desc ?? ""} x${l.qty}`).join("; ");
@@ -140,18 +145,28 @@ verdict is exactly one of:
 - "unclear": anything else.
 When in doubt, never say "confirmed". "התקבל" alone (received) without confirming supply counts as "confirmed" only if nothing else is raised.
 summary: one short Hebrew sentence (max 20 words) of what the supplier said, naming missing items or dates if any.`;
+  const systemCancel = `Ziso Ceramics (Israel) CANCELLED a purchase order and asked the supplier to confirm the cancellation. You read the supplier's reply. Reply ONLY with JSON: {"verdict": "...", "summary": "..."}.
+verdict is exactly one of:
+- "confirmed": the supplier clearly confirms the order is cancelled / will not be supplied (e.g. "בוטל", "ביטלתי", "מבוטל", "התקבל, לא נספק", "אוקיי בוטל").
+- "too_late": the goods already left / were supplied / were charged, or the supplier cannot cancel.
+- "question": asks something before cancelling.
+- "auto": an automatic reply that says nothing about the order.
+- "unclear": anything else, including a bare "ok"/"תודה" that does not say the order is cancelled.
+When in doubt, never say "confirmed".
+summary: one short Hebrew sentence (max 20 words) of what the supplier said.`;
+  const VERDICTS = kind === "cancel" ? ["confirmed", "too_late", "question", "auto", "unclear"] : ["confirmed", "partial", "question", "rejected", "auto", "unclear"];
   try {
     const r = await fetcher("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: MODEL, max_tokens: 300, system, messages: [{ role: "user", content: `Order ${po.po_no}: ${items}\n\nSupplier reply:\n${text}` }] }),
+      body: JSON.stringify({ model: MODEL, max_tokens: 300, system: kind === "cancel" ? systemCancel : system, messages: [{ role: "user", content: `${kind === "cancel" ? "Cancelled order" : "Order"} ${po.po_no}: ${items}\n\nSupplier reply:\n${text}` }] }),
     });
     if (!r.ok) throw new Error("api " + r.status);
     const j = await r.json();
     const t = (j.content || []).filter((c: any) => c.type === "text").map((c: any) => c.text).join("");
     const m = t.match(/\{[\s\S]*\}/);
     const o = m ? JSON.parse(m[0]) : {};
-    const verdict = ["confirmed", "partial", "question", "rejected", "auto", "unclear"].includes(o.verdict) ? o.verdict : "unclear";
+    const verdict = VERDICTS.includes(o.verdict) ? o.verdict : "unclear";
     return { verdict, summary: String(o.summary || "").slice(0, 200) || "לבדוק את התשובה במייל" };
   } catch (_e) {
     return { verdict: "unclear", summary: "לא הצלחתי לקרוא את התשובה אוטומטית, לבדוק במייל" };
@@ -159,6 +174,19 @@ summary: one short Hebrew sentence (max 20 words) of what the supplier said, nam
 }
 
 const lineText = (l: Line) => `${l.sku ?? ""} ${l.desc ?? ""}${l.size ? " " + l.size : ""} × ${l.qty}${l.unit ? " " + l.unit : ""}`.replace(/\s+/g, " ").trim();
+// The supplier answered a cancellation: confirmed -> done, anything else -> attention (task + push from the DB trigger).
+export function cancelPatch(c: { verdict: string; summary: string }, at: string, now: string): Record<string, unknown> {
+  if (c.verdict === "auto") return {};
+  const ok = c.verdict === "confirmed";
+  return { cancel_ack: ok ? "confirmed" : "attention", cancel_ack_at: at, cancel_summary: (c.verdict === "too_late" ? "יתכן שכבר מאוחר: " : "") + c.summary, ...(ok ? { cancel_confirmed_at: now } : {}) };
+}
+// An answer arrived: the "no answer yet, call him" task is not needed any more.
+async function closeNudge(po: Po, which: "order" | "cancel") {
+  const tid = which === "order" ? po.nudge_task_id : po.cancel_nudge_task_id;
+  if (tid) await admin.from("crm_tasks").update({ done_at: new Date().toISOString(), done_by: "הספק ענה" }).eq("id", tid).is("done_at", null);
+}
+const awaitingCancel = (po: Po) => po.status === "cancelled" && (po.cancel_ack === "waiting" || po.cancel_ack === "attention");
+
 export function waFullText(po: Po) {
   const lines = po.lines as Line[];
   return [`שלום ${po.contact || ""}, זו הזמנת רכש ${po.po_no} מזיסו קרמיקה:`.replace(/\s+,/, ","), "",
@@ -349,6 +377,7 @@ async function staffAction(req: Request, body: any) {
     const waWent = !!po.wa_msg_id;
     // mark cancelled first (only once), then tell the supplier
     const patch: Record<string, unknown> = { status: "cancelled", cancelled_at: now, cancelled_by: email, cancel_email_state: mailWent ? "queued" : null, updated_at: now,
+      cancel_ack: mailWent || waWent ? "waiting" : null,
       summary: `בוטלה ע"י ${staff.name || email}` };
     if (po.email_state === "queued") patch.email_state = "cancelled"; // the order email never left: do not send it
     const { data: done } = await admin.from("crm_po").update(patch).eq("id", id).in("status", ["sent", "confirmed", "attention", "failed"]).select("id").maybeSingle();
@@ -356,10 +385,19 @@ async function staffAction(req: Request, body: any) {
     let wa: { ok: boolean; error?: string } | null = null;
     if (waWent) {
       wa = await sendWaCancel(po, email);
-      await admin.from("crm_po").update({ cancel_wa_state: wa.ok ? "sent" : "failed", cancel_error: wa.ok ? null : "הודעת הביטול בוואטסאפ לא יצאה: " + wa.error }).eq("id", id);
+      await admin.from("crm_po").update({ cancel_wa_state: wa.ok ? "sent" : "failed", cancel_error: wa.ok ? null : "הודעת הביטול בוואטסאפ לא יצאה: " + wa.error,
+        ...(!wa.ok && !mailWent ? { cancel_ack: null } : {}) }).eq("id", id);
     }
     await admin.from("crm_audit").insert({ who: email, action: "po_cancel", detail: { id, po: po.po_no, mail: mailWent, wa: wa ? wa.ok : null } });
     return json(req, { ok: true, notified: [...(mailWent ? ["email"] : []), ...(wa?.ok ? ["whatsapp"] : [])], wa_error: wa && !wa.ok ? wa.error : null, mail: mailWent });
+  }
+  if (body.action === "mark" && body.status === "cancel_confirmed") {
+    const { data: po } = await admin.from("crm_po").select("*").eq("id", id).maybeSingle();
+    if (!po || po.status !== "cancelled") return json(req, { ok: false, error: "ההזמנה לא מבוטלת" }, 409);
+    await admin.from("crm_po").update({ cancel_ack: "confirmed", cancel_ack_at: now, cancel_confirmed_at: now, cancel_summary: `אישור הביטול סומן ידנית ע"י ${staff.name || email}`, updated_at: now }).eq("id", id);
+    await closeNudge(po, "cancel");
+    await admin.from("crm_audit").insert({ who: email, action: "po_mark", detail: { id, status: "cancel_confirmed" } });
+    return json(req, { ok: true });
   }
   if (body.action === "mark") {
     const st = String(body.status);
@@ -368,6 +406,7 @@ async function staffAction(req: Request, body: any) {
     if (st === "confirmed") patch.confirmed_at = now;
     const { data } = await admin.from("crm_po").update(patch).eq("id", id).in("status", ["sent", "confirmed", "attention", "failed"]).select("id").maybeSingle();
     if (!data) return json(req, { ok: false, error: "אי אפשר לסמן הזמנה שעוד לא נשלחה" }, 409);
+    if (st === "confirmed") { const { data: po } = await admin.from("crm_po").select("nudge_task_id").eq("id", id).maybeSingle(); if (po) await closeNudge(po, "order"); }
     await admin.from("crm_audit").insert({ who: email, action: "po_mark", detail: { id, status: st } });
     return json(req, { ok: true });
   }
@@ -396,11 +435,18 @@ async function bridgeAction(req: Request, body: any) {
   if (body.action === "watch") {
     const since = new Date(Date.now() - 45 * 864e5).toISOString();
     const { data } = await admin.from("crm_po").select("id, gmail_thread_id, gmail_msg_id, replies").in("status", ["sent", "attention", "confirmed"]).in("channel", ["email", "both"]).not("gmail_thread_id", "is", null).gt("sent_at", since).limit(100);
-    return json(req, { ok: true, orders: (data || []).map((o: Po) => ({ id: o.id, thread_id: o.gmail_thread_id, seen: [o.gmail_msg_id, ...(o.replies || []).map((x: any) => x.msg_id)].filter(Boolean) })) });
+    const { data: canc } = await admin.from("crm_po").select("id, gmail_thread_id, gmail_msg_id, cancel_thread_id, cancel_msg_id, replies").eq("status", "cancelled").in("cancel_ack", ["waiting", "attention"]).gt("cancelled_at", since).limit(100);
+    const seen = (o: Po) => [o.gmail_msg_id, o.cancel_msg_id, ...(o.replies || []).map((x: any) => x.msg_id)].filter(Boolean);
+    const out = (data || []).map((o: Po) => ({ id: o.id, thread_id: o.gmail_thread_id, seen: seen(o) }));
+    for (const o of (canc || []) as Po[]) {
+      if (o.gmail_thread_id) out.push({ id: o.id, thread_id: o.gmail_thread_id, seen: seen(o) });   // an answer on the order thread
+      if (o.cancel_thread_id) out.push({ id: -o.id, thread_id: o.cancel_thread_id, seen: seen(o) }); // an answer on the cancellation mail
+    }
+    return json(req, { ok: true, orders: out });
   }
   if (!Number.isInteger(id)) return json(req, { ok: false, error: "missing id" }, 400);
   if (id < 0 && (body.action === "sent" || body.action === "send_failed")) {
-    const patch = body.action === "sent" ? { cancel_email_state: "sent", updated_at: now } : { cancel_email_state: "failed", cancel_error: ("מייל הביטול נכשל: " + String(body.error || "")).slice(0, 300), updated_at: now };
+    const patch = body.action === "sent" ? { cancel_email_state: "sent", cancel_thread_id: String(body.thread_id || "") || null, cancel_msg_id: String(body.msg_id || "") || null, updated_at: now } : { cancel_email_state: "failed", cancel_error: ("מייל הביטול נכשל: " + String(body.error || "")).slice(0, 300), updated_at: now };
     const { data } = await admin.from("crm_po").update(patch).eq("id", -id).in("cancel_email_state", ["sending", "unknown"]).select("id").maybeSingle();
     return json(req, { ok: !!data });
   }
@@ -427,10 +473,10 @@ async function bridgeAction(req: Request, body: any) {
     return json(req, { ok: true });
   }
   if (body.action === "reply") {
-    const { data: po } = await admin.from("crm_po").select("*").eq("id", id).maybeSingle();
+    const { data: po } = await admin.from("crm_po").select("*").eq("id", Math.abs(id)).maybeSingle();
     if (!po) return json(req, { ok: false, error: "no order" }, 404);
     const msgId = String(body.msg_id || "");
-    if (!msgId || (po.replies || []).some((x: any) => x.msg_id === msgId) || msgId === po.gmail_msg_id) return json(req, { ok: true, dup: true, forward: false });
+    if (!msgId || (po.replies || []).some((x: any) => x.msg_id === msgId) || msgId === po.gmail_msg_id || msgId === po.cancel_msg_id) return json(req, { ok: true, dup: true, forward: false });
     const from = String(body.from || "").slice(0, 200);
     const addr = ((from.match(/<([^>]+)>/) || [])[1] || from).trim().toLowerCase();
     // the supplier side: the order address's domain, or a supplier cc such as Dior's sales agent (never our own team)
@@ -440,10 +486,16 @@ async function bridgeAction(req: Request, body: any) {
     const at = body.date && !isNaN(Date.parse(body.date)) ? new Date(body.date).toISOString() : now;
     const entry: Record<string, unknown> = { msg_id: msgId, from, at, text };
     const patch: Record<string, unknown> = { updated_at: now };
-    if (!fromSupplier || po.status === "cancelled") {
+    if (!fromSupplier || (po.status === "cancelled" && !awaitingCancel(po))) {
       entry.ignored = true;
+    } else if (po.status === "cancelled") {
+      const c = await classify(po, text, fetch, "cancel");
+      entry.verdict = c.verdict; entry.summary = c.summary; entry.kind = "cancel";
+      Object.assign(patch, cancelPatch(c, at, now));
+      if (c.verdict !== "auto") await closeNudge(po, "cancel");
     } else {
       const c = await classify(po, text);
+      if (c.verdict !== "auto") await closeNudge(po, "order");
       entry.verdict = c.verdict; entry.summary = c.summary;
       if (c.verdict !== "auto") {
         patch.verdict = c.verdict; patch.summary = c.summary; patch.reply_at = at;
@@ -452,8 +504,8 @@ async function bridgeAction(req: Request, body: any) {
       }
     }
     patch.replies = [...(po.replies || []), entry];
-    await admin.from("crm_po").update(patch).eq("id", id);
-    return json(req, { ok: true, forward: fromSupplier, status: patch.status || po.status });
+    await admin.from("crm_po").update(patch).eq("id", po.id);
+    return json(req, { ok: true, forward: fromSupplier, status: patch.status || po.status, cancel_ack: patch.cancel_ack || po.cancel_ack || null });
   }
   return json(req, { ok: false, error: "unknown action" }, 400);
 }
@@ -462,18 +514,30 @@ async function bridgeAction(req: Request, body: any) {
 export async function waReply(body: any) {
   const now = new Date().toISOString();
   const id = Number(body.id);
-  const { data: po } = await admin.from("crm_po").select("*").eq("id", id).in("channel", ["whatsapp", "both"]).maybeSingle();
+  let { data: po } = await admin.from("crm_po").select("*").eq("id", id).in("channel", ["whatsapp", "both"]).maybeSingle();
   if (!po) return { ok: false, error: "no order" };
+  // he named another order number of his (e.g. "Z0007 מאושר"): the answer belongs to that one
+  const named = (String(body.text || "").match(/\b[zZ]\s?(\d{4})\b/) || [])[1];
+  if (named && "Z" + named !== po.po_no) {
+    const { data: other } = await admin.from("crm_po").select("*").eq("po_no", "Z" + named).in("channel", ["whatsapp", "both"]).maybeSingle();
+    if (other && tail9(other.to_phone) === tail9(po.to_phone)) po = other;
+  }
   const msgId = String(body.msg_id || "");
   if (!msgId || msgId === po.wa_msg_id || (po.replies || []).some((x: any) => x.msg_id === msgId)) return { ok: true, dup: true };
+  const wid = po.id;
   if (tail9(body.from) !== tail9(po.to_phone)) return { ok: false, error: "not the supplier" };
   const text = String(body.text || "").trim().slice(0, 3000);
   const at = body.date && !isNaN(Date.parse(body.date)) ? new Date(body.date).toISOString() : now;
   const entry: Record<string, unknown> = { msg_id: msgId, from: String(body.from || ""), at, text, channel: "whatsapp" };
   const patch: Record<string, unknown> = { updated_at: now };
   const firstAnswer = !(po.replies || []).some((x: any) => !x.ignored);
-  if (!text || po.status === "cancelled") {
+  if (!text || (po.status === "cancelled" && !awaitingCancel(po))) {
     entry.ignored = true; // a file or sticker: not an answer to the order
+  } else if (po.status === "cancelled") {
+    const c = await classify(po, text, fetch, "cancel");
+    entry.verdict = c.verdict; entry.summary = c.summary; entry.kind = "cancel";
+    Object.assign(patch, cancelPatch(c, at, now));
+    if (c.verdict !== "auto") await closeNudge(po, "cancel");
   } else {
     if (po.wa_truncated && firstAnswer) {
       // the template held only part of the lines; now that he wrote, the 24h window is open: send the full order
@@ -487,6 +551,7 @@ export async function waReply(body: any) {
     }
     const c = await classify(po, text);
     entry.verdict = c.verdict; entry.summary = c.summary;
+    if (c.verdict !== "auto") await closeNudge(po, "order");
     if (c.verdict !== "auto") {
       let verdict = c.verdict, summary = c.summary;
       if (verdict === "confirmed" && po.wa_truncated && firstAnswer) { verdict = "unclear"; summary = "אישר את ההודעה המקוצרת. נשלח לו הפירוט המלא, לוודא שאישר את כל השורות"; }
@@ -496,8 +561,8 @@ export async function waReply(body: any) {
     }
   }
   patch.replies = [...(po.replies || []), entry];
-  await admin.from("crm_po").update(patch).eq("id", id);
-  return { ok: true, status: patch.status || po.status };
+  await admin.from("crm_po").update(patch).eq("id", wid);
+  return { ok: true, status: patch.status || po.status, cancel_ack: patch.cancel_ack || po.cancel_ack || null };
 }
 
 Deno.serve(async (req: Request) => {
