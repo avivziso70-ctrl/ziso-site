@@ -96,12 +96,13 @@ table.nopic .pic{display:none}
       <p><b>סה"כ עלות: <span id="cTotal"></span> לפני מע"מ</b> <span class="mute">(<span id="cTotalVat"></span> כולל מע"מ) · תנאי תשלום מול הספק: שוטף+120</span></p>
       <div id="cStep1" class="row"><button class="btn brass" id="cGo">שליחת ההזמנה ל<span class="cTo"></span></button><button class="btn small red" id="cClear">ניקוי ההזמנה</button></div>
       <div id="cStep2" class="card hidden" role="alertdialog" aria-labelledby="cAsk">
-        <p id="cAsk" style="margin-top:0"><b>לשלוח עכשיו?</b> מייל ל<span class="cTo"></span> (<span id="cMail" class="ltr"></span>), עם העתק לאילת ולשיר<span id="cCc"></span>: <span id="cSum"></span>. התשובה שלה תסומן כאן אוטומטית.</p>
+        <p id="cAsk" style="margin-top:0"><b>לשלוח עכשיו?</b> <span id="cHow"></span>: <span id="cSum"></span>. התשובה תסומן כאן אוטומטית.</p>
         <div class="row"><button class="btn brass" id="cYes">כן, לשלוח</button><button class="btn small" id="cNo">חזרה</button></div>
       </div>
       <p id="cMsg" role="status" aria-live="polite"></p>
     </div>
-    <p class="mute" id="cHint">כדי להזמין: מחפשים בלשונית "חיפוש מחיר" פריט של ספק שיש לו מייל להזמנות (כרגע דיאור) ולוחצים "+ להזמנה".</p>
+    <p class="mute" id="cHint">כדי להזמין: מחפשים בלשונית "חיפוש מחיר" פריט של ספק שמזמינים ממנו דרך המערכת (דיאור במייל, סניטק בוואטסאפ לדודי) ולוחצים "+ להזמנה".</p>
+    <div id="waTpl" class="card hidden" role="status"></div>
     <h2>הזמנות שנשלחו</h2>
     <p class="mute"><span class="st yellow">ממתין</span> נשלח וממתין לאישור · <span class="st green">אושר</span> הספק אישר · <span class="st orange">לבדוק</span> הספק שאל משהו או שחסר פריט</p>
     <div id="ordList"></div>
@@ -364,7 +365,9 @@ var CART_KEY = 'ziso-po-cart';
 var cart = { sup: null, items: {}, note: '' };
 try { var c0 = JSON.parse(localStorage.getItem(CART_KEY) || 'null'); if (c0 && c0.items) cart = c0; } catch (e) { }
 function saveCart() { try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch (e) { } }
-function canOrder(r) { var s = suppliers[r.supplier_id]; return !!(s && s.order_email && r.price != null && (!r.currency || r.currency === 'ILS')); }
+function canOrder(r) { var s = suppliers[r.supplier_id]; return !!(s && (s.order_email || s.order_wa_phone) && r.price != null && (!r.currency || r.currency === 'ILS')); }
+function isWa(s) { return !!(s && s.order_wa_phone); }
+function fmtPhone(p) { var d = String(p || '').replace(/\D/g, ''); if (d.indexOf('972') === 0) d = '0' + d.slice(3); return d.length === 10 ? d.slice(0, 3) + '-' + d.slice(3) : d; }
 function net(r) { return r.vat_included ? r.price / 1.18 : Number(r.price); }
 function cartList() { return Object.keys(cart.items).map(function (k) { return cart.items[k]; }); }
 function cartTotal() { return Math.round(cartList().reduce(function (s, it) { return s + net(it.r) * (Number(it.qty) || 0); }, 0) * 100) / 100; }
@@ -424,8 +427,9 @@ $('cClear').addEventListener('click', function () { cart = { sup: null, items: {
 function closeAsk() { $('cStep2').classList.add('hidden'); $('cStep1').classList.remove('hidden'); }
 $('cGo').addEventListener('click', function () {
   var list = cartList(), s = suppliers[cart.sup] || {};
-  $('cMail').textContent = s.order_email || '';
-  $('cCc').textContent = (s.order_cc || []).length ? ' וגם ל-' + s.order_cc.join(', ') : '';
+  $('cHow').textContent = isWa(s)
+    ? 'וואטסאפ ל' + contact() + ' (' + fmtPhone(s.order_wa_phone) + ') מהמספר העסקי של זיסו, עם כל הפריטים והמחירים'
+    : 'מייל ל' + contact() + ' (' + (s.order_email || '') + '), עם העתק לאילת ולשיר' + ((s.order_cc || []).length ? ' וגם ל-' + s.order_cc.join(', ') : '');
   $('cSum').textContent = list.length + ' שורות, ' + list.reduce(function (n, it) { return n + (Number(it.qty) || 0); }, 0).toLocaleString('he-IL') + ' יחידות, ' + money(cartTotal()) + ' לפני מע"מ';
   $('cStep1').classList.add('hidden'); $('cStep2').classList.remove('hidden'); $('cYes').focus();
 });
@@ -437,9 +441,10 @@ $('cYes').addEventListener('click', function () {
     .then(function (r) { return r.json().catch(function () { return { ok: false, error: 'תקלה בשרת' }; }); })
     .then(function (j) {
       b.disabled = false; b.textContent = 'כן, לשלוח';
-      if (!j.ok) { $('cMsg').textContent = 'לא נשלח: ' + (j.error || 'שגיאה'); $('cMsg').className = 'err'; return; }
+      if (!j.ok) { $('cMsg').textContent = 'לא נשלח: ' + (j.error || 'שגיאה'); $('cMsg').className = 'err'; if (j.po) loadOrders(); return; }
+      var wa = j.po.channel === 'whatsapp', who = contact();
       cart = { sup: null, items: {}, note: '' }; saveCart(); closeAsk(); drawCart(); drawSearch();
-      $('cHint').textContent = 'הזמנה ' + j.po.po_no + ' נקלטה. המייל יוצא בדקות הקרובות.'; $('cHint').className = 'ok';
+      $('cHint').textContent = 'הזמנה ' + j.po.po_no + (wa ? ' נשלחה ל' + who + ' בוואטסאפ.' : ' נקלטה. המייל יוצא בדקות הקרובות.'); $('cHint').className = 'ok';
       loadOrders();
     }, function () { b.disabled = false; b.textContent = 'כן, לשלוח'; $('cMsg').textContent = 'אין חיבור. נסו שוב.'; $('cMsg').className = 'err'; });
 });
@@ -464,7 +469,7 @@ function loadOrders() {
       else if (o.status !== 'cancelled' && o.status !== 'sending') acts = (o.status !== 'confirmed' ? '<button class="btn small" data-po="confirmed" data-id="' + o.id + '">סמן אושר</button> ' : '') +
         (o.status !== 'attention' ? '<button class="btn small" data-po="attention" data-id="' + o.id + '">סמן לבדוק</button>' : '');
       return '<div class="card po ' + st[0] + '"><div class="row"><b class="grow">' + esc(o.po_no) + ' · ' + esc(o.supplier_name) + '</b><span class="st ' + st[0] + '">' + st[1] + '</span></div>' +
-        '<div class="mute">' + lines.length + ' שורות · ' + money(o.total_cost) + ' לפני מע"מ · נוצרה ' + fmtTime(o.created_at) + (o.by_name ? ' ע"י ' + esc(o.by_name) : '') + (o.sent_at ? ' · נשלחה ' + fmtTime(o.sent_at) : '') + '</div>' +
+        '<div class="mute">' + lines.length + ' שורות · ' + money(o.total_cost) + ' לפני מע"מ · נוצרה ' + fmtTime(o.created_at) + (o.by_name ? ' ע"י ' + esc(o.by_name) : '') + (o.sent_at ? ' · נשלחה ' + fmtTime(o.sent_at) + (o.channel === 'whatsapp' ? ' בוואטסאפ' : '') : '') + '</div>' +
         (o.summary ? '<p style="margin:6px 0"><b>' + esc(o.summary) + '</b></p>' : '') + (o.error ? '<p class="err" style="margin:6px 0">' + esc(o.error) + '</p>' : '') +
         (rep && rep.text ? '<div class="quote">' + esc(rep.text.slice(0, 600)) + '</div>' : '') +
         '<details><summary class="mute">הפריטים</summary><div class="tablewrap"><table><tbody>' + lines.map(function (l) {
@@ -482,12 +487,38 @@ $('ordList').addEventListener('click', function (e) {
     .then(function (r) { return r.json(); }).then(function (j) { if (!j.ok) { b.disabled = false; b.textContent = j.error || 'לא הצליח'; return; } b.blur(); loadOrders(); }, function () { b.disabled = false; });
 });
 
+/* WhatsApp template (owner only): the first message to a supplier, or one after 24h of silence, needs a template Meta approved */
+var TPL_ST = { APPROVED: 'מאושרת', PENDING: 'ממתינה לאישור של מטא (בדרך כלל דקות עד כמה שעות)', REJECTED: 'נדחתה', PAUSED: 'מושהית', DISABLED: 'מושבתת' };
+var tplChecked = false;
+function tplCall(submit) {
+  return fetch(PO_FN, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + session.access_token }, body: JSON.stringify({ action: 'wa_template', submit: !!submit }) })
+    .then(function (r) { return r.json().catch(function () { return { ok: false, error: 'תקלה בשרת' }; }); });
+}
+function drawTpl(j) {
+  var box = $('waTpl'), msg;
+  if (j.ok && j.status === 'APPROVED') { box.classList.add('hidden'); return; }
+  if (!j.ok && !j.exists) msg = '<b>תבנית וואטסאפ להזמנות מספקים:</b> ' + esc(j.error || 'לא הצלחתי לבדוק') + ' <button class="btn small" id="tplGo">לנסות שוב</button>';
+  else if (j.exists) msg = '<b>תבנית וואטסאפ להזמנות מספקים:</b> ' + esc(TPL_ST[j.status] || j.status || 'נשלחה לאישור') + (j.reason && j.reason !== 'NONE' ? ' (' + esc(j.reason) + ')' : '') + '. עד שהיא מאושרת, הזמנה בוואטסאפ יוצאת רק אם הספק כתב לנו ב-24 השעות האחרונות.';
+  else msg = '<b>צריך לחיצה אחת שלך:</b> ההודעה הראשונה לדודי מסניטק (וכל הודעה אחרי 24 שעות שהוא לא כתב) חייבת תבנית שמטא אישרה. הכפתור מגיש אותה לאישור, בלי עלות. כל הזמנה שתצא בתבנית עולה כמה אגורות למטא. <button class="btn brass small" id="tplGo">הגשת התבנית לאישור מטא</button>';
+  box.innerHTML = msg; box.classList.remove('hidden');
+}
+function checkTpl() {
+  if (tplChecked || !session || (session.user || {}).email !== 'avivziso70@gmail.com') return;
+  if (!Object.keys(suppliers).some(function (k) { return isWa(suppliers[k]); })) return;
+  tplChecked = true; tplCall(false).then(drawTpl, function () { tplChecked = false; });
+}
+$('waTpl').addEventListener('click', function (e) {
+  var b = e.target.closest('#tplGo'); if (!b) return;
+  b.disabled = true; b.textContent = 'שולח למטא...';
+  tplCall(true).then(drawTpl, function () { b.disabled = false; b.textContent = 'אין חיבור. לנסות שוב'; });
+});
+
 /* ---------- start ---------- */
 sb.auth.getSession().then(function (r) {
   session = r.data.session;
   if (!session) { $('needLogin').classList.remove('hidden'); $('v-search').classList.add('hidden'); return; }
   sb.auth.onAuthStateChange(function (_e, s) { if (s) session = s; });
-  loadSupMap().then(function () { loadPending(); fillSupList(); drawBar(); loadOrders(); });
+  loadSupMap().then(function () { loadPending(); fillSupList(); drawBar(); loadOrders(); checkTpl(); });
   show('search');
   sb.from('priority_suppliers').select('sup,name').eq('active', true).order('name').then(function (p) {
     $('prioSup').innerHTML = (p.data || []).map(function (x) { return '<option value="' + esc(x.name) + '" data-sup="' + esc(x.sup) + '"></option>'; }).join('');
