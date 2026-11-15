@@ -394,6 +394,7 @@ svg.ic.dots{stroke-width:3}
 <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
 <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></symbol>
 <symbol id="i-cash" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6.5 9.5h.01M17.5 14.5h.01"/></symbol>
+<symbol id="i-cam" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></symbol>
 <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
 <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16v4M17 18h4"/></symbol>
 </defs></svg>
@@ -475,6 +476,7 @@ svg.ic.dots{stroke-width:3}
     <div class="desk tools" role="group" aria-label="כלים">
       <button class="btn small brass" type="button" id="deskAsk"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg>תשאלו את קלוד</button>
       <a class="btn small pricebtn" href="prices.html" title="חיפוש מחיר במחירוני הספקים"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg>מחירון ספקים</a>
+      <a class="btn small" href="receive.html" title="לצלם חשבונית או תעודת משלוח של סחורה שהגיעה"><svg class="ic" aria-hidden="true"><use href="#i-cam"/></svg>קבלת סחורה</a>
       <button class="btn small" type="button" id="musicBtn" aria-expanded="false" aria-controls="musicPanel"><svg class="ic" aria-hidden="true"><use href="#i-note"/></svg><span id="musicLbl">מוזיקה</span></button>
     </div>
     <button class="btn small" type="button" id="bellBtn" aria-expanded="false" aria-controls="notifPanel" aria-label="התראות"><svg class="ic" aria-hidden="true"><use href="#i-bell"/></svg><span class="lbl" aria-hidden="true">התראות</span><span class="n hidden" id="bellN" aria-hidden="true"></span></button>
@@ -483,6 +485,7 @@ svg.ic.dots{stroke-width:3}
   <div id="quickBars">
     <a id="kupaBar" class="hidden" href="kupa.html"><svg class="ic" aria-hidden="true"><use href="#i-cash"/></svg><span>קופה<span class="more"> · לקחת כסף מלקוח</span></span></a>
     <a id="priceBar" href="prices.html"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg><span>מחירון</span></a>
+    <a id="recvBar" href="receive.html"><svg class="ic" aria-hidden="true"><use href="#i-cam"/></svg><span>הגיעה סחורה<span class="more"> · לצלם חשבונית</span></span></a>
     <button id="voiceBar" class="hidden" type="button"><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg><span>לשאול <span class="more">את קלוד </span>בקול</span></button>
   </div>
 
@@ -1427,11 +1430,11 @@ function taskAlertRender() {
   var list = taskAl.map(function (t) { return { t: t, st: taskStage(t) }; }).filter(function (a) { return a.st && !seen[a.t.id + ':' + a.st]; }).slice(0, 8);
   $('taskAlerts').innerHTML = list.map(function (a) {
     var t = a.t, m = Math.round((new Date(t.due).getTime() - Date.now()) / 60000), cv = convs.filter(function (x) { return x.tail9 === t.tail9; })[0];
-    var sp = t.by === 'פורטל ספקים'; /* a supplier sent a price list (portal or WhatsApp): not a late task, a new item to approve */
-    var when = sp ? 'מחירון חדש מספק · ' + fmtDate(t.due) + ' ' + fmtTime(t.due) : a.st === 'late' ? 'משימה שעבר הזמן שלה · ' + fmtDate(t.due) + ' ' + fmtTime(t.due) : m <= 1 ? 'משימה לעכשיו' : 'משימה בעוד ' + m + ' דקות · ' + fmtTime(t.due);
+    var sp = t.by === 'פורטל ספקים', gr = t.by === 'קבלת סחורה'; /* a supplier sent a price list (portal or WhatsApp): not a late task, a new item to approve */
+    var when = sp ? 'מחירון חדש מספק · ' + fmtDate(t.due) + ' ' + fmtTime(t.due) : gr ? 'סחורה שהגיעה, צריך לבדוק · ' + fmtDate(t.due) + ' ' + fmtTime(t.due) : a.st === 'late' ? 'משימה שעבר הזמן שלה · ' + fmtDate(t.due) + ' ' + fmtTime(t.due) : m <= 1 ? 'משימה לעכשיו' : 'משימה בעוד ' + m + ' דקות · ' + fmtTime(t.due);
     var k = t.id + ':' + a.st; live[k] = 1; if (!taskShown[k]) fresh = true;
-    return '<div class="talert' + (a.st === 'late' && !sp ? ' late' : '') + '"><div class="w">' + esc(when) + (cv && cv.name ? ' · ' + esc(cv.name) : '') + '</div><div class="x">' + taskTxt(t.text) + '</div><div class="row">' +
-      (t.tail9 ? '<a class="btn small" href="#card/' + esc(t.tail9) + '" data-nclose="1">לכרטיס הלקוח</a>' : '') + (sp ? '<a class="btn small" href="prices.html">למחירון ספקים</a>' : '') + '<button class="btn small" data-tdone="' + t.id + '" title="סוגר את המשימה לכל הצוות">בוצע</button><button class="btn small" data-tok="' + esc(k) + '" title="מסתיר את ההתראה במכשיר הזה. המשימה נשארת פתוחה">הבנתי</button></div></div>';
+    return '<div class="talert' + (a.st === 'late' && !sp && !gr ? ' late' : '') + '"><div class="w">' + esc(when) + (cv && cv.name ? ' · ' + esc(cv.name) : '') + '</div><div class="x">' + taskTxt(t.text) + '</div><div class="row">' +
+      (t.tail9 ? '<a class="btn small" href="#card/' + esc(t.tail9) + '" data-nclose="1">לכרטיס הלקוח</a>' : '') + (sp ? '<a class="btn small" href="prices.html">למחירון ספקים</a>' : '') + (gr ? '<a class="btn small" href="receive.html">לקבלת סחורה</a>' : '') + '<button class="btn small" data-tdone="' + t.id + '" title="סוגר את המשימה לכל הצוות">בוצע</button><button class="btn small" data-tok="' + esc(k) + '" title="מסתיר את ההתראה במכשיר הזה. המשימה נשארת פתוחה">הבנתי</button></div></div>';
   }).join('');
   taskShown = live;
   var idle = coverMode === 'idle';
