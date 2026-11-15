@@ -584,18 +584,20 @@ function loadOrders() {
   clearTimeout(ordTimer);
   sb.from('crm_po').select('*').order('created_at', { ascending: false }).limit(40).then(function (r) {
     var list = r.data || [];
-    var open = list.filter(function (o) { return o.status === 'sent' || o.status === 'attention' || o.status === 'queued' || o.status === 'sending'; }).length;
+    var open = list.filter(function (o) { return o.status === 'sent' || o.status === 'attention' || o.status === 'queued' || o.status === 'sending' || o.cancel_ack === 'waiting' || o.cancel_ack === 'attention'; }).length;
     $('ordN').textContent = open ? '(' + open + ')' : '';
     if (!$('v-orders').classList.contains('hidden')) { ordTimer = setTimeout(loadOrders, 30000); loadLead(); }
     if ($('ordList').contains(document.activeElement)) return;
     $('ordList').innerHTML = list.length ? list.map(function (o) {
       var st = ST[o.status] || ['grey', o.status], lines = o.lines || [];
+      if (o.status === 'cancelled' && o.cancel_ack) st = { waiting: ['yellow', 'בוטל · ממתין לאישור הספק'], confirmed: ['grey', 'בוטל · הספק אישר'], attention: ['orange', 'בוטל · לבדוק'] }[o.cancel_ack] || st;
       if (o.channel === 'both' && o.status === 'failed' && (o.email_state === 'queued' || o.email_state === 'sending')) st = ['grey', 'המייל יוצא בדקות הקרובות']; // WhatsApp failed, the email still goes
       var rep = (o.replies || []).filter(function (x) { return !x.ignored; }).slice(-1)[0];
       var acts = '', live = o.status !== 'cancelled' && o.status !== 'sending' && o.status !== 'queued';
       if (live) acts = (o.status !== 'confirmed' ? '<button class="btn small" data-po="confirmed" data-id="' + o.id + '">סמן אושר</button> ' : '') +
         (o.status !== 'attention' ? '<button class="btn small" data-po="attention" data-id="' + o.id + '">סמן לבדוק</button> ' : '') +
         '<a class="btn small" href="receive.html?po=' + o.id + '" style="display:inline-flex;align-items:center;text-decoration:none">' + (o.received_at ? 'לצלם עוד מסמך' : 'הגיעה סחורה? לצלם') + '</a> ';
+      if (o.cancel_ack === 'waiting' || o.cancel_ack === 'attention') acts += '<button class="btn small" data-po="cancel_confirmed" data-id="' + o.id + '">הספק אישר בטלפון שבוטל</button> ';
       if ((live || o.status === 'queued') && !o.received_at) acts += '<button class="btn small red" data-po="askcancel" data-id="' + o.id + '">ביטול הזמנה</button>';
       var RC = { full: ['green', 'הגיעה'], partial: ['yellow', 'הגיע חלק'], gap: ['orange', 'הגיעה עם הבדלים'] }[o.receive_state];
       var leadD = o.received_at && o.sent_at ? Math.round((new Date(o.received_at) - new Date(o.sent_at)) / 864e5 * 10) / 10 : null;
@@ -612,7 +614,10 @@ function loadOrders() {
         (forLine ? '<div>' + forLine + '</div>' : '') +
         '<div class="mute">' + lines.length + ' שורות · ' + money(o.total_cost) + ' לפני מע"מ · נוצרה ' + fmtTime(o.created_at) + (o.by_name ? ' ע"י ' + esc(o.by_name) : '') + (o.sent_at ? ' · נשלחה ' + fmtTime(o.sent_at) + (o.channel === 'whatsapp' ? ' בוואטסאפ' : o.channel === 'both' ? ' בוואטסאפ' + (o.email_state === 'sent' ? ' ובמייל' : o.email_state === 'failed' || o.email_state === 'unknown' ? ' (המייל לא יצא)' : ', המייל בדרך') : '') : '') + '</div>' +
         (o.received_at ? '<div class="mute">סחורה התקבלה ' + fmtTime(o.received_at) + (leadD != null ? ' · ' + leadD + ' ימים מההזמנה' : '') + (o.receive_summary ? ' · ' + esc(o.receive_summary) : '') + '</div>' : '') +
-        (cancelLine ? '<div class="mute">' + cancelLine + '</div>' : '') + (o.cancel_error ? '<p class="err" style="margin:6px 0">' + esc(o.cancel_error) + '. כדאי להתקשר לספק.</p>' : '') +
+        (cancelLine ? '<div class="mute">' + cancelLine + '</div>' : '') +
+        (o.cancel_summary ? '<p style="margin:6px 0"><b>' + esc(o.cancel_summary) + '</b></p>' : '') +
+        (o.status === 'sent' && o.nudged_at ? '<p class="err" style="margin:6px 0">הספק עוד לא אישר. נפתחה משימה להתקשר אליו.</p>' : '') +
+        (o.cancel_ack === 'waiting' && o.cancel_nudged_at ? '<p class="err" style="margin:6px 0">הספק עוד לא אישר את הביטול. נפתחה משימה להתקשר אליו.</p>' : '') + (o.cancel_error ? '<p class="err" style="margin:6px 0">' + esc(o.cancel_error) + '. כדאי להתקשר לספק.</p>' : '') +
         (o.summary ? '<p style="margin:6px 0"><b>' + esc(o.summary) + '</b></p>' : '') + (o.error ? '<p class="err" style="margin:6px 0">' + esc(o.error) + '</p>' : '') +
         (rep && rep.text ? '<div class="quote">' + esc(rep.text.slice(0, 600)) + '</div>' : '') +
         '<details><summary class="mute">הפריטים</summary><div class="tablewrap"><table><tbody>' + lines.map(function (l) {
