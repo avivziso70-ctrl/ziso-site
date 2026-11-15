@@ -5,23 +5,130 @@
   var sb = window.supabase ? supabase.createClient(SB_URL, 'sb_publishable_yjpTHQkvH5-l4v-HCcEj4w_ofAYpQmV', { auth: { persistSession: true, autoRefreshToken: true } }) : null;
   var PAGE = 48;
   var $ = function (id) { return document.getElementById(id); };
-  var state = { items: [], byId: {}, live: false, fee: null, group: '', q: '', sort: '', shown: PAGE, session: null };
+  var state = { items: [], models: [], byKey: {}, byId: {}, live: false, fee: null, group: '', sub: '', color: '', q: '', sort: '', shown: PAGE, session: null };
   var cart = load();
 
-  // A few broad groups over the supplier's many small categories
-  var GROUPS = [
-    ['מראות', /מרא/],
-    ['ארונות אמבטיה', /ארון|ארונות|תחתון|מזנון|עמוד/],
-    ['כיורים', /כיור/],
-    ['אסלות', /אסל|מושב|ניאגרה|מיכל הדחה/],
-    ['ברזים ומקלחות', /ברז|מזלף|ראש מקלחת|מערכת קיר|סוללה|BATHROOM|מוט/i],
-    ['מקלחונים', /מקלחון|WALK IN|מחיצ|דלת/i],
+  // ---------- catalogue brain: categories, models, colours ----------
+  // Finishes the supplier prints at the end of a product name. One model in several finishes becomes one card.
+  var COLORS = {
+    'כרום': '#c9ced3', 'שחור מט': '#1d1d1f', 'זהב מוברש': '#c8a45a', 'ניקל מוברש': '#a9a8a2', 'רוז גולד מוברש': '#c98f7c', 'גאן מטאל': '#55585c',
+    'לבן מבריק': '#ffffff', 'לבן מט': '#f1efe9', 'אבן מט': '#b9b2a4', 'בטון כהה מט': '#6b6b69', 'בטון בהיר מט': '#b4b4b0', 'גרפיט': '#3d4043', 'מוקה': '#7a6654', 'לאטה': '#cbb59a',
+    'גוונים מט': 'linear-gradient(135deg,#3d4043 0 25%,#7a6654 25% 50%,#cbb59a 50% 75%,#f1efe9 75%)'
+  };
+  var COLOR_NAMES = Object.keys(COLORS).sort(function (a, b) { return b.length - a.length; });
+  var COLOR_RE = new RegExp('(?:\\s*[-,|]\\s*|\\s+)(' + COLOR_NAMES.join('|') + ')(?:\\s*\\([^)]*\\))?(?=\\s*(?:\\||$))');
+  var SINK_SERIES = /^(רוז|נורית|ויקטוריה|סולי|אורלינס|מימוזה|ארתור|איילין|בוטיק|קוסמוס|רוקי|וונסה|ריקי)(\s|$)/;
+  // [category, test on the product name, sub-categories]
+  var TREE = [
+    ['מראות', /מראה|מראת/, [['עם תאורת לד', /לד/], ['עגולות', /עגול/], ['מרובעות', /מרובע|מלבנ/]]],
+    ['אסלות', /אסל|מונובלוק/, [['תלויות', /תלוי/], ['מונובלוק', /מונובלוק/]]],
+    ['מקלחונים', /מקלחון|אמבטיון|WALK IN|דופן/i, [['חזית', /חזית/], ['פינתיים', /פינתי/], ['מעוגלים', /מעוגל/], ['אמבטיונים', /אמבטיון/], ['Walk in', /WALK IN/i]]],
+    ['ארונות אמבטיה', /תחתון|ארון/, [['ארון עם כיור', /תחתון/], ['ארונות עמוד', /עמוד/]]],
+    ['ברזים', /ברז|סוללה/, [['ברזי רחצה', /רחצה/], ['ברזי מטבח', /מטבח/], ['אמבט ומקלחת', /אמבט|מקלחת|סוללה/]]],
+    ['מקלחת', /ראש מקלחת|זרוע|מזלף|מולף|סט מקלחת|מערכת|נקודת מים|צינור/, [['סטים ומערכות', /סט מקלחת|מערכת/], ['ראשי מקלחת', /^(?!.*זרוע).*ראש מקלחת/], ['זרועות', /זרוע/], ['מזלפים וצינורות', /מזלף|מולף|צינור/], ['נקודות מים', /נקודת מים/]]],
+    ['כיורים', /כיור|קוריאן|ונטיל|ווטיל/, [['כיורים מונחים', /מונח|משטח/], ['כיורים אינטגרליים', /אינטגרלי|קוריאן/], ['כיורי שירותים', /שירותים/]]]
   ];
-  function groupOf(it) {
-    var t = (it.category || '') + ' ' + (it.name || '');
-    for (var i = 0; i < GROUPS.length; i++) if (GROUPS[i][1].test(t)) return GROUPS[i][0];
-    return 'אביזרים ועוד';
+  var OTHER = 'אביזרים ועוד';
+  function classify(name, category) {
+    for (var i = 0; i < TREE.length; i++) if (TREE[i][1].test(name)) return sub(TREE[i], name);
+    if (/כיור/.test(category || '') || SINK_SERIES.test(name)) return [TREE[6][0], 'כיורים מונחים'];
+    return [OTHER, ''];
   }
+  function sub(node, name) { for (var j = 0; j < node[2].length; j++) if (node[2][j][1].test(name)) return [node[0], node[2][j][0]]; return [node[0], '']; }
+  function tidy(name) {
+    return String(name || '').replace(/^כיורים מונחים לבחירה\s*-\s*/, '').replace(/אלומ(?:['׳’\-]\s*|\s+)(?=כסוף|שחור)/g, 'אלומיניום ').replace(/\s+/g, ' ').trim();
+  }
+  function firstNum(s) { var m = /\d+(\.\d+)?/.exec(String(s || '')); return m ? Number(m[0]) : 1e9; }
+  // Every catalogue row becomes a variant {item, attrs}; rows that are the same model in another colour, size, depth or top share one card.
+  function buildModels(items) {
+    var map = {}, list = [];
+    items.forEach(function (it) {
+      var name = tidy(it.name), attrs = {}, title = name, m;
+      if ((m = /^(.+?) (\d{2}) תחתון \+ (.+)$/.exec(name))) { title = 'ארון אמבטיה ' + m[1]; attrs['עומק'] = m[2] + ' ס״מ'; attrs['כיור / משטח'] = m[3]; }
+      else if ((m = /^(.+?) תחתון \+ (.+)$/.exec(name))) { title = 'ארון אמבטיה ' + m[1]; attrs['כיור / משטח'] = m[2]; }
+      else if ((m = COLOR_RE.exec(name))) { attrs['צבע'] = m[1]; title = (name.slice(0, m.index) + name.slice(m.index + m[0].length)).replace(/\s+\|\s*$/, '').trim(); }
+      if (it.size) attrs[/^ארון אמבטיה/.test(title) || /מראה/.test(title) ? 'רוחב' : 'מידה'] = String(it.size).replace(/\s+/g, ' ').trim();
+      var cls = classify(name, it.category);
+      if (cls[0] === 'כיורים' && !/כיור|משטח|קוריאן|ונטיל|ווטיל/.test(title)) title = 'כיור ' + title;
+      var key = cls[0] + '|' + title.toLowerCase().replace(/["'״׳.,()\-|\/]/g, ' ').replace(/\s+/g, ' ').trim();
+      var mod = map[key];
+      if (!mod) { mod = map[key] = { key: key, title: title, group: cls[0], sub: cls[1], variants: [] }; list.push(mod); }
+      var sig = JSON.stringify(attrs), dup = null;
+      mod.variants.forEach(function (v) { if (v.sig === sig) dup = v; });
+      if (dup) { if ((!dup.item.img && it.img) || (!!dup.item.img === !!it.img && it.id > dup.item.id)) dup.item = it; } // the same product listed in two catalogues: keep one
+      else mod.variants.push({ item: it, attrs: attrs, sig: sig });
+    });
+    list.forEach(function (mod) {
+      var dims = {};
+      mod.variants.forEach(function (v) { Object.keys(v.attrs).forEach(function (k) { (dims[k] = dims[k] || []).indexOf(v.attrs[k]) < 0 && dims[k].push(v.attrs[k]); }); });
+      mod.dims = ['צבע', 'עומק', 'כיור / משטח', 'רוחב', 'מידה'].filter(function (k) { return dims[k] && dims[k].length > 1; }).map(function (k) {
+        if (k !== 'צבע' && k !== 'כיור / משטח') dims[k].sort(function (a, b) { return firstNum(a) - firstNum(b); });
+        return { name: k, values: dims[k] };
+      });
+      mod.colors = dims['צבע'] || [];
+      mod.min = Math.min.apply(null, mod.variants.map(function (v) { return v.item.price; }));
+      mod.max = Math.max.apply(null, mod.variants.map(function (v) { return v.item.price; }));
+      mod.img = mod.variants.some(function (v) { return v.item.img; });
+      mod.cur = pick(mod, {});
+      mod.hay = fold([mod.title, mod.group, mod.sub].concat(mod.variants.map(function (v) { return [v.item.name, v.item.code, v.item.category, v.item.size, v.attrs['צבע']].join(' '); })).join(' '));
+      mod.words = mod.hay.split(' ').filter(function (w, i, a) { return w.length > 2 && a.indexOf(w) === i; });
+    });
+    return list;
+  }
+  // The variant that best fits the wanted options; `lead` is the option the shopper just changed and always wins.
+  function pick(mod, want, lead) {
+    var best = 0, score = -1;
+    mod.variants.forEach(function (v, i) {
+      if (lead && v.attrs[lead] !== want[lead]) return;
+      var s = (v.item.img ? 0.5 : 0) - i / 1000;
+      Object.keys(want).forEach(function (k) { if (v.attrs[k] === want[k]) s += 2; });
+      if (s > score) { score = s; best = i; }
+    });
+    return best;
+  }
+
+  // ---------- free-language search ----------
+  var FINALS = { 'ך': 'כ', 'ם': 'מ', 'ן': 'נ', 'ף': 'פ', 'ץ': 'צ' };
+  function fold(s) {
+    return String(s || '').toLowerCase().replace(/[֑-ׇ]/g, '').replace(/[ךםןףץ]/g, function (c) { return FINALS[c]; }).replace(/["'״׳`’]/g, '').replace(/[^0-9a-zא-ת.]+/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  var STOP = {}; 'אני מחפש מחפשת רוצה צריך צריכה יש לכם לכן אפשר בבקשה משהו איזה של עם את זה זו גם או על כמו שיהיה שתהיה לי לנו בצבע צבע מידה במידה גודל בגודל סמ ס.מ שקל שקלים שח ש.ח חדש חדשה יפה לבית'.split(' ').forEach(function (w) { STOP[fold(w)] = 1; });
+  // everyday words -> the words the catalogue uses
+  var SYN = { 'שירותים': 'אסל', 'אסלה': 'אסל', 'אסלות': 'אסל', 'ניאגרה': 'אסל', 'טוש': 'מקלחת', 'דוש': 'מקלחת', 'ראי': 'מראה', 'מראות': 'מראה', 'שידה': 'ארונ', 'ארונית': 'ארונ', 'ארונות': 'ארונ', 'קערה': 'כיור', 'כיורים': 'כיור', 'ברזים': 'ברז', 'מקלחונים': 'מקלחונ', 'זהוב': 'זהב', 'מוזהב': 'זהב', 'כסוף': 'ניקל', 'כסף': 'ניקל', 'נירוסטה': 'ניקל', 'אפור': 'גרפיט', 'ורוד': 'רוז', 'תאורה': 'לד', 'מואר': 'לד', 'מוארת': 'לד', 'led': 'לד', 'נשלפ': 'נשלפ', 'אמבט': 'אמבט', 'אמבטיה': 'אמבט', 'גשם': 'ראש מקלחת', 'טלפון': 'מזלפ', 'מזלף': 'מזלפ', 'מולף': 'מזלפ', 'מולפ': 'מזלפ', 'עגול': 'עגול', 'עגולה': 'עגול', 'מרובעת': 'מרובע', 'ריבועי': 'מרובע', 'תלויה': 'תלוי', 'פינתי': 'פינתי', 'פינה': 'פינתי' };
+  Object.keys(SYN).forEach(function (k) { var f = fold(k); if (f !== k) { SYN[f] = SYN[k]; } });
+  function near(a, b) { // one typo apart
+    if (Math.abs(a.length - b.length) > 1) return false;
+    var i = 0, j = 0, miss = 0;
+    while (i < a.length && j < b.length) {
+      if (a[i] === b[j]) { i++; j++; continue; }
+      if (++miss > 1) return false;
+      if (a.length > b.length) i++; else if (b.length > a.length) j++; else { i++; j++; }
+    }
+    return miss + (a.length - i) + (b.length - j) <= 1;
+  }
+  function forms(t) { // the word as typed, without a Hebrew prefix letter, without a plural ending, and its catalogue synonym
+    var out = [t];
+    if (t.length > 3 && /^[הלבושמכ]/.test(t)) out.push(t.slice(1));
+    out.slice().forEach(function (w) { if (w.length > 4 && /(ימ|ות)$/.test(w)) out.push(w.slice(0, -2)); else if (w.length > 3 && /[הת]$/.test(w)) out.push(w.slice(0, -1)); });
+    out.slice().forEach(function (w) { if (SYN[w]) out.push(fold(SYN[w])); });
+    return out;
+  }
+  function parseQuery(raw) {
+    var q = { tokens: [], min: null, max: null, sort: '' }, text = ' ' + fold(raw) + ' ', m;
+    if ((m = /בינ (\d+) ל ?(\d+)/.exec(text))) { q.min = +m[1]; q.max = +m[2]; text = text.replace(m[0], ' '); }
+    if ((m = /(?:עד|מתחת ל|פחות מ|לא יותר מ|מקסימומ) ?(\d+)/.exec(text))) { q.max = +m[1]; text = text.replace(m[0], ' '); }
+    if ((m = /(?:מעל|יותר מ|לפחות|מ) ?(\d{3,})/.exec(text))) { q.min = +m[1]; text = text.replace(m[0], ' '); }
+    if (/הכי זול|זול|זולה|זולימ|משתלמ/.test(text)) { q.sort = 'asc'; text = text.replace(/הכי זול\S*|זול\S*|משתלמ\S*/g, ' '); }
+    if (/הכי יקר|יוקרתי|יוקרה|פרימיומ/.test(text)) { q.sort = 'desc'; text = text.replace(/הכי יקר\S*|יוקרתי\S*|יוקרה|פרימיומ/g, ' '); }
+    text.split(' ').forEach(function (t) { if (t && !STOP[t] && !(t.length === 1 && !/\d/.test(t))) q.tokens.push(forms(t)); });
+    return q;
+  }
+  function tokenScore(mod, alts) {
+    for (var i = 0; i < alts.length; i++) if (mod.hay.indexOf(alts[i]) >= 0) return i === 0 ? 3 : 2;
+    for (i = 0; i < alts.length; i++) if (alts[i].length >= 4) for (var j = 0; j < mod.words.length; j++) if (near(alts[i], mod.words[j])) return 1;
+    return 0;
+  }
+
   function money(n) { return '₪' + Number(n).toLocaleString('he-IL', { maximumFractionDigits: 2 }); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function load() { try { return JSON.parse(localStorage.getItem('ziso_cart') || '{}') || {}; } catch (e) { return {}; } }
@@ -39,7 +146,8 @@
       if (!c || !c.ok) { $('loading').hidden = false; $('loading').textContent = 'לא הצלחנו לטעון את המוצרים. נסו לרענן, או התקשרו 050-4770040.'; return; }
       state.live = !!c.live; state.fee = c.delivery_fee;
       document.querySelectorAll('#leadText,.leadText').forEach(function (e) { e.textContent = c.lead_text; });
-      state.items = c.items.map(function (it) { it.group = groupOf(it); it.hay = ((it.name || '') + ' ' + (it.code || '') + ' ' + (it.category || '') + ' ' + (it.size || '')).toLowerCase(); state.byId[it.id] = it; return it; });
+      state.items = c.items; state.byId = {}; state.items.forEach(function (it) { state.byId[it.id] = it; });
+      state.models = buildModels(state.items); state.byKey = {}; state.models.forEach(function (m, i) { m.n = i; state.byKey[i] = m; });
       // items that left the catalog drop out of a saved cart
       Object.keys(cart).forEach(function (id) { if (!state.byId[id]) delete cart[id]; }); save();
       if (state.fee != null) { $('delivRow').hidden = false; $('delivFee').textContent = money(state.fee); }
@@ -48,41 +156,84 @@
       openStore();
     });
   }
-  function openStore() {
-    $('gate').hidden = true; $('store').hidden = false;
-    var names = ['הכל'].concat(GROUPS.map(function (g) { return g[0]; }), ['אביזרים ועוד']);
-    $('chips').innerHTML = names.map(function (n, i) { return '<button type="button" aria-pressed="' + (i === 0) + '" data-g="' + (i ? esc(n) : '') + '">' + esc(n) + '</button>'; }).join('');
-    render();
-  }
+  function openStore() { $('gate').hidden = true; $('store').hidden = false; render(); }
 
-  function filtered() {
-    var q = state.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    var list = state.items.filter(function (it) {
-      if (state.group && it.group !== state.group) return false;
-      for (var i = 0; i < q.length; i++) if (it.hay.indexOf(q[i]) < 0) return false;
-      return true;
+  function chip(label, attr, value, on, extra) { return '<button type="button" aria-pressed="' + !!on + '" ' + attr + '="' + esc(value) + '">' + (extra || '') + esc(label) + '</button>'; }
+  function dot(color) { return '<span class="dot" aria-hidden="true" style="background:' + COLORS[color] + '"></span>'; }
+  function search() {
+    var q = parseQuery(state.q), strict = [], loose = [];
+    state.models.forEach(function (m) {
+      if (q.max != null && m.min > q.max) return;
+      if (q.min != null && m.max < q.min) return;
+      var score = 0, hit = 0;
+      q.tokens.forEach(function (alts) { var sc = tokenScore(m, alts); if (sc) { hit++; score += sc; } });
+      if (hit === q.tokens.length) strict.push([m, score]); else if (hit) loose.push([m, hit * 10 + score]);
     });
-    if (state.sort === 'asc') list.sort(function (a, b) { return a.price - b.price; });
-    else if (state.sort === 'desc') list.sort(function (a, b) { return b.price - a.price; });
-    else list.sort(function (a, b) { return (b.img ? 1 : 0) - (a.img ? 1 : 0); }); // products with a picture first
-    return list;
+    // nothing has every word: show what comes closest instead of an empty page
+    var pool = strict.length || !q.tokens.length ? strict : loose;
+    return { rows: pool, close: !strict.length && q.tokens.length > 0 && loose.length > 0, sort: q.sort };
   }
-  function card(it) {
-    var opts = ''; for (var n = 1; n <= 10; n++) opts += '<option>' + n + '</option>';
-    return '<li class="card"><div class="ph">' + (it.img ? '<img loading="lazy" src="' + esc(it.img) + '" alt="' + esc(it.name) + '">' : '<span class="none" aria-hidden="true">זיסו</span>') + '</div>' +
-      '<div class="body"><h2>' + esc(it.name) + '</h2>' +
-      (it.size ? '<span class="small">מידה: ' + esc(it.size) + '</span>' : '') +
-      (it.code ? '<span class="small">מק״ט ' + esc(it.code) + '</span>' : '') +
-      '<div class="price">' + money(it.price) + ' <small>כולל מע״מ</small></div>' +
-      '<div class="add"><select aria-label="כמות עבור ' + esc(it.name) + '" data-qty="' + it.id + '">' + opts + '</select>' +
-      '<button class="btn brass" type="button" data-add="' + it.id + '">הוספה לסל</button></div></div></li>';
+  function filtered() {
+    var res = search(), counts = {}, subs = {}, colors = {};
+    var rows = res.rows.filter(function (r) {
+      var m = r[0];
+      counts[m.group] = (counts[m.group] || 0) + 1;
+      if (state.group && m.group !== state.group) return false;
+      if (m.sub) subs[m.sub] = (subs[m.sub] || 0) + 1;
+      if (state.sub && m.sub !== state.sub) return false;
+      m.colors.forEach(function (c) { colors[c] = (colors[c] || 0) + 1; });
+      return !state.color || m.colors.indexOf(state.color) >= 0;
+    });
+    var sort = state.sort || res.sort;
+    rows.sort(function (a, b) {
+      if (sort === 'asc') return a[0].min - b[0].min;
+      if (sort === 'desc') return b[0].max - a[0].max;
+      return (b[1] - a[1]) || ((b[0].img ? 1 : 0) - (a[0].img ? 1 : 0)) || (a[0].n - b[0].n);
+    });
+    return { list: rows.map(function (r) { return r[0]; }), counts: counts, subs: subs, colors: colors, close: res.close, total: res.rows.length };
+  }
+  function card(m) {
+    var v = m.variants[m.cur], it = v.item, opts = '', controls = '';
+    for (var n = 1; n <= 10; n++) opts += '<option>' + n + '</option>';
+    m.dims.forEach(function (d) {
+      var id = 'o' + m.n + '_' + d.name.replace(/[^א-ת]/g, '');
+      if (d.name === 'צבע') {
+        controls += '<div class="opt" role="group" aria-label="צבע"><span class="small">צבע: <b>' + esc(v.attrs['צבע'] || '') + '</b></span><div class="sw">' + d.values.map(function (c) {
+          return '<button type="button" class="swatch" data-m="' + m.n + '" data-dim="צבע" data-val="' + esc(c) + '" aria-pressed="' + (v.attrs['צבע'] === c) + '" aria-label="' + esc(c) + '" title="' + esc(c) + '">' + dot(c) + '</button>';
+        }).join('') + '</div></div>';
+      } else {
+        controls += '<label class="opt" for="' + id + '"><span class="small">' + esc(d.name) + '</span><select id="' + id + '" data-m="' + m.n + '" data-dim="' + esc(d.name) + '">' + d.values.map(function (x) {
+          return '<option' + (v.attrs[d.name] === x ? ' selected' : '') + ' value="' + esc(x) + '">' + esc(x) + '</option>';
+        }).join('') + '</select></label>';
+      }
+    });
+    var facts = [];
+    Object.keys(v.attrs).forEach(function (k) { if (!m.dims.some(function (d) { return d.name === k; })) facts.push(k + ': ' + v.attrs[k]); });
+    if (it.code) facts.push('מק״ט ' + it.code);
+    return '<li class="card" id="m' + m.n + '"><div class="ph">' + (it.img ? '<img loading="lazy" src="' + esc(it.img) + '" alt="' + esc(m.title) + '">' : '<span class="none" aria-hidden="true">זיסו</span>') +
+      (m.variants.length > 1 ? '<span class="badge">' + (m.colors.length > 1 ? m.colors.length + ' צבעים' : m.variants.length + ' אפשרויות') + '</span>' : '') + '</div>' +
+      '<div class="body"><span class="kicker">' + esc(m.sub || m.group) + '</span><h2>' + esc(m.title) + '</h2>' +
+      (facts.length ? '<span class="small">' + esc(facts.join(' · ')) + '</span>' : '') + controls +
+      '<div class="price" aria-live="polite">' + money(it.price) + ' <small>כולל מע״מ</small></div>' +
+      '<div class="add"><select aria-label="כמות" data-qty="' + m.n + '">' + opts + '</select>' +
+      '<button class="btn brass" type="button" data-add="' + m.n + '">הוספה לסל</button></div></div></li>';
   }
   function render() {
-    var list = filtered();
-    $('grid').innerHTML = list.slice(0, state.shown).map(card).join('');
-    $('meta').textContent = list.length ? list.length.toLocaleString('he-IL') + ' מוצרים' : '';
-    if (!list.length) $('grid').innerHTML = '<li class="empty" style="grid-column:1/-1">לא מצאנו מוצר כזה. נסו מילה אחרת, או <a href="https://wa.me/972504770040">שאלו אותנו בוואטסאפ</a>.</li>';
-    $('moreBtn').hidden = list.length <= state.shown;
+    var f = filtered(), all = 0;
+    Object.keys(f.counts).forEach(function (k) { all += f.counts[k]; });
+    var groups = TREE.map(function (t) { return t[0]; }).concat([OTHER]).filter(function (g) { return f.counts[g] || state.group === g; });
+    $('chips').innerHTML = chip('הכל (' + all + ')', 'data-g', '', !state.group) + groups.map(function (g) { return chip(g + ' (' + (f.counts[g] || 0) + ')', 'data-g', g, state.group === g); }).join('');
+    var subNames = Object.keys(f.subs);
+    $('subs').hidden = !state.group || subNames.length < 2;
+    $('subs').innerHTML = chip('כל ה' + state.group, 'data-s', '', !state.sub) + subNames.map(function (x) { return chip(x, 'data-s', x, state.sub === x); }).join('');
+    var colorNames = COLOR_NAMES.filter(function (c) { return f.colors[c]; }).sort(function (a, b) { return f.colors[b] - f.colors[a]; });
+    $('colors').hidden = colorNames.length < 2 && !state.color;
+    $('colors').innerHTML = chip('כל הצבעים', 'data-c', '', !state.color) + colorNames.map(function (c) { return chip(c, 'data-c', c, state.color === c, dot(c)); }).join('');
+    if (state.color) f.list.forEach(function (m) { if (m.variants[m.cur].attrs['צבע'] !== state.color) m.cur = pick(m, { 'צבע': state.color }, 'צבע'); });
+    $('grid').innerHTML = f.list.slice(0, state.shown).map(card).join('');
+    $('meta').textContent = !f.list.length ? '' : (f.close ? 'לא מצאנו בדיוק את זה. אלה התוצאות הקרובות ביותר: ' : '') + f.list.length.toLocaleString('he-IL') + ' דגמים';
+    if (!f.list.length) $('grid').innerHTML = '<li class="empty" style="grid-column:1/-1">לא מצאנו מוצר כזה. נסו לתאר אחרת, למשל "ברז שחור לכיור" או "מראה עגולה עד 500", או <a href="https://wa.me/972504770040">שאלו אותנו בוואטסאפ</a>.</li>';
+    $('moreBtn').hidden = f.list.length <= state.shown;
   }
   function renderCount() { var n = 0; Object.keys(cart).forEach(function (k) { n += cart[k]; }); $('cartCount').textContent = n; }
 
@@ -108,17 +259,29 @@
   document.addEventListener('click', function (e) {
     var t = e.target.closest('button'); if (!t) return;
     if (t.dataset.add) {
-      var id = t.dataset.add, sel = document.querySelector('[data-qty="' + id + '"]');
+      var mod = state.byKey[t.dataset.add], id = mod.variants[mod.cur].item.id, sel = document.querySelector('[data-qty="' + mod.n + '"]');
       cart[id] = Math.min(50, (cart[id] || 0) + Number(sel ? sel.value : 1)); save();
       t.textContent = 'נוסף ✓'; setTimeout(function () { t.textContent = 'הוספה לסל'; }, 1400);
     } else if (t.dataset.inc) { cart[t.dataset.inc] = Math.min(50, cart[t.dataset.inc] + 1); save(); renderCart(); }
     else if (t.dataset.dec) { if (--cart[t.dataset.dec] <= 0) delete cart[t.dataset.dec]; save(); renderCart(); }
-    else if (t.dataset.g !== undefined) {
-      state.group = t.dataset.g; state.shown = PAGE;
-      document.querySelectorAll('#chips button').forEach(function (b) { b.setAttribute('aria-pressed', String(b === t)); });
-      render();
-    } else if (t.hasAttribute('data-close')) $('cartDlg').close();
+    else if (t.dataset.dim) choose(t.dataset.m, t.dataset.dim, t.dataset.val, true);
+    else if (t.dataset.g !== undefined) { state.group = t.dataset.g; state.sub = ''; state.shown = PAGE; render(); refocus('[data-g="' + t.dataset.g + '"]'); }
+    else if (t.dataset.s !== undefined) { state.sub = t.dataset.s; state.shown = PAGE; render(); refocus('[data-s="' + t.dataset.s + '"]'); }
+    else if (t.dataset.c !== undefined) { state.color = t.dataset.c; state.shown = PAGE; render(); refocus('[data-c="' + t.dataset.c + '"]'); }
+    else if (t.hasAttribute('data-close')) $('cartDlg').close();
   });
+  // keyboard users keep their place after the chips are redrawn
+  function refocus(sel) { var el = document.querySelector(sel); if (el) el.focus(); }
+  // One option of a model changed: find the matching variant and redraw only that card.
+  function choose(n, dim, val, fromSwatch) {
+    var mod = state.byKey[n], want = {}, cur = mod.variants[mod.cur].attrs;
+    Object.keys(cur).forEach(function (k) { want[k] = cur[k]; }); want[dim] = val;
+    mod.cur = pick(mod, want, dim);
+    var li = $('m' + mod.n); if (!li) return;
+    li.outerHTML = card(mod);
+    refocus(fromSwatch ? '#m' + mod.n + ' .swatch[aria-pressed=true]' : '#m' + mod.n + ' select[data-dim="' + dim + '"]');
+  }
+  document.addEventListener('change', function (e) { var t = e.target; if (t.matches && t.matches('select[data-dim]')) choose(t.dataset.m, t.dataset.dim, t.value, false); });
   $('cartBtn').addEventListener('click', function () { renderCart(); $('cartDlg').showModal(); });
   $('moreBtn').addEventListener('click', function () { state.shown += PAGE; render(); });
   var tm; $('q').addEventListener('input', function (e) { clearTimeout(tm); tm = setTimeout(function () { state.q = e.target.value; state.shown = PAGE; render(); }, 150); });
