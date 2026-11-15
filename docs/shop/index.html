@@ -38,12 +38,14 @@
       <p>המחירים כוללים מע״מ. אספקה <span id="leadText">עד 21 ימי עסקים</span>, איסוף מאולם התצוגה בטירת כרמל. שאלה על מוצר? <a href="https://wa.me/972504770040">כתבו לנו בוואטסאפ</a>.</p>
     </section>
     <div class="tools">
-      <label class="skip" for="q">חיפוש מוצר</label>
-      <input id="q" type="search" placeholder="חיפוש לפי שם, דגם או מק״ט" autocomplete="off">
+      <label class="skip" for="q">חיפוש חופשי במוצרים</label>
+      <input id="q" type="search" placeholder="מה מחפשים? למשל: ברז שחור לכיור" autocomplete="off">
       <label class="skip" for="sort">מיון</label>
       <select id="sort" style="width:auto"><option value="">מיון: מומלץ</option><option value="asc">מחיר: מהנמוך</option><option value="desc">מחיר: מהגבוה</option></select>
     </div>
     <div class="chips" id="chips" role="group" aria-label="קטגוריות"></div>
+    <div class="chips sub" id="subs" role="group" aria-label="תת קטגוריות" hidden></div>
+    <div class="chips sub" id="colors" role="group" aria-label="סינון לפי צבע" hidden></div>
     <p class="meta" id="meta" aria-live="polite"></p>
     <ul class="grid" id="grid"></ul>
     <div class="more"><button class="btn" id="moreBtn" type="button" hidden>עוד מוצרים</button></div>

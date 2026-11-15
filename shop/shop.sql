@@ -43,8 +43,8 @@ language sql stable security invoker set search_path = public as $$
     select p.*, u.created_at up_at, (st.multipliers ->> p.supplier_id::text)::numeric mult, st.vat
       from sp_prices p join sp_uploads u on u.id = p.upload_id, st
      where p.status = 'active' and p.price > 0 and st.multipliers ? p.supplier_id::text
-       and p.description !~* '(שדרוג|מדידה|התקנ|הובלה|משלוח|קידוח|מחיר לכל המידות)'
-       and coalesce(p.category, '') !~* '(מידות מיוחדות|נילווים|נלווים)'),  -- made-to-measure showers need a measuring visit: not sold online
+       and p.description !~* '(שדרוג|מדידה|התקנ|הובלה|משלוח|קידוח|מחיר לכל המידות|תוספת|סבלות|^דגם [0-9]+$)'
+       and coalesce(p.category, '') !~* '(מידות מיוחדות|נילווים|נלווים|תקנון|איזור מרוחק)'),  -- made-to-measure showers need a measuring visit: not sold online
   one as (
     select distinct on (coalesce(supplier_code, description || '|' || coalesce(size, ''))) *
       from src order by coalesce(supplier_code, description || '|' || coalesce(size, '')), up_at desc, image_path nulls last, id)

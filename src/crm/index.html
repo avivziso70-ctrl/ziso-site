@@ -72,7 +72,7 @@ input::placeholder,textarea::placeholder{color:var(--mute)}
 #login .err{color:var(--red);min-height:1.4em}
 
 /* App shell */
-#app{height:100%;display:grid;grid-template-rows:auto auto auto 1fr auto}
+#app{height:100%;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto 1fr auto}
 #app > header.top{grid-row:1} #app > #quickBars{grid-row:3} #app > main{grid-row:4} #app > nav.tabs{grid-row:5}
 header.top{display:flex;align-items:center;gap:12px;padding:10px var(--pad);border-bottom:1px solid var(--line);background:var(--surface);min-height:60px}
 header.top .logo{width:34px;height:34px;border-radius:50%;object-fit:cover}
@@ -378,6 +378,44 @@ svg.ic.dots{stroke-width:3}
 .compose .walink{text-decoration:none}
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto !important;transition:none !important}}
 
+/* ---------- phone (Aviv 15.11: "the mobile UI isn't good") ---------- */
+@keyframes bellRing{0%,100%{transform:none}15%{transform:rotate(-14deg)}30%{transform:rotate(12deg)}45%{transform:rotate(-9deg)}60%{transform:rotate(6deg)}75%{transform:rotate(-3deg)}}
+#bellBtn.ring svg.ic{animation:bellRing .9s ease-out 2;transform-origin:50% 10%}
+#bellBtn.ring{border-color:var(--amber);background:var(--brass-soft)}
+@media (prefers-reduced-motion:reduce){#bellBtn.ring svg.ic{animation:none}}
+nav.tabs button svg.ic{width:22px;height:22px;margin-top:6px}
+nav.tabs .badge{top:3px;inset-inline-start:calc(50% + 6px);box-shadow:0 0 0 2px var(--surface)}
+@media (max-width:1023px){
+  body{font-size:17px}
+  header.top{gap:8px;min-height:56px;padding-block:8px}
+  header.top h1{font-size:22px}
+  header.top .btn.small,#bellBtn,#meBtn{min-height:44px;min-width:44px}
+  /* quick actions: on the home screen only, two by two, big enough for a thumb */
+  #app:has(> main:not([data-view="home"])) #quickBars:not(.big){display:none}
+  #quickBars:not(.big){display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px var(--pad) 0}
+  #quickBars:not(.big) > *{min-height:56px;font-size:17px;padding:0 8px}
+  #quickBars:not(.big) > *:last-child:nth-child(odd){grid-column:1 / -1}
+  #quickBars > .hidden{display:none!important}
+  .pane > .head{padding:10px var(--pad)}
+  .pane > .head h2{font-size:24px}
+  .btn.small{min-height:44px;padding:0 16px}
+  .filters button{min-height:44px;padding:0 16px;font-size:15px}
+  nav.tabs button{min-height:62px;font-size:14px;gap:3px;align-content:start}
+  /* messages pop below the header, never over the typing box or the tabs; a tap closes them */
+  .toast{bottom:auto;top:calc(64px + env(safe-area-inset-top));cursor:pointer}
+  /* small print up to a readable size */
+  .pill,.airow .sub,ul.list .when,ul.list .meta,.day,.compose .note,.sect h3 .n,.note .who,.task .due,.visit .att,.fine,.kpi span,.callsum b,.call .h,.talert .w,.nrow .w{font-size:14px}
+  .kpi .sub,.msg .by{font-size:13px}
+  ul.list li .ldone{width:64px;height:52px}
+  ul.list li .ldone,ul.list li .ldone small{font-size:13px}
+  #chat .acts button{min-height:40px;font-size:14px;padding:0 14px}
+  .compose .quick button{min-height:44px;padding:0 14px;font-size:15px}
+  .stage button{min-height:44px;padding:0 14px;font-size:15px}
+  .compose .row .btn.icon{min-width:48px;min-height:48px;padding:0}
+  details > summary{padding-block:10px}
+  input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none;width:22px;height:22px;cursor:pointer;
+    background:var(--mute);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6 6 18'/%3E%3C/svg%3E") center/18px no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6 6 18'/%3E%3C/svg%3E") center/18px no-repeat}
+}
 </style>
 </head>
 <body>
@@ -395,6 +433,10 @@ svg.ic.dots{stroke-width:3}
 <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></symbol>
 <symbol id="i-cash" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6.5 9.5h.01M17.5 14.5h.01"/></symbol>
 <symbol id="i-cam" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7"/><path d="M6 10v10h12V10"/><path d="M10 20v-5h4v5"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14a6 6 0 0 1 3 6"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></symbol>
 <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
 <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16v4M17 18h4"/></symbol>
 </defs></svg>
@@ -475,6 +517,7 @@ svg.ic.dots{stroke-width:3}
     <span class="spacer"></span>
     <div class="desk tools" role="group" aria-label="כלים">
       <button class="btn small brass" type="button" id="deskAsk"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg>תשאלו את קלוד</button>
+      <a class="btn small pricebtn" href="deal.html" title="עסקה חדשה ללקוח: מוצרים, עלות, רווח והזמנה מהספקים"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg>תיק עסקה</a>
       <a class="btn small pricebtn" href="prices.html" title="חיפוש מחיר במחירוני הספקים"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg>מחירון ספקים</a>
       <a class="btn small" href="receive.html" title="לצלם חשבונית או תעודת משלוח של סחורה שהגיעה"><svg class="ic" aria-hidden="true"><use href="#i-cam"/></svg>קבלת סחורה</a>
       <button class="btn small" type="button" id="musicBtn" aria-expanded="false" aria-controls="musicPanel"><svg class="ic" aria-hidden="true"><use href="#i-note"/></svg><span id="musicLbl">מוזיקה</span></button>
@@ -484,6 +527,7 @@ svg.ic.dots{stroke-width:3}
   </header>
   <div id="quickBars">
     <a id="kupaBar" class="hidden" href="kupa.html"><svg class="ic" aria-hidden="true"><use href="#i-cash"/></svg><span>קופה<span class="more"> · לקחת כסף מלקוח</span></span></a>
+    <a id="dealBar" href="deal.html"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg><span>תיק עסקה</span></a>
     <a id="priceBar" href="prices.html"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg><span>מחירון</span></a>
     <a id="recvBar" href="receive.html"><svg class="ic" aria-hidden="true"><use href="#i-cam"/></svg><span>הגיעה סחורה<span class="more"> · לצלם חשבונית</span></span></a>
     <button id="voiceBar" class="hidden" type="button"><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg><span>לשאול <span class="more">את קלוד </span>בקול</span></button>
@@ -569,11 +613,11 @@ svg.ic.dots{stroke-width:3}
   </main>
 
   <nav class="tabs" aria-label="ניווט">
-    <button data-view="home">בית</button>
-    <button data-view="chats" aria-current="page">שיחות<span class="badge hidden" id="waitBadge"></span></button>
-    <button data-view="search">לקוחות</button>
-    <button data-view="today">היום</button>
-    <button id="tabAsk" type="button">קלוד</button>
+    <button data-view="home"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg>בית</button>
+    <button data-view="chats" aria-current="page"><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg>שיחות<span class="badge hidden" id="waitBadge"></span></button>
+    <button data-view="search"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg>לקוחות</button>
+    <button data-view="today"><svg class="ic" aria-hidden="true"><use href="#i-cal"/></svg>היום</button>
+    <button id="tabAsk" type="button"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg>קלוד</button>
   </nav>
 </div>
 
@@ -629,7 +673,8 @@ var ago = function (d) {
 var localPhone = function (p) { p = String(p || '').replace(/\D/g, ''); if (/^972/.test(p)) p = '0' + p.slice(3); return p.length === 10 ? p.slice(0, 3) + '-' + p.slice(3) : p; };
 var tail9 = function (p) { p = String(p || '').replace(/\D/g, ''); return p.length >= 9 ? p.slice(-9) : null; };
 var nameOf = function (email) { var s = staff.filter(function (x) { return x.email.toLowerCase() === String(email || '').toLowerCase(); })[0]; return s ? s.name : (email || ''); };
-var toast = function (t, ms) { var el = document.createElement('div'); el.className = 'toast'; el.textContent = t; document.body.appendChild(el); $('live').textContent = ''; setTimeout(function () { $('live').textContent = t; }, 50); setTimeout(function () { el.remove(); }, ms || 3000); };
+function ringBell(t) { var b = $('bellBtn'); b.classList.remove('ring'); void b.offsetWidth; b.classList.add('ring'); setTimeout(function () { b.classList.remove('ring'); }, 2600); $('live').textContent = ''; setTimeout(function () { $('live').textContent = t; }, 50); }
+var toast = function (t, ms) { var el = document.createElement('div'); el.className = 'toast'; el.textContent = t; el.addEventListener('click', function () { el.remove(); }); document.body.appendChild(el); $('live').textContent = ''; setTimeout(function () { $('live').textContent = t; }, 50); setTimeout(function () { el.remove(); }, ms || 3000); };
 var isOwner = function () { var s = staff.filter(function (x) { return x.email.toLowerCase() === me.email.toLowerCase(); })[0]; return !!(s && s.role === 'owner'); };
 var within24h = function (msgs) { var lastIn = null; msgs.forEach(function (m) { if (m.dir === 'in') lastIn = m.ts; }); return lastIn && (Date.now() - new Date(lastIn)) < 24 * 3600 * 1000; };
 
@@ -1441,7 +1486,7 @@ function taskAlertRender() {
   $('coverTask').textContent = idle && list.length ? 'יש משימה שהגיע הזמן שלה. לגעת במסך' : '';
   if (fresh && WALL && wallOpenNow() && ($('cover').classList.contains('hidden') || idle)) wallBeep();
   /* a new alert shows itself in its one place: the panel opens on a wide screen, a phone gets a short line and the number on the bell */
-  if (fresh && $('cover').classList.contains('hidden')) { if (innerWidth >= 1024) notifOpen(true, true); else if ($('notifPanel').classList.contains('hidden')) toast('התראה חדשה. לפתיחה: הפעמון למעלה', 5000); }
+  if (fresh && $('cover').classList.contains('hidden')) { if (innerWidth >= 1024) notifOpen(true, true); else if ($('notifPanel').classList.contains('hidden')) ringBell('התראה חדשה. לפתיחה: הפעמון למעלה'); }
 }
 /* ---------- alerts panel: everything that needs attention lands here (timed tasks, new supplier price lists, payments without a receipt, the phone-alerts offer) ---------- */
 function popPlace(p, btn) {
@@ -1517,7 +1562,7 @@ function takeLoad() {
 function takeAnnounce() {
   if (!takeNew || !$('cover').classList.contains('hidden')) return;
   takeNew = false;
-  if (innerWidth >= 1024) notifOpen(true, true); else if ($('notifPanel').classList.contains('hidden')) toast('תשלום התקבל ומחכה לקבלה. לפתיחה: הפעמון למעלה', 6000);
+  if (innerWidth >= 1024) notifOpen(true, true); else if ($('notifPanel').classList.contains('hidden')) ringBell('תשלום התקבל ומחכה לקבלה. לפתיחה: הפעמון למעלה');
 }
 function takeHtml() {
   if (!takes.length) return '';
