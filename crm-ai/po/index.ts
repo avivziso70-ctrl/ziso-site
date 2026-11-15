@@ -319,7 +319,7 @@ async function staffAction(req: Request, body: any) {
     const note = typeof body.note === "string" ? body.note.trim().slice(0, 500) || null : null;
     const { data: po, error } = await admin.from("crm_po").insert({
       supplier_id: sup.id, supplier_name: sup.name, channel, to_phone: wa ? sup.order_wa_phone : null,
-      to_email: mail ? sup.order_email : null, email_state: channel === "both" ? "queued" : null, cc: !mail ? [] : [...new Set([...TEAM_CC, ...((sup.order_cc || []) as string[]).map((e) => String(e).trim().toLowerCase()).filter(Boolean)])], contact: sup.order_contact, lines, total_cost: total, note, deliver_to: toCustomer ? "customer" : "business", deliver, customer_name: customerName, customer_tail9: customerT9,
+      to_email: mail ? sup.order_email : null, email_state: channel === "both" ? "queued" : null, cc: !mail ? [] : [...new Set([...TEAM_CC, ...((sup.order_cc || []) as string[]).map((e) => String(e).trim().toLowerCase()).filter(Boolean)])], contact: sup.order_contact, lines, total_cost: total, note, deliver_to: toCustomer ? "customer" : "business", deliver, customer_name: customerName, customer_tail9: customerT9, ...(Number.isInteger(Number(body.deal_id)) && Number(body.deal_id) > 0 ? { deal_id: Number(body.deal_id) } : {}),
       status: wa ? "sending" : "queued", claimed_at: wa ? now : null, by: email, by_name: staff.name, updated_at: now,
     }).select("*").single();
     if (error) return json(req, { ok: false, error: error.message }, 500);
