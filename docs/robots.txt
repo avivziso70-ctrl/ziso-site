@@ -4,4 +4,5 @@ Disallow: /toda
 Disallow: /crm
 Disallow: /supplier
 Disallow: /dashboard
+Disallow: /shop
 Sitemap: https://www.zisoceramics.com/sitemap.xml
