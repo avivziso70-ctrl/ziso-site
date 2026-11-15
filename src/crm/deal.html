@@ -124,6 +124,20 @@ body.shy .cost{display:none!important}
       </div>
       <p id="oMsg" role="status" aria-live="polite"></p>
     </fieldset>
+
+    <fieldset><legend>6. הדף של הלקוח</legend>
+      <p class="mute" style="margin-top:0">קישור אישי ללקוח: מצב כל מוצר, מועדים, תשלומים ומסמכים, מתעדכן לבד. הלקוח לא רואה עלות, רווח או שם ספק. בכניסה הוא מקליד את 4 הספרות האחרונות של הטלפון שלו.</p>
+      <div id="shOff"><button class="btn brass" id="shMake">יצירת קישור ללקוח</button> <span class="err" id="shErr" role="status"></span></div>
+      <div id="shOn" class="hidden">
+        <input id="shUrl" readonly class="ltr" style="width:100%" aria-label="הקישור של הלקוח">
+        <div class="row" style="margin-top:8px"><button class="btn small" id="shCopy">העתקה</button><a class="btn small brass" id="shWa" target="_blank" rel="noopener">שליחה בוואטסאפ</a><a class="btn small" id="shOpen" target="_blank" rel="noopener">לראות כמו הלקוח</a></div>
+        <p class="mute" id="shSeen" style="margin:8px 0 0"></p>
+        <label class="fld">עדכון מהצוות שמופיע בראש הדף (לא חובה)<textarea id="pubNote" rows="2" maxlength="400" style="display:block;width:100%;margin-top:2px;color:var(--ink)" placeholder="למשל: הארון הגיע מוקדם, נתאם אספקה אחת לכל המוצרים"></textarea></label>
+        <h3 style="font:600 17px var(--body);margin:16px 0 6px">מה הלקוח כתב</h3>
+        <div id="cnotes"><p class="mute">הלקוח עוד לא כתב.</p></div>
+        <div class="row" style="margin-top:8px"><input id="ansT" class="grow" maxlength="1000" placeholder="תשובה ללקוח, תופיע אצלו בדף" aria-label="תשובה ללקוח"><button class="btn small brass" id="ansGo">שליחת תשובה</button></div>
+      </div>
+    </fieldset>
   </section>
 </main>
 <div id="bar" class="hidden" role="region" aria-label="סיכום העסקה"><div class="in">
@@ -192,7 +206,7 @@ function setDeal(d) {
   history.replaceState(null, '', '?d=' + d.id);
   $('title').textContent = 'עסקה ' + d.deal_no;
   $('mk').value = d.markup == null ? 40 : d.markup; $('q').value = ''; last = []; $('results').innerHTML = '';
-  $('cuQ').value = d.customer_name || ''; drawCu(); drawDv(); draw(); loadPos();
+  $('cuQ').value = d.customer_name || ''; drawCu(); drawDv(); draw(); loadPos(); drawShare(); loadNotes();
 }
 
 /* ---------- save (debounced) ---------- */
@@ -202,7 +216,7 @@ function flush() {
   clearTimeout(saveT);
   if (!deal || !dirty) return Promise.resolve();
   dirty = false; var t = totals(deal);
-  return sb.from('crm_deals').update({ customer_name: deal.customer_name || null, customer_tail9: deal.customer_tail9 || null, customer_phone: deal.customer_phone || null,
+  return sb.from('crm_deals').update({ customer_name: deal.customer_name || null, customer_tail9: deal.customer_tail9 || null, customer_phone: deal.customer_phone || null, cust_no: deal.cust_no || null, public_note: (deal.public_note || '').trim() || null,
     deliver_to: deal.deliver_to || 'business', deliver: deal.deliver || {}, lines: deal.lines, markup: Number($('mk').value) || 0, status: deal.status || 'open',
     total_cost: t.cost, total_sell: t.sell, updated_at: new Date().toISOString() }).eq('id', deal.id).then(function (r) {
     $('saved').textContent = r.error ? 'השמירה לא הצליחה. בדקו חיבור.' : 'נשמר';
@@ -216,14 +230,14 @@ function drawCu() { $('cuSel').textContent = deal.customer_tail9 ? 'מכרטיס
 var cuT = null;
 $('cuQ').addEventListener('input', function () {
   var q = $('cuQ').value.trim();
-  deal.customer_name = q; deal.customer_tail9 = null; deal.customer_phone = null; drawCu(); touch();
+  deal.customer_name = q; deal.customer_tail9 = null; deal.customer_phone = null; deal.cust_no = null; drawCu(); drawShare(); touch();
   clearTimeout(cuT);
   if (q.length < 2) { $('cuList').classList.add('hidden'); return; }
   cuT = setTimeout(function () {
     sb.rpc('crm_search', { p_q: q, p_limit: 8 }).then(function (r) {
       var seen = {}, rows = (r.data || []).filter(function (x) { if (!x.tail9 || seen[x.tail9]) return false; seen[x.tail9] = 1; return true; }).slice(0, 6);
       if ($('cuQ').value.trim() !== q) return;
-      $('cuList').innerHTML = rows.map(function (x) { return '<li><button type="button" data-t9="' + esc(x.tail9) + '" data-name="' + esc(x.name || '') + '" data-phone="' + esc(x.phone || '') + '" data-city="' + esc(x.city || '') + '"><b>' + esc(x.name || fmtPhone(x.phone || x.tail9)) + '</b> <span class="mute ltr">' + esc(fmtPhone(x.phone || '0' + x.tail9)) + '</span>' + (x.city ? ' <span class="mute">· ' + esc(x.city) + '</span>' : '') + '</button></li>'; }).join('');
+      $('cuList').innerHTML = rows.map(function (x) { return '<li><button type="button" data-t9="' + esc(x.tail9) + '" data-name="' + esc(x.name || '') + '" data-phone="' + esc(x.phone || '') + '" data-city="' + esc(x.city || '') + '" data-cust="' + esc(x.cust_no || '') + '"><b>' + esc(x.name || fmtPhone(x.phone || x.tail9)) + '</b> <span class="mute ltr">' + esc(fmtPhone(x.phone || '0' + x.tail9)) + '</span>' + (x.city ? ' <span class="mute">· ' + esc(x.city) + '</span>' : '') + '</button></li>'; }).join('');
       $('cuList').classList.toggle('hidden', !rows.length);
     });
   }, 250);
@@ -231,9 +245,9 @@ $('cuQ').addEventListener('input', function () {
 $('cuList').addEventListener('click', function (e) {
   var b = e.target.closest('button[data-t9]'); if (!b) return;
   var t9 = b.dataset.t9;
-  deal.customer_name = b.dataset.name || fmtPhone(b.dataset.phone || '0' + t9); deal.customer_tail9 = t9; deal.customer_phone = b.dataset.phone || '0' + t9;
+  deal.customer_name = b.dataset.name || fmtPhone(b.dataset.phone || '0' + t9); deal.customer_tail9 = t9; deal.customer_phone = b.dataset.phone || '0' + t9; deal.cust_no = b.dataset.cust || null;
   deal.deliver = { address: b.dataset.city || '' };
-  $('cuQ').value = deal.customer_name; $('cuList').classList.add('hidden'); $('oMsg').textContent = ''; drawCu(); drawDv(); touch();
+  $('cuQ').value = deal.customer_name; $('cuList').classList.add('hidden'); $('oMsg').textContent = ''; drawCu(); drawDv(); drawShare(); touch();
   sb.from('priority_customers').select('name,phone,address,city').eq('tail9', t9).limit(1).then(function (r) {
     var pc = (r.data || [])[0]; if (!pc || !deal || deal.customer_tail9 !== t9) return;
     var addr = [pc.address, pc.city].filter(Boolean).join(', ');
@@ -309,6 +323,8 @@ function draw() {
       '<label>מחיר ללקוח ליח\' כולל מע"מ<input type="number" min="0" step="any" inputmode="decimal" data-f="sell" value="' + esc(l.sell) + '"></label>' +
       '<div><span class="mute" style="font-size:14px">סה"כ ללקוח</span><output data-o="tot">' + money((Number(l.sell) || 0) * q) + '</output></div>' +
       '<div class="cost"><span class="mute" style="font-size:14px">רווח בשורה</span><output data-o="pr" class="' + (p < 0 ? 'err' : 'ok') + '">' + money(p * q) + '</output></div></div>' +
+      (true ? '<div class="row" style="margin-top:6px">' + (l.delivered_at ? '' : '<label class="mute">צפי הגעה ללקוח <input type="date" data-f="eta" value="' + esc(l.eta || '') + '" style="min-height:44px"></label>') +
+        '<label class="chk"><input type="checkbox" data-f="delivered"' + (l.delivered_at ? ' checked' : '') + '> נמסר ללקוח</label></div>' : '') +
       (locked ? '' : '<div class="row" style="margin-top:6px"><label class="chk grow"><input type="checkbox" data-f="stock"' + (l.stock ? ' checked' : '') + '> יש במלאי, לא להזמין</label><button type="button" class="btn small red" data-del="1" aria-label="להסיר ' + esc(l.desc) + '">הסרה</button></div>') + '</div>';
   }).join('');
   drawBar(); drawPlan();
@@ -322,6 +338,8 @@ $('lines').addEventListener('input', function (e) {
   var row = e.target.closest('.ln'), f = e.target.dataset.f; if (!row || !f) return;
   var l = deal.lines[Number(row.dataset.i)];
   if (f === 'stock') { l.stock = e.target.checked; closeAsk(); draw(); touch(); return; }
+  if (f === 'eta') { if (e.target.value) l.eta = e.target.value; else delete l.eta; touch(); return; }
+  if (f === 'delivered') { if (e.target.checked) l.delivered_at = new Date().toISOString(); else delete l.delivered_at; draw(); touch(); return; }
   l[f] = e.target.value === '' ? '' : Number(e.target.value);
   var q = Number(l.qty) || 0, p = (Number(l.sell) || 0) / VAT - (Number(l.cost) || 0), o = row.querySelector('[data-o=pr]');
   row.querySelector('[data-o=tot]').textContent = money((Number(l.sell) || 0) * q);
@@ -400,6 +418,45 @@ function loadPos() {
     posT = setTimeout(loadPos, 30000);
   });
 }
+
+/* ---------- the customer's page ---------- */
+var MY = 'https://www.zisoceramics.com/my/#';
+function drawShare() {
+  if (!deal) return;
+  var on = !!deal.share_token;
+  $('shOff').classList.toggle('hidden', on); $('shOn').classList.toggle('hidden', !on); $('shErr').textContent = '';
+  if (!on) return;
+  var url = MY + deal.share_token, first = String(deal.customer_name || '').trim().split(/\s+/)[0];
+  $('shUrl').value = url; $('shOpen').href = url;
+  $('shWa').href = 'https://wa.me/972' + deal.customer_tail9 + '?text=' + encodeURIComponent('שלום' + (first ? ' ' + first : '') + ', כאן זיסו קרמיקה. זה הדף האישי של ההזמנה שלך: מצב כל מוצר, מועדים, תשלומים ומסמכים, מתעדכן חי. בכניסה מקלידים את 4 הספרות האחרונות של הטלפון.\n' + url);
+  $('shSeen').textContent = deal.seen_at ? 'הלקוח פתח את הדף ' + deal.seen_count + ' פעמים, לאחרונה ' + fmtTime(deal.seen_at) + '.' : 'הלקוח עוד לא פתח את הדף.';
+  if (document.activeElement !== $('pubNote')) $('pubNote').value = deal.public_note || '';
+}
+$('shMake').addEventListener('click', function () {
+  if (!deal.customer_tail9) { $('shErr').textContent = 'קודם בוחרים לקוח מכרטיס לקוח, עם טלפון.'; $('cuQ').focus(); return; }
+  var a = new Uint8Array(18); crypto.getRandomValues(a);
+  var tok = btoa(String.fromCharCode.apply(null, a)).replace(/\+/g, '-').replace(/\//g, '_');
+  flush().then(function () { return sb.from('crm_deals').update({ share_token: tok, shared_at: new Date().toISOString(), shared_by: me.email }).eq('id', deal.id).is('share_token', null).select('share_token').maybeSingle(); }).then(function (r) {
+    if (r.error || !r.data) { $('shErr').textContent = 'לא הצליח ליצור קישור. נסו שוב.'; return; }
+    deal.share_token = r.data.share_token; drawShare();
+  });
+});
+$('shCopy').addEventListener('click', function () { var b = $('shCopy'); (navigator.clipboard ? navigator.clipboard.writeText($('shUrl').value) : Promise.reject()).then(function () { b.textContent = 'הועתק ✓'; }, function () { $('shUrl').select(); b.textContent = 'סמנו והעתיקו'; }); setTimeout(function () { b.textContent = 'העתקה'; }, 2500); });
+$('pubNote').addEventListener('input', function () { deal.public_note = $('pubNote').value; touch(); });
+var KIND = { question: 'שאלה', change: 'בקשת שינוי', delivery: 'תיאום אספקה', problem: 'בעיה במוצר' };
+function loadNotes() {
+  if (!deal) return; var id = deal.id;
+  sb.from('crm_deal_notes').select('side,kind,text,by_name,at').eq('deal_id', id).order('at', { ascending: true }).limit(80).then(function (r) {
+    if (!deal || deal.id !== id || r.error) return;
+    var l = r.data || [];
+    $('cnotes').innerHTML = l.length ? l.map(function (n) { return '<p style="margin:6px 0"><b>' + (n.side === 'team' ? esc(n.by_name || 'הצוות') : 'הלקוח' + (KIND[n.kind] ? ' · ' + KIND[n.kind] : '')) + '</b> <span class="mute">' + fmtTime(n.at) + '</span><br>' + esc(n.text) + '</p>'; }).join('') : '<p class="mute">הלקוח עוד לא כתב.</p>';
+  });
+}
+$('ansGo').addEventListener('click', function () {
+  var t = $('ansT').value.trim(), b = $('ansGo'); if (t.length < 2) { $('ansT').focus(); return; }
+  b.disabled = true;
+  sb.from('crm_deal_notes').insert({ deal_id: deal.id, side: 'team', text: t, by: me.email, by_name: me.name }).then(function (r) { b.disabled = false; if (!r.error) { $('ansT').value = ''; loadNotes(); } });
+});
 
 /* ---------- start ---------- */
 sb.auth.getSession().then(function (r) {
