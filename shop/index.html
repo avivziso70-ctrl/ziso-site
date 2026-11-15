@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>חנות | זיסו קרמיקה</title>
+<link rel="icon" href="../img/logo.jpg">
+<link rel="stylesheet" href="../fonts.css">
+<link rel="stylesheet" href="shop.css">
+</head>
+<body>
+<a class="skip" href="#main">דילוג לתוכן</a>
+<div class="preview" id="previewBar" hidden>תצוגה מקדימה: החנות סגורה לציבור. כל תשלום כאן הוא בדיקה של ₪5 בלבד.</div>
+<header class="top">
+  <div class="bar">
+    <a class="brand" href="./"><img src="../img/logo.jpg" alt=""><b>זיסו קרמיקה</b><span>חנות אונליין</span></a>
+    <div class="grow"></div>
+    <button class="btn brass" id="cartBtn" type="button" aria-haspopup="dialog">סל <span class="count" id="cartCount" aria-label="מוצרים בסל">0</span></button>
+  </div>
+</header>
+
+<main id="main">
+  <section class="gate" id="gate" hidden aria-labelledby="gateH">
+    <h1 id="gateH">החנות בהכנה</h1>
+    <p class="small">הכניסה כרגע לצוות זיסו בלבד, עם המשתמש של מערכת הצוות.</p>
+    <form id="loginForm">
+      <label class="f">מייל<input name="email" type="email" autocomplete="username" required></label>
+      <label class="f">סיסמה<input name="password" type="password" autocomplete="current-password" required></label>
+      <div class="row" style="margin-top:14px"><button class="btn brass" type="submit">כניסה</button></div>
+      <p class="msg" id="loginMsg" role="alert"></p>
+    </form>
+  </section>
+
+  <div id="store" hidden>
+    <section class="hero">
+      <h1>כלים סניטריים ופתרונות אמבטיה</h1>
+      <p>המחירים כוללים מע״מ. אספקה <span id="leadText">עד 21 ימי עסקים</span>, איסוף מאולם התצוגה בטירת כרמל. שאלה על מוצר? <a href="https://wa.me/972504770040">כתבו לנו בוואטסאפ</a>.</p>
+    </section>
+    <div class="tools">
+      <label class="skip" for="q">חיפוש מוצר</label>
+      <input id="q" type="search" placeholder="חיפוש לפי שם, דגם או מק״ט" autocomplete="off">
+      <label class="skip" for="sort">מיון</label>
+      <select id="sort" style="width:auto"><option value="">מיון: מומלץ</option><option value="asc">מחיר: מהנמוך</option><option value="desc">מחיר: מהגבוה</option></select>
+    </div>
+    <div class="chips" id="chips" role="group" aria-label="קטגוריות"></div>
+    <p class="meta" id="meta" aria-live="polite"></p>
+    <ul class="grid" id="grid"></ul>
+    <div class="more"><button class="btn" id="moreBtn" type="button" hidden>עוד מוצרים</button></div>
+  </div>
+  <p class="empty" id="loading">טוען מוצרים…</p>
+</main>
+
+<dialog id="cartDlg" aria-labelledby="cartH">
+  <div class="dlg">
+    <div class="row"><h2 id="cartH" class="grow">הסל שלך</h2><button class="btn small" type="button" data-close>סגירה</button></div>
+    <div id="lines"></div>
+    <div id="totals"></div>
+    <form id="checkout" novalidate hidden>
+      <fieldset><legend>פרטי המזמין</legend>
+        <label class="f">שם מלא<input name="name" autocomplete="name" required></label>
+        <label class="f">טלפון נייד<input name="phone" type="tel" inputmode="tel" autocomplete="tel" required></label>
+        <label class="f">מייל (לשם יישלחו אישור התשלום והקבלה)<input name="email" type="email" autocomplete="email" required></label>
+      </fieldset>
+      <fieldset><legend>קבלת המוצרים</legend>
+        <label class="radio"><input type="radio" name="delivery" value="pickup" checked><span>איסוף עצמי מאולם התצוגה, עוצמה 5 טירת כרמל (ללא עלות). נתאם איתכם בטלפון כשההזמנה מוכנה.</span></label>
+        <label class="radio" id="delivRow" hidden><input type="radio" name="delivery" value="delivery"><span>משלוח עד הבית: <b id="delivFee"></b></span></label>
+        <div id="addr" hidden>
+          <label class="f">כתובת<input name="address" autocomplete="street-address"></label>
+          <label class="f">עיר<input name="city" autocomplete="address-level2"></label>
+        </div>
+        <label class="f">הערות (לא חובה)<textarea name="notes" rows="2"></textarea></label>
+      </fieldset>
+      <div class="disc" id="disc">
+        <b>לפני התשלום, חשוב לדעת:</b>
+        <ul>
+          <li>המוכר: זיסו קרמיקה בע״מ, ח.פ. 517079661, עוצמה 5 טירת כרמל. טלפון 050-4770040, info@zisoceramics.com.</li>
+          <li>המחירים כוללים מע״מ. זמן אספקה: <span class="leadText">עד 21 ימי עסקים</span> מאישור התשלום.</li>
+          <li>אפשר לבטל את העסקה תוך 14 יום מקבלת המוצר, לפי חוק הגנת הצרכן, בהודעה בטלפון, במייל או בוואטסאפ. דמי ביטול: 5% מהמחיר או ₪100, הנמוך מביניהם. פרטים ב<a href="terms.html" target="_blank">תקנון</a>.</li>
+          <li>התשלום מתבצע בדף המאובטח של טרנזילה. אנחנו לא רואים ולא שומרים את פרטי הכרטיס.</li>
+        </ul>
+      </div>
+      <label class="check"><input type="checkbox" name="terms" required><span>קראתי ואני מסכים/ה ל<a href="terms.html" target="_blank">תקנון ולתנאי הביטול</a> ול<a href="../privacy.html" target="_blank">מדיניות הפרטיות</a>.</span></label>
+      <label class="check"><input type="checkbox" name="marketing"><span>אשמח לקבל מזיסו קרמיקה עדכונים ומבצעים בוואטסאפ ובמייל (לא חובה, אפשר להסיר בכל עת).</span></label>
+      <div class="row" style="margin-top:16px"><button class="btn brass" type="submit" id="payBtn">למעבר לתשלום מאובטח</button></div>
+      <p class="msg" id="payMsg" role="alert"></p>
+    </form>
+  </div>
+</dialog>
+
+<footer class="foot">
+  זיסו קרמיקה בע״מ · ח.פ. 517079661 · עוצמה 5, טירת כרמל · 050-4770040
+  <br><a href="terms.html">תקנון וביטול עסקה</a><a href="../privacy.html">פרטיות</a><a href="../accessibility.html">הצהרת נגישות</a>
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+<script src="shop.js"></script>
+</body>
+</html>
