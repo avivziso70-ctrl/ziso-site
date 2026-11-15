@@ -66,7 +66,7 @@ export function renderEmail(po: Po) {
 ${note}<p><b>נא אשרו את ההזמנה וזמינות הפריטים במייל חוזר.</b> אם פריט חסר או שהמחיר השתנה, נא לציין בתשובה.</p>
 <p>תודה,<br>זיסו קרמיקה בע"מ<br>עוצמה 5, טירת כרמל · 050-4770040</p></div>`;
   const text = [hello, "", `מצורפת הזמנת רכש מס' ${po.po_no} מזיסו קרמיקה:`, "",
-    ...lines.map((l, i) => `${i + 1}. מק"ט ${l.sku} | ${l.desc}${l.size ? " " + l.size : ""} | כמות ${l.qty}${l.unit ? " " + l.unit : ""} | ${ils(l.price)} ליח' | ${ils(l.total)}`),
+    ...lines.map((l, i) => `${i + 1}. ${l.sku ? "מק\"ט " + l.sku + " | " : ""}${l.desc}${l.size ? " " + l.size : ""} | כמות ${l.qty}${l.unit ? " " + l.unit : ""} | ${ils(l.price)} ליח' | ${ils(l.total)}`),
     "", `סה"כ לפני מע"מ: ${ils(po.total_cost)}`, "המחירים לפי המחירון שלכם, לפני מע\"מ.",
     ...(po.note ? ["", "הערה: " + po.note] : []),
     "", "נא אשרו את ההזמנה וזמינות הפריטים במייל חוזר. אם פריט חסר או שהמחיר השתנה, נא לציין בתשובה.", "", "תודה,", "זיסו קרמיקה בע\"מ", "עוצמה 5, טירת כרמל · 050-4770040"].join("\n");
@@ -88,7 +88,7 @@ export function newPart(t: string) {
 export async function classify(po: Po, text: string, fetcher: typeof fetch = fetch): Promise<{ verdict: string; summary: string }> {
   const key = Deno.env.get("ANTHROPIC_API_KEY");
   if (!key) return { verdict: "unclear", summary: "לא הצלחתי לקרוא את התשובה אוטומטית, לבדוק במייל" };
-  const items = (po.lines as Line[]).map((l) => `${l.sku} ${l.desc ?? ""} x${l.qty}`).join("; ");
+  const items = (po.lines as Line[]).map((l) => `${l.sku ?? ""} ${l.desc ?? ""} x${l.qty}`).join("; ");
   const system = `You read a supplier's email reply to a purchase order from Ziso Ceramics (Israel). Reply ONLY with JSON: {"verdict": "...", "summary": "..."}.
 verdict is exactly one of:
 - "confirmed": the supplier clearly confirms the whole order as sent (e.g. "מאושר", "התקבל ויסופק", "אושר, תודה"), with no missing items, no changed prices, no open question.
@@ -117,7 +117,7 @@ summary: one short Hebrew sentence (max 20 words) of what the supplier said, nam
   }
 }
 
-const lineText = (l: Line) => `${l.sku} ${l.desc ?? ""}${l.size ? " " + l.size : ""} × ${l.qty}${l.unit ? " " + l.unit : ""}`.replace(/\s+/g, " ").trim();
+const lineText = (l: Line) => `${l.sku ?? ""} ${l.desc ?? ""}${l.size ? " " + l.size : ""} × ${l.qty}${l.unit ? " " + l.unit : ""}`.replace(/\s+/g, " ").trim();
 export function waFullText(po: Po) {
   const lines = po.lines as Line[];
   return [`שלום ${po.contact || ""}, זו הזמנת רכש ${po.po_no} מזיסו קרמיקה:`.replace(/\s+,/, ","), "",
