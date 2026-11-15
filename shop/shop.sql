@@ -34,6 +34,10 @@ alter table public.shop_orders enable row level security;
 create policy shop_orders_staff_read on public.shop_orders for select to authenticated
   using (exists (select 1 from crm_staff s where s.active and lower(s.email) = lower(auth.jwt() ->> 'email')));
 
+-- Picture override per SKU (finish). Filled by matching each catalogue picture to its finish by colour.
+create table if not exists public.shop_item_images (code text primary key, path text not null, note text, updated_at timestamptz not null default now());
+alter table public.shop_item_images enable row level security;
+
 -- One row per product: newest list wins; upgrade options, measuring, installation, delivery, drilling and made-to-measure rows are not sold.
 create or replace function public.shop_catalog(p_ids bigint[] default null)
 returns table (id bigint, code text, name text, size text, unit text, category text, price numeric, image_path text)
@@ -51,8 +55,9 @@ language sql stable security invoker set search_path = public as $$
   select one.id, one.supplier_code, one.description, one.size, one.unit, one.category,
          least(ceil(one.price * one.mult * case when one.vat_included then 1 else 1 + one.vat / 100 end),
                coalesce(ceil(one.list_price * case when one.vat_included then 1 else 1 + one.vat / 100 end), 'infinity'::numeric)),
-         one.image_path
-    from one where p_ids is null or one.id = any(p_ids);
+         coalesce(ov.path, one.image_path)   -- shop_item_images: the picture of this exact finish, where the list gives one picture to all finishes
+    from one left join shop_item_images ov on ov.code = one.supplier_code
+   where p_ids is null or one.id = any(p_ids);
 $$;
 -- security invoker: only the service role (the shop edge function) gets rows; anon is stopped by RLS on shop_settings / sp_prices.
 -- No drop / revoke statements here: they raise a Supabase confirmation nobody sees and the migration hangs.

@@ -36,6 +36,7 @@ input,select,textarea{font:inherit;color:inherit;background:var(--surface);borde
 .ph{position:relative}
 .badge{position:absolute;inset-inline-start:8px;top:8px;background:rgba(30,27,23,.82);color:#fff;font-size:12px;padding:3px 9px;border-radius:999px}
 .kicker{font-size:12px;color:var(--brass);font-weight:700;letter-spacing:.02em}
+.desc{margin:4px 0 0;font-size:13px;line-height:1.35;color:var(--muted,#6b6b69);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .opt{display:block;margin-top:6px}
 .opt select{min-height:40px;padding:6px 10px;margin-top:2px;font-size:15px}
 .sw{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}

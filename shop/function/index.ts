@@ -53,9 +53,14 @@ Deno.serve(async (req: Request) => {
     const st = await settings();
     // while the store is closed, products are shown only to signed-in staff
     if (!st.live && !(await staffEmail(req))) return json(req, { ok: true, live: false, gated: true, lead_text: st.lead_text, delivery_fee: st.delivery_fee, items: [] });
-    const { data, error } = await admin.rpc("shop_catalog");
-    if (error) return json(req, { ok: false, error: "catalog" }, 500);
-    const rows = (data || []) as Record<string, any>[];
+    // the API returns at most 1000 rows per call: read the catalogue page by page
+    const rows: Record<string, any>[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await admin.rpc("shop_catalog").order("id").range(from, from + 999);
+      if (error) return json(req, { ok: false, error: "catalog" }, 500);
+      rows.push(...((data || []) as Record<string, any>[]));
+      if (!data || data.length < 1000) break;
+    }
     const paths = [...new Set(rows.map((r) => r.image_path).filter(Boolean))] as string[];
     const signed = new Map<string, string>();
     for (let i = 0; i < paths.length; i += 500) {
