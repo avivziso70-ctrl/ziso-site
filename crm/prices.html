@@ -46,6 +46,14 @@ body.has-cart main{padding-bottom:110px}
 .quote{white-space:pre-wrap;background:var(--graphite);border-radius:8px;padding:8px 10px;margin:6px 0;font-size:15px}
 textarea{width:100%;min-height:64px}
 .cl{border-bottom:1px solid var(--line);padding:10px 0}.cl .row{margin-top:6px}
+td.pic,th.pic{width:60px;padding:4px 0 4px 6px}
+.thumb{width:56px;height:56px;border-radius:8px;border:1px solid var(--line);background:#fff;padding:0;display:block;cursor:zoom-in;overflow:hidden}
+.thumb img{width:100%;height:100%;object-fit:contain;display:block}
+table.nopic .pic{display:none}
+#zoom{border:1px solid var(--line);border-radius:14px;padding:10px;background:#fff;max-width:92vw}
+#zoom::backdrop{background:rgba(0,0,0,.6)}
+#zoom img{display:block;width:min(480px,84vw);height:auto;image-rendering:auto}
+#zoom p{margin:8px 0 0;color:#1e1b17;font-size:15px;text-align:center}
 </style>
 </head>
 <body>
@@ -66,7 +74,7 @@ textarea{width:100%;min-height:64px}
     <div class="supf"><label for="supF">ספק</label><input id="supF" list="supOpts" placeholder="כל הספקים (הקלידו חלק מהשם)" autocomplete="off"><button type="button" class="btn small" id="supClr" hidden>× נקה</button><datalist id="supOpts"></datalist></div>
     <div class="calc"><label for="mk">רווח %</label><input id="mk" type="number" min="0" value="40" inputmode="decimal"><span class="mute">מחיר ללקוח = עלות × (1+רווח) × 1.18 (אם המחיר לפני מע"מ)</span></div>
     <p class="mute" id="sInfo" role="status" aria-live="polite"></p>
-    <div class="tablewrap"><table id="sTable" class="hidden"><thead><tr><th>תיאור</th><th>מק"ט ספק</th><th>מידה</th><th>ספק</th><th>עלות</th><th>ללקוח</th><th>עודכן</th><th><span class="hidden" id="addTh">הזמנה</span></th></tr></thead><tbody></tbody></table></div>
+    <div class="tablewrap"><table id="sTable" class="hidden"><thead><tr><th class="pic"><span class="mute">תמונה</span></th><th>תיאור</th><th>מק"ט ספק</th><th>מידה</th><th>ספק</th><th>עלות</th><th>ללקוח</th><th>עודכן</th><th><span class="hidden" id="addTh">הזמנה</span></th></tr></thead><tbody></tbody></table></div>
   </section>
 
   <section id="v-pending" class="hidden">
@@ -114,6 +122,7 @@ textarea{width:100%;min-height:64px}
   </section>
 </main>
 <div id="cartBar" class="hidden" role="region" aria-label="הזמנה לספק"><span class="grow" id="barTxt"></span><button class="btn brass small" id="barGo">להזמנה</button></div>
+<dialog id="zoom" aria-label="תמונת המוצר"><img alt=""><p></p></dialog>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
 <script>
 (function () {
@@ -153,7 +162,7 @@ function drawSearch() {
   tb.innerHTML = last.map(function (r) {
     var s = suppliers[r.supplier_id] || {};
     var old = (Date.now() - new Date(r.created_at)) > 180 * 864e5;
-    return '<tr><td>' + esc(r.description) + (r.category ? ' <span class="mute">· ' + esc(r.category) + '</span>' : '') + '</td><td class="ltr">' + esc(r.supplier_code) + '</td><td>' + esc(r.size) + '</td><td>' + esc(s.name) + '</td>' +
+    return '<tr><td class="pic">' + (r.image_path ? '<button type="button" class="thumb" data-p="' + esc(r.image_path) + '" data-t="' + esc(r.description) + '" aria-label="הגדלת התמונה"><img alt="" loading="lazy"></button>' : '') + '</td><td>' + esc(r.description) + (r.category ? ' <span class="mute">· ' + esc(r.category) + '</span>' : '') + '</td><td class="ltr">' + esc(r.supplier_code) + '</td><td>' + esc(r.size) + '</td><td>' + esc(s.name) + '</td>' +
       '<td class="price">' + money(r.price, r.currency) + (r.unit ? ' <span class="mute">/' + esc(r.unit) + '</span>' : '') + (r.vat_included ? ' <span class="mute">כולל מע"מ</span>' : '') + (r.list_price != null ? '<br><span class="mute sub">מחירון לצרכן ' + money(r.list_price, r.currency) + '</span>' : '') + '</td>' +
       '<td class="price">' + (r.currency && r.currency !== 'ILS' ? '<span class="mute">מט"ח</span>' : money(customer(r.price, r.vat_included), 'ILS')) + (r.list_price != null && (!r.currency || r.currency === 'ILS') ? '<br><span class="mute sub">מחירון הספק ' + money(r.list_price * (r.vat_included ? 1 : 1.18), 'ILS') + '</span>' : '') + '</td>' +
       '<td class="' + (old ? 'warn' : '') + '">' + fmtDate(r.created_at) + (old ? ' ישן' : '') + '</td>' +
@@ -161,7 +170,25 @@ function drawSearch() {
   }).join('');
   $('addTh').classList.toggle('hidden', !last.some(canOrder));
   $('sTable').classList.toggle('hidden', !last.length);
+  $('sTable').classList.toggle('nopic', !last.some(function (r) { return r.image_path; }));
+  loadPics();
 }
+/* product pictures from the supplier's catalog: small private files, opened with short-lived links */
+var picUrl = {};
+function loadPics() {
+  var btns = [].slice.call($('sTable').querySelectorAll('.thumb')), need = {};
+  btns.forEach(function (b) { var p = b.dataset.p, u = picUrl[p]; if (u && u.until > Date.now()) b.firstChild.src = u.url; else need[p] = 1; });
+  var paths = Object.keys(need); if (!paths.length) return;
+  sb.storage.from('supplier-files').createSignedUrls(paths, 3600).then(function (r) {
+    (r.data || []).forEach(function (x) { if (x.signedUrl) picUrl[x.path] = { url: x.signedUrl, until: Date.now() + 50 * 60000 }; });
+    btns.forEach(function (b) { var u = picUrl[b.dataset.p]; if (u) b.firstChild.src = u.url; else b.remove(); });
+  });
+}
+document.addEventListener('click', function (e) {
+  var b = e.target.closest && e.target.closest('.thumb'), z = $('zoom');
+  if (b && b.firstChild.src) { z.querySelector('img').src = b.firstChild.src; z.querySelector('p').textContent = b.dataset.t || ''; z.showModal(); }
+  else if (z.open && (e.target === z || e.target.closest('#zoom'))) z.close();
+});
 function norm(t) { return String(t || '').toLowerCase().replace(/["'`׳״.\-]/g, ''); }
 function supIds(word) {
   var w = norm(word), w2 = w.length > 3 && /^[והבלמש]/.test(w) ? w.slice(1) : null;
@@ -176,7 +203,7 @@ function search() {
   var only = supFilter();
   if (!words.length && !only) { last = []; drawSearch(); $('sInfo').textContent = ''; return; }
   if (only && !only.length) { last = []; drawSearch(); $('sInfo').textContent = 'אין ספק בשם הזה.'; return; }
-  var q = sb.from('sp_prices').select('id,supplier_id,supplier_code,description,size,unit,price,list_price,currency,vat_included,category,created_at').eq('status', 'active');
+  var q = sb.from('sp_prices').select('id,supplier_id,supplier_code,description,size,unit,price,list_price,currency,vat_included,category,created_at,image_path').eq('status', 'active');
   if (only) q = q.in('supplier_id', only);
   words.forEach(function (w) {
     var ids = supIds(w), f = 'description.ilike.*' + w + '*,supplier_code.ilike.*' + w + '*,size.ilike.*' + w + '*,category.ilike.*' + w + '*';
