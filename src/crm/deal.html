@@ -208,7 +208,7 @@ function setDeal(d) {
   history.replaceState(null, '', '?d=' + d.id);
   $('title').textContent = 'עסקה ' + d.deal_no;
   $('mk').value = d.markup == null ? 40 : d.markup; $('q').value = ''; last = []; $('results').innerHTML = '';
-  $('cuQ').value = d.customer_name || ''; drawCu(); drawDv(); draw(); loadPos(); drawShare(); loadNotes(); loadCases();
+  $('cuQ').value = d.customer_name || ''; drawCu(); drawDv(); draw(); loadPos(); drawShare(); loadNotes(); loadCases(); loadStock(deal.lines.map(function (l) { return l.sku; }));
 }
 
 /* ---------- save (debounced) ---------- */
@@ -286,16 +286,28 @@ function search() {
     if (r.error) { $('sInfo').textContent = 'שגיאה בחיפוש'; return; }
     last = (r.data || []).filter(function (x) { return x.price != null && (!x.currency || x.currency === 'ILS'); });
     $('sInfo').textContent = last.length ? last.length + (r.data.length === 40 ? '+' : '') + ' תוצאות, מהזול ליקר' : 'לא נמצא. נסו מילה אחרת, מק"ט או שם ספק.';
-    drawResults();
+    drawResults(); loadStock(last.map(function (x) { return x.supplier_code; }));
   });
 }
+/* stock on hand in Priority, by supplier code (crm_stock.sql). Empty until the daily stock push runs. */
+var stock = {};
+function loadStock(codes) {
+  codes = codes.filter(function (c) { return c && !(c in stock); }); if (!codes.length) return;
+  codes.forEach(function (c) { stock[c] = null; });
+  sb.rpc('crm_stock_for', { p_codes: codes }).then(function (r) {
+    if (r.error || !(r.data || []).length) return;
+    r.data.forEach(function (x) { stock[x.code] = Number(x.available); });
+    drawResults(); if (deal && !$('lines').contains(document.activeElement)) draw();
+  });
+}
+function stockTxt(code) { var a = stock[code]; return a == null ? '' : a > 0 ? ' · <span class="ok">במלאי אצלנו: ' + a.toLocaleString('he-IL') + '</span>' : ' · <span class="mute">אין במלאי אצלנו</span>'; }
 function netCost(r) { return r2(r.vat_included ? r.price / VAT : Number(r.price)); }
 function sellFor(cost) { return Math.round(cost * (1 + (Number($('mk').value) || 0) / 100) * VAT); }
 function drawResults() {
   $('results').innerHTML = last.map(function (r) {
     var c = netCost(r), has = deal.lines.some(function (l) { return l.price_id === r.id; });
     return '<div class="res"><div class="grow"><b>' + esc(r.description) + (r.size ? ' ' + esc(r.size) : '') + '</b><br><span class="mute"><span class="ltr">' + esc(r.supplier_code || '') + '</span> · ' + esc((suppliers[r.supplier_id] || {}).name || '') +
-      '</span><br><span class="cost mute">עלות ' + money(c) + ' · </span><span>ללקוח ' + money(sellFor(c)) + '</span></div>' +
+      stockTxt(r.supplier_code) + '</span><br><span class="cost mute">עלות ' + money(c) + ' · </span><span>ללקוח ' + money(sellFor(c)) + '</span></div>' +
       '<button type="button" class="btn' + (has ? '' : ' brass') + '" data-add="' + r.id + '"' + (has ? ' disabled' : '') + '>' + (has ? '✓ ברשימה' : 'הוספה') + '</button></div>';
   }).join('');
 }
@@ -303,7 +315,7 @@ $('results').addEventListener('click', function (e) {
   var b = e.target.closest('[data-add]'); if (!b) return;
   var r = last.filter(function (x) { return String(x.id) === b.dataset.add; })[0]; if (!r) return;
   var c = netCost(r);
-  deal.lines.push({ price_id: r.id, supplier_id: r.supplier_id, sku: r.supplier_code, desc: r.description, size: r.size, unit: r.unit, qty: 1, cost: c, sell: sellFor(c), stock: false, lid: newLid() });
+  deal.lines.push({ price_id: r.id, supplier_id: r.supplier_id, sku: r.supplier_code, desc: r.description, size: r.size, unit: r.unit, qty: 1, cost: c, sell: sellFor(c), stock: stock[r.supplier_code] >= 1, lid: newLid() });
   closeAsk(); drawResults(); draw(); touch();
 });
 $('mk').addEventListener('input', function () { drawResults(); touch(); });
@@ -344,7 +356,7 @@ function draw() {
   $('lines').innerHTML = deal.lines.map(function (l, i) {
     var locked = !!l.po_no, q = Number(l.qty) || 0, p = (Number(l.sell) || 0) / VAT - (Number(l.cost) || 0);
     return '<div class="ln" data-i="' + i + '"><div class="row"><b class="grow">' + esc(l.desc) + (l.size ? ' ' + esc(l.size) : '') + '</b>' + lineState(l) + '</div>' +
-      '<div class="mute"><span class="ltr">' + esc(l.sku || '') + '</span> · ' + esc((suppliers[l.supplier_id] || {}).name || '') + '<span class="cost"> · עלות ' + money(l.cost) + ' ליח\'</span></div>' +
+      '<div class="mute"><span class="ltr">' + esc(l.sku || '') + '</span> · ' + esc((suppliers[l.supplier_id] || {}).name || '') + stockTxt(l.sku) + '<span class="cost"> · עלות ' + money(l.cost) + ' ליח\'</span></div>' +
       '<div class="nums"><label>כמות' + (l.unit ? ' (' + esc(l.unit) + ')' : '') + '<input type="number" min="0.01" step="any" inputmode="decimal" data-f="qty" value="' + esc(l.qty) + '"' + (locked ? ' disabled' : '') + '></label>' +
       '<label>מחיר ללקוח ליח\' כולל מע"מ<input type="number" min="0" step="any" inputmode="decimal" data-f="sell" value="' + esc(l.sell) + '"></label>' +
       '<div><span class="mute" style="font-size:14px">סה"כ ללקוח</span><output data-o="tot">' + money((Number(l.sell) || 0) * q) + '</output></div>' +
