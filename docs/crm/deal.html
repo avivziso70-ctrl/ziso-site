@@ -63,6 +63,7 @@ fieldset{border:1px solid var(--line);border-radius:12px;margin:12px 0;padding:8
 body.shy .cost{display:none!important}
 .dl{display:block;width:100%;text-align:right;font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0;cursor:pointer;min-height:64px}
 .dl:hover{border-color:var(--brass)}
+.case{border-inline-start:3px solid var(--brass);padding:6px 12px;margin-top:8px;background:var(--graphite);border-radius:0 8px 8px 0}.case select{min-height:44px}
 .ask{border:1px solid var(--brass);border-radius:12px;padding:12px;margin-top:12px;background:var(--brass-soft)}
 </style>
 </head>
@@ -201,12 +202,13 @@ $('newDeal').addEventListener('click', function () {
 });
 function openDeal(id) { sb.from('crm_deals').select('*').eq('id', id).single().then(function (r) { if (r.data) setDeal(r.data); else showList(); }); }
 function setDeal(d) {
-  deal = d; deal.lines = deal.lines || []; deal.deliver = deal.deliver || {};
+  deal = d; deal.lines = deal.lines || []; deal.deliver = deal.deliver || {}; cases = []; caseOpen = null;
+  deal.lines.forEach(function (l) { if (!l.lid) { l.lid = newLid(); dirty = true; } });
   $('v-list').classList.add('hidden'); $('v-deal').classList.remove('hidden'); $('bar').classList.remove('hidden');
   history.replaceState(null, '', '?d=' + d.id);
   $('title').textContent = 'עסקה ' + d.deal_no;
   $('mk').value = d.markup == null ? 40 : d.markup; $('q').value = ''; last = []; $('results').innerHTML = '';
-  $('cuQ').value = d.customer_name || ''; drawCu(); drawDv(); draw(); loadPos(); drawShare(); loadNotes();
+  $('cuQ').value = d.customer_name || ''; drawCu(); drawDv(); draw(); loadPos(); drawShare(); loadNotes(); loadCases();
 }
 
 /* ---------- save (debounced) ---------- */
@@ -301,13 +303,37 @@ $('results').addEventListener('click', function (e) {
   var b = e.target.closest('[data-add]'); if (!b) return;
   var r = last.filter(function (x) { return String(x.id) === b.dataset.add; })[0]; if (!r) return;
   var c = netCost(r);
-  deal.lines.push({ price_id: r.id, supplier_id: r.supplier_id, sku: r.supplier_code, desc: r.description, size: r.size, unit: r.unit, qty: 1, cost: c, sell: sellFor(c), stock: false });
+  deal.lines.push({ price_id: r.id, supplier_id: r.supplier_id, sku: r.supplier_code, desc: r.description, size: r.size, unit: r.unit, qty: 1, cost: c, sell: sellFor(c), stock: false, lid: newLid() });
   closeAsk(); drawResults(); draw(); touch();
 });
 $('mk').addEventListener('input', function () { drawResults(); touch(); });
 
 /* ---------- lines + live profit ---------- */
 var ST = { queued: ['grey', 'יוצא בדקות הקרובות'], sending: ['grey', 'נשלח עכשיו'], sent: ['yellow', 'ממתין לאישור הספק'], confirmed: ['green', 'הספק אישר'], attention: ['orange', 'לבדוק'], failed: ['red', 'השליחה נכשלה'], cancelled: ['grey', 'בוטל'] };
+function newLid() { return Math.random().toString(36).slice(2, 10); }
+var cases = [], caseOpen = null;
+var CK = { change: 'שינוי', cancel: 'ביטול', defect: 'פגום', 'return': 'החזרה' }, CS = { open: 'בטיפול', supplier: 'אצל הספק', done: 'נסגר' }, CO = { replaced: 'הוחלף', credited: 'זוכה', refunded: 'הוחזר כסף', cancelled: 'בוטל', none: 'בלי שינוי' };
+function loadCases() {
+  if (!deal) return; var id = deal.id;
+  sb.from('crm_deal_cases').select('id,lid,kind,qty,text,status,outcome,by_name,created_at').eq('deal_id', id).order('id', { ascending: true }).then(function (r) {
+    if (!deal || deal.id !== id || r.error) return; cases = r.data || [];
+    if (!$('lines').contains(document.activeElement)) draw();
+  });
+}
+function caseHtml(l) {
+  var mine = cases.filter(function (c) { return c.lid === l.lid; });
+  var h = mine.map(function (c) {
+    return '<div class="case" data-case="' + c.id + '"><b>' + CK[c.kind] + (c.qty ? ' × ' + esc(c.qty) : '') + '</b> <span class="mute">' + fmtTime(c.created_at) + (c.by_name ? ' · ' + esc(c.by_name) : '') + '</span>' + (c.text ? '<br>' + esc(c.text) : '') +
+      '<div class="row" style="margin-top:6px"><label class="mute">מצב <select data-cf="status">' + Object.keys(CS).map(function (k) { return '<option value="' + k + '"' + (c.status === k ? ' selected' : '') + '>' + CS[k] + '</option>'; }).join('') + '</select></label>' +
+      '<label class="mute">איך נסגר <select data-cf="outcome"><option value="">עוד פתוח</option>' + Object.keys(CO).map(function (k) { return '<option value="' + k + '"' + (c.outcome === k ? ' selected' : '') + '>' + CO[k] + '</option>'; }).join('') + '</select></label></div></div>';
+  }).join('');
+  if (caseOpen === l.lid) h += '<div class="case"><div class="row"><label class="mute">מה קרה <select data-nc="kind"><option value="defect">הגיע פגום</option><option value="return">הלקוח מחזיר</option><option value="change">הלקוח רוצה להחליף</option><option value="cancel">הלקוח מבטל</option></select></label>' +
+    '<label class="mute">כמות <input type="number" min="0" step="any" inputmode="decimal" data-nc="qty" value="' + esc(l.qty) + '" style="width:90px"></label></div>' +
+    '<input data-nc="text" maxlength="1000" placeholder="פרטים: מה פגום, במה מחליפים" style="width:100%;margin-top:6px" aria-label="פרטים">' +
+    '<div class="row" style="margin-top:6px"><button type="button" class="btn small brass" data-nc="save">שמירה</button><button type="button" class="btn small" data-nc="cancel">ביטול</button></div>' +
+    '<p class="mute" style="margin:6px 0 0">הלקוח יראה את המצב בדף שלו. זיכוי או החזר כספי פותחים משימה להוציא את המסמך בפריוריטי.' + (l.po_no && !l.delivered_at ? ' המוצר כבר הוזמן מהספק: ביטול או שינוי מול הספק עושים בלשונית ההזמנות (' + esc(l.po_no) + ').' : '') + '</p></div>';
+  return h;
+}
 function lineState(l) {
   if (l.po_no) { var p = pos[l.po_id], st = p ? (ST[p.status] || ['grey', p.status]) : ['yellow', 'הוזמן']; if (p && p.receive_state) st = { full: ['green', 'הגיע'], partial: ['yellow', 'הגיע חלק'], gap: ['orange', 'הגיע עם הבדלים'] }[p.receive_state] || st; return '<span class="st ' + st[0] + '">' + esc(l.po_no) + ' · ' + st[1] + '</span>'; }
   if (l.stock) return '<span class="st grey">מהמלאי</span>';
@@ -323,8 +349,10 @@ function draw() {
       '<label>מחיר ללקוח ליח\' כולל מע"מ<input type="number" min="0" step="any" inputmode="decimal" data-f="sell" value="' + esc(l.sell) + '"></label>' +
       '<div><span class="mute" style="font-size:14px">סה"כ ללקוח</span><output data-o="tot">' + money((Number(l.sell) || 0) * q) + '</output></div>' +
       '<div class="cost"><span class="mute" style="font-size:14px">רווח בשורה</span><output data-o="pr" class="' + (p < 0 ? 'err' : 'ok') + '">' + money(p * q) + '</output></div></div>' +
-      (true ? '<div class="row" style="margin-top:6px">' + (l.delivered_at ? '' : '<label class="mute">צפי הגעה ללקוח <input type="date" data-f="eta" value="' + esc(l.eta || '') + '" style="min-height:44px"></label>') +
-        '<label class="chk"><input type="checkbox" data-f="delivered"' + (l.delivered_at ? ' checked' : '') + '> נמסר ללקוח</label></div>' : '') +
+      '<div class="row" style="margin-top:6px">' + (l.delivered_at ? '' : '<label class="mute">צפי הגעה ללקוח <input type="date" data-f="eta" value="' + esc(l.eta || '') + '" style="min-height:44px"></label>') +
+        '<label class="mute">נמסר ללקוח (מתוך ' + esc(l.qty) + ') <input type="number" min="0" step="any" inputmode="decimal" data-f="dq" value="' + esc(l.delivered_qty || '') + '" style="width:90px"></label>' +
+        (l.delivered_at ? '<span class="st green">נמסר הכול</span>' : Number(l.delivered_qty) > 0 ? '<span class="st yellow">נמסר חלק</span>' : '') +
+        '<button type="button" class="btn small" data-case-new="1">שינוי / פגום / החזרה</button></div>' + caseHtml(l) +
       (locked ? '' : '<div class="row" style="margin-top:6px"><label class="chk grow"><input type="checkbox" data-f="stock"' + (l.stock ? ' checked' : '') + '> יש במלאי, לא להזמין</label><button type="button" class="btn small red" data-del="1" aria-label="להסיר ' + esc(l.desc) + '">הסרה</button></div>') + '</div>';
   }).join('');
   drawBar(); drawPlan();
@@ -339,14 +367,37 @@ $('lines').addEventListener('input', function (e) {
   var l = deal.lines[Number(row.dataset.i)];
   if (f === 'stock') { l.stock = e.target.checked; closeAsk(); draw(); touch(); return; }
   if (f === 'eta') { if (e.target.value) l.eta = e.target.value; else delete l.eta; touch(); return; }
-  if (f === 'delivered') { if (e.target.checked) l.delivered_at = new Date().toISOString(); else delete l.delivered_at; draw(); touch(); return; }
+  if (f === 'dq') {
+    var v = Number(e.target.value) || 0, was = !!l.delivered_at;
+    if (v > 0) l.delivered_qty = v; else delete l.delivered_qty;
+    if (v > 0 && v >= (Number(l.qty) || 0)) { if (!was) l.delivered_at = new Date().toISOString(); } else delete l.delivered_at;
+    touch(); return;
+  }
   l[f] = e.target.value === '' ? '' : Number(e.target.value);
   var q = Number(l.qty) || 0, p = (Number(l.sell) || 0) / VAT - (Number(l.cost) || 0), o = row.querySelector('[data-o=pr]');
   row.querySelector('[data-o=tot]').textContent = money((Number(l.sell) || 0) * q);
   o.textContent = money(p * q); o.className = p < 0 ? 'err' : 'ok';
   closeAsk(); drawBar(); drawPlan(); touch();
 });
+$('lines').addEventListener('change', function (e) {
+  if (e.target.dataset.f === 'dq') { draw(); return; }
+  var cf = e.target.dataset.cf, box = e.target.closest('[data-case]'); if (!cf || !box) return;
+  var c = cases.filter(function (x) { return String(x.id) === box.dataset.case; })[0]; if (!c) return;
+  var up = {}; up[cf] = e.target.value || null;
+  if (cf === 'outcome' && e.target.value) up.status = 'done';
+  sb.from('crm_deal_cases').update(up).eq('id', c.id).then(function () { loadCases(); });
+});
 $('lines').addEventListener('click', function (e) {
+  var row = e.target.closest('.ln'), nb = e.target.closest('[data-case-new]'), nc = e.target.closest('button[data-nc]');
+  if (nb && row) { caseOpen = deal.lines[Number(row.dataset.i)].lid; draw(); var s1 = $('lines').querySelector('.ln[data-i="' + row.dataset.i + '"] [data-nc=kind]'); if (s1) s1.focus(); return; }
+  if (nc && row) {
+    if (nc.dataset.nc === 'cancel') { caseOpen = null; draw(); return; }
+    var l = deal.lines[Number(row.dataset.i)], g = function (k) { return row.querySelector('[data-nc=' + k + ']').value; };
+    nc.disabled = true;
+    flush().then(function () { return sb.from('crm_deal_cases').insert({ deal_id: deal.id, lid: l.lid, line_desc: (l.desc || '') + (l.size ? ' ' + l.size : ''), kind: g('kind'), qty: Number(g('qty')) || null, text: g('text').trim() || null, by: me.email, by_name: me.name }); })
+      .then(function (r) { if (!r.error) caseOpen = null; loadCases(); draw(); });
+    return;
+  }
   var b = e.target.closest('[data-del]'); if (!b) return;
   deal.lines.splice(Number(b.closest('.ln').dataset.i), 1); closeAsk(); drawResults(); draw(); touch();
 });

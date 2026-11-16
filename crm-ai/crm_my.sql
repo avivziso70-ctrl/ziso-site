@@ -92,6 +92,10 @@ begin
       'confirmed_at', case when p.status = 'confirmed' then p.confirmed_at end,
       'arrived_at', p.received_at,
       'delivered_at', l.j ->> 'delivered_at',
+      'delivered_qty', (l.j ->> 'delivered_qty')::numeric,
+      -- changes, defects and returns on this product (crm_deal_cases.sql): what kind, where it stands, how it ended
+      'cases', (select coalesce(jsonb_agg(jsonb_build_object('kind', c.kind, 'status', c.status, 'outcome', c.outcome, 'qty', c.qty, 'at', c.created_at) order by c.id), '[]'::jsonb)
+        from crm_deal_cases c where c.deal_id = d.id and c.lid = l.j ->> 'lid'),
       -- expected arrival: what the team typed, else the median of this supplier's real deliveries (3 orders or more)
       'eta', coalesce(l.j ->> 'eta', case when p.id is not null and p.received_at is null and p.status in ('sent', 'confirmed') and lt.orders >= 3
         then to_char((coalesce(p.sent_at, p.created_at) + make_interval(days => ceil(lt.median_days)::int)) at time zone 'Asia/Jerusalem', 'YYYY-MM-DD') end),

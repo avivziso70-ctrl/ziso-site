@@ -61,6 +61,8 @@ main h2{font-size:1.75rem;line-height:1.15;margin-bottom:12px}
 .state{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:.95rem}
 .state b{font-weight:700}.state .eta{color:var(--stone)}
 .prod.done{opacity:.75}
+.case{margin-top:10px;padding:8px 12px;border-inline-start:3px solid var(--due);background:var(--due-soft);font-size:.93rem;border-radius:0 3px 3px 0}
+.case.closed{border-color:var(--ok);background:var(--ok-soft)}.case .d{color:var(--stone)}
 .sumrow{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:14px 2px 0;font-weight:600}
 .sumrow .big{font:400 1.7rem var(--display)}
 .kv{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--grout)}
@@ -216,7 +218,7 @@ function sample() {
       { desc: 'אריח פורצלן אפור מט', size: '60/120', unit: 'מ"ר', qty: 42, sell: 189, stage: 'ready', ordered_at: d(-12), arrived_at: d(-2) },
       { desc: 'ארון אמבטיה תלוי אגוז', size: '80 ס"מ', unit: 'יח\'', qty: 1, sell: 3290, stage: 'ready', ordered_at: d(-12), arrived_at: d(-1) },
       { desc: 'סוללה סמויה 3 דרך שחור מט', unit: 'יח\'', qty: 1, sell: 1840, stage: 'confirmed', ordered_at: d(-5), confirmed_at: d(-4), eta: d(6), eta_from: 'stats' },
-      { desc: 'אסלה תלויה ללא שפה', unit: 'יח\'', qty: 1, sell: 1192, stage: 'ordered', ordered_at: d(-1) },
+      { desc: 'אסלה תלויה ללא שפה', unit: 'יח\'', qty: 1, sell: 1192, stage: 'ordered', ordered_at: d(-1), cases: [{ kind: 'defect', status: 'supplier', at: d(-1) }] },
       { desc: 'דבק לבן C2TE, שק 25 ק"ג', unit: 'יח\'', qty: 12, sell: 0, stage: 'delivered', delivered_at: d(-3) } ],
     money: { known: true, balance: 6260, as_of: d(0), to_pay: [{ amount: 6260, what: 'יתרה לפני אספקה', link: '#demo' }], paid: [{ amount: 8000, what: 'מקדמה על ההזמנה', at: d(-12) }],
       invoices: [{ doc: 'IN26001234', date: d(-12), amount: 8000 }], receipts: [{ doc: 'RC26005678', date: d(-12), amount: 8000, method: 'אשראי' }] },
@@ -226,6 +228,13 @@ function sample() {
 /* ---------- draw ---------- */
 var RANK = { chosen: 0, ordered: 1, confirmed: 2, partial: 2.5, ready: 3, delivered: 4 };
 var LABEL = { chosen: 'נבחר, בטיפול אצלנו', ordered: 'הוזמן מהספק', confirmed: 'הספק אישר את ההזמנה', partial: 'חלק כבר הגיע אלינו', ready: 'אצלנו, מוכן בשבילכם', delivered: 'נמסר' };
+var CKIND = { change: 'בקשת שינוי', cancel: 'ביטול', defect: 'דיווח על פגם', 'return': 'החזרה' }, COUT = { replaced: 'הוחלף', credited: 'זוכה בחשבון', refunded: 'הכסף הוחזר', cancelled: 'בוטל', none: 'נסגר' };
+function caseLines(l) {
+  return (l.cases || []).map(function (c) {
+    var st = c.status === 'done' ? (COUT[c.outcome] || 'נסגר') : c.status === 'supplier' ? 'בטיפול מול הספק' : 'בטיפול אצלנו';
+    return '<div class="case' + (c.status === 'done' ? ' closed' : '') + '"><b>' + CKIND[c.kind] + '</b> · ' + st + ' <span class="d">' + dayS(c.at) + '</span></div>';
+  }).join('');
+}
 function stateLine(l) {
   var when = l.stage === 'delivered' ? l.delivered_at : l.stage === 'ready' || l.stage === 'partial' ? l.arrived_at : l.stage === 'confirmed' ? l.confirmed_at : l.stage === 'ordered' ? l.ordered_at : null;
   var eta = '';
@@ -251,7 +260,8 @@ function draw(j) {
     var r = RANK[l.stage], q = Number(l.qty) || 0, tot = (Number(l.sell) || 0) * q;
     return '<article class="tile prod' + (r === 4 ? ' done' : '') + '"><h3>' + esc(l.desc) + (l.size ? ' <span class="ltr">' + esc(l.size) + '</span>' : '') + '</h3>' +
       '<div class="meta"><span>' + q.toLocaleString('he-IL') + (l.unit ? ' ' + esc(l.unit) : '') + '</span>' + (tot ? '<span class="num">' + nis(tot) + '</span>' : '') + '</div>' +
-      '<ol class="steps" aria-hidden="true">' + [1, 2, 3, 4].map(function (k) { return '<li class="' + (r >= k ? 'on' : r > k - 1 ? 'half' : '') + '"></li>'; }).join('') + '</ol>' + stateLine(l) + '</article>';
+      '<ol class="steps" aria-hidden="true">' + [1, 2, 3, 4].map(function (k) { return '<li class="' + (r >= k ? 'on' : r > k - 1 ? 'half' : '') + '"></li>'; }).join('') + '</ol>' + stateLine(l) +
+      (Number(l.delivered_qty) > 0 && r < 4 ? '<div class="case closed">נמסרו ' + Number(l.delivered_qty).toLocaleString('he-IL') + ' מתוך ' + q.toLocaleString('he-IL') + '</div>' : '') + caseLines(l) + '</article>';
   }).join('') || '<p class="lead">עוד אין מוצרים ברשימה.</p>';
   $('total').textContent = nis(d.total);
   $('dest').textContent = d.deliver_to === 'customer' ? 'אספקה לכתובת: ' + (d.address || 'נתאם איתכם') + '.' : 'איסוף או אספקה מאולם התצוגה בטירת כרמל.';
