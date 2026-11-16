@@ -201,9 +201,12 @@ a.go{display:flex;align-items:center;justify-content:center;text-decoration:none
   </section>
 
   <section class="box" id="bDay" aria-labelledby="hDay">
-    <h2 id="hDay">מתי הלקוח שילם?</h2>
+    <h2 id="hDay">איזה תשלום מחזירים?</h2>
+    <label for="rfQ" class="sr">חיפוש לפי שם, טלפון או סכום</label>
+    <input id="rfQ" type="search" autocomplete="off" placeholder="חיפוש: שם, טלפון או סכום" style="margin:8px 0 10px">
     <div class="chips" role="group" aria-labelledby="hDay">
-      <button class="chip" type="button" data-day="0" aria-pressed="true">היום</button>
+      <button class="chip" type="button" data-day="recent" aria-pressed="true">אחרונות (30 יום)</button>
+      <button class="chip" type="button" data-day="0" aria-pressed="false">היום</button>
       <button class="chip" type="button" data-day="1" aria-pressed="false">אתמול</button>
       <label class="sr" for="rfDate">תאריך אחר</label><input id="rfDate" type="date" style="min-height:48px;width:auto;padding:6px 12px">
     </div>
@@ -441,7 +444,7 @@ $('toRefund').addEventListener('click', function () {
   show('refund'); rfShow(null); $('rfTitle').focus();
   $('rfDate').max = ilDay(0); $('rfDate').min = ilDay(60);
   fn('crm-refund', { action: 'status' }).then(function (j) { rf.st = j; rfState(); }).catch(function () {});
-  rfLoad(ilDay(0));
+  rfLoad('recent');
 });
 $('rfExit').addEventListener('click', function () { show('form'); loadMine(); });
 function rfState() {
@@ -460,22 +463,39 @@ $('rfSecretSave').addEventListener('click', function () {
     $('rfPw').value = ''; $('rfCp').value = ''; rf.st.ready = true; rfState(); say('הסיסמאות נשמרו');
   }).catch(function () { $('rfSecretSave').disabled = false; $('eSecret').textContent = 'אין חיבור. לנסות שוב'; });
 });
-document.querySelectorAll('[data-day]').forEach(function (b) { b.addEventListener('click', function () { $('rfDate').value = ''; rfLoad(ilDay(Number(b.dataset.day))); }); });
+var dayOf = function (v) { return v === 'recent' ? 'recent' : ilDay(Number(v)); };
+document.querySelectorAll('[data-day]').forEach(function (b) { b.addEventListener('click', function () { $('rfDate').value = ''; rfLoad(dayOf(b.dataset.day)); }); });
+$('rfQ').addEventListener('input', rfDraw);
+var digits = function (x) { return String(x || '').replace(/\D/g, ''); };
+var dmy = function (d) { var p = String(d || '').split('-'); return p.length === 3 ? Number(p[2]) + '.' + Number(p[1]) : ''; };
+function rfDraw() {
+  var q = $('rfQ').value.trim().toLowerCase(), qd = digits(q), recent = rf.day === 'recent';
+  var list = rf.rows.map(function (t, i) { return [t, i]; }).filter(function (x) {
+    var t = x[0]; if (!q) return true;
+    if (t.name && t.name.toLowerCase().indexOf(q) >= 0) return true;
+    if (qd.length >= 3 && t.phone && digits(t.phone).indexOf(qd) >= 0) return true;
+    if (qd && (String(t.amount) === q.replace(',', '.') || String(Math.round(t.amount)) === qd)) return true;
+    return qd.length >= 4 && String(t.index) === qd;
+  });
+  if (!rf.rows.length) { $('rfList').innerHTML = '<p class="muted small">' + (recent ? 'אין תשלומים באשראי ב-30 הימים האחרונים.' : 'אין תשלומים באשראי ביום הזה.') + '</p>'; return; }
+  if (!list.length) { $('rfList').innerHTML = '<p class="muted small">לא נמצא תשלום שמתאים לחיפוש. אפשר לחפש לפי סכום, או לבחור יום.</p>'; return; }
+  $('rfList').innerHTML = list.map(function (x) {
+    var t = x[0], i = x[1], left = Math.round((t.amount - t.refunded) * 100) / 100, gone = left <= 0 || t.open;
+    var note = [t.name ? esc(t.name) : '', t.payments > 1 ? t.payments + ' תשלומים' : '', t.refunded ? 'הוחזר כבר ' + money(t.refunded) : '', t.open ? 'יש זיכוי שמחכה לבדיקה' : ''].filter(Boolean).join(' · ');
+    var when = (recent && t.day ? dmy(t.day) + ' ' : '') + t.time;
+    return '<button class="txrow" type="button" data-tx="' + i + '" aria-pressed="false"' + (gone ? ' disabled' : '') + '><span class="t">' + esc(when) + '</span><span>' + (left <= 0 ? '<span class="tag off">הוחזר</span>' : '') + '</span><span class="s">' + money(t.amount) + '</span>' + (note ? '<span class="n">' + note + '</span>' : '') + '</button>';
+  }).join('');
+}
 $('rfDate').addEventListener('change', function () { if (this.value) rfLoad(this.value); });
 function rfLoad(day) {
   rf.day = day; rf.pick = null; rfShow(null);
-  document.querySelectorAll('[data-day]').forEach(function (b) { b.setAttribute('aria-pressed', String(ilDay(Number(b.dataset.day)) === day && !$('rfDate').value)); });
-  $('rfList').innerHTML = '<p class="muted small">טוען את התשלומים מטרנזילה…</p>';
-  fn('crm-refund', { action: 'list', day: day }).then(function (j) {
+  document.querySelectorAll('[data-day]').forEach(function (b) { b.setAttribute('aria-pressed', String(dayOf(b.dataset.day) === day && !$('rfDate').value)); });
+  $('rfList').innerHTML = '<p class="muted small">טוען את התשלומים מטרנזילה…</p>'; rf.rows = [];
+  fn('crm-refund', day === 'recent' ? { action: 'recent', days: 30 } : { action: 'list', day: day }).then(function (j) {
     if (rf.day !== day) return;
     if (!j.ok) { $('rfList').innerHTML = '<p class="err">' + esc(j.error || 'לא הצלחתי לטעון. לנסות שוב') + '</p>'; return; }
-    rf.rows = j.rows || [];
-    if (!rf.rows.length) { $('rfList').innerHTML = '<p class="muted small">אין תשלומים באשראי ביום הזה.</p>'; return; }
-    $('rfList').innerHTML = rf.rows.map(function (t, i) {
-      var left = Math.round((t.amount - t.refunded) * 100) / 100, gone = left <= 0 || t.open;
-      var note = [t.name ? esc(t.name) : '', t.payments > 1 ? t.payments + ' תשלומים' : '', t.refunded ? 'הוחזר כבר ' + money(t.refunded) : '', t.open ? 'יש זיכוי שמחכה לבדיקה' : ''].filter(Boolean).join(' · ');
-      return '<button class="txrow" type="button" data-tx="' + i + '" aria-pressed="false"' + (gone ? ' disabled' : '') + '><span class="t">' + esc(t.time) + '</span><span>' + (left <= 0 ? '<span class="tag off">הוחזר</span>' : '') + '</span><span class="s">' + money(t.amount) + '</span>' + (note ? '<span class="n">' + note + '</span>' : '') + '</button>';
-    }).join('');
+    rf.rows = (j.rows || []).map(function (t) { if (!t.day) t.day = day; return t; });
+    rfDraw();
   }).catch(function () { $('rfList').innerHTML = '<p class="err">אין חיבור. לנסות שוב</p>'; });
 }
 $('rfList').addEventListener('click', function (e) {
@@ -483,7 +503,7 @@ $('rfList').addEventListener('click', function (e) {
   rf.pick = rf.rows[Number(b.dataset.tx)];
   document.querySelectorAll('[data-tx]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
   var left = Math.round((rf.pick.amount - rf.pick.refunded) * 100) / 100;
-  $('rfPick').textContent = 'תשלום של ' + money(rf.pick.amount) + ' בשעה ' + rf.pick.time + (rf.pick.name ? ' · ' + rf.pick.name : '') + '. אפשר להחזיר עד ' + money(left) + '.';
+  $('rfPick').textContent = 'תשלום של ' + money(rf.pick.amount) + ' מ-' + dmy(rf.pick.day) + ' בשעה ' + rf.pick.time + (rf.pick.name ? ' · ' + rf.pick.name : '') + '. אפשר להחזיר עד ' + money(left) + '.';
   $('rfAmount').value = String(left); $('eRf').textContent = ''; rfShow('bRf'); $('rfAmount').focus();
 });
 $('rfAmount').addEventListener('input', function () { this.value = this.value.replace(/[^\d.,]/g, ''); $('eRf').textContent = ''; });
@@ -502,7 +522,7 @@ $('rfNext').addEventListener('click', function () {
 $('rfBack').addEventListener('click', function () { rfShow('bRf'); });
 $('rfDo').addEventListener('click', function () {
   if (rf.busy) return; rf.busy = true; var btn = this; btn.disabled = true; btn.textContent = 'מחזיר…';
-  fn('crm-refund', { action: 'refund', day: rf.day, index: rf.pick.index, amount: rf.amount, reason: $('rfReason').value.trim() }).then(function (j) {
+  fn('crm-refund', { action: 'refund', day: rf.pick.day, index: rf.pick.index, amount: rf.amount, reason: $('rfReason').value.trim() }).then(function (j) {
     rfShow('bRfDone');
     $('rfIcon').textContent = j.ok ? '✓' : '!';
     $('rfDoneT').textContent = j.ok ? 'הוחזרו ' + money(j.amount) + ' לכרטיס' : j.unknown ? 'לא ברור אם הזיכוי עבר' : 'הזיכוי לא בוצע';

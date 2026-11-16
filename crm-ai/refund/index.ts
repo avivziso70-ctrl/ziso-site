@@ -2,6 +2,7 @@
 // POST with the signed-in staff user's Supabase JWT:
 //   { action: "status" }                               -> { on, ready, owner }
 //   { action: "list", day: "YYYY-MM-DD" }               -> today's (or that day's) card charges from Tranzila's own list
+//   { action: "recent", days }                          -> all card charges of the last days (30), newest first, with payer name/phone
 //   { action: "refund", day, index, amount, reason }    -> refunds part or all of ONE existing charge
 //   { action: "secret", tranzila_pw, credit_pass }      -> Aviv only: saves the two terminal passwords a refund needs
 // Rules: a refund exists only against a charge that Tranzila itself lists (never trusted from the page), up to what is
@@ -27,13 +28,13 @@ async function hmac(key: string, msg: string) {
   const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(key), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   return hex(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(msg)));
 }
-async function listPage(day: string, page: number) {
+async function listPage(day: string, page: number, end = day) {
   const app = Deno.env.get("TRANZILA_APP_KEY")!, secret = Deno.env.get("TRANZILA_SECRET")!;
   const time = String(Math.floor(Date.now() / 1000)), nonce = hex(crypto.getRandomValues(new Uint8Array(40)));
   const r = await fetch("https://api.tranzila.com/v1/transactions", {
     method: "POST",
     headers: { "X-tranzila-api-app-key": app, "X-tranzila-api-request-time": time, "X-tranzila-api-nonce": nonce, "X-tranzila-api-access-token": await hmac(secret + time + nonce, app), "content-type": "application/json" },
-    body: JSON.stringify({ terminal_name: TERMINAL, transaction_start_date: day, transaction_end_date: day, page }),
+    body: JSON.stringify({ terminal_name: TERMINAL, transaction_start_date: day, transaction_end_date: end, page }),
   });
   if (!r.ok) return null;
   const j = await r.json().catch(() => null) as Record<string, unknown> | null;
@@ -51,6 +52,25 @@ async function dayList(day: string): Promise<Tx[] | null> {
   }
   return all;
 }
+// Several days in one go (the recent list): same API, a date range, more pages.
+async function rangeList(from: string, to: string): Promise<Tx[] | null> {
+  const all: Tx[] = [];
+  for (let p = 1; p <= 30; p++) {
+    const l = await listPage(from, p, to);
+    if (!l) return p === 1 ? null : all;
+    if (!l.rows.length) break;
+    all.push(...l.rows);
+    if (all.length >= l.total) break;
+  }
+  return all;
+}
+// Tranzila writes the date as YYYY-MM-DD; accept DD/MM/YYYY too, just in case.
+function txDay(t: Tx, fallback: string) {
+  const d = String(t.transaction_date || "").trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0, 10);
+  const m = d.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/);
+  return m ? `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}` : fallback;
+}
 // A charge we can refund: a debit that went through. Amount in Tranzila's list is in agorot ("55000" = ₪550).
 const isCharge = (t: Tx) => String(t.processor_response_code ?? "") === "000" && String(t.txn_type ?? "").toUpperCase() === "DEBIT" && Number(t.amount) > 0;
 const shekels = (t: Tx) => Math.round(Number(t.amount)) / 100;
@@ -67,8 +87,8 @@ async function secrets() {
   return m;
 }
 // Who paid: our own payment links (same day, same amount, paid) carry the customer's name and phone.
-async function crmMatches(day: string) {
-  const from = new Date(day + "T00:00:00+02:00"), to = new Date(from.getTime() + 864e5 + 3 * 3600e3);
+async function crmMatches(day: string, lastDay = day) {
+  const from = new Date(day + "T00:00:00+02:00"), to = new Date(new Date(lastDay + "T00:00:00+02:00").getTime() + 864e5 + 3 * 3600e3);
   const { data: prs } = await admin.from("crm_pay_requests").select("pr_id, tail9, paid_sum, amount, paid_at").eq("status", "paid").gte("paid_at", from.toISOString()).lt("paid_at", to.toISOString());
   const ids = (prs || []).map((p) => p.pr_id).filter(Boolean);
   const { data: tks } = ids.length ? await admin.from("crm_takings").select("pay_pr_id, payer_name, tail9").in("pay_pr_id", ids) : { data: [] as { pay_pr_id: string; payer_name: string; tail9: string }[] };
@@ -112,6 +132,29 @@ Deno.serve(async (req: Request) => {
     await admin.from("crm_secrets").upsert([{ k: "tranzila_pw", v: pw, updated_by: email, updated_at: now }, { k: "tranzila_credit_pass", v: cp, updated_by: email, updated_at: now }]);
     await admin.from("crm_audit").insert({ who: email, action: "refund_secret_set", detail: {} });
     return json(req, { ok: true, ready: true });
+  }
+
+  // recent: every card charge of the last N days (default 30, max 60), newest first, with the payer's name and phone
+  // when one of our payment links matches it, so the page can search by customer.
+  if (action === "recent") {
+    const days = Math.min(60, Math.max(1, Number(body.days) || 30));
+    const to = ilDay(), from = ilDay(new Date(Date.now() - (days - 1) * 864e5));
+    let l = await rangeList(from, to);
+    if (!l) { // if Tranzila refuses a range, fall back to one call per day
+      const per = await Promise.all(Array.from({ length: days }, (_, i) => dayList(ilDay(new Date(Date.now() - i * 864e5)))));
+      l = per.some((x) => x) ? per.flatMap((x, i) => (x || []).map((t) => ({ ...t, transaction_date: t.transaction_date || ilDay(new Date(Date.now() - i * 864e5)) }))) : null;
+    }
+    if (!l) return json(req, { ok: false, error: "טרנזילה לא ענתה. לנסות שוב בעוד דקה" }, 502);
+    const m = await crmMatches(from, to);
+    const { data: refs } = await admin.from("crm_refunds").select("tz_index, amount, status").gte("tz_day", from).in("status", ["pending", "done", "unknown"]);
+    const rows = l.filter(isCharge).map((t) => {
+      const idx = String(t.index), d = txDay(t, to), who = nameFor(t, d, m.filter((x) => ilDay(new Date(x.at)) === d));
+      const done = (refs || []).filter((x) => x.tz_index === idx);
+      return { index: idx, day: d, time: String(t.transaction_time || "").slice(0, 5), amount: shekels(t), payments: Number(t.number_of_payments) || 0,
+        brand: String(t.card_brand || t.card_description || ""), name: who?.name || null, phone: who?.tail9 ? "0" + who.tail9 : null,
+        refunded: r2(done.reduce((s, x) => s + Number(x.amount), 0)), open: done.some((x) => x.status !== "done") };
+    }).sort((a, b) => (b.day + b.time).localeCompare(a.day + a.time));
+    return json(req, { ok: true, from, to, on, ready, rows });
   }
 
   const day = String(body.day || ilDay());
