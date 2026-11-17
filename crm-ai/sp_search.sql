@@ -241,7 +241,8 @@ begin
     used as (select (l ->> ''price_id'')::bigint pid, count(*) k from crm_deals dl, jsonb_array_elements(dl.lines) l
              where dl.updated_at > now() - interval ''180 days'' and (l ->> ''price_id'') ~ ''^\d+$'' group by 1),
     r as (select p.id, p.supplier_id, p.supplier_code, p.description, p.size, p.unit, p.price, p.list_price, p.currency, p.vat_included,
-                 p.category, p.created_at, p.image_path, d.grp,
+                 p.category, p.created_at, p.image_path, d.grp, p.page_ref,
+                 exists (select 1 from sp_uploads su where su.id = p.upload_id and su.source = ''chat-extract'') as est,
                  row_number() over (order by ' ||
       case when p_sort = 'cheap' then '(d.extra and not $5), p.price asc nulls last, p.id'
            else '(' || code_expr || ') desc, (d.extra and not $5), (' || case when coalesce(array_length(quality, 1), 0) = 0 then '0' else array_to_string(quality, ' + ') end || ') desc, (' || lead || ') desc, (p.price is null), coalesce(u.k, 0) desc, p.price asc nulls last, p.id' end || ') rn
@@ -297,7 +298,8 @@ begin
     return jsonb_build_object('total', coalesce(array_length(p_ids, 1), 0), 'n', 0, 'rows', (
       select coalesce(jsonb_agg(to_jsonb(x) - 'o' order by o), '[]'::jsonb) from (
         select p.id, p.supplier_id, p.supplier_code, p.description, p.size, p.unit, p.price, p.list_price, p.currency, p.vat_included,
-               p.category, p.created_at, p.image_path, d.grp, u.o
+               p.category, p.created_at, p.image_path, d.grp, u.o, p.page_ref,
+               exists (select 1 from sp_uploads su where su.id = p.upload_id and su.source = 'chat-extract') as est
         from unnest(p_ids[1:30]) with ordinality u(id, o) join sp_prices p on p.id = u.id and p.status = 'active'
         left join sp_search_doc d on d.price_id = p.id
         where not p_priced or (p.price is not null and coalesce(p.currency, 'ILS') = 'ILS')) x));
