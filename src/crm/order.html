@@ -28,6 +28,7 @@ main{max-width:980px;margin:0 auto;padding:0 16px 170px}
 .btn{font:inherit;color:inherit;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none}
 .btn.brass{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}.btn.small{min-height:36px;padding:0 12px;font-size:15px}.btn.red{color:var(--red)}.btn.ghost{background:transparent;border-color:transparent}
 .btn.icon{width:44px;padding:0}
+.peek{color:var(--mute);opacity:.45}.peek:hover,.peek:focus-visible{opacity:1}
 .btn:disabled{opacity:.55;cursor:default}
 input,select,textarea{font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 12px;min-height:44px;width:100%}
 textarea{min-height:64px}
@@ -119,7 +120,7 @@ details.sec>.bd{padding:0 16px 16px}
 <header><div class="in">
   <h1 class="grow" id="title">הזמנה</h1>
   <button class="btn small icon" id="theme" type="button" aria-label="מצב תצוגה"></button>
-  <button class="btn small" id="shy" type="button" aria-pressed="false" title="מסתיר עלות ורווח כשהלקוח רואה את המסך">הסתרת עלות</button>
+  <button class="btn small icon ghost peek" id="shy" type="button" aria-pressed="true"></button>
   <a class="btn small" href="./">CRM</a>
 </div></header>
 <main>
@@ -299,9 +300,11 @@ $('theme').addEventListener('click', function () { theme = THEMES[(THEMES.indexO
 drawTheme();
 
 /* hide cost and profit when the customer looks at the screen */
-var shy = false; try { shy = localStorage.getItem('ziso-deal-shy') === '1'; } catch (e) { }
-function drawShy() { document.body.classList.toggle('shy', shy); $('shy').setAttribute('aria-pressed', String(shy)); $('shy').textContent = shy ? 'הצגת עלות' : 'הסתרת עלות'; }
-$('shy').addEventListener('click', function () { shy = !shy; try { localStorage.setItem('ziso-deal-shy', shy ? '1' : '0'); } catch (e) { } drawShy(); });
+/* cost and profit are hidden by default; a small faint eye shows them to staff only (never on the customer's page) */
+var shy = true; try { shy = localStorage.getItem('ziso-order-cost') !== 'show'; } catch (e) { }
+var EYE = SVG('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'), EYE_OFF = SVG('<path d="M2 12s3.6-7 10-7c2 0 3.8.7 5.2 1.6M22 12s-3.6 7-10 7c-2 0-3.8-.7-5.2-1.6"/><path d="M3 3l18 18"/>');
+function drawShy() { document.body.classList.toggle('shy', shy); $('shy').setAttribute('aria-pressed', String(!shy)); $('shy').innerHTML = shy ? EYE_OFF : EYE; $('shy').setAttribute('aria-label', shy ? 'הצגת עלות ורווח' : 'הסתרת עלות ורווח'); $('shy').title = shy ? 'עלות מוסתרת' : 'עלות מוצגת'; }
+$('shy').addEventListener('click', function () { shy = !shy; try { localStorage.setItem('ziso-order-cost', shy ? 'hide' : 'show'); } catch (e) { } drawShy(); });
 drawShy();
 
 /* ---------- categories ---------- */
@@ -591,7 +594,7 @@ function lineState(l) {
 function lineHtml(l, i) {
   var locked = !!l.po_no, q = Number(l.qty) || 0, p = (Number(l.sell) || 0) / VAT - (Number(l.cost) || 0), st = lineState(l), open = openMore === l.lid || caseOpen === l.lid;
   var h = '<div class="ln" data-i="' + i + '" data-lid="' + esc(l.lid) + '"><div class="d"><b>' + esc(l.desc) + (l.size ? ' ' + esc(l.size) : '') + '</b><span class="mute">' + (l.sku ? '<span class="ltr">' + esc(l.sku) + '</span> · ' : '') + esc((suppliers[l.supplier_id] || {}).name || '') + stockTxt(l.sku) +
-      '<span class="cost"> · ' + (l.cost == null ? 'עלות לא ידועה' : 'רווח ' + '<span class="' + (p < 0 ? 'err' : 'ok') + '" data-o="pr">' + money(p * q) + '</span>') + '</span></span>' + (st ? ' ' + st : '') + '</div>' +
+      '<span class="cost"> · ' + (l.cost == null ? 'עלות לא ידועה' : 'עלות ' + money(l.cost) + ' ליח\' · רווח ' + '<span class="' + (p < 0 ? 'err' : 'ok') + '" data-o="pr">' + money(p * q) + '</span>') + '</span></span>' + (st ? ' ' + st : '') + '</div>' +
     '<div class="qwrap"><label><span class="lbl">כמות' + (l.unit ? ' (' + esc(l.unit) + ')' : '') + '</span><input type="number" min="0.01" step="any" inputmode="decimal" data-f="qty" value="' + esc(l.qty) + '"' + (locked ? ' disabled' : '') + ' aria-label="כמות"></label>' +
     '<label><span class="lbl">מחיר ליח\' כולל מע"מ</span><input type="number" min="0" step="any" inputmode="decimal" data-f="sell" value="' + esc(l.sell) + '" aria-label="מחיר ליחידה כולל מע&quot;מ"></label>' +
     '<span class="tot num" data-o="tot">' + money((Number(l.sell) || 0) * q) + '</span></div>' +
