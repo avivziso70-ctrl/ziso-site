@@ -1,0 +1,910 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0f1113">
+<title>הזמנה | זיסו צוות</title>
+<link rel="icon" href="../img/logo.jpg">
+<link rel="stylesheet" href="../fonts.css">
+<script>try { var t = localStorage.getItem('ziso-theme'); if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); } catch (e) { }</script>
+<style>
+:root{--wall:#0f1113;--surface:#1a1d21;--raise:#22262b;--line:#33383e;--line2:#2a2e33;--ink:#f2efe8;--mute:#aaa498;--brass:#cfae74;--brass-ink:#1a1610;--brass-soft:#2d271d;
+  --red:#e8826f;--green:#8fc9a0;--amber:#e3b86a;--sh:0 1px 0 rgba(0,0,0,.25);--display:"Bellefair","Times New Roman",serif;--body:"Assistant","Segoe UI",Arial,sans-serif;
+  --st-y-bg:#4d3f17;--st-y:#ffe9a8;--st-g-bg:#1d4630;--st-g:#c9f2d6;--st-o-bg:#563316;--st-o:#ffd3a8;--st-r-bg:#562420;--st-r:#ffc9c0;color-scheme:dark}
+@media (prefers-color-scheme: light){:root:not([data-theme=dark]){--wall:#f4f2ee;--surface:#fff;--raise:#f8f6f2;--line:#dcd7cd;--line2:#ebe7df;--ink:#1e1b17;--mute:#66625b;--brass:#8a6a35;--brass-ink:#fff;--brass-soft:#f1e9db;
+  --red:#b8432f;--green:#2e7d4f;--amber:#8c6200;--sh:0 1px 2px rgba(40,30,10,.06);--st-y-bg:#fff1c2;--st-y:#5c4500;--st-g-bg:#d9f2e1;--st-g:#1c5a36;--st-o-bg:#ffe2c7;--st-o:#7a3d00;--st-r-bg:#fbd9d3;--st-r:#8a2a1a;color-scheme:light}}
+:root[data-theme=light]{--wall:#f4f2ee;--surface:#fff;--raise:#f8f6f2;--line:#dcd7cd;--line2:#ebe7df;--ink:#1e1b17;--mute:#66625b;--brass:#8a6a35;--brass-ink:#fff;--brass-soft:#f1e9db;
+  --red:#b8432f;--green:#2e7d4f;--amber:#8c6200;--sh:0 1px 2px rgba(40,30,10,.06);--st-y-bg:#fff1c2;--st-y:#5c4500;--st-g-bg:#d9f2e1;--st-g:#1c5a36;--st-o-bg:#ffe2c7;--st-o:#7a3d00;--st-r-bg:#fbd9d3;--st-r:#8a2a1a;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--wall);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.45;-webkit-text-size-adjust:100%}
+header{position:sticky;top:0;z-index:4;background:var(--wall);border-bottom:1px solid var(--line);padding:10px 16px}
+header .in{max-width:980px;margin:0 auto;display:flex;gap:8px;align-items:center}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.grow{flex:1;min-width:0}
+h1,h2{font-family:var(--display);font-weight:400;margin:0}h1{font-size:25px}h2{font-size:21px}
+a{color:var(--brass)}
+main{max-width:980px;margin:0 auto;padding:0 16px 170px}
+.btn{font:inherit;color:inherit;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none}
+.btn.brass{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}.btn.small{min-height:36px;padding:0 12px;font-size:15px}.btn.red{color:var(--red)}.btn.ghost{background:transparent;border-color:transparent}
+.btn.icon{width:44px;padding:0}
+.btn:disabled{opacity:.55;cursor:default}
+input,select,textarea{font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 12px;min-height:44px;width:100%}
+textarea{min-height:64px}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.mute{color:var(--mute);font-size:15px}.ok{color:var(--green)}.err{color:var(--red)}.warn{color:var(--amber)}.small{font-size:14px}
+.ltr{direction:ltr;unicode-bidi:isolate}.num{font-variant-numeric:tabular-nums}
+.hidden{display:none!important}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;margin:14px 0;box-shadow:var(--sh)}
+.panel>.hd{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line2)}
+.panel>.hd h2{flex:1}
+.panel>.bd{padding:12px 16px 16px}
+.st{display:inline-block;padding:2px 10px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap}
+.st.yellow{background:var(--st-y-bg);color:var(--st-y)}.st.green{background:var(--st-g-bg);color:var(--st-g)}.st.orange{background:var(--st-o-bg);color:var(--st-o)}.st.red{background:var(--st-r-bg);color:var(--st-r)}.st.grey{background:var(--raise);color:var(--mute);border:1px solid var(--line2)}
+body.shy .cost{display:none!important}
+/* list of deals */
+.dl{display:block;width:100%;text-align:right;font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0;cursor:pointer;min-height:64px}
+.dl:hover{border-color:var(--brass)}
+/* customer */
+.cu-card{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:4px 18px}
+.cu-card .k{font-size:13px;color:var(--mute);display:block}.cu-card .v{font-weight:600;overflow-wrap:anywhere}
+.cu-name{font-size:20px;font-weight:700}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px 14px}
+.form label{font-size:14px;color:var(--mute);display:block}.form label input{margin-top:3px;color:var(--ink)}
+.form .wide{grid-column:1/-1}
+.pick{list-style:none;margin:6px 0 0;padding:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
+.pick button{display:block;width:100%;text-align:right;font:inherit;color:inherit;background:transparent;border:0;border-bottom:1px solid var(--line2);padding:11px 12px;min-height:48px;cursor:pointer}
+.pick li:last-child button{border-bottom:0}.pick button:hover,.pick button.on{background:var(--brass-soft)}
+/* the shopping list */
+.cat{margin-top:6px}
+.cat>h3{display:flex;align-items:baseline;gap:8px;font:700 15px var(--body);color:var(--brass);margin:14px 0 2px;padding-bottom:4px;border-bottom:1px solid var(--line2);letter-spacing:.2px}
+.cat>h3 .grow{color:var(--brass)}.cat>h3 .num{color:var(--mute);font-weight:600}
+.ln{display:grid;grid-template-columns:minmax(0,1fr) 92px 112px 104px 44px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line2)}
+.ln .d b{display:block;font-weight:600;line-height:1.3}
+.ln .d .mute{font-size:13px}
+.ln input{min-height:42px;padding:8px 10px;text-align:center}
+.ln .tot{font-weight:700;text-align:left;white-space:nowrap}
+.ln .more{grid-column:1/-1;background:var(--raise);border:1px solid var(--line2);border-radius:10px;padding:10px 12px;margin-top:2px}
+.ln .more .row label{font-size:14px;color:var(--mute)}
+.ln .more input,.ln .more select{min-height:40px;width:auto}
+.ln .lbl{display:none;font-size:12px;color:var(--mute)}
+.ln.colh{padding:0;border:0;font-size:12px;color:var(--mute);text-align:center}
+.newrow{position:relative;margin-top:12px;padding:10px;border:1px dashed var(--line);border-radius:12px;background:var(--raise)}
+.newrow input[type=search]{font-size:18px;background:var(--surface)}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:8px 0 2px;scrollbar-width:none}
+.chips button{font:inherit;font-size:14px;color:inherit;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;white-space:nowrap}
+.chips button[aria-pressed=true]{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
+.res{max-height:min(52vh,460px);overflow:auto}
+.res .r{display:flex;gap:10px;align-items:center}.res .r .grow b{font-weight:600}
+.res .pr{font-weight:700;white-space:nowrap}
+.case{border-inline-start:3px solid var(--brass);padding:6px 12px;margin-top:8px;background:var(--surface);border-radius:0 8px 8px 0}
+details.sec{background:var(--surface);border:1px solid var(--line);border-radius:14px;margin:14px 0;box-shadow:var(--sh)}
+details.sec>summary{list-style:none;cursor:pointer;padding:14px 16px;min-height:52px;display:flex;align-items:center;gap:10px;font-family:var(--display);font-size:21px}
+details.sec>summary::-webkit-details-marker{display:none}
+details.sec>summary::after{content:"‹";margin-inline-start:auto;transition:transform .15s;color:var(--mute)}
+details.sec[open]>summary::after{transform:rotate(-90deg)}
+details.sec>summary .mute{font-family:var(--body)}
+details.sec>.bd{padding:0 16px 16px}
+.chk{display:flex;gap:10px;align-items:center;min-height:44px}.chk input{min-height:0;width:22px;height:22px;accent-color:var(--brass)}
+.ask{border:1px solid var(--brass);border-radius:12px;padding:12px;margin-top:12px;background:var(--brass-soft)}
+.supg{margin-top:12px}.supg h3{font:600 17px var(--body);margin:0}
+/* bottom bar + payment */
+#bar{position:fixed;inset-inline:0;bottom:0;z-index:5;background:var(--surface);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom));box-shadow:0 -6px 18px rgba(0,0,0,.12)}
+#bar .in{max-width:980px;margin:0 auto;display:flex;gap:6px 20px;align-items:center;flex-wrap:wrap}
+#bar .k{font-size:12px;color:var(--mute);display:block}#bar .v{font-weight:700;font-size:19px;font-variant-numeric:tabular-nums}
+#bar .big .v{font-size:23px}
+#bar .profit .v{color:var(--green)}#bar .profit.neg .v{color:var(--red)}#bar .due .v{color:var(--amber)}#bar .due.zero .v{color:var(--green)}
+#payBtn{margin-inline-start:auto;min-height:50px;font-size:18px;padding:0 22px}
+.sheet{position:fixed;inset:0;z-index:8;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}
+.sheet .box{background:var(--surface);color:var(--ink);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:16px 16px calc(18px + env(safe-area-inset-bottom));border:1px solid var(--line)}
+@media (min-width:700px){.sheet{align-items:center}.sheet .box{border-radius:18px}}
+.opts{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px}
+.opt{font:inherit;font-weight:600;color:inherit;min-height:52px;border-radius:12px;border:1px solid var(--line);background:var(--raise);cursor:pointer}
+.opt[aria-pressed=true]{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
+.pays{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.pays .opt{min-height:44px;min-width:48px;padding:0 10px}
+.amt{display:flex;align-items:center;gap:8px;font-size:28px;font-weight:700}.amt input{font-size:28px;font-weight:700;text-align:center}
+.paylist p{margin:6px 0}
+@media (max-width:720px){
+  .ln{grid-template-columns:minmax(0,1fr) 44px;grid-template-areas:"d m" "q q";row-gap:6px}
+  .ln .d{grid-area:d}.ln .mbtn{grid-area:m}
+  .ln .qwrap{grid-area:q;display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:8px;align-items:end}
+  .ln .lbl{display:block}.ln.colh{display:none}
+  .ln .tot{text-align:right;padding-bottom:10px}
+  #bar .cost{display:none}
+}
+@media (min-width:721px){.ln .qwrap{display:contents}}
+</style>
+</head>
+<body>
+<header><div class="in">
+  <h1 class="grow" id="title">הזמנה</h1>
+  <button class="btn small icon" id="theme" type="button" aria-label="מצב תצוגה"></button>
+  <button class="btn small" id="shy" type="button" aria-pressed="false" title="מסתיר עלות ורווח כשהלקוח רואה את המסך">הסתרת עלות</button>
+  <a class="btn small" href="./">CRM</a>
+</div></header>
+<main>
+  <p id="needLogin" class="panel hidden" style="padding:14px">צריך להתחבר קודם ב-<a href="./">CRM</a>.</p>
+  <p id="needDb" class="panel hidden" style="padding:14px">לא הצלחתי לטעון את ההזמנות. בדקו חיבור ונסו שוב.</p>
+
+  <section id="v-list" class="hidden">
+    <div class="row" style="margin-top:14px"><button class="btn brass" id="newDeal">+ הזמנה חדשה</button><span class="grow"></span><a class="mute small" href="deal.html">לדף הישן</a></div>
+    <h2 style="margin:18px 0 6px">הזמנות פתוחות</h2>
+    <div id="dealList"></div>
+  </section>
+
+  <section id="v-deal" class="hidden">
+    <p class="row" style="margin:12px 0 0"><button class="btn small" id="back" type="button">→ כל ההזמנות</button><span class="mute" id="saved" role="status" aria-live="polite"></span></p>
+
+    <!-- customer -->
+    <section class="panel" aria-labelledby="hCu">
+      <div class="hd"><h2 id="hCu">הלקוח</h2>
+        <button class="btn small hidden" id="cuEdit" type="button">עריכת פרטים</button>
+        <button class="btn small hidden" id="cuSwap" type="button">החלפת לקוח</button></div>
+      <div class="bd">
+        <div id="cuFind">
+          <div class="row" style="flex-wrap:nowrap"><input id="cuQ" type="search" placeholder="חיפוש לקוח: שם או טלפון" autocomplete="off" aria-label="חיפוש לקוח"><button class="btn brass" id="cuNew" type="button">+ לקוח חדש</button></div>
+          <ul id="cuList" class="pick hidden"></ul>
+        </div>
+        <div id="cuShow" class="hidden"></div>
+        <form id="cuForm" class="hidden" autocomplete="off">
+          <div class="form">
+            <label>שם מלא / שם העסק *<input id="fName" required maxlength="120"></label>
+            <label>טלפון נייד *<input id="fPhone" type="tel" inputmode="tel" class="ltr" placeholder="05X-XXXXXXX" required></label>
+            <label>אימייל<input id="fEmail" type="email" inputmode="email" class="ltr" maxlength="120"></label>
+            <label>עוסק מורשה / ח"פ / ת"ז<input id="fVat" inputmode="numeric" class="ltr" maxlength="12"></label>
+            <label class="wide">כתובת (רחוב ומספר)<input id="fAddr" maxlength="160"></label>
+            <label>עיר<input id="fCity" maxlength="60"></label>
+            <label>איש קשר (לעסק)<input id="fContact" maxlength="80"></label>
+          </div>
+          <p class="err" id="fErr" role="alert" style="margin:8px 0 0"></p>
+          <div class="row" style="margin-top:10px"><button class="btn brass" id="fSave" type="submit">שמירת הלקוח</button><button class="btn small" id="fCancel" type="button">ביטול</button></div>
+          <p class="mute small" style="margin:8px 0 0">נשמר בכרטיס הלקוח ב-CRM. בפריוריטי המשרד פותח את הלקוח כרגיל.</p>
+        </form>
+      </div>
+    </section>
+
+    <!-- the shopping list -->
+    <section class="panel" aria-labelledby="hList">
+      <div class="hd"><h2 id="hList">רשימת המוצרים</h2>
+        <label class="mute small cost row" style="gap:6px;flex-wrap:nowrap">רווח % <input id="mk" type="number" min="0" inputmode="decimal" style="width:76px;min-height:36px;padding:4px 8px"></label></div>
+      <div class="bd">
+        <div id="lines"></div>
+        <div class="newrow">
+          <label for="q" class="mute small">שורה חדשה: מחפשים מוצר, בוחרים, מקלידים כמות ו-Enter לשורה הבאה</label>
+          <input id="q" type="search" placeholder="מק&quot;ט, תיאור, מידה או ספק. למשל: ברז פרח שחור" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="results" aria-autocomplete="list">
+          <div class="chips" id="chips" role="group" aria-label="סינון לפי קטגוריה"></div>
+          <p class="mute small" id="sInfo" role="status" aria-live="polite" style="margin:4px 0 0"></p>
+          <ul id="results" class="pick res hidden" role="listbox" aria-label="תוצאות"></ul>
+        </div>
+      </div>
+    </section>
+
+    <details class="sec" id="secDv"><summary>אספקה <span class="mute small" id="dvSum"></span></summary><div class="bd">
+      <label class="chk"><input type="radio" name="dv" value="business" checked> לבית העסק (טירת כרמל)</label>
+      <label class="chk"><input type="radio" name="dv" value="customer"> ישירות לבית הלקוח</label>
+      <div id="dvBox" class="hidden form" style="margin-top:6px">
+        <label>שם למסירה<input id="dvName" autocomplete="off"></label>
+        <label>טלפון<input id="dvPhone" inputmode="tel" autocomplete="off" class="ltr"></label>
+        <label class="wide">כתובת מלאה<input id="dvAddr" autocomplete="off" placeholder="רחוב, מספר, עיר"></label>
+        <label class="wide">הערה למסירה (לא חובה)<input id="dvNote" autocomplete="off" placeholder="קומה, קוד כניסה, שעות"></label>
+      </div>
+    </div></details>
+
+    <details class="sec" id="secPo"><summary>הזמנה מהספקים <span class="mute small" id="poSum"></span></summary><div class="bd">
+      <p class="mute" style="margin-top:0">מה שמסומן "יש במלאי" לא מוזמן. כל השאר נשלח לכל ספק בדרך שלו, עם שם הלקוח ולאן לספק.</p>
+      <div id="plan"></div>
+      <div id="oStep1"><button class="btn brass" id="oGo" type="button">הזמנה מהספקים</button></div>
+      <div id="oStep2" class="ask hidden" role="alertdialog" aria-labelledby="oAsk">
+        <p id="oAsk" style="margin-top:0"></p>
+        <div class="row"><button class="btn brass" id="oYes" type="button">כן, לשלוח</button><button class="btn small" id="oNo" type="button">חזרה</button></div>
+      </div>
+      <p id="oMsg" role="status" aria-live="polite"></p>
+    </div></details>
+
+    <details class="sec" id="secPay"><summary>תשלומים <span class="mute small" id="paySum"></span></summary><div class="bd">
+      <div id="payList" class="paylist"><p class="mute">עוד לא נרשם תשלום להזמנה הזו.</p></div>
+      <p class="mute small">כל תשלום פותח למשרד משימה להוציא קבלה בפריוריטי. תשלום בלינק אשראי נרשם רק אחרי שטרנזילה אישרה.</p>
+    </div></details>
+
+    <details class="sec" id="secSh"><summary>הדף של הלקוח <span class="mute small" id="shSum"></span></summary><div class="bd">
+      <p class="mute" style="margin-top:0">קישור אישי ללקוח: מצב כל מוצר, מועדים, תשלומים ומסמכים, מתעדכן לבד. הלקוח לא רואה עלות, רווח או שם ספק. בכניסה הוא מקליד את 4 הספרות האחרונות של הטלפון שלו.</p>
+      <div id="shOff"><button class="btn brass" id="shMake" type="button">יצירת קישור ללקוח</button> <span class="err" id="shErr" role="status"></span></div>
+      <div id="shOn" class="hidden">
+        <input id="shUrl" readonly class="ltr" aria-label="הקישור של הלקוח">
+        <div class="row" style="margin-top:8px"><button class="btn small" id="shCopy" type="button">העתקה</button><a class="btn small brass" id="shWa" target="_blank" rel="noopener">שליחה בוואטסאפ</a><a class="btn small" id="shOpen" target="_blank" rel="noopener">לראות כמו הלקוח</a><button class="btn small red" id="shOff2" type="button">ביטול הקישור</button></div>
+        <p class="mute" id="shSeen" style="margin:8px 0 0"></p>
+        <label class="mute small" style="display:block;margin-top:10px">עדכון מהצוות שמופיע בראש הדף (לא חובה)<textarea id="pubNote" rows="2" maxlength="400" style="margin-top:3px" placeholder="למשל: הארון הגיע מוקדם, נתאם אספקה אחת לכל המוצרים"></textarea></label>
+        <h3 style="font:600 17px var(--body);margin:16px 0 6px">מה הלקוח כתב</h3>
+        <div id="cnotes"><p class="mute">הלקוח עוד לא כתב.</p></div>
+        <div class="row" style="margin-top:8px;flex-wrap:nowrap"><input id="ansT" maxlength="1000" placeholder="תשובה ללקוח, תופיע אצלו בדף" aria-label="תשובה ללקוח"><button class="btn small brass" id="ansGo" type="button">שליחה</button></div>
+      </div>
+    </div></details>
+  </section>
+</main>
+
+<div id="bar" class="hidden" role="region" aria-label="סיכום ההזמנה"><div class="in">
+  <div class="big"><span class="k">סה"כ כולל מע"מ</span><span class="v" id="bSell">₪0</span></div>
+  <div class="due" id="bDueW"><span class="k">נשאר לתשלום</span><span class="v" id="bDue">₪0</span></div>
+  <div class="cost"><span class="k">עלות לפני מע"מ</span><span class="v" id="bCost">₪0</span></div>
+  <div class="cost profit" id="bP"><span class="k">רווח לפני מע"מ</span><span class="v" id="bProfit">₪0</span></div>
+  <button class="btn brass" id="payBtn" type="button">קבלת תשלום</button>
+</div></div>
+
+<div class="sheet hidden" id="paySheet" role="dialog" aria-modal="true" aria-labelledby="pTitle"><div class="box">
+  <div class="row"><h2 class="grow" id="pTitle">קבלת תשלום</h2><button class="btn small icon" id="pClose" type="button" aria-label="סגירה">✕</button></div>
+  <div id="pForm">
+    <p class="mute" id="pFor" style="margin:4px 0 10px"></p>
+    <div class="amt"><span aria-hidden="true">₪</span><input id="pAmt" inputmode="decimal" autocomplete="off" aria-label="סכום בשקלים"></div>
+    <div class="opts" role="group" aria-label="איך משלמים">
+      <button type="button" class="opt" data-m="card" aria-pressed="false">אשראי</button>
+      <button type="button" class="opt" data-m="cash" aria-pressed="false">מזומן</button>
+      <button type="button" class="opt" data-m="transfer" aria-pressed="false">העברה בנקאית / ביט</button>
+      <button type="button" class="opt" data-m="cheque" aria-pressed="false">צ׳ק</button>
+    </div>
+    <div id="pCard" class="hidden" style="margin-top:12px">
+      <div class="opts" role="group" aria-label="איך מחייבים">
+        <button type="button" class="opt" data-c="card_link" aria-pressed="true">לחייב עכשיו (טרנזילה)</button>
+        <button type="button" class="opt" data-c="card_terminal" aria-pressed="false">כבר חויב במסוף</button>
+      </div>
+      <div style="margin-top:10px;font-weight:600">כמה תשלומים?</div>
+      <div class="pays" id="pPays"></div>
+    </div>
+    <p class="mute small" id="pHint" style="margin:10px 0 0"></p>
+    <label class="chk"><input type="checkbox" id="pGoods"> הלקוח לוקח סחורה עכשיו</label>
+    <p class="err" id="pErr" role="alert" style="margin:6px 0 0"></p>
+    <button class="btn brass" id="pSave" type="button" style="width:100%;min-height:52px;font-size:18px;margin-top:8px">רישום התשלום</button>
+  </div>
+  <div id="pAfter" class="hidden">
+    <p id="pDone" style="font-size:19px;font-weight:700;margin:10px 0 6px"></p>
+    <p class="mute" id="pDoneT"></p>
+    <div id="pLinkBox" class="hidden" style="display:grid;gap:8px">
+      <p id="pState" class="warn" role="status" style="margin:0">● ממתין לתשלום</p>
+      <a class="btn brass" id="pOpen" target="_blank" rel="noopener" style="min-height:50px">פתיחת דף התשלום והקלדת כרטיס</a>
+      <a class="btn" id="pWa" target="_blank" rel="noopener" style="min-height:50px">שליחת הלינק ללקוח בוואטסאפ</a>
+    </div>
+    <button class="btn" id="pDoneBtn" type="button" style="width:100%;margin-top:12px">סגירה</button>
+  </div>
+</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+<script>
+(function () {
+'use strict';
+var SB_URL = 'https://ppnjosyraosrdephsksu.supabase.co';
+var sb = supabase.createClient(SB_URL, 'sb_publishable_yjpTHQkvH5-l4v-HCcEj4w_ofAYpQmV', { auth: { persistSession: true, autoRefreshToken: true } });
+var PO_FN = SB_URL + '/functions/v1/crm-po', PAY_FN = SB_URL + '/functions/v1/crm-pay', VAT = 1.18, CASH_MAX = 6000;
+var session = null, suppliers = {}, deal = null, last = [], pos = {}, me = {}, cust = null, takings = [];
+var $ = function (id) { return document.getElementById(id); };
+var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+var money = function (n) { return '₪' + (Math.round((Number(n) || 0) * 100) / 100).toLocaleString('he-IL', { maximumFractionDigits: 2 }); };
+var r2 = function (n) { return Math.round(n * 100) / 100; };
+var digits = function (v) { return String(v || '').replace(/\D/g, ''); };
+function tail9(p) { var d = digits(p); if (d.indexOf('972') === 0) d = d.slice(3); return d.length >= 9 ? d.slice(-9) : null; }
+function fmtPhone(p) { var d = digits(p); if (d.indexOf('972') === 0) d = '0' + d.slice(3); if (d.length === 9) d = '0' + d; return d.length === 10 ? d.slice(0, 3) + '-' + d.slice(3) : d; }
+function fmtTime(d) { return d ? new Date(d).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''; }
+function canOrder(sid) { var s = suppliers[sid]; return !!(s && !s.order_paused && (s.order_email || s.order_wa_phone)); }
+function how(sid) { var s = suppliers[sid] || {}; var c = s.order_contact || s.name || 'הספק'; return s.order_wa_phone && s.order_email ? 'וואטסאפ ומייל ל' + c : s.order_wa_phone ? 'וואטסאפ ל' + c : 'מייל ל' + c; }
+
+/* ---------- light / dark ---------- */
+var SVG = function (d) { return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>'; };
+var THEMES = ['auto', 'light', 'dark'], TICON = { auto: SVG('<circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>'), light: SVG('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'), dark: SVG('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>') }, TNAME = { auto: 'אוטומטי לפי המכשיר', light: 'מואר', dark: 'חשוך' };
+var theme = 'auto'; try { theme = localStorage.getItem('ziso-theme') || 'auto'; } catch (e) { }
+function drawTheme() {
+  if (theme === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', theme);
+  $('theme').innerHTML = TICON[theme]; $('theme').setAttribute('aria-label', 'מצב תצוגה: ' + TNAME[theme] + '. לחיצה מחליפה'); $('theme').title = 'מצב תצוגה: ' + TNAME[theme];
+  var dark = theme === 'dark' || (theme === 'auto' && !matchMedia('(prefers-color-scheme: light)').matches);
+  document.querySelector('meta[name=theme-color]').setAttribute('content', dark ? '#0f1113' : '#f4f2ee');
+}
+$('theme').addEventListener('click', function () { theme = THEMES[(THEMES.indexOf(theme) + 1) % 3]; try { localStorage.setItem('ziso-theme', theme); } catch (e) { } drawTheme(); });
+drawTheme();
+
+/* hide cost and profit when the customer looks at the screen */
+var shy = false; try { shy = localStorage.getItem('ziso-deal-shy') === '1'; } catch (e) { }
+function drawShy() { document.body.classList.toggle('shy', shy); $('shy').setAttribute('aria-pressed', String(shy)); $('shy').textContent = shy ? 'הצגת עלות' : 'הסתרת עלות'; }
+$('shy').addEventListener('click', function () { shy = !shy; try { localStorage.setItem('ziso-deal-shy', shy ? '1' : '0'); } catch (e) { } drawShy(); });
+drawShy();
+
+/* ---------- categories ---------- */
+var CATS = [
+  ['cabinets', 'ארונות', /ארון|ארונות|מזנון|כוורת|קונסול/],
+  ['showers', 'מקלחונים', /מקלחון|דלת מקלחת|ויטרינ|קיר זכוכית|מחיצת/],
+  ['mirrors', 'מראות', /מראה|מראות/],
+  ['sanitary', 'כלים סניטריים', /אסל|כיור|מיכל הדחה|ביד[הו ]|משתנ|אמבט|ג'?קוזי|מושב|wc/i],
+  ['faucets', 'ברזים', /ברז|סוללה|מערבל|ראש מקלחת|מוט מקלחת|זרוע|פרח|גוף פנימי|מזלף|שלאוך|צינור/],
+  ['tiles', 'ריצוף וחיפוי', /אריח|ריצוף|חיפוי|פורצלן|גרניט|פסיפס|פרקט|ספים|שיש|דק |\d{2,3}\s*[\/x*]\s*\d{2,3}/i],
+  ['acc', 'אביזרים', /מתקן|מחזיק|מתלה|סבון|נייר|מגבת|פח|מברשת|וו|מדף|אביזר|ניקוז|סיפון|תעלה|קולטן|ידית|כפתור|חבק/],
+  ['other', 'אחר', null]];
+var CATN = {}; CATS.forEach(function (c) { CATN[c[0]] = c[1]; });
+function classify(t) {
+  t = String(t || ''); var best = 'other', at = 1e9;
+  for (var i = 0; i < CATS.length - 1; i++) { var m = t.search(CATS[i][2]); if (m > -1 && m < at) { at = m; best = CATS[i][0]; } }
+  return best;   // the word that comes first wins: "ברז לכיור" is a faucet, "כיור עם חור לברז" is a sink
+}
+var fcat = 'all';
+$('chips').innerHTML = '<button type="button" data-cat="all" aria-pressed="true">הכול</button>' + CATS.map(function (c) { return '<button type="button" data-cat="' + c[0] + '" aria-pressed="false">' + c[1] + '</button>'; }).join('');
+$('chips').addEventListener('click', function (e) { var b = e.target.closest('[data-cat]'); if (!b) return; fcat = b.dataset.cat; $('chips').querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); drawResults(); $('q').focus(); });
+
+/* ---------- list ---------- */
+function totals(d) {
+  var cost = 0, sell = 0, unknown = false;
+  (d.lines || []).forEach(function (l) { var q = Number(l.qty) || 0; if (l.cost == null && q > 0 && Number(l.sell) > 0) unknown = true; cost += (Number(l.cost) || 0) * q; sell += (Number(l.sell) || 0) * q; });
+  var rev = sell / VAT;
+  return { cost: r2(cost), sell: r2(sell), profit: r2(rev - cost), pct: rev > 0 ? Math.round((rev - cost) / rev * 100) : 0, unknown: unknown };
+}
+function showList() {
+  deal = null; cust = null; $('v-deal').classList.add('hidden'); $('bar').classList.add('hidden'); $('v-list').classList.remove('hidden'); $('title').textContent = 'הזמנות';
+  history.replaceState(null, '', location.pathname);
+  sb.from('crm_deals').select('*').neq('status', 'closed').order('updated_at', { ascending: false }).limit(60).then(function (r) {
+    if (r.error) { $('v-list').classList.add('hidden'); $('needDb').classList.remove('hidden'); return; }
+    var l = r.data || [];
+    $('dealList').innerHTML = l.length ? l.map(function (d) {
+      var t = totals(d);
+      return '<button class="dl" data-id="' + d.id + '"><b>' + esc(d.deal_no) + ' · ' + esc(d.customer_name || 'בלי לקוח עדיין') + '</b> ' + (d.status === 'ordered' ? '<span class="st green">הוזמן מהספקים</span>' : '<span class="st grey">בבנייה</span>') +
+        '<br><span class="mute">' + (d.lines || []).length + ' מוצרים · ' + money(t.sell) + ' כולל מע"מ<span class="cost"> · רווח ' + (t.unknown ? 'לא ידוע (חסרה עלות)' : money(t.profit) + ' (' + t.pct + '%)') + '</span> · עודכן ' + fmtTime(d.updated_at) + (d.by_name ? ' · ' + esc(d.by_name) : '') + '</span></button>';
+    }).join('') : '<p class="mute">אין הזמנות פתוחות.</p>';
+  });
+}
+$('dealList').addEventListener('click', function (e) { var b = e.target.closest('[data-id]'); if (b) openDeal(Number(b.dataset.id)); });
+$('back').addEventListener('click', function () { flush().then(showList); });
+$('newDeal').addEventListener('click', function () {
+  var b = $('newDeal'); b.disabled = true;
+  sb.from('crm_deals').insert({ lines: [], markup: 40, by: me.email, by_name: me.name }).select('*').single().then(function (r) {
+    b.disabled = false;
+    if (r.error) { $('needDb').classList.remove('hidden'); return; }
+    setDeal(r.data); setTimeout(function () { $('cuQ').focus(); }, 50);
+  });
+});
+function openDeal(id) { sb.from('crm_deals').select('*').eq('id', id).single().then(function (r) { if (r.data) setDeal(r.data); else showList(); }); }
+function setDeal(d) {
+  deal = d; deal.lines = deal.lines || []; deal.deliver = deal.deliver || {}; cases = []; openMore = null; caseOpen = null; cust = null; takings = [];
+  deal.lines.forEach(function (l) { if (!l.lid) { l.lid = newLid(); dirty = true; } if (!l.cat) { l.cat = classify((l.desc || '') + ' ' + (l.size || '')); dirty = true; } });
+  $('v-list').classList.add('hidden'); $('needDb').classList.add('hidden'); $('v-deal').classList.remove('hidden'); $('bar').classList.remove('hidden');
+  history.replaceState(null, '', '?d=' + d.id);
+  $('title').textContent = 'הזמנה ' + d.deal_no;
+  $('mk').value = d.markup == null ? 40 : d.markup; $('q').value = ''; last = []; drawResults();
+  loadCust(); drawDv(); draw(); loadPos(); drawShare(); loadNotes(); loadCases(); loadPays(); loadStock(deal.lines.map(function (l) { return l.sku; }));
+}
+
+/* ---------- save (debounced) ---------- */
+var saveT = null, dirty = false;
+function touch() { dirty = true; $('saved').textContent = ''; clearTimeout(saveT); saveT = setTimeout(flush, 900); }
+function flush() {
+  clearTimeout(saveT);
+  if (!deal || !dirty) return Promise.resolve();
+  dirty = false; var t = totals(deal);
+  return sb.from('crm_deals').update({ customer_name: deal.customer_name || null, customer_tail9: deal.customer_tail9 || null, customer_phone: deal.customer_phone || null, cust_no: deal.cust_no || null, public_note: (deal.public_note || '').trim() || null,
+    deliver_to: deal.deliver_to || 'business', deliver: deal.deliver || {}, lines: deal.lines, markup: Number($('mk').value) || 0, status: deal.status || 'open',
+    total_cost: t.cost, total_sell: t.sell, updated_at: new Date().toISOString() }).eq('id', deal.id).then(function (r) {
+    $('saved').textContent = r.error ? 'השמירה לא הצליחה. בדקו חיבור.' : 'נשמר';
+    if (r.error) dirty = true;
+  });
+}
+window.addEventListener('pagehide', function () { flush(); });
+
+/* ---------- customer panel ---------- */
+function cuMode(m) {
+  $('cuFind').classList.toggle('hidden', m !== 'find'); $('cuShow').classList.toggle('hidden', m !== 'show'); $('cuForm').classList.toggle('hidden', m !== 'form');
+  $('cuEdit').classList.toggle('hidden', m !== 'show'); $('cuSwap').classList.toggle('hidden', m !== 'show');
+}
+function loadCust() {
+  if (!deal.customer_tail9) { cust = null; $('cuQ').value = ''; $('cuList').classList.add('hidden'); cuMode(deal.customer_name ? 'show' : 'find'); drawCu(); return; }
+  var t9 = deal.customer_tail9, id = deal.id;
+  Promise.all([
+    sb.from('crm_customers').select('tail9,name,city,email,address,vat_id,contact_name,priority_cust_no').eq('tail9', t9).is('deleted_at', null).maybeSingle(),
+    sb.from('priority_customers').select('cust_no,name,phone,address,city').eq('tail9', t9).limit(1)
+  ]).then(function (rs) {
+    if (!deal || deal.id !== id) return;
+    var c = rs[0].data || {}, p = (rs[1].data || [])[0] || {};
+    cust = { tail9: t9, exists: !!rs[0].data, name: c.name || deal.customer_name || p.name || '', phone: deal.customer_phone || p.phone || '0' + t9, email: c.email || '', vat_id: c.vat_id || '',
+      address: c.address || p.address || '', city: c.city || p.city || '', contact_name: c.contact_name || '', cust_no: deal.cust_no || c.priority_cust_no || p.cust_no || '' };
+    cuMode('show'); drawCu();
+  });
+  cuMode('show'); drawCu();
+}
+function drawCu() {
+  if (!deal) return;
+  if (!deal.customer_tail9 && !deal.customer_name) { $('cuShow').innerHTML = ''; return; }
+  var c = cust || { name: deal.customer_name, phone: deal.customer_phone || (deal.customer_tail9 ? '0' + deal.customer_tail9 : '') };
+  var f = function (k, v, cls) { return v ? '<div><span class="k">' + k + '</span><span class="v' + (cls ? ' ' + cls : '') + '">' + esc(v) + '</span></div>' : ''; };
+  $('cuShow').innerHTML = '<div class="cu-name">' + esc(c.name || 'בלי שם') + (deal.customer_tail9 ? '' : ' <span class="st orange">שם בלבד, בלי כרטיס</span>') + '</div>' +
+    '<div class="cu-card" style="margin-top:6px">' + f('טלפון', c.phone ? fmtPhone(c.phone) : '', 'ltr') + f('אימייל', c.email, 'ltr') + f('עוסק / ח"פ', c.vat_id, 'ltr') +
+    f('כתובת', [c.address, c.city].filter(Boolean).join(', ')) + f('איש קשר', c.contact_name) + f('לקוח בפריוריטי', c.cust_no, 'ltr') + '</div>' +
+    (cust && !cust.email && !cust.vat_id ? '<p class="mute small" style="margin:6px 0 0">חסרים אימייל או ח"פ? "עריכת פרטים".</p>' : '');
+}
+var cuT = null;
+$('cuQ').addEventListener('input', function () {
+  var q = $('cuQ').value.trim(); clearTimeout(cuT);
+  if (q.length < 2) { $('cuList').classList.add('hidden'); return; }
+  cuT = setTimeout(function () {
+    sb.rpc('crm_search', { p_q: q, p_limit: 8 }).then(function (r) {
+      var seen = {}, rows = (r.data || []).filter(function (x) { if (!x.tail9 || seen[x.tail9]) return false; seen[x.tail9] = 1; return true; }).slice(0, 6);
+      if ($('cuQ').value.trim() !== q) return;
+      $('cuList').innerHTML = rows.map(function (x) { return '<li><button type="button" data-t9="' + esc(x.tail9) + '" data-name="' + esc(x.name || '') + '" data-phone="' + esc(x.phone || '') + '" data-cust="' + esc(x.cust_no || '') + '"><b>' + esc(x.name || fmtPhone(x.phone || x.tail9)) + '</b> <span class="mute ltr">' + esc(fmtPhone(x.phone || '0' + x.tail9)) + '</span>' + (x.city ? ' <span class="mute">· ' + esc(x.city) + '</span>' : '') + '</button></li>'; }).join('') +
+        '<li><button type="button" data-newcu="1"><b>+ לקוח חדש</b> <span class="mute">"' + esc(q) + '"</span></button></li>';
+      $('cuList').classList.remove('hidden');
+    });
+  }, 250);
+});
+function useCustomer(t9, name, phone, custNo) {
+  deal.customer_name = name || fmtPhone(phone || '0' + t9); deal.customer_tail9 = t9; deal.customer_phone = phone || '0' + t9; deal.cust_no = custNo || null;
+  $('cuList').classList.add('hidden'); $('oMsg').textContent = ''; touch(); loadCust(); drawShare(); drawDv();
+}
+$('cuList').addEventListener('click', function (e) {
+  var b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.newcu) { openForm(true, $('cuQ').value.trim()); return; }
+  useCustomer(b.dataset.t9, b.dataset.name, b.dataset.phone, b.dataset.cust);
+  setTimeout(function () { $('q').focus(); }, 50);
+});
+$('cuNew').addEventListener('click', function () { openForm(true, $('cuQ').value.trim()); });
+$('cuSwap').addEventListener('click', function () { cuMode('find'); $('cuQ').value = ''; $('cuQ').focus(); });
+$('cuEdit').addEventListener('click', function () { openForm(false); });
+var formNew = false;
+function openForm(isNew, seed) {
+  formNew = isNew; $('fErr').textContent = ''; $('cuList').classList.add('hidden');
+  var c = isNew ? {} : (cust || {});
+  var looksPhone = isNew && seed && digits(seed).length >= 9;
+  $('fName').value = isNew ? (looksPhone ? '' : seed || '') : c.name || deal.customer_name || '';
+  $('fPhone').value = isNew ? (looksPhone ? seed : '') : fmtPhone(c.phone || '');
+  $('fPhone').disabled = !isNew && !!deal.customer_tail9;
+  $('fEmail').value = c.email || ''; $('fVat').value = c.vat_id || ''; $('fAddr').value = c.address || ''; $('fCity').value = c.city || ''; $('fContact').value = c.contact_name || '';
+  $('fSave').textContent = isNew ? 'פתיחת לקוח חדש' : 'שמירת הפרטים';
+  cuMode('form'); (isNew && !$('fName').value ? $('fName') : isNew ? $('fPhone') : $('fEmail')).focus();
+}
+$('fCancel').addEventListener('click', function () { cuMode(deal.customer_tail9 || deal.customer_name ? 'show' : 'find'); });
+$('cuForm').addEventListener('submit', function (e) {
+  e.preventDefault();
+  var v = { name: $('fName').value.trim(), email: $('fEmail').value.trim() || null, vat_id: digits($('fVat').value) || null, address: $('fAddr').value.trim() || null, city: $('fCity').value.trim() || null, contact_name: $('fContact').value.trim() || null };
+  var t9 = formNew ? tail9($('fPhone').value) : deal.customer_tail9 || tail9($('fPhone').value), err = '';
+  if (v.name.length < 2) err = 'לכתוב שם.';
+  else if (!t9 || !/^5\d{8}$|^[2-9]\d{7,8}$/.test(t9)) err = 'מספר טלפון לא תקין.';
+  else if (v.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email)) err = 'האימייל לא תקין.';
+  else if (v.vat_id && (v.vat_id.length < 8 || v.vat_id.length > 9)) err = 'עוסק / ח"פ / ת"ז: 8 או 9 ספרות.';
+  if (err) { $('fErr').textContent = err; return; }
+  var b = $('fSave'); b.disabled = true;
+  var row = Object.assign({ updated_by: me.email }, v);
+  sb.from('crm_customers').select('tail9').eq('tail9', t9).maybeSingle().then(function (r) {
+    if (r.data) return sb.from('crm_customers').update(Object.assign({ deleted_at: null }, row)).eq('tail9', t9);
+    return sb.from('crm_customers').insert(Object.assign({ tail9: t9, created_by: me.email }, row));
+  }).then(function (r) {
+    b.disabled = false;
+    if (r.error) { $('fErr').textContent = 'לא נשמר: ' + r.error.message; return; }
+    sb.rpc('crm_log', { p_action: formNew ? 'customer_new_order_page' : 'customer_save', p_tail9: t9 });
+    useCustomer(t9, v.name, formNew ? '0' + t9 : deal.customer_phone, deal.cust_no);
+  }, function () { b.disabled = false; $('fErr').textContent = 'אין חיבור. נסו שוב.'; });
+});
+
+/* ---------- delivery ---------- */
+function drawDv() {
+  var to = deal.deliver_to || 'business', dv = deal.deliver || {};
+  document.querySelectorAll('input[name=dv]').forEach(function (r) { r.checked = r.value === to; });
+  $('dvBox').classList.toggle('hidden', to !== 'customer');
+  if (to === 'customer') { if (!dv.name) dv.name = deal.customer_name || ''; if (!dv.phone) dv.phone = fmtPhone(deal.customer_phone || (deal.customer_tail9 ? '0' + deal.customer_tail9 : '')); if (!dv.address && cust && cust.address) dv.address = [cust.address, cust.city].filter(Boolean).join(', '); }
+  [['dvName', 'name'], ['dvPhone', 'phone'], ['dvAddr', 'address'], ['dvNote', 'note']].forEach(function (f) { if (document.activeElement !== $(f[0])) $(f[0]).value = dv[f[1]] || ''; });
+  $('dvSum').textContent = to === 'customer' ? '· לבית הלקוח' + (dv.address ? ': ' + dv.address : '') : '· לבית העסק';
+}
+document.querySelectorAll('input[name=dv]').forEach(function (r) { r.addEventListener('change', function () { deal.deliver_to = r.value; drawDv(); closeAsk(); touch(); }); });
+[['dvName', 'name'], ['dvPhone', 'phone'], ['dvAddr', 'address'], ['dvNote', 'note']].forEach(function (f) { $(f[0]).addEventListener('input', function () { deal.deliver[f[1]] = $(f[0]).value; closeAsk(); touch(); }); });
+
+/* ---------- search (the new row) ---------- */
+function norm(t) { return String(t || '').toLowerCase().replace(/["'`׳״.\-]/g, ''); }
+function supIds(word) { var w = norm(word); if (w.length < 2) return []; return Object.keys(suppliers).filter(function (id) { return norm(suppliers[id].name).indexOf(w) > -1; }); }
+var sT = null, hi = -1;
+$('q').addEventListener('input', function () { clearTimeout(sT); sT = setTimeout(search, 280); });
+function search() {
+  var words = $('q').value.trim().split(/\s+/).map(function (w) { return w.replace(/[,()*%\\"]/g, ''); }).filter(Boolean).slice(0, 6);
+  if (!words.length) { last = []; drawResults(); return; }
+  var q = sb.from('sp_prices').select('id,supplier_id,supplier_code,description,size,unit,price,currency,vat_included,category').eq('status', 'active');
+  words.forEach(function (w) {
+    var ids = supIds(w), f = 'description.ilike.*' + w + '*,supplier_code.ilike.*' + w + '*,size.ilike.*' + w + '*,category.ilike.*' + w + '*';
+    if (ids.length) f += ',supplier_id.in.(' + ids.join(',') + ')';
+    q = q.or(f);
+  });
+  var asked = $('q').value;
+  q.order('price', { ascending: true, nullsFirst: false }).limit(60).then(function (r) {
+    if ($('q').value !== asked) return;
+    if (r.error) { $('sInfo').textContent = 'שגיאה בחיפוש'; return; }
+    last = (r.data || []).filter(function (x) { return x.price != null && (!x.currency || x.currency === 'ILS'); });
+    last.forEach(function (x) { x._cat = classify((x.description || '') + ' ' + (x.size || '') + ' ' + (x.category || '')); });
+    hi = -1; drawResults(); loadStock(last.map(function (x) { return x.supplier_code; }));
+  });
+}
+var stock = {};
+function loadStock(codes) {
+  codes = codes.filter(function (c) { return c && !(c in stock); }); if (!codes.length) return;
+  codes.forEach(function (c) { stock[c] = null; });
+  sb.rpc('crm_stock_for', { p_codes: codes }).then(function (r) {
+    if (r.error || !(r.data || []).length) return;
+    r.data.forEach(function (x) { stock[x.code] = Number(x.available); });
+    drawResults(); if (deal && !$('lines').contains(document.activeElement)) draw();
+  });
+}
+function stockTxt(code) { var a = stock[code]; return a == null ? '' : a > 0 ? ' · <span class="ok">במלאי: ' + a.toLocaleString('he-IL') + '</span>' : ' · <span class="mute">אין במלאי</span>'; }
+function netCost(r) { return r2(r.vat_included ? r.price / VAT : Number(r.price)); }
+function sellFor(cost) { return Math.round(cost * (1 + (Number($('mk').value) || 0) / 100) * VAT); }
+function shown() { return last.filter(function (x) { return fcat === 'all' || x._cat === fcat; }); }
+function drawResults() {
+  var txt = $('q').value.trim(), list = shown();
+  if (!txt) { $('results').classList.add('hidden'); $('q').setAttribute('aria-expanded', 'false'); $('sInfo').textContent = ''; return; }
+  var counts = {}; last.forEach(function (x) { counts[x._cat] = (counts[x._cat] || 0) + 1; });
+  $('sInfo').textContent = last.length ? list.length + ' מתוך ' + last.length + (last.length >= 60 ? '+' : '') + ' תוצאות, מהזול ליקר' : 'לא נמצא במחירונים. אפשר להוסיף כשורה חופשית.';
+  $('results').innerHTML = list.slice(0, 30).map(function (r, i) {
+    var c = netCost(r);
+    return '<li><button type="button" role="option" class="r' + (i === hi ? ' on' : '') + '" data-add="' + r.id + '"><span class="grow"><b>' + esc(r.description) + (r.size ? ' ' + esc(r.size) : '') + '</b><br><span class="mute small"><span class="ltr">' + esc(r.supplier_code || '') + '</span> · ' + esc((suppliers[r.supplier_id] || {}).name || '') + ' · ' + CATN[r._cat] + stockTxt(r.supplier_code) + '<span class="cost"> · עלות ' + money(c) + '</span></span></span><span class="pr">' + money(sellFor(c)) + '</span></button></li>';
+  }).join('') + '<li><button type="button" class="r' + (hi === list.slice(0, 30).length ? ' on' : '') + '" data-free="1"><span class="grow"><b>+ שורה חופשית:</b> "' + esc(txt) + '"<br><span class="mute small">מוצר שלא במחירון. מקלידים מחיר ידנית</span></span></button></li>';
+  $('results').classList.remove('hidden'); $('q').setAttribute('aria-expanded', 'true');
+}
+$('q').addEventListener('keydown', function (e) {
+  var n = Math.min(shown().length, 30) + 1;
+  if (e.key === 'ArrowDown') { e.preventDefault(); hi = (hi + 1) % n; drawResults(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); hi = (hi - 1 + n) % n; drawResults(); }
+  else if (e.key === 'Enter') { e.preventDefault(); var b = $('results').querySelectorAll('button')[hi < 0 ? 0 : hi]; if (b && $('q').value.trim()) b.click(); }
+  else if (e.key === 'Escape') { $('q').value = ''; last = []; drawResults(); }
+});
+$('results').addEventListener('click', function (e) {
+  var b = e.target.closest('button'); if (!b) return;
+  var l;
+  if (b.dataset.free) {
+    var t = $('q').value.trim(); if (!t) return;
+    l = { desc: t, qty: 1, cost: null, sell: 0, stock: false, lid: newLid(), cat: fcat !== 'all' ? fcat : classify(t), free: true };
+  } else {
+    var r = last.filter(function (x) { return String(x.id) === b.dataset.add; })[0]; if (!r) return;
+    var c = netCost(r);
+    l = { price_id: r.id, supplier_id: r.supplier_id, sku: r.supplier_code, desc: r.description, size: r.size, unit: r.unit, qty: 1, cost: c, sell: sellFor(c), stock: stock[r.supplier_code] >= 1, lid: newLid(), cat: r._cat };
+  }
+  deal.lines.push(l); $('q').value = ''; last = []; hi = -1; drawResults(); closeAsk(); draw(); touch();
+  var inp = $('lines').querySelector('[data-lid="' + l.lid + '"] [data-f=' + (l.free ? 'sell' : 'qty') + ']'); if (inp) { inp.focus(); inp.select(); }
+});
+$('mk').addEventListener('input', function () { drawResults(); touch(); });
+
+/* ---------- lines, grouped by category ---------- */
+var ST = { queued: ['grey', 'יוצא בדקות הקרובות'], sending: ['grey', 'נשלח עכשיו'], sent: ['yellow', 'ממתין לאישור הספק'], confirmed: ['green', 'הספק אישר'], attention: ['orange', 'לבדוק'], failed: ['red', 'השליחה נכשלה'], cancelled: ['grey', 'בוטל'] };
+function newLid() { return Math.random().toString(36).slice(2, 10); }
+var cases = [], caseOpen = null, openMore = null;
+var CK = { change: 'שינוי', cancel: 'ביטול', defect: 'פגום', 'return': 'החזרה' }, CS = { open: 'בטיפול', supplier: 'אצל הספק', done: 'נסגר' }, CO = { replaced: 'הוחלף', credited: 'זוכה', refunded: 'הוחזר כסף', cancelled: 'בוטל', none: 'בלי שינוי' };
+function loadCases() {
+  if (!deal) return; var id = deal.id;
+  sb.from('crm_deal_cases').select('id,lid,kind,qty,text,status,outcome,by_name,created_at').eq('deal_id', id).order('id', { ascending: true }).then(function (r) {
+    if (!deal || deal.id !== id || r.error) return; cases = r.data || [];
+    if (!$('lines').contains(document.activeElement)) draw();
+  });
+}
+function caseHtml(l) {
+  var h = cases.filter(function (c) { return c.lid === l.lid; }).map(function (c) {
+    return '<div class="case" data-case="' + c.id + '"><b>' + CK[c.kind] + (c.qty ? ' × ' + esc(c.qty) : '') + '</b> <span class="mute">' + fmtTime(c.created_at) + (c.by_name ? ' · ' + esc(c.by_name) : '') + '</span>' + (c.text ? '<br>' + esc(c.text) : '') +
+      '<div class="row" style="margin-top:6px"><label class="mute">מצב <select data-cf="status">' + Object.keys(CS).map(function (k) { return '<option value="' + k + '"' + (c.status === k ? ' selected' : '') + '>' + CS[k] + '</option>'; }).join('') + '</select></label>' +
+      '<label class="mute">איך נסגר <select data-cf="outcome"><option value="">עוד פתוח</option>' + Object.keys(CO).map(function (k) { return '<option value="' + k + '"' + (c.outcome === k ? ' selected' : '') + '>' + CO[k] + '</option>'; }).join('') + '</select></label></div></div>';
+  }).join('');
+  if (caseOpen === l.lid) h += '<div class="case"><div class="row"><label class="mute">מה קרה <select data-nc="kind"><option value="defect">הגיע פגום</option><option value="return">הלקוח מחזיר</option><option value="change">הלקוח רוצה להחליף</option><option value="cancel">הלקוח מבטל</option></select></label>' +
+    '<label class="mute">כמות <input type="number" min="0" step="any" inputmode="decimal" data-nc="qty" value="' + esc(l.qty) + '" style="width:90px"></label></div>' +
+    '<input data-nc="text" maxlength="1000" placeholder="פרטים: מה פגום, במה מחליפים" style="margin-top:6px" aria-label="פרטים">' +
+    '<div class="row" style="margin-top:6px"><button type="button" class="btn small brass" data-nc="save">שמירה</button><button type="button" class="btn small" data-nc="cancel">ביטול</button></div>' +
+    '<p class="mute small" style="margin:6px 0 0">הלקוח יראה את המצב בדף שלו. זיכוי או החזר כספי פותחים משימה להוציא את המסמך בפריוריטי.' + (l.po_no && !l.delivered_at ? ' המוצר כבר הוזמן מהספק: ביטול או שינוי מול הספק עושים בלשונית ההזמנות (' + esc(l.po_no) + ').' : '') + '</p></div>';
+  return h;
+}
+function lineState(l) {
+  if (l.po_no) { var p = pos[l.po_id], st = p ? (ST[p.status] || ['grey', p.status]) : ['yellow', 'הוזמן']; if (p && p.receive_state) st = { full: ['green', 'הגיע'], partial: ['yellow', 'הגיע חלק'], gap: ['orange', 'הגיע עם הבדלים'] }[p.receive_state] || st; return '<span class="st ' + st[0] + '">' + esc(l.po_no) + ' · ' + st[1] + '</span>'; }
+  if (l.so) return '<span class="st grey">פריוריטי ' + esc(l.so) + '</span>';
+  if (l.stock) return '<span class="st grey">מהמלאי</span>';
+  if (l.free) return '<span class="st orange">שורה חופשית</span>';
+  return canOrder(l.supplier_id) ? '' : '<span class="st orange">להזמין ידנית</span>';
+}
+function lineHtml(l, i) {
+  var locked = !!l.po_no, q = Number(l.qty) || 0, p = (Number(l.sell) || 0) / VAT - (Number(l.cost) || 0), st = lineState(l), open = openMore === l.lid || caseOpen === l.lid;
+  var h = '<div class="ln" data-i="' + i + '" data-lid="' + esc(l.lid) + '"><div class="d"><b>' + esc(l.desc) + (l.size ? ' ' + esc(l.size) : '') + '</b><span class="mute">' + (l.sku ? '<span class="ltr">' + esc(l.sku) + '</span> · ' : '') + esc((suppliers[l.supplier_id] || {}).name || '') + stockTxt(l.sku) +
+      '<span class="cost"> · ' + (l.cost == null ? 'עלות לא ידועה' : 'רווח ' + '<span class="' + (p < 0 ? 'err' : 'ok') + '" data-o="pr">' + money(p * q) + '</span>') + '</span></span>' + (st ? ' ' + st : '') + '</div>' +
+    '<div class="qwrap"><label><span class="lbl">כמות' + (l.unit ? ' (' + esc(l.unit) + ')' : '') + '</span><input type="number" min="0.01" step="any" inputmode="decimal" data-f="qty" value="' + esc(l.qty) + '"' + (locked ? ' disabled' : '') + ' aria-label="כמות"></label>' +
+    '<label><span class="lbl">מחיר ליח\' כולל מע"מ</span><input type="number" min="0" step="any" inputmode="decimal" data-f="sell" value="' + esc(l.sell) + '" aria-label="מחיר ליחידה כולל מע&quot;מ"></label>' +
+    '<span class="tot num" data-o="tot">' + money((Number(l.sell) || 0) * q) + '</span></div>' +
+    '<button type="button" class="btn small icon ghost mbtn" data-more="1" aria-expanded="' + open + '" aria-label="עוד על ' + esc(l.desc) + '">⋯</button>';
+  if (open) h += '<div class="more"><div class="row">' +
+      '<label>קטגוריה <select data-f="cat">' + CATS.map(function (c) { return '<option value="' + c[0] + '"' + (l.cat === c[0] ? ' selected' : '') + '>' + c[1] + '</option>'; }).join('') + '</select></label>' +
+      (l.free ? '<label class="cost">עלות לפני מע"מ <input type="number" min="0" step="any" inputmode="decimal" data-f="cost" value="' + esc(l.cost == null ? '' : l.cost) + '" style="width:110px"></label>' : '') +
+      (l.delivered_at ? '' : '<label>צפי הגעה <input type="date" data-f="eta" value="' + esc(l.eta || '') + '"></label>') +
+      '<label>נמסר (מתוך ' + esc(l.qty) + ') <input type="number" min="0" step="any" inputmode="decimal" data-f="dq" value="' + esc(l.delivered_qty || '') + '" style="width:84px"></label>' +
+      (l.delivered_at ? '<span class="st green">נמסר הכול</span>' : Number(l.delivered_qty) > 0 ? '<span class="st yellow">נמסר חלק</span>' : '') + '</div>' +
+      '<div class="row" style="margin-top:6px">' + (locked ? '' : '<label class="chk grow"><input type="checkbox" data-f="stock"' + (l.stock ? ' checked' : '') + '> יש במלאי, לא להזמין</label>') +
+      '<button type="button" class="btn small" data-case-new="1">שינוי / פגום / החזרה</button>' + (locked ? '' : '<button type="button" class="btn small red" data-del="1">הסרה</button>') + '</div>' + caseHtml(l) + '</div>';
+  return h + '</div>';
+}
+function draw() {
+  var by = {};
+  deal.lines.forEach(function (l, i) { (by[l.cat || 'other'] = by[l.cat || 'other'] || []).push(i); });
+  $('lines').innerHTML = deal.lines.length ? '<div class="ln colh" aria-hidden="true"><span></span><span>כמות</span><span>מחיר ליח\' כולל מע"מ</span><span style="text-align:left">סה"כ</span><span></span></div>' + CATS.filter(function (c) { return by[c[0]]; }).map(function (c) {
+    var sum = by[c[0]].reduce(function (s, i) { var l = deal.lines[i]; return s + (Number(l.sell) || 0) * (Number(l.qty) || 0); }, 0);
+    return '<div class="cat"><h3><span class="grow">' + c[1] + ' · ' + by[c[0]].length + '</span><span class="num" data-catsum="' + c[0] + '">' + money(sum) + '</span></h3>' + by[c[0]].map(function (i) { return lineHtml(deal.lines[i], i); }).join('') + '</div>';
+  }).join('') : '<p class="mute" style="margin:4px 0">הרשימה ריקה. מתחילים לחפש מוצר בשורה למטה.</p>';
+  drawBar(); drawPlan();
+}
+function paidSum() { return r2(takings.reduce(function (s, t) { return s + (t.cancelled_at || (t.method === 'card_link' && !t.paid_at) ? 0 : Number(t.amount) || 0); }, 0)); }
+function drawBar() {
+  var t = totals(deal), paid = paidSum(), due = r2(t.sell - paid);
+  $('bSell').textContent = money(t.sell); $('bCost').textContent = money(t.cost);
+  $('bProfit').textContent = t.unknown ? 'לא ידוע' : money(Math.round(t.profit)) + ' (' + t.pct + '%)'; $('bP').classList.toggle('neg', !t.unknown && t.profit < 0);
+  $('bDue').textContent = due < 0 ? 'זיכוי ' + money(-due) : money(due); $('bDueW').classList.toggle('zero', due <= 0 && t.sell > 0);
+  $('bDueW').querySelector('.k').textContent = paid > 0 ? 'שולם ' + money(paid) + ' · נשאר' : 'נשאר לתשלום';
+}
+$('lines').addEventListener('input', function (e) {
+  var row = e.target.closest('.ln'), f = e.target.dataset.f; if (!row || !f) return;
+  var l = deal.lines[Number(row.dataset.i)];
+  if (f === 'stock') { l.stock = e.target.checked; closeAsk(); draw(); touch(); return; }
+  if (f === 'eta') { if (e.target.value) l.eta = e.target.value; else delete l.eta; touch(); return; }
+  if (f === 'cat') { l.cat = e.target.value; draw(); touch(); return; }
+  if (f === 'dq') {
+    var v = Number(e.target.value) || 0, was = !!l.delivered_at;
+    if (v > 0) l.delivered_qty = v; else delete l.delivered_qty;
+    if (v > 0 && v >= (Number(l.qty) || 0)) { if (!was) l.delivered_at = new Date().toISOString(); } else delete l.delivered_at;
+    touch(); return;
+  }
+  if (f === 'cost') { l.cost = e.target.value === '' ? null : Number(e.target.value); drawBar(); touch(); return; }
+  l[f] = e.target.value === '' ? '' : Number(e.target.value);
+  var q = Number(l.qty) || 0, p = (Number(l.sell) || 0) / VAT - (Number(l.cost) || 0), o = row.querySelector('[data-o=pr]');
+  row.querySelector('[data-o=tot]').textContent = money((Number(l.sell) || 0) * q);
+  if (o) { o.textContent = money(p * q); o.className = p < 0 ? 'err' : 'ok'; }
+  var cs = $('lines').querySelector('[data-catsum="' + (l.cat || 'other') + '"]');
+  if (cs) cs.textContent = money(deal.lines.reduce(function (s, x) { return s + ((x.cat || 'other') === (l.cat || 'other') ? (Number(x.sell) || 0) * (Number(x.qty) || 0) : 0); }, 0));
+  closeAsk(); drawBar(); drawPlan(); touch();
+});
+$('lines').addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter' || !e.target.dataset.f || (e.target.dataset.f !== 'qty' && e.target.dataset.f !== 'sell')) return;
+  e.preventDefault(); $('q').focus();
+});
+$('lines').addEventListener('change', function (e) {
+  if (e.target.dataset.f === 'dq') { draw(); return; }
+  var cf = e.target.dataset.cf, box = e.target.closest('[data-case]'); if (!cf || !box) return;
+  var c = cases.filter(function (x) { return String(x.id) === box.dataset.case; })[0]; if (!c) return;
+  var up = {}; up[cf] = e.target.value || null;
+  if (cf === 'outcome' && e.target.value) up.status = 'done';
+  sb.from('crm_deal_cases').update(up).eq('id', c.id).then(function () { loadCases(); });
+});
+$('lines').addEventListener('click', function (e) {
+  var row = e.target.closest('.ln'); if (!row) return;
+  var l = deal.lines[Number(row.dataset.i)], nb = e.target.closest('[data-case-new]'), nc = e.target.closest('button[data-nc]'), mb = e.target.closest('[data-more]');
+  if (mb) { openMore = openMore === l.lid ? null : l.lid; if (!openMore && caseOpen === l.lid) caseOpen = null; draw(); var m = $('lines').querySelector('[data-lid="' + l.lid + '"] [data-more]'); if (m) m.focus(); return; }
+  if (nb) { caseOpen = l.lid; openMore = l.lid; draw(); var s1 = $('lines').querySelector('[data-lid="' + l.lid + '"] [data-nc=kind]'); if (s1) s1.focus(); return; }
+  if (nc) {
+    if (nc.dataset.nc === 'cancel') { caseOpen = null; draw(); return; }
+    var g = function (k) { return row.querySelector('[data-nc=' + k + ']').value; };
+    nc.disabled = true;
+    flush().then(function () { return sb.from('crm_deal_cases').insert({ deal_id: deal.id, lid: l.lid, line_desc: (l.desc || '') + (l.size ? ' ' + l.size : ''), kind: g('kind'), qty: Number(g('qty')) || null, text: g('text').trim() || null, by: me.email, by_name: me.name }); })
+      .then(function (r) { if (!r.error) caseOpen = null; loadCases(); draw(); });
+    return;
+  }
+  if (e.target.closest('[data-del]')) { deal.lines.splice(Number(row.dataset.i), 1); openMore = null; closeAsk(); draw(); touch(); }
+});
+
+/* ---------- purchase orders per supplier ---------- */
+function groups() {
+  var g = {};
+  deal.lines.forEach(function (l) { if (l.stock || l.po_no || l.so || l.free || !l.supplier_id || !(Number(l.qty) > 0)) return; (g[l.supplier_id] = g[l.supplier_id] || []).push(l); });
+  return Object.keys(g).map(function (sid) { return { sid: sid, lines: g[sid], ok: canOrder(sid), total: r2(g[sid].reduce(function (s, l) { return s + l.cost * l.qty; }, 0)) }; });
+}
+function drawPlan() {
+  var gs = groups(), auto = gs.filter(function (g) { return g.ok; });
+  $('plan').innerHTML = gs.map(function (g) {
+    var s = suppliers[g.sid] || {};
+    return '<div class="supg"><h3>' + esc(s.name || 'ספק') + ' <span class="mute">· ' + g.lines.length + ' מוצרים<span class="cost"> · ' + money(g.total) + ' לפני מע"מ</span></span></h3>' +
+      (g.ok ? '<p class="mute" style="margin:2px 0">יישלח: ' + esc(how(g.sid)) + '</p>' : '<p class="warn" style="margin:2px 0">' + (s.order_paused ? 'ההזמנות לספק הזה מושהות כרגע.' : 'לספק הזה עוד אין איש קשר להזמנות במערכת, אז מזמינים אותו ידנית.') + '</p>') + '</div>';
+  }).join('') || (deal.lines.length ? '<p class="mute">אין מה להזמין: הכול מהמלאי, כבר הוזמן, או שורה חופשית.</p>' : '');
+  $('oGo').classList.toggle('hidden', !auto.length);
+  $('poSum').textContent = auto.length ? '· ' + auto.length + ' ספקים מוכנים להזמנה' : deal.lines.some(function (l) { return l.po_no; }) ? '· הוזמן' : '';
+}
+function closeAsk() { $('oStep2').classList.add('hidden'); $('oStep1').classList.remove('hidden'); }
+function dvBody() {
+  if ((deal.deliver_to || 'business') !== 'customer') return { to: 'business' };
+  var d = deal.deliver || {}; return { to: 'customer', name: (d.name || '').trim(), phone: d.phone || '', address: (d.address || '').trim(), note: (d.note || '').trim(), tail9: deal.customer_tail9 || '' };
+}
+$('oGo').addEventListener('click', function () {
+  var auto = groups().filter(function (g) { return g.ok; }), dv = dvBody(), m = $('oMsg'); m.className = 'err';
+  if (!(deal.customer_name || '').trim()) { m.textContent = 'קודם בוחרים לקוח להזמנה.'; $('cuQ').focus(); return; }
+  if (dv.to === 'customer' && (!dv.name || digits(dv.phone).length < 9 || dv.address.length < 5)) { m.textContent = 'לאספקה לבית הלקוח צריך שם, טלפון וכתובת מלאה.'; $('secDv').open = true; $('dvAddr').focus(); return; }
+  m.textContent = '';
+  $('oAsk').innerHTML = '<b>לשלוח עכשיו ' + auto.length + (auto.length === 1 ? ' הזמנה' : ' הזמנות') + '?</b><br>' + auto.map(function (g) { return esc((suppliers[g.sid] || {}).name) + ': ' + g.lines.length + ' מוצרים, ' + esc(how(g.sid)); }).join('<br>') +
+    '<br>עבור ' + esc(deal.customer_name) + ' · ' + (dv.to === 'customer' ? 'אספקה ישירות ללקוח: ' + esc(dv.address) : 'אספקה לבית העסק') + '. התשובות של הספקים יסומנו כאן אוטומטית.';
+  $('oStep1').classList.add('hidden'); $('oStep2').classList.remove('hidden'); $('oYes').focus();
+});
+$('oNo').addEventListener('click', closeAsk);
+$('oYes').addEventListener('click', function () {
+  var auto = groups().filter(function (g) { return g.ok; }), b = $('oYes'), m = $('oMsg'), msgs = [], bad = false;
+  b.disabled = true; b.textContent = 'שולח...';
+  var cu = { name: deal.customer_name.trim(), tail9: deal.customer_tail9 || '' }, dv = dvBody();
+  flush().then(function () {
+    return auto.reduce(function (chain, g) {
+      return chain.then(function () {
+        return fetch(PO_FN, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + session.access_token },
+          body: JSON.stringify({ action: 'create', supplier_id: g.sid, deal_id: deal.id, lines: g.lines.map(function (l) { return { price_id: l.price_id, qty: Number(l.qty) }; }), customer: cu, deliver: dv, note: 'עסקה ' + deal.deal_no }) })
+          .then(function (r) { return r.json().catch(function () { return { ok: false, error: 'תקלה בשרת' }; }); }, function () { return { ok: false, error: 'אין חיבור' }; })
+          .then(function (j) {
+            var name = (suppliers[g.sid] || {}).name || 'ספק';
+            if (j.po && j.po.id) { g.lines.forEach(function (l) { l.po_id = j.po.id; l.po_no = j.po.po_no; }); pos[j.po.id] = j.po; }
+            if (j.ok) msgs.push(name + ': הזמנה ' + j.po.po_no + ' יצאה' + (j.warn ? ' (הוואטסאפ לא יצא, המייל בדרך)' : ''));
+            else { bad = true; msgs.push(name + ': לא נשלח. ' + (j.error || '')); }
+            dirty = true; return flush();
+          });
+      });
+    }, Promise.resolve());
+  }).then(function () {
+    b.disabled = false; b.textContent = 'כן, לשלוח';
+    if (deal.lines.some(function (l) { return l.po_no; })) deal.status = 'ordered';
+    dirty = true; flush(); closeAsk(); draw();
+    m.className = bad ? 'err' : 'ok'; m.textContent = msgs.join(' · ');
+  });
+});
+var posT = null;
+function loadPos() {
+  clearTimeout(posT); if (!deal) return;
+  var ids = deal.lines.map(function (l) { return l.po_id; }).filter(Boolean);
+  if (!ids.length) return;
+  sb.from('crm_po').select('id,po_no,status,receive_state,summary').in('id', ids).then(function (r) {
+    (r.data || []).forEach(function (p) { pos[p.id] = p; });
+    if (deal && !$('lines').contains(document.activeElement)) draw();
+    posT = setTimeout(loadPos, 30000);
+  });
+}
+
+/* ---------- payments (same route as the kupa: crm_takings, receipt task for the office, Tranzila link) ---------- */
+var METHOD = { card_link: 'אשראי (טרנזילה)', card_terminal: 'אשראי (מסוף)', cash: 'מזומן', cheque: 'צ׳ק', transfer: 'העברה / ביט' };
+function loadPays() {
+  if (!deal) return; var id = deal.id;
+  sb.from('crm_takings').select('id,at,amount,method,payments,payer_name,doc_no,closed_at,cancelled_at,pay_pr_id,paid_at,by').eq('deal_id', id).order('at', { ascending: true }).then(function (r) {
+    if (!deal || deal.id !== id || r.error) return;
+    takings = r.data || []; drawPays(); drawBar();
+  });
+}
+function drawPays() {
+  var live = takings.filter(function (t) { return !t.cancelled_at; });
+  $('payList').innerHTML = live.length ? live.map(function (t) {
+    var st = t.method === 'card_link' && !t.paid_at ? '<span class="st yellow">ממתין לתשלום בלינק</span>' : t.doc_no || t.closed_at ? '<span class="st green">קבלה ' + esc(t.doc_no || 'יצאה') + '</span>' : '<span class="st grey">התקבל, הקבלה אצל המשרד</span>';
+    return '<p><b class="num">' + money(t.amount) + '</b> ' + METHOD[t.method] + (t.payments > 1 ? ' · ' + t.payments + ' תשלומים' : '') + ' <span class="mute">· ' + fmtTime(t.at) + '</span> ' + st + '</p>';
+  }).join('') : '<p class="mute">עוד לא נרשם תשלום להזמנה הזו.</p>';
+  var paid = paidSum(); $('paySum').textContent = paid > 0 ? '· שולם ' + money(paid) : '';
+}
+var pm = null, pc = 'card_link', pp = 1, pBusy = false, pPending = null, pPoll = null;
+$('pPays').innerHTML = [1, 2, 3, 4, 5, 6, 8, 10, 12].map(function (n) { return '<button type="button" class="opt" data-p="' + n + '" aria-pressed="' + (n === 1) + '">' + n + '</button>'; }).join('');
+function press(sel, attr, val) { document.querySelectorAll(sel).forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute(attr) === val)); }); }
+function pHint() {
+  var a = Number(String($('pAmt').value).replace(/,/g, '')) || 0, h = '';
+  if (pm === 'cash') h = a > CASH_MAX ? '' : 'לפי החוק, עסק מקבל במזומן עד ₪6,000 לעסקה.';
+  if (pm === 'card') h = pc === 'card_link' ? 'נוצר דף תשלום מאובטח של טרנזילה. מקלידים את הכרטיס כאן או שולחים ללקוח בוואטסאפ. נרשם כשולם רק אחרי אישור.' : 'רק אם הכרטיס כבר חויב במסוף בחנות.';
+  if (pm === 'transfer') h = 'לרשום רק אחרי שרואים את הכסף או אישור העברה.';
+  $('pHint').textContent = h;
+}
+document.querySelectorAll('[data-m]').forEach(function (b) { b.addEventListener('click', function () { pm = b.dataset.m; press('[data-m]', 'data-m', pm); $('pCard').classList.toggle('hidden', pm !== 'card'); $('pErr').textContent = ''; pHint(); }); });
+document.querySelectorAll('[data-c]').forEach(function (b) { b.addEventListener('click', function () { pc = b.dataset.c; press('[data-c]', 'data-c', pc); pHint(); }); });
+$('pPays').addEventListener('click', function (e) { var b = e.target.closest('[data-p]'); if (!b) return; pp = Number(b.dataset.p); press('[data-p]', 'data-p', String(pp)); });
+$('pAmt').addEventListener('input', function () { this.value = this.value.replace(/[^\d.,]/g, ''); $('pErr').textContent = ''; pHint(); });
+function openPay() {
+  if (!deal) return;
+  var due = r2(totals(deal).sell - paidSum());
+  $('pForm').classList.remove('hidden'); $('pAfter').classList.add('hidden'); $('pErr').textContent = '';
+  $('pFor').textContent = (deal.customer_name ? deal.customer_name + ' · ' : '') + 'הזמנה ' + deal.deal_no + (due > 0 ? ' · נשאר ' + money(due) : '');
+  $('pAmt').value = due > 0 ? String(due) : ''; pm = null; press('[data-m]', 'data-m', ''); $('pCard').classList.add('hidden'); $('pGoods').checked = false; pHint();
+  $('paySheet').classList.remove('hidden'); $('pAmt').focus();
+}
+function closePay() { $('paySheet').classList.add('hidden'); clearInterval(pPoll); $('payBtn').focus(); }
+$('payBtn').addEventListener('click', openPay);
+$('pClose').addEventListener('click', closePay); $('pDoneBtn').addEventListener('click', closePay);
+$('paySheet').addEventListener('click', function (e) { if (e.target === $('paySheet')) closePay(); });
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('paySheet').classList.contains('hidden')) closePay(); });
+$('pSave').addEventListener('click', function () {
+  if (pBusy) return;
+  var amt = Math.round(Number(String($('pAmt').value).replace(/,/g, '')) * 100) / 100, method = pm === 'card' ? pc : pm, t9 = deal.customer_tail9, err = '';
+  if (!(amt >= 1 && amt <= 200000)) err = 'לכתוב סכום בשקלים.';
+  else if (!pm) err = 'לבחור איך משלמים.';
+  else if (!(deal.customer_name || '').trim()) err = 'קודם בוחרים לקוח למעלה.';
+  else if (method === 'cash' && amt > CASH_MAX) err = 'לפי חוק צמצום השימוש במזומן, עסק לא מקבל יותר מ-₪6,000 במזומן לעסקה. את היתרה משלמים באשראי או בהעברה.';
+  else if (method === 'card_link' && !t9) err = 'לחיוב בטרנזילה צריך לקוח עם טלפון (מכרטיס לקוח).';
+  if (err) { $('pErr').textContent = err; return; }
+  var payments = pm === 'card' ? pp : 1, reason = 'הזמנה ' + deal.deal_no, goods = $('pGoods').checked;
+  pBusy = true; $('pSave').disabled = true; $('pSave').textContent = 'רושם…';
+  var key = t9 + '|' + amt + '|' + payments + '|' + deal.id;
+  var step = method !== 'card_link' ? Promise.resolve(null)
+    : pPending && pPending.key === key ? Promise.resolve(pPending.j)
+    : sb.auth.getSession().then(function (s) { return fetch(PAY_FN, { method: 'POST', headers: { authorization: 'Bearer ' + s.data.session.access_token, 'content-type': 'application/json' }, body: JSON.stringify({ action: 'create', tail9: t9, amount: amt, description: reason, payments: payments }) }); })
+        .then(function (r) { return r.json(); }).then(function (j) { if (!j.ok) throw new Error(j.error || 'לא נוצר לינק תשלום'); pPending = { key: key, j: j }; return j; });
+  var link = null;
+  flush().then(function () { return step; }).then(function (j) {
+    link = j;
+    return sb.from('crm_takings').insert({ by: me.email, deal_id: deal.id, amount: amt, method: method, payer_name: deal.customer_name.trim(), tail9: t9 || null, reason: reason, goods_taken: goods,
+      goods: goods ? deal.lines.map(function (l) { return (Number(l.qty) || 0) + ' × ' + (l.desc || '') + (l.size ? ' ' + l.size : ''); }).join(', ').slice(0, 900) : null,
+      payments: j ? Number(j.payments) || 1 : payments, pay_pr_id: j ? String(j.pr_id) : null }).select('id').single();
+  }).then(function (r) {
+    if (r.error) throw new Error(r.error.message);
+    pPending = null; payDone(amt, method, payments, link); loadPays();
+  }).catch(function (e) { $('pErr').textContent = 'לא נרשם. בדקו חיבור ונסו שוב. (' + (e.message || e) + ')'; })
+    .then(function () { pBusy = false; $('pSave').disabled = false; $('pSave').textContent = 'רישום התשלום'; });
+});
+function payDone(amt, method, payments, link) {
+  $('pForm').classList.add('hidden'); $('pAfter').classList.remove('hidden');
+  $('pLinkBox').classList.toggle('hidden', !link); $('pLinkBox').style.display = link ? 'grid' : '';
+  if (link) {
+    var got = Number(link.payments) || 1;
+    $('pDone').textContent = 'עכשיו לחייב ' + money(amt) + (got > 1 ? ' בעד ' + got + ' תשלומים' : '');
+    $('pDoneT').textContent = (payments > 1 && got === 1 ? 'טרנזילה לא אישרה תשלומים בלינק, אז הלינק לתשלום אחד. ' : '') + 'כשהתשלום יאושר הוא יסומן כאן, והמשרד יקבל משימה להוציא קבלה.';
+    $('pState').className = 'warn'; $('pState').textContent = '● ממתין לתשלום';
+    $('pOpen').href = link.pr_link;
+    var first = String(deal.customer_name || '').trim().split(/\s+/)[0];
+    $('pWa').href = 'https://wa.me/972' + deal.customer_tail9 + '?text=' + encodeURIComponent('שלום' + (first ? ' ' + first : '') + ', כאן זיסו קרמיקה. לתשלום מאובטח של ' + money(amt) + ' בכרטיס אשראי (הזמנה ' + deal.deal_no + '), דרך טרנזילה:\n' + link.pr_link);
+    clearInterval(pPoll); var n = 0, pr = String(link.pr_id);
+    pPoll = setInterval(function () {
+      if (++n > 240) return clearInterval(pPoll);
+      sb.from('crm_pay_requests').select('status').eq('pr_id', pr).maybeSingle().then(function (r) {
+        if (r.data && r.data.status === 'paid') { clearInterval(pPoll); $('pState').className = 'ok'; $('pState').textContent = '● שולם ✓ אושר בטרנזילה'; $('pOpen').classList.add('hidden'); $('pWa').classList.add('hidden'); loadPays(); if (navigator.vibrate) navigator.vibrate(200); }
+      });
+    }, 5000);
+    $('pOpen').classList.remove('hidden'); $('pWa').classList.remove('hidden');
+  } else {
+    $('pDone').textContent = '✓ נרשם: ' + money(amt) + ' ' + METHOD[method] + (payments > 1 ? ', ' + payments + ' תשלומים' : '');
+    $('pDoneT').textContent = 'המשרד קיבל משימה להוציא קבלה בפריוריטי. אין צורך לעשות שום דבר נוסף.';
+  }
+  $('pDone').setAttribute('tabindex', '-1'); $('pDone').focus();
+}
+
+/* ---------- the customer's page ---------- */
+var MY = 'https://www.zisoceramics.com/my/#';
+function drawShare() {
+  if (!deal) return;
+  var on = !!deal.share_token;
+  $('shOff').classList.toggle('hidden', on); $('shOn').classList.toggle('hidden', !on); $('shErr').textContent = '';
+  $('shSum').textContent = on ? (deal.seen_at ? '· הלקוח נכנס ' + deal.seen_count + ' פעמים' : '· נוצר, הלקוח עוד לא נכנס') : '';
+  if (!on) return;
+  var url = MY + deal.share_token, first = String(deal.customer_name || '').trim().split(/\s+/)[0];
+  $('shUrl').value = url; $('shOpen').href = url;
+  $('shWa').href = 'https://wa.me/972' + deal.customer_tail9 + '?text=' + encodeURIComponent('שלום' + (first ? ' ' + first : '') + ', כאן זיסו קרמיקה. זה הדף האישי של ההזמנה שלך: מצב כל מוצר, מועדים, תשלומים ומסמכים, מתעדכן חי. בכניסה מקלידים את 4 הספרות האחרונות של הטלפון.\n' + url);
+  $('shSeen').textContent = deal.seen_at ? 'הלקוח פתח את הדף ' + deal.seen_count + ' פעמים, לאחרונה ' + fmtTime(deal.seen_at) + '.' : 'הלקוח עוד לא פתח את הדף.';
+  if (document.activeElement !== $('pubNote')) $('pubNote').value = deal.public_note || '';
+}
+$('shMake').addEventListener('click', function () {
+  if (!deal.customer_tail9) { $('shErr').textContent = 'קודם בוחרים לקוח מכרטיס לקוח, עם טלפון.'; $('cuQ').focus(); return; }
+  var a = new Uint8Array(18); crypto.getRandomValues(a);
+  var tok = btoa(String.fromCharCode.apply(null, a)).replace(/\+/g, '-').replace(/\//g, '_');
+  flush().then(function () { return sb.from('crm_deals').update({ share_token: tok, shared_at: new Date().toISOString(), shared_by: me.email }).eq('id', deal.id).is('share_token', null).select('share_token').maybeSingle(); }).then(function (r) {
+    if (r.error || !r.data) { $('shErr').textContent = 'לא הצליח ליצור קישור. נסו שוב.'; return; }
+    deal.share_token = r.data.share_token; drawShare();
+  });
+});
+var shArm = 0;
+$('shOff2').addEventListener('click', function () {
+  var b = $('shOff2');
+  if (Date.now() - shArm > 5000) { shArm = Date.now(); b.textContent = 'לחיצה נוספת מבטלת'; setTimeout(function () { b.textContent = 'ביטול הקישור'; }, 5000); return; }
+  shArm = 0; b.disabled = true;
+  sb.from('crm_deals').update({ share_token: null }).eq('id', deal.id).select('id').maybeSingle().then(function (r) {
+    b.disabled = false; b.textContent = 'ביטול הקישור';
+    if (r.error || !r.data) { $('shErr').textContent = 'הביטול לא הצליח. נסו שוב.'; return; }
+    deal.share_token = null; drawShare(); $('shErr').textContent = 'הקישור בוטל. הלקוח כבר לא יכול להיכנס. אפשר ליצור קישור חדש.';
+  });
+});
+$('shCopy').addEventListener('click', function () { var b = $('shCopy'); (navigator.clipboard ? navigator.clipboard.writeText($('shUrl').value) : Promise.reject()).then(function () { b.textContent = 'הועתק ✓'; }, function () { $('shUrl').select(); b.textContent = 'סמנו והעתיקו'; }); setTimeout(function () { b.textContent = 'העתקה'; }, 2500); });
+$('pubNote').addEventListener('input', function () { deal.public_note = $('pubNote').value; touch(); });
+var KIND = { question: 'שאלה', change: 'בקשת שינוי', delivery: 'תיאום אספקה', problem: 'בעיה במוצר' };
+function loadNotes() {
+  if (!deal) return; var id = deal.id;
+  sb.from('crm_deal_notes').select('side,kind,text,by_name,at').eq('deal_id', id).order('at', { ascending: true }).limit(80).then(function (r) {
+    if (!deal || deal.id !== id || r.error) return;
+    var l = r.data || [];
+    $('cnotes').innerHTML = l.length ? l.map(function (n) { return '<p style="margin:6px 0"><b>' + (n.side === 'team' ? esc(n.by_name || 'הצוות') : 'הלקוח' + (KIND[n.kind] ? ' · ' + KIND[n.kind] : '')) + '</b> <span class="mute">' + fmtTime(n.at) + '</span><br>' + esc(n.text) + '</p>'; }).join('') : '<p class="mute">הלקוח עוד לא כתב.</p>';
+  });
+}
+$('ansGo').addEventListener('click', function () {
+  var t = $('ansT').value.trim(), b = $('ansGo'); if (t.length < 2) { $('ansT').focus(); return; }
+  b.disabled = true;
+  sb.from('crm_deal_notes').insert({ deal_id: deal.id, side: 'team', text: t, by: me.email, by_name: me.name }).then(function (r) { b.disabled = false; if (!r.error) { $('ansT').value = ''; loadNotes(); } });
+});
+
+/* ---------- start ---------- */
+sb.auth.getSession().then(function (r) {
+  session = r.data.session;
+  if (!session) { $('needLogin').classList.remove('hidden'); return; }
+  sb.auth.onAuthStateChange(function (_e, s) { if (s) session = s; });
+  me.email = (session.user.email || '').toLowerCase();
+  Promise.all([
+    sb.from('sp_suppliers').select('id,name,order_email,order_wa_phone,order_contact,order_paused').then(function (x) { (x.data || []).forEach(function (s) { suppliers[s.id] = s; }); }),
+    sb.from('crm_staff').select('email,name').ilike('email', me.email).maybeSingle().then(function (x) { me.name = (x.data || {}).name || me.email; })
+  ]).then(function () {
+    var id = Number(new URLSearchParams(location.search).get('d'));
+    if (id) openDeal(id); else showList();
+  });
+});
+})();
+</script>
+</body>
+</html>
