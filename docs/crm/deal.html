@@ -51,6 +51,11 @@ main{padding-bottom:150px}
 fieldset{border:1px solid var(--line);border-radius:12px;margin:12px 0;padding:8px 12px 12px}legend{padding:0 6px;color:var(--mute);font-size:15px}
 .res{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}.res .grow{min-width:0}
 .res .btn{min-width:84px}
+.thumb{flex:none;width:52px;height:52px;border-radius:8px;border:1px solid var(--line);background:#fff;padding:0;cursor:zoom-in;overflow:hidden}
+.thumb img{width:100%;height:100%;object-fit:contain;display:block}
+.ln .row .thumb{width:46px;height:46px}
+#zoom{border:0;border-radius:14px;padding:12px;background:#fff;color:#1e1b17;max-width:92vw}#zoom::backdrop{background:rgba(0,0,0,.6)}
+#zoom img{display:block;width:min(480px,84vw);height:auto}#zoom p{margin:8px 0 0;text-align:center}
 .ln{padding:12px 0;border-bottom:1px solid var(--line)}
 .ln .nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;margin-top:8px;align-items:end}
 .ln .nums label{font-size:14px;color:var(--mute)}.ln .nums input{display:block;width:100%;margin-top:2px;color:var(--ink)}
@@ -276,7 +281,7 @@ $('q').addEventListener('input', function () { clearTimeout(sT); sT = setTimeout
 function search() {
   var words = $('q').value.trim().split(/\s+/).map(function (w) { return w.replace(/[,()*%\\"]/g, ''); }).filter(Boolean).slice(0, 6);
   if (!words.length) { last = []; $('results').innerHTML = ''; $('sInfo').textContent = 'מחפש בכל מחירוני הספקים: תיאור, מק"ט, מידה או שם ספק.'; return; }
-  var q = sb.from('sp_prices').select('id,supplier_id,supplier_code,description,size,unit,price,currency,vat_included').eq('status', 'active');
+  var q = sb.from('sp_prices').select('id,supplier_id,supplier_code,description,size,unit,price,currency,vat_included,image_path').eq('status', 'active');
   words.forEach(function (w) {
     var ids = supIds(w), f = 'description.ilike.*' + w + '*,supplier_code.ilike.*' + w + '*,size.ilike.*' + w + '*,category.ilike.*' + w + '*';
     if (ids.length) f += ',supplier_id.in.(' + ids.join(',') + ')';
@@ -285,6 +290,7 @@ function search() {
   q.order('price', { ascending: true, nullsFirst: false }).limit(40).then(function (r) {
     if (r.error) { $('sInfo').textContent = 'שגיאה בחיפוש'; return; }
     last = (r.data || []).filter(function (x) { return x.price != null && (!x.currency || x.currency === 'ILS'); });
+    last.forEach(function (x) { if (x.image_path) { picPath[x.id] = x.image_path; picAsked[x.id] = 1; } });
     $('sInfo').textContent = last.length ? last.length + (r.data.length === 40 ? '+' : '') + ' תוצאות, מהזול ליקר' : 'לא נמצא. נסו מילה אחרת, מק"ט או שם ספק.';
     drawResults(); loadStock(last.map(function (x) { return x.supplier_code; }));
   });
@@ -306,10 +312,11 @@ function sellFor(cost) { return Math.round(cost * (1 + (Number($('mk').value) ||
 function drawResults() {
   $('results').innerHTML = last.map(function (r) {
     var c = netCost(r), has = deal.lines.some(function (l) { return l.price_id === r.id; });
-    return '<div class="res"><div class="grow"><b>' + esc(r.description) + (r.size ? ' ' + esc(r.size) : '') + '</b><br><span class="mute"><span class="ltr">' + esc(r.supplier_code || '') + '</span> · ' + esc((suppliers[r.supplier_id] || {}).name || '') +
+    return '<div class="res">' + thumb(r.image_path, r.description) + '<div class="grow"><b>' + esc(r.description) + (r.size ? ' ' + esc(r.size) : '') + '</b><br><span class="mute"><span class="ltr">' + esc(r.supplier_code || '') + '</span> · ' + esc((suppliers[r.supplier_id] || {}).name || '') +
       stockTxt(r.supplier_code) + '</span><br><span class="cost mute">עלות ' + money(c) + ' · </span><span>ללקוח ' + money(sellFor(c)) + '</span></div>' +
       '<button type="button" class="btn' + (has ? '' : ' brass') + '" data-add="' + r.id + '"' + (has ? ' disabled' : '') + '>' + (has ? '✓ ברשימה' : 'הוספה') + '</button></div>';
   }).join('');
+  loadPics($('results'));
 }
 $('results').addEventListener('click', function (e) {
   var b = e.target.closest('[data-add]'); if (!b) return;
@@ -319,6 +326,33 @@ $('results').addEventListener('click', function (e) {
   closeAsk(); drawResults(); draw(); touch();
 });
 $('mk').addEventListener('input', function () { drawResults(); touch(); });
+
+/* ---------- product pictures from the supplier catalogs (Aviv 17.11: small pictures in the search and on the lines).
+   Private bucket, short-lived signed links, cached for 50 minutes; images load lazily so the phone stays fast. ---------- */
+var picPath = {}, picUrl = {}, picAsked = {};
+function thumb(path, t) { return path ? '<button type="button" class="thumb" data-p="' + esc(path) + '" data-t="' + esc(t || '') + '" aria-label="הגדלת התמונה"><img alt="" loading="lazy" decoding="async"></button>' : ''; }
+function loadPicPaths() {
+  var ids = deal.lines.map(function (l) { return l.price_id; }).filter(function (id) { return id && !(id in picAsked); });
+  if (!ids.length) return; ids.forEach(function (id) { picAsked[id] = 1; });
+  sb.from('sp_prices').select('id,image_path').in('id', ids).not('image_path', 'is', null).then(function (r) {
+    (r.data || []).forEach(function (x) { picPath[x.id] = x.image_path; });
+    if ((r.data || []).length && deal && !$('lines').contains(document.activeElement)) draw();
+  });
+}
+function loadPics(root) {
+  var els = [].slice.call(root.querySelectorAll('.thumb')), need = {};
+  els.forEach(function (b) { var u = picUrl[b.dataset.p]; if (u && u.until > Date.now()) b.firstChild.src = u.url; else need[b.dataset.p] = 1; });
+  var paths = Object.keys(need); if (!paths.length) return;
+  sb.storage.from('supplier-files').createSignedUrls(paths, 3600).then(function (r) {
+    (r.data || []).forEach(function (x) { if (x.signedUrl) picUrl[x.path] = { url: x.signedUrl, until: Date.now() + 50 * 60000 }; });
+    els.forEach(function (b) { var u = picUrl[b.dataset.p]; if (u) b.firstChild.src = u.url; else b.remove(); });
+  });
+}
+document.addEventListener('click', function (e) {
+  var b = e.target.closest && e.target.closest('button.thumb'), z = $('zoom');
+  if (b && b.firstChild.src) { e.stopPropagation(); z.querySelector('img').src = b.firstChild.src; z.querySelector('p').textContent = b.dataset.t || ''; z.showModal(); }
+  else if (e.target === z) z.close();
+}, true);
 
 /* ---------- lines + live profit ---------- */
 var ST = { queued: ['grey', 'יוצא בדקות הקרובות'], sending: ['grey', 'נשלח עכשיו'], sent: ['yellow', 'ממתין לאישור הספק'], confirmed: ['green', 'הספק אישר'], attention: ['orange', 'לבדוק'], failed: ['red', 'השליחה נכשלה'], cancelled: ['grey', 'בוטל'] };
@@ -355,7 +389,7 @@ function draw() {
   $('noLines').classList.toggle('hidden', !!deal.lines.length);
   $('lines').innerHTML = deal.lines.map(function (l, i) {
     var locked = !!l.po_no, q = Number(l.qty) || 0, p = (Number(l.sell) || 0) / VAT - (Number(l.cost) || 0);
-    return '<div class="ln" data-i="' + i + '"><div class="row"><b class="grow">' + esc(l.desc) + (l.size ? ' ' + esc(l.size) : '') + '</b>' + lineState(l) + '</div>' +
+    return '<div class="ln" data-i="' + i + '"><div class="row">' + thumb(picPath[l.price_id], l.desc) + '<b class="grow">' + esc(l.desc) + (l.size ? ' ' + esc(l.size) : '') + '</b>' + lineState(l) + '</div>' +
       '<div class="mute"><span class="ltr">' + esc(l.sku || '') + '</span> · ' + esc((suppliers[l.supplier_id] || {}).name || '') + stockTxt(l.sku) + '<span class="cost"> · עלות ' + money(l.cost) + ' ליח\'</span></div>' +
       '<div class="nums"><label>כמות' + (l.unit ? ' (' + esc(l.unit) + ')' : '') + '<input type="number" min="0.01" step="any" inputmode="decimal" data-f="qty" value="' + esc(l.qty) + '"' + (locked ? ' disabled' : '') + '></label>' +
       '<label>מחיר ללקוח ליח\' כולל מע"מ<input type="number" min="0" step="any" inputmode="decimal" data-f="sell" value="' + esc(l.sell) + '"></label>' +
@@ -367,6 +401,7 @@ function draw() {
         '<button type="button" class="btn small" data-case-new="1">שינוי / פגום / החזרה</button></div>' + caseHtml(l) +
       (locked ? '' : '<div class="row" style="margin-top:6px"><label class="chk grow"><input type="checkbox" data-f="stock"' + (l.stock ? ' checked' : '') + '> יש במלאי, לא להזמין</label><button type="button" class="btn small red" data-del="1" aria-label="להסיר ' + esc(l.desc) + '">הסרה</button></div>') + '</div>';
   }).join('');
+  loadPicPaths(); loadPics($('lines'));
   drawBar(); drawPlan();
 }
 function drawBar() {
@@ -548,5 +583,6 @@ sb.auth.getSession().then(function (r) {
 });
 })();
 </script>
+<dialog id="zoom" aria-label="תמונת המוצר"><img alt=""><p></p></dialog>
 </body>
 </html>
