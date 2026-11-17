@@ -32,7 +32,17 @@ table{width:100%;border-collapse:collapse;font-size:15px}th,td{text-align:right;
 th{color:var(--mute);font-weight:600}
 .price{font-weight:700;white-space:nowrap}.sub{font-weight:400;font-size:.85em}.ltr{direction:ltr;unicode-bidi:isolate}
 .calc{display:flex;gap:8px;align-items:center;margin-top:8px}.calc input{width:90px}
-.supf{display:flex;gap:8px;align-items:center;margin-top:8px}.supf input{flex:1;font-size:16px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:8px 0 2px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}.chips:empty{display:none}
+.chips button{font:inherit;font-size:15px;color:inherit;min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;white-space:nowrap}
+.chips button[aria-pressed=true]{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
+.chips button .n{font-size:12px;opacity:.75;margin-inline-start:4px}
+.chips.sup{padding-top:2px}.chips.sup button{font-size:14px;min-height:36px}
+.snote{margin:8px 0 0;padding:6px 10px;border-inline-start:3px solid var(--brass);background:var(--brass-soft);border-radius:0 8px 8px 0;font-size:15px}
+.sbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px}.sbar p{margin:6px 0}
+.sort{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.sort button{font:inherit;font-size:14px;color:inherit;min-height:36px;padding:0 12px;border:0;background:var(--surface);cursor:pointer}
+.sort button[aria-pressed=true]{background:var(--brass-soft);font-weight:700}
+mark{background:transparent;color:var(--brass);font-weight:700}
 .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--brass-soft);font-size:13px}
 .sc dl{margin:6px 0 0}.sc dt{font-weight:600;margin-top:10px}.sc dd{margin:2px 0 0;white-space:pre-line}.sc ul{list-style:none;padding:0;margin:4px 0 0}.sc li{padding:6px 0;border-bottom:1px solid var(--line,#e5e0d6)}.sc li.off{opacity:.55;text-decoration:line-through}.sc a[href^="tel"]{font-weight:600;direction:ltr;unicode-bidi:isolate}
 .hidden{display:none!important}
@@ -97,11 +107,15 @@ table.nopic .pic{display:none}
   <div id="needLogin" class="card hidden" role="alert">צריך להתחבר קודם. <a href="./">כניסה ל-CRM</a> ואז לחזור לכאן.</div>
 
   <section id="v-search">
-    <input type="search" id="q" placeholder="כתבו חופשי: דגם, מידה, מק&quot;ט או שם ספק. למשל: דיאור פורצלן 60x120" autocomplete="off" aria-label="חיפוש במחירון הספקים">
-    <div class="supf"><label for="supF">ספק</label><input id="supF" list="supOpts" placeholder="כל הספקים (הקלידו חלק מהשם)" autocomplete="off"><button type="button" class="btn small" id="supClr" hidden>× נקה</button><datalist id="supOpts"></datalist></div>
+    <input type="search" id="q" placeholder="כותבים חופשי: ברז פרח שחור, מקלחון 78, מק&quot;ט או שם ספק" autocomplete="off" enterkeyhint="search" aria-label="חיפוש במחירון הספקים">
+    <div class="chips" id="gChips" role="group" aria-label="סינון לפי סוג מוצר"></div>
+    <div class="chips sup" id="sChips" role="group" aria-label="סינון לפי ספק"></div>
     <div class="calc"><label for="mk">רווח %</label><input id="mk" type="number" min="0" value="40" inputmode="decimal"><span class="mute">מחיר ללקוח = עלות × (1+רווח) × 1.18 (אם המחיר לפני מע"מ)</span></div>
-    <p class="mute" id="sInfo" role="status" aria-live="polite"></p>
+    <p class="snote hidden" id="sNote" role="status"></p>
+    <div class="sbar"><p class="mute grow" id="sInfo" role="status" aria-live="polite"></p>
+      <div class="sort hidden" id="sortBox" role="group" aria-label="סדר התוצאות"><button type="button" data-sort="best" aria-pressed="true">הכי מתאים</button><button type="button" data-sort="cheap" aria-pressed="false">מהזול ליקר</button></div></div>
     <div class="tablewrap"><table id="sTable" class="hidden"><thead><tr><th class="pic"><span class="mute">תמונה</span></th><th>תיאור</th><th>מק"ט ספק</th><th>מידה</th><th>ספק</th><th>עלות</th><th>ללקוח</th><th>עודכן</th><th><span class="hidden" id="addTh">הזמנה</span></th></tr></thead><tbody></tbody></table></div>
+    <button type="button" class="btn hidden" id="sMore" style="margin-top:12px;width:100%">להציג עוד תוצאות</button>
   </section>
 
   <section id="v-pending" class="hidden">
@@ -210,7 +224,7 @@ function drawSearch() {
   tb.innerHTML = last.map(function (r) {
     var s = suppliers[r.supplier_id] || {};
     var old = (Date.now() - new Date(r.created_at)) > 180 * 864e5;
-    return '<tr><td class="pic">' + (r.image_path ? '<button type="button" class="thumb" data-p="' + esc(r.image_path) + '" data-t="' + esc(r.description) + '" aria-label="הגדלת התמונה"><img alt="" loading="lazy"></button>' : '') + '</td><td>' + esc(r.description) + (r.category ? ' <span class="mute">· ' + esc(r.category) + '</span>' : '') + '</td><td class="ltr">' + esc(r.supplier_code) + '</td><td>' + esc(r.size) + '</td><td>' + esc(s.name) + '</td>' +
+    return '<tr><td class="pic">' + (r.image_path ? '<button type="button" class="thumb" data-p="' + esc(r.image_path) + '" data-t="' + esc(r.description) + '" aria-label="הגדלת התמונה"><img alt="" loading="lazy"></button>' : '') + '</td><td>' + hl(r.description) + (r.category ? ' <span class="mute">· ' + esc(r.category) + '</span>' : '') + '</td><td class="ltr">' + hl(r.supplier_code) + '</td><td>' + hl(r.size) + '</td><td>' + esc(s.name) + '</td>' +
       '<td class="price">' + money(r.price, r.currency) + (r.unit ? ' <span class="mute">/' + esc(r.unit) + '</span>' : '') + (r.vat_included ? ' <span class="mute">כולל מע"מ</span>' : '') + (r.list_price != null ? '<br><span class="mute sub">מחירון לצרכן ' + money(r.list_price, r.currency) + '</span>' : '') + '</td>' +
       '<td class="price">' + (r.currency && r.currency !== 'ILS' ? '<span class="mute">מט"ח</span>' : money(customer(r.price, r.vat_included), 'ILS')) + (r.list_price != null && (!r.currency || r.currency === 'ILS') ? '<br><span class="mute sub">מחירון הספק ' + money(r.list_price * (r.vat_included ? 1 : 1.18), 'ILS') + '</span>' : '') + '</td>' +
       '<td class="' + (old ? 'warn' : '') + '">' + fmtDate(r.created_at) + (old ? ' ישן' : '') + '</td>' +
@@ -219,6 +233,12 @@ function drawSearch() {
   $('addTh').classList.toggle('hidden', !last.some(canOrder));
   $('sTable').classList.toggle('hidden', !last.length);
   $('sTable').classList.toggle('nopic', !last.some(function (r) { return r.image_path; }));
+  drawFilters();
+  var txt = $('q').value.trim(), asked = !!(txt || fgrp || fsup), shownN = sres ? Number(sres.shown) || last.length : last.length, note = sNote(sres);
+  $('sNote').textContent = note; $('sNote').classList.toggle('hidden', !note);
+  $('sInfo').textContent = !asked ? (last.length ? 'נבחרו לאחרונה במכשיר הזה' : '') : last.length ? shownN.toLocaleString('he-IL') + ' תוצאות' + (shownN > last.length ? ' · מוצגות ' + last.length : '') : 'לא נמצא. נסו מילה אחרת, מק"ט או שם ספק.';
+  $('sortBox').classList.toggle('hidden', !asked || last.length < 2);
+  $('sMore').classList.toggle('hidden', !(asked && shownN > last.length && lim < 300));
   loadPics();
 }
 /* product pictures from the supplier's catalog: small private files, opened with short-lived links */
@@ -237,43 +257,71 @@ document.addEventListener('click', function (e) {
   if (b && b.firstChild.src) { z.querySelector('img').src = b.firstChild.src; z.querySelector('p').textContent = b.dataset.t || ''; z.showModal(); }
   else if (z.open && (e.target === z || e.target.closest('#zoom'))) z.close();
 });
-function norm(t) { return String(t || '').toLowerCase().replace(/["'`׳״.\-]/g, ''); }
-function supIds(word) {
-  var w = norm(word), w2 = w.length > 3 && /^[והבלמש]/.test(w) ? w.slice(1) : null;
-  return Object.keys(suppliers).filter(function (id) { var n = norm(suppliers[id].name); return n.indexOf(w) > -1 || (w2 && n.indexOf(w2) > -1); });
+/* one smart search on the server (crm-ai/sp_search.sql): forgives typos, plural, a keyboard left on the other language,
+   60/120 against 120x60, a code with or without dashes. Best match first. */
+var sres = null, facets = null, sKey = '', fgrp = null, fsup = null, sortBy = 'best', lim = 80, hlre = null, RECENT = 'ziso-sku-recent';
+var GRP = { cabinets: 'ארונות', showers: 'מקלחונים', mirrors: 'מראות', sanitary: 'כלים סניטריים', faucets: 'ברזים', tiles: 'ריצוף וחיפוי', acc: 'אביזרים', other: 'אחר' };
+function recentIds() { try { return (JSON.parse(localStorage.getItem(RECENT)) || []).map(Number).filter(Boolean).slice(0, 10); } catch (e) { return []; } }
+function recentAdd(id) { try { var a = recentIds().filter(function (x) { return x !== Number(id); }); a.unshift(Number(id)); localStorage.setItem(RECENT, JSON.stringify(a.slice(0, 10))); } catch (e) { } }
+var FIN = { 'מ': '[מם]', 'נ': '[נן]', 'צ': '[צץ]', 'פ': '[פף]', 'כ': '[כך]' }, FINW = { 'מ': 'ם', 'נ': 'ן', 'צ': 'ץ', 'פ': 'ף', 'כ': 'ך' };
+function fin(t) { return String(t || '').replace(/[מנצפכ](?![א-ת])/g, function (c) { return FINW[c]; }); }
+function hlRe(terms) {   // the searched words, marked inside the results (final letters and quotes do not matter)
+  var ts = (terms || []).filter(function (t) { return t && (t.length > 1 || /^\d$/.test(t)); }).sort(function (a, b) { return b.length - a.length; }).slice(0, 14);
+  if (!ts.length) return null;
+  try {
+    return new RegExp('(' + ts.map(function (t) {
+      if (/^[\d.]+$/.test(t)) return '(?<![\\d.])' + t.replace(/\./g, '\\.') + '(?!\\d)';
+      var heb = /^[א-ת ]+$/.test(t);
+      return t.split('').map(function (ch) { return ch === 'x' && /\dx\d/.test(t) ? '\\s*[x×*/]\\s*' : ch === ' ' ? '\\s+' : FIN[ch] || ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join(heb ? '["\'׳״]?' : '[-. /]?');
+    }).join('|') + ')', 'gi');
+  } catch (e) { return null; }
 }
-function supFilter() {
-  var v = $('supF').value.trim(); $('supClr').hidden = !v;
-  return v ? supIds(v) : null;
+function hl(t) { t = String(t == null ? '' : t); if (!hlre) return esc(t); return t.split(hlre).map(function (p, i) { return i % 2 ? '<mark>' + esc(p) + '</mark>' : esc(p); }).join(''); }
+function supShort(id) { var w = String((suppliers[id] || {}).name || '').replace(/\s*בע"?מ\s*$/, '').split(/\s+/); return w[0] && w[0].length <= 3 && w[1] ? w[0] + ' ' + w[1] : w[0] || ''; }
+function sNote(d) {
+  if (!d) return '';
+  var a = [];
+  if (d.kbd) a.push('המקלדת הייתה על השפה השנייה. מוצג: "' + d.kbd + '"');
+  (d.fixes || []).forEach(function (f) { a.push('אין "' + fin(f.from) + '" במחירונים. מוצג: "' + fin(f.to) + '"'); });
+  if (d.partial) a.push('אין מוצר עם כל המילים. אלה הקרובים ביותר');
+  return a.join(' · ');
+}
+function drawFilters() {
+  var f = sres || facets || {}, gs = {}, ss = {};
+  (f.grps || []).forEach(function (x) { gs[x.g] = x.n; }); (f.sups || []).forEach(function (x) { ss[x.id] = x.n; });
+  $('gChips').innerHTML = Object.keys(GRP).filter(function (g) { return gs[g] || fgrp === g; }).map(function (g) {
+    return '<button type="button" data-g="' + g + '" aria-pressed="' + (fgrp === g) + '">' + GRP[g] + '<span class="n">' + (gs[g] || 0).toLocaleString('he-IL') + '</span></button>'; }).join('');
+  var ids = Object.keys(ss).filter(function (id) { return suppliers[id]; }); if (fsup && ids.indexOf(fsup) < 0 && suppliers[fsup]) ids.push(fsup);
+  ids.sort(function (a, b) { return (ss[b] || 0) - (ss[a] || 0); });
+  $('sChips').innerHTML = ids.map(function (id) {
+    return '<button type="button" data-sup="' + id + '" aria-pressed="' + (fsup === id) + '" title="' + esc(suppliers[id].name) + '">' + esc(supShort(id)) + '<span class="n">' + (ss[id] || 0).toLocaleString('he-IL') + '</span></button>'; }).join('');
 }
 function search() {
-  var words = $('q').value.trim().split(/\s+/).map(function (w) { return w.replace(/[,()*%\\"]/g, ''); }).filter(Boolean).slice(0, 6);
-  var only = supFilter();
-  if (!words.length && !only) { last = []; drawSearch(); $('sInfo').textContent = ''; return; }
-  if (only && !only.length) { last = []; drawSearch(); $('sInfo').textContent = 'אין ספק בשם הזה.'; return; }
-  var q = sb.from('sp_prices').select('id,supplier_id,supplier_code,description,size,unit,price,list_price,currency,vat_included,category,created_at,image_path').eq('status', 'active');
-  if (only) q = q.in('supplier_id', only);
-  words.forEach(function (w) {
-    var ids = supIds(w), f = 'description.ilike.*' + w + '*,supplier_code.ilike.*' + w + '*,size.ilike.*' + w + '*,category.ilike.*' + w + '*';
-    if (ids.length) f += ',supplier_id.in.(' + ids.join(',') + ')';
-    q = q.or(f);
-  });
-  q.order('price', { ascending: true, nullsFirst: false }).limit(300).then(function (r) {
-    if (r.error) { $('sInfo').textContent = 'שגיאה בחיפוש'; return; }
-    last = r.data || []; drawSearch();
-    $('sInfo').textContent = last.length ? last.length + (last.length === 300 ? '+' : '') + ' תוצאות, מהזול ליקר' : 'לא נמצא. נסו מילה אחרת, מק"ט או שם ספק.';
+  var txt = $('q').value.trim(), key = [txt, fgrp, fsup, sortBy, lim].join('|'), args, asked = !!(txt || fgrp || fsup);
+  if (!asked) {
+    var ids = recentIds(); sres = null; hlre = null; sKey = key;
+    if (!ids.length) { last = []; drawSearch(); return; }
+    args = { p_ids: ids };
+  } else args = { p_q: txt, p_grp: fgrp, p_sup: fsup ? [fsup] : null, p_limit: lim, p_sort: sortBy };
+  sKey = key;
+  sb.rpc('sp_search', args).then(function (r) {
+    if (sKey !== key) return;
+    if (r.error || !r.data || r.data.error) { $('sInfo').textContent = 'החיפוש לא עבד. נסו שוב'; return; }
+    sres = asked ? r.data : null; hlre = asked ? hlRe(r.data.terms) : null;
+    last = r.data.rows || []; drawSearch();
   });
 }
-function fillSupList() {
-  sb.from('sp_prices').select('supplier_id').eq('status', 'active').limit(20000).then(function (r) {
-    var n = {}; (r.data || []).forEach(function (x) { n[x.supplier_id] = (n[x.supplier_id] || 0) + 1; });
-    $('supOpts').innerHTML = Object.keys(n).filter(function (id) { return suppliers[id]; }).sort(function (a, b) { return suppliers[a].name.localeCompare(suppliers[b].name, 'he'); })
-      .map(function (id) { return '<option value="' + esc(suppliers[id].name) + '">' + n[id] + ' פריטים</option>'; }).join('');
-  });
+function loadFacets() {   // the filter buttons before anything is typed: how many items each supplier and product group has
+  return sb.rpc('sp_search', {}).then(function (r) { if (!r.error && r.data && !r.data.error) { facets = r.data; if (!sres) drawFilters(); } });
 }
-$('supF').addEventListener('input', function () { clearTimeout(sTimer); sTimer = setTimeout(search, 300); });
-$('supClr').addEventListener('click', function () { $('supF').value = ''; search(); $('supF').focus(); });
-$('q').addEventListener('input', function () { clearTimeout(sTimer); sTimer = setTimeout(search, 300); });
+$('gChips').addEventListener('click', function (e) { var b = e.target.closest('[data-g]'); if (!b) return; fgrp = fgrp === b.dataset.g ? null : b.dataset.g; lim = 80; search(); });
+$('sChips').addEventListener('click', function (e) { var b = e.target.closest('[data-sup]'); if (!b) return; fsup = fsup === b.dataset.sup ? null : b.dataset.sup; lim = 80; search(); });
+$('sortBox').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-sort]'); if (!b) return; sortBy = b.dataset.sort;
+  $('sortBox').querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); search();
+});
+$('sMore').addEventListener('click', function () { lim = 300; search(); });
+$('q').addEventListener('input', function () { clearTimeout(sTimer); lim = 80; sTimer = setTimeout(search, 220); });
 $('mk').addEventListener('input', drawSearch);
 
 /* ---------- pending ---------- */
@@ -457,7 +505,7 @@ function addToCart(id) {
   if (cart.items[r.id]) { delete cart.items[r.id]; if (!cartList().length) cart.sup = null; }
   else {
     if (cart.sup && cart.sup !== r.supplier_id && cartList().length) { $('sInfo').textContent = 'בהזמנה יש כבר פריטים של ' + supName() + '. שולחים או מנקים אותה לפני ספק אחר.'; return; }
-    cart.sup = r.supplier_id; cart.items[r.id] = { r: r, qty: 1 };
+    cart.sup = r.supplier_id; cart.items[r.id] = { r: r, qty: 1 }; recentAdd(r.id);
   }
   saveCart(); drawSearch(); drawBar();
 }
@@ -710,7 +758,7 @@ sb.auth.getSession().then(function (r) {
   session = r.data.session;
   if (!session) { $('needLogin').classList.remove('hidden'); $('v-search').classList.add('hidden'); return; }
   sb.auth.onAuthStateChange(function (_e, s) { if (s) session = s; });
-  loadSupMap().then(function () { loadPending(); fillSupList(); drawBar(); loadOrders(); checkTpl(); });
+  loadSupMap().then(function () { loadPending(); loadFacets(); search(); drawBar(); loadOrders(); checkTpl(); });
   show('search');
   sb.from('priority_suppliers').select('sup,name').eq('active', true).order('name').then(function (p) {
     $('prioSup').innerHTML = (p.data || []).map(function (x) { return '<option value="' + esc(x.name) + '" data-sup="' + esc(x.sup) + '"></option>'; }).join('');

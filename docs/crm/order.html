@@ -86,6 +86,10 @@ body.shy .cost{display:none!important}
 .chips{display:flex;gap:6px;overflow-x:auto;padding:8px 0 2px;scrollbar-width:none}
 .chips button{font:inherit;font-size:14px;color:inherit;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;white-space:nowrap}
 .chips button[aria-pressed=true]{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
+.chips button .n{font-size:12px;opacity:.75;margin-inline-start:3px}
+.chips.sup{padding-top:2px}.chips.sup button{font-size:13px;min-height:32px}
+.snote{margin:6px 0 0;padding:6px 10px;border-inline-start:3px solid var(--brass);background:var(--brass-soft);border-radius:0 8px 8px 0;font-size:14px}
+mark{background:transparent;color:var(--brass);font-weight:700}
 .res{max-height:min(52vh,460px);overflow:auto}
 .res .r{display:flex;gap:10px;align-items:center}.res .r .grow b{font-weight:600}
 .res .pr{font-weight:700;white-space:nowrap}
@@ -183,8 +187,10 @@ details.sec>.bd{padding:0 16px 16px}
         <div id="lines"></div>
         <div class="newrow">
           <label for="q" class="mute small">שורה חדשה: מחפשים מוצר, בוחרים, מקלידים כמות ו-Enter לשורה הבאה</label>
-          <input id="q" type="search" placeholder="מק&quot;ט, תיאור, מידה או ספק. למשל: ברז פרח שחור" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="results" aria-autocomplete="list">
+          <input id="q" type="search" placeholder="כותבים חופשי: ברז פרח שחור, מקלחון 78, מק&quot;ט או ספק" autocomplete="off" enterkeyhint="search" role="combobox" aria-expanded="false" aria-controls="results" aria-autocomplete="list">
           <div class="chips" id="chips" role="group" aria-label="סינון לפי קטגוריה"></div>
+          <div class="chips sup hidden" id="schips" role="group" aria-label="סינון לפי ספק"></div>
+          <p class="snote hidden" id="sNote" role="status"></p>
           <p class="mute small" id="sInfo" role="status" aria-live="polite" style="margin:4px 0 0"></p>
           <ul id="results" class="pick res hidden" role="listbox" aria-label="תוצאות"></ul>
         </div>
@@ -343,8 +349,8 @@ function classify(t) {
   return best;   // the word that comes first wins: "ברז לכיור" is a faucet, "כיור עם חור לברז" is a sink
 }
 var fcat = 'all';
-$('chips').innerHTML = '<button type="button" data-cat="all" aria-pressed="true">הכול</button>' + CATS.map(function (c) { return '<button type="button" data-cat="' + c[0] + '" aria-pressed="false">' + c[1] + '</button>'; }).join('');
-$('chips').addEventListener('click', function (e) { var b = e.target.closest('[data-cat]'); if (!b) return; fcat = b.dataset.cat; $('chips').querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); drawResults(); $('q').focus(); });
+$('chips').innerHTML = '<button type="button" data-cat="all" aria-pressed="true">הכול</button>' + CATS.map(function (c) { return '<button type="button" data-cat="' + c[0] + '" aria-pressed="false">' + c[1] + '<span class="n"></span></button>'; }).join('');
+$('chips').addEventListener('click', function (e) { var b = e.target.closest('[data-cat]'); if (!b) return; fcat = b.dataset.cat; $('chips').querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); lim = 40; if ($('q').value.trim()) search(); $('q').focus(); });
 
 /* ---------- list ---------- */
 function totals(d) {
@@ -383,7 +389,7 @@ function setDeal(d) {
   $('v-list').classList.add('hidden'); $('needDb').classList.add('hidden'); $('v-deal').classList.remove('hidden'); $('bar').classList.remove('hidden');
   history.replaceState(null, '', '?d=' + d.id);
   $('title').textContent = 'הזמנה ' + d.deal_no;
-  $('mk').value = d.markup == null ? 40 : d.markup; $('q').value = ''; last = []; drawResults();
+  $('mk').value = d.markup == null ? 40 : d.markup; $('q').value = ''; last = []; sres = null; fsup = null; sKey = ''; drawResults();
   loadCust(); drawDv(); drawNotes(); draw(); loadPicPaths(); loadPos(); drawShare(); loadNotes(); loadCases(); loadPays(); loadStock(deal.lines.map(function (l) { return l.sku; }));
 }
 
@@ -507,26 +513,50 @@ function drawDv() {
 document.querySelectorAll('input[name=dv]').forEach(function (r) { r.addEventListener('change', function () { deal.deliver_to = r.value; drawDv(); closeAsk(); touch(); }); });
 [['dvName', 'name'], ['dvPhone', 'phone'], ['dvAddr', 'address'], ['dvNote', 'note']].forEach(function (f) { $(f[0]).addEventListener('input', function () { deal.deliver[f[1]] = $(f[0]).value; closeAsk(); touch(); }); });
 
-/* ---------- search (the new row) ---------- */
-function norm(t) { return String(t || '').toLowerCase().replace(/["'`׳״.\-]/g, ''); }
-function supIds(word) { var w = norm(word); if (w.length < 2) return []; return Object.keys(suppliers).filter(function (id) { return norm(suppliers[id].name).indexOf(w) > -1; }); }
-var sT = null, hi = -1;
-$('q').addEventListener('input', function () { clearTimeout(sT); sT = setTimeout(search, 280); });
+/* ---------- search (the new row): one smart search on the server, see crm-ai/sp_search.sql ----------
+   It forgives typos, plural, a keyboard left on the other language, 60/120 against 120x60, a code with or without dashes. */
+var sT = null, hi = -1, sres = null, sKey = '', fsup = null, lim = 40, hlre = null, RECENT = 'ziso-sku-recent';
+function recentIds() { try { return (JSON.parse(localStorage.getItem(RECENT)) || []).map(Number).filter(Boolean).slice(0, 10); } catch (e) { return []; } }
+function recentAdd(id) { try { var a = recentIds().filter(function (x) { return x !== Number(id); }); a.unshift(Number(id)); localStorage.setItem(RECENT, JSON.stringify(a.slice(0, 10))); } catch (e) { } }
+var FIN = { 'מ': '[מם]', 'נ': '[נן]', 'צ': '[צץ]', 'פ': '[פף]', 'כ': '[כך]' }, FINW = { 'מ': 'ם', 'נ': 'ן', 'צ': 'ץ', 'פ': 'ף', 'כ': 'ך' };
+function fin(t) { return String(t || '').replace(/[מנצפכ](?![א-ת])/g, function (c) { return FINW[c]; }); }
+function hlRe(terms) {   // the searched words, marked inside the results (final letters and quotes do not matter)
+  var ts = (terms || []).filter(function (t) { return t && (t.length > 1 || /^\d$/.test(t)); }).sort(function (a, b) { return b.length - a.length; }).slice(0, 14);
+  if (!ts.length) return null;
+  try {
+    return new RegExp('(' + ts.map(function (t) {
+      if (/^[\d.]+$/.test(t)) return '(?<![\\d.])' + t.replace(/\./g, '\\.') + '(?!\\d)';
+      var heb = /^[א-ת ]+$/.test(t);
+      return t.split('').map(function (ch) { return ch === 'x' && /\dx\d/.test(t) ? '\\s*[x×*/]\\s*' : ch === ' ' ? '\\s+' : FIN[ch] || ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join(heb ? '["\'׳״]?' : '[-. /]?');
+    }).join('|') + ')', 'gi');
+  } catch (e) { return null; }
+}
+function hl(t) { t = String(t == null ? '' : t); if (!hlre) return esc(t); return t.split(hlre).map(function (p, i) { return i % 2 ? '<mark>' + esc(p) + '</mark>' : esc(p); }).join(''); }
+function supShort(id) { var w = String((suppliers[id] || {}).name || '').replace(/\s*בע"?מ\s*$/, '').split(/\s+/); return w[0] && w[0].length <= 3 && w[1] ? w[0] + ' ' + w[1] : w[0] || ''; }
+function sNote(d) {
+  if (!d) return '';
+  var a = [];
+  if (d.kbd) a.push('המקלדת הייתה על השפה השנייה. מוצג: "' + d.kbd + '"');
+  (d.fixes || []).forEach(function (f) { a.push('אין "' + fin(f.from) + '" במחירונים. מוצג: "' + fin(f.to) + '"'); });
+  if (d.partial) a.push('אין מוצר עם כל המילים. אלה הקרובים ביותר');
+  return a.join(' · ');
+}
+$('q').addEventListener('input', function () { clearTimeout(sT); lim = 40; fsup = null; sT = setTimeout(search, 220); });
+$('q').addEventListener('focus', function () { if (!$('q').value.trim() && !last.length) search(); });
 function search() {
-  var words = $('q').value.trim().split(/\s+/).map(function (w) { return w.replace(/[,()*%\\"]/g, ''); }).filter(Boolean).slice(0, 6);
-  if (!words.length) { last = []; drawResults(); return; }
-  var q = sb.from('sp_prices').select('id,supplier_id,supplier_code,description,size,unit,price,currency,vat_included,category,image_path').eq('status', 'active');
-  words.forEach(function (w) {
-    var ids = supIds(w), f = 'description.ilike.*' + w + '*,supplier_code.ilike.*' + w + '*,size.ilike.*' + w + '*,category.ilike.*' + w + '*';
-    if (ids.length) f += ',supplier_id.in.(' + ids.join(',') + ')';
-    q = q.or(f);
-  });
-  var asked = $('q').value;
-  q.order('price', { ascending: true, nullsFirst: false }).limit(60).then(function (r) {
-    if ($('q').value !== asked) return;
-    if (r.error) { $('sInfo').textContent = 'שגיאה בחיפוש'; return; }
-    last = (r.data || []).filter(function (x) { return x.price != null && (!x.currency || x.currency === 'ILS'); });
-    last.forEach(function (x) { if (x.image_path) picPath[x.id] = x.image_path; x._cat = classify((x.description || '') + ' ' + (x.size || '') + ' ' + (x.category || '')); });
+  var txt = $('q').value.trim(), key = [txt, fcat, fsup, lim].join('|'), args;
+  if (!txt) {
+    var ids = recentIds(); sres = null; hlre = null; sKey = key;
+    if (!ids.length) { last = []; drawResults(); return; }
+    args = { p_ids: ids, p_priced: true };
+  } else args = { p_q: txt, p_grp: fcat === 'all' ? null : fcat, p_sup: fsup ? [fsup] : null, p_limit: lim, p_priced: true };
+  sKey = key;
+  sb.rpc('sp_search', args).then(function (r) {
+    if (sKey !== key) return;
+    if (r.error || !r.data || r.data.error) { $('sInfo').textContent = 'החיפוש לא עבד. נסו שוב'; return; }
+    sres = txt ? r.data : null; hlre = txt ? hlRe(r.data.terms) : null;
+    last = r.data.rows || [];
+    last.forEach(function (x) { if (x.image_path) picPath[x.id] = x.image_path; x._cat = x.grp || classify((x.description || '') + ' ' + (x.size || '') + ' ' + (x.category || '')); });
     hi = -1; drawResults(); loadStock(last.map(function (x) { return x.supplier_code; }));
   });
 }
@@ -543,28 +573,50 @@ function loadStock(codes) {
 function stockTxt(code) { var a = stock[code]; return a == null ? '' : a > 0 ? ' · <span class="ok">במלאי: ' + a.toLocaleString('he-IL') + '</span>' : ' · <span class="mute">אין במלאי</span>'; }
 function netCost(r) { return r2(r.vat_included ? r.price / VAT : Number(r.price)); }
 function sellFor(cost) { return Math.round(cost * (1 + (Number($('mk').value) || 0) / 100) * VAT); }
-function shown() { return last.filter(function (x) { return fcat === 'all' || x._cat === fcat; }); }
+function drawFilters() {
+  var gs = {}, on = !!sres;
+  if (on) (sres.grps || []).forEach(function (x) { gs[x.g] = x.n; });
+  $('chips').querySelectorAll('button').forEach(function (b) {
+    var c = b.dataset.cat, n = b.querySelector('.n'); if (!n) return;
+    n.textContent = on && gs[c] ? gs[c].toLocaleString('he-IL') : '';
+    b.classList.toggle('hidden', on && !gs[c] && fcat !== c);   // while searching, only the groups that have results
+  });
+  var ss = on ? (sres.sups || []).filter(function (x) { return suppliers[x.id]; }) : [];
+  $('schips').classList.toggle('hidden', ss.length < 2 && !fsup);
+  $('schips').innerHTML = ss.length < 2 && !fsup ? '' : ss.map(function (x) { return '<button type="button" data-sup="' + x.id + '" aria-pressed="' + (fsup === x.id) + '">' + esc(supShort(x.id)) + '<span class="n">' + x.n.toLocaleString('he-IL') + '</span></button>'; }).join('');
+}
+$('schips').addEventListener('click', function (e) { var b = e.target.closest('[data-sup]'); if (!b) return; fsup = fsup === b.dataset.sup ? null : b.dataset.sup; lim = 40; search(); $('q').focus(); });
 function drawResults() {
-  var txt = $('q').value.trim(), list = shown();
-  if (!txt) { $('results').classList.add('hidden'); $('q').setAttribute('aria-expanded', 'false'); $('sInfo').textContent = ''; return; }
-  var counts = {}; last.forEach(function (x) { counts[x._cat] = (counts[x._cat] || 0) + 1; });
-  $('sInfo').textContent = last.length ? list.length + ' מתוך ' + last.length + (last.length >= 60 ? '+' : '') + ' תוצאות, מהזול ליקר' : 'לא נמצא במחירונים. אפשר להוסיף כשורה חופשית.';
-  $('results').innerHTML = list.slice(0, 30).map(function (r, i) {
+  var txt = $('q').value.trim(), note = sNote(sres);
+  drawFilters();
+  $('sNote').textContent = note; $('sNote').classList.toggle('hidden', !note);
+  if (!txt && !last.length) { $('results').classList.add('hidden'); $('q').setAttribute('aria-expanded', 'false'); $('sInfo').textContent = ''; return; }
+  var shownN = sres ? Number(sres.shown) || last.length : last.length;
+  $('sInfo').textContent = !txt ? 'נבחרו לאחרונה במכשיר הזה' : last.length ? shownN.toLocaleString('he-IL') + ' תוצאות, המתאימות ביותר קודם' : 'לא נמצא במחירונים. אפשר להוסיף כשורה חופשית.';
+  $('results').innerHTML = last.map(function (r) {
     var c = netCost(r);
-    return '<li><button type="button" role="option" class="r' + (i === hi ? ' on' : '') + '" data-add="' + r.id + '">' + (r.image_path ? '<span class="thumb" data-p="' + esc(r.image_path) + '"><img alt=""></span>' : '') + '<span class="grow"><b>' + esc(r.description) + (r.size ? ' ' + esc(r.size) : '') + '</b><br><span class="mute small"><span class="ltr">' + esc(r.supplier_code || '') + '</span> · ' + esc((suppliers[r.supplier_id] || {}).name || '') + ' · ' + CATN[r._cat] + stockTxt(r.supplier_code) + '<span class="cost"> · עלות ' + money(c) + '</span></span></span><span class="pr">' + money(sellFor(c)) + '</span></button></li>';
-  }).join('') + '<li><button type="button" class="r' + (hi === list.slice(0, 30).length ? ' on' : '') + '" data-free="1"><span class="grow"><b>+ שורה חופשית:</b> "' + esc(txt) + '"<br><span class="mute small">מוצר שלא במחירון. מקלידים מחיר ידנית</span></span></button></li>';
-  $('results').classList.remove('hidden'); $('q').setAttribute('aria-expanded', 'true'); loadPics($('results'));
+    return '<li><button type="button" role="option" class="r" data-add="' + r.id + '">' + (r.image_path ? '<span class="thumb" data-p="' + esc(r.image_path) + '"><img alt=""></span>' : '') + '<span class="grow"><b>' + hl(r.description) + (r.size ? ' ' + hl(r.size) : '') + '</b><br><span class="mute small"><span class="ltr">' + hl(r.supplier_code || '') + '</span> · ' + esc((suppliers[r.supplier_id] || {}).name || '') + ' · ' + CATN[r._cat] + stockTxt(r.supplier_code) + '<span class="cost"> · עלות ' + money(c) + '</span></span></span><span class="pr">' + money(sellFor(c)) + '</span></button></li>';
+  }).join('') +
+    (txt && shownN > last.length && lim < 150 ? '<li><button type="button" class="r" data-more="1"><span class="grow"><b>להציג עוד תוצאות</b><br><span class="mute small">או להוסיף מילה: צבע, מידה, ספק</span></span></button></li>' : '') +
+    (txt ? '<li><button type="button" class="r" data-free="1"><span class="grow"><b>+ שורה חופשית:</b> "' + esc(txt) + '"<br><span class="mute small">מוצר שלא במחירון. מקלידים מחיר ידנית</span></span></button></li>' : '');
+  $('results').classList.remove('hidden'); $('q').setAttribute('aria-expanded', 'true'); markHi(); loadPics($('results'));
+}
+function markHi() {
+  var bs = $('results').querySelectorAll('button');
+  bs.forEach(function (b, i) { b.classList.toggle('on', i === hi); });
+  if (bs[hi]) bs[hi].scrollIntoView({ block: 'nearest' });
 }
 $('q').addEventListener('keydown', function (e) {
-  var n = Math.min(shown().length, 30) + 1;
-  if (e.key === 'ArrowDown') { e.preventDefault(); hi = (hi + 1) % n; drawResults(); }
-  else if (e.key === 'ArrowUp') { e.preventDefault(); hi = (hi - 1 + n) % n; drawResults(); }
-  else if (e.key === 'Enter') { e.preventDefault(); var b = $('results').querySelectorAll('button')[hi < 0 ? 0 : hi]; if (b && $('q').value.trim()) b.click(); }
-  else if (e.key === 'Escape') { $('q').value = ''; last = []; drawResults(); }
+  var n = $('results').classList.contains('hidden') ? 0 : $('results').querySelectorAll('button').length;
+  if (e.key === 'ArrowDown' && n) { e.preventDefault(); hi = (hi + 1) % n; markHi(); }
+  else if (e.key === 'ArrowUp' && n) { e.preventDefault(); hi = (hi - 1 + n) % n; markHi(); }
+  else if (e.key === 'Enter') { e.preventDefault(); var b = $('results').querySelectorAll('button')[hi < 0 ? 0 : hi]; if (b && n && ($('q').value.trim() || hi >= 0)) b.click(); }
+  else if (e.key === 'Escape') { $('q').value = ''; last = []; sres = null; fsup = null; sKey = ''; hi = -1; drawResults(); }
 });
 $('results').addEventListener('click', function (e) {
   var b = e.target.closest('button'); if (!b) return;
   var l;
+  if (b.dataset.more) { lim = 150; search(); $('q').focus(); return; }
   if (b.dataset.free) {
     var t = $('q').value.trim(); if (!t) return;
     l = { desc: t, qty: 1, cost: null, sell: 0, stock: false, lid: newLid(), cat: fcat !== 'all' ? fcat : classify(t), free: true };
@@ -572,8 +624,9 @@ $('results').addEventListener('click', function (e) {
     var r = last.filter(function (x) { return String(x.id) === b.dataset.add; })[0]; if (!r) return;
     var c = netCost(r);
     l = { price_id: r.id, supplier_id: r.supplier_id, sku: r.supplier_code, desc: r.description, size: r.size, unit: r.unit, qty: 1, cost: c, sell: sellFor(c), stock: stock[r.supplier_code] >= 1, lid: newLid(), cat: r._cat };
+    recentAdd(r.id);
   }
-  deal.lines.push(l); $('q').value = ''; last = []; hi = -1; drawResults(); closeAsk(); draw(); touch();
+  deal.lines.push(l); $('q').value = ''; last = []; sres = null; fsup = null; sKey = ''; hi = -1; drawResults(); closeAsk(); draw(); touch();
   var inp = $('lines').querySelector('[data-lid="' + l.lid + '"] [data-f=' + (l.free ? 'sell' : 'qty') + ']'); if (inp) { inp.focus(); inp.select(); }
 });
 $('mk').addEventListener('input', function () { drawResults(); touch(); });
