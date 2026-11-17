@@ -131,7 +131,7 @@ body.shy .cost{display:none!important}
       <div id="shOff"><button class="btn brass" id="shMake">יצירת קישור ללקוח</button> <span class="err" id="shErr" role="status"></span></div>
       <div id="shOn" class="hidden">
         <input id="shUrl" readonly class="ltr" style="width:100%" aria-label="הקישור של הלקוח">
-        <div class="row" style="margin-top:8px"><button class="btn small" id="shCopy">העתקה</button><a class="btn small brass" id="shWa" target="_blank" rel="noopener">שליחה בוואטסאפ</a><a class="btn small" id="shOpen" target="_blank" rel="noopener">לראות כמו הלקוח</a></div>
+        <div class="row" style="margin-top:8px"><button class="btn small" id="shCopy">העתקה</button><a class="btn small brass" id="shWa" target="_blank" rel="noopener">שליחה בוואטסאפ</a><a class="btn small" id="shOpen" target="_blank" rel="noopener">לראות כמו הלקוח</a><button class="btn small red" id="shOff2" type="button">ביטול הקישור</button></div>
         <p class="mute" id="shSeen" style="margin:8px 0 0"></p>
         <label class="fld">עדכון מהצוות שמופיע בראש הדף (לא חובה)<textarea id="pubNote" rows="2" maxlength="400" style="display:block;width:100%;margin-top:2px;color:var(--ink)" placeholder="למשל: הארון הגיע מוקדם, נתאם אספקה אחת לכל המוצרים"></textarea></label>
         <h3 style="font:600 17px var(--body);margin:16px 0 6px">מה הלקוח כתב</h3>
@@ -502,6 +502,17 @@ $('shMake').addEventListener('click', function () {
   flush().then(function () { return sb.from('crm_deals').update({ share_token: tok, shared_at: new Date().toISOString(), shared_by: me.email }).eq('id', deal.id).is('share_token', null).select('share_token').maybeSingle(); }).then(function (r) {
     if (r.error || !r.data) { $('shErr').textContent = 'לא הצליח ליצור קישור. נסו שוב.'; return; }
     deal.share_token = r.data.share_token; drawShare();
+  });
+});
+var shArm = 0;
+$('shOff2').addEventListener('click', function () {
+  var b = $('shOff2');
+  if (Date.now() - shArm > 5000) { shArm = Date.now(); b.textContent = 'לחיצה נוספת מבטלת את הקישור'; setTimeout(function () { b.textContent = 'ביטול הקישור'; }, 5000); return; }
+  shArm = 0; b.disabled = true;
+  sb.from('crm_deals').update({ share_token: null }).eq('id', deal.id).select('id').maybeSingle().then(function (r) {
+    b.disabled = false; b.textContent = 'ביטול הקישור';
+    if (r.error || !r.data) { $('shErr').textContent = 'הביטול לא הצליח. נסו שוב.'; return; }
+    deal.share_token = null; drawShare(); $('shErr').textContent = 'הקישור בוטל. הלקוח כבר לא יכול להיכנס. אפשר ליצור קישור חדש.';
   });
 });
 $('shCopy').addEventListener('click', function () { var b = $('shCopy'); (navigator.clipboard ? navigator.clipboard.writeText($('shUrl').value) : Promise.reject()).then(function () { b.textContent = 'הועתק ✓'; }, function () { $('shUrl').select(); b.textContent = 'סמנו והעתיקו'; }); setTimeout(function () { b.textContent = 'העתקה'; }, 2500); });
