@@ -504,6 +504,37 @@ async function transferProofs(a: any) {
   return [`אישורי העברה בנקאית שלקוחות שלחו בוואטסאפ, ${days} הימים האחרונים`, ...(data || []).map((p: any) => `- ${fmt(p.created_at)} · ${nis(p.amount)}${p.pay_date ? " בתאריך " + day(p.pay_date) : ""} · משלם: ${cut(scrub(p.payer || ""), 40) || "לא ידוע"}${p.method ? " · " + cut(p.method, 20) : ""} · ${p.bank_match ? "נמצא בדף הבנק" : "עוד לא נמצא בדף הבנק"}${p.receipt_doc ? " · קבלה " + p.receipt_doc : " · בלי קבלה"}${p.note ? " · " + cut(scrub(p.note), 100) : ""}`)].join("\n");
 }
 
+// Print a Priority receipt or invoice on the main office printer (Aviv 17.11.2026). Only on an explicit staff request; the document
+// must exist in Priority. The office robot makes the PDF and prints it on the Canon; status comes back in crm_print_requests.
+const PST: Record<string, string> = { queued: "בתור, מחכה לרובוט במשרד", printing: "מדפיס עכשיו", printed: "הודפס", failed: "נכשל", cancelled: "בוטל" };
+async function printDocument(a: any, who: string) {
+  const doc = String(a.doc || "").trim().toUpperCase().replace(/\s+/g, "");
+  if (!/^[A-Z]{2}\d{6,12}$/.test(doc)) return "חסר מספר מסמך תקין (למשל RC269001075 או IN264001274). קודם למצוא אותו בתיק הלקוח.";
+  if (!who || who.startsWith("agent:")) return "הדפסה רק לבקשה של איש צוות מחובר.";
+  const { data: set } = await admin.from("crm_settings").select("print_on").eq("id", 1).maybeSingle();
+  if (!set?.print_on) return "ההדפסה מהמערכת עוד לא הופעלה (מחכים שהרובוט במשרד יתחבר למדפסת). בינתיים להדפיס מפריוריטי.";
+  const copies = Math.min(Math.max(Math.round(Number(a.copies) || 1), 1), 3);
+  const [rc, inv] = await Promise.all([
+    admin.from("priority_receipts").select("doc,date,amount,cust_name").eq("doc", doc).maybeSingle(),
+    admin.from("priority_invoices").select("doc,date,amount,cust_name").eq("doc", doc).maybeSingle(),
+  ]);
+  const d: any = rc.data || inv.data;
+  if (!d) return `המסמך ${doc} לא נמצא בקבלות או בחשבוניות שבמערכת (מתעדכנות פעם ביום). אם הוא חדש מהיום, אפשר להדפיס מפריוריטי.`;
+  const kind = rc.data ? "receipt" : "invoice";
+  const { data: dup } = await admin.from("crm_print_requests").select("id,status,requested_at").eq("doc", doc).in("status", ["queued", "printing"]).limit(1);
+  if ((dup || []).length) return `${doc} כבר בתור להדפסה (${PST[dup![0].status]}), לא שלחתי שוב.`;
+  const { data: row, error } = await admin.from("crm_print_requests").insert({ doc, kind, cust_name: d.cust_name, amount: d.amount, doc_date: d.date, copies, requested_by: who }).select("id").single();
+  if (error) throw error;
+  await admin.from("crm_audit").insert({ who, action: "print_request", detail: { id: row.id, doc, kind, copies } });
+  return `נשלח להדפסה במדפסת המשרד: ${kind === "receipt" ? "קבלה" : "חשבונית"} ${doc} · ${cut(d.cust_name || "", 40)} · ${nis(d.amount)} · ${day(d.date)}${copies > 1 ? " · " + copies + " עותקים" : ""}. הרובוט במשרד מדפיס בדרך כלל תוך כמה דקות.`;
+}
+async function printStatus() {
+  const { data, error } = await admin.from("crm_print_requests").select("doc,kind,cust_name,amount,status,note,requested_at,printed_at").order("requested_at", { ascending: false }).limit(10);
+  if (error) throw error;
+  if (!(data || []).length) return "עוד לא נשלחו מסמכים להדפסה.";
+  return ["בקשות הדפסה אחרונות:", ...(data || []).map((p: any) => `- ${fmt(p.requested_at)} · ${p.kind === "receipt" ? "קבלה" : "חשבונית"} ${p.doc} · ${cut(p.cust_name || "", 30)} · ${PST[p.status] || p.status}${p.printed_at ? " " + fmt(p.printed_at) : ""}${p.note ? " · " + cut(p.note, 100) : ""}`)].join("\n");
+}
+
 // How fresh each data set is, so answers can say "נכון ל...".
 async function dataFreshness() {
   const [{ data }, snap, bank] = await Promise.all([
@@ -581,10 +612,12 @@ const TOOLS = [
   { name: "supplier_prices", description: "מחירון ספקים: מחירי הקנייה שספקים העלו ואושרו. לשאלות כמו 'כמה עולה לנו מקלחון אצל ספק X', 'מי הספק הכי זול ל...', 'מה יש במחירון של ספק'. בלי פרמטרים מחזיר אילו ספקים יש במחירון.", input_schema: { type: "object", properties: { q: { type: "string", description: "מילות חיפוש בפריט: תיאור, מק\"ט ספק, מידה או קטגוריה" }, supplier: { type: "string", description: "שם ספק או חלק ממנו" } } } },
   { name: "data_freshness", description: "מתי עודכן כל סוג מידע במערכת (בנק, קבלות, שיקים, חובות, תמונת התזרים). לשאלות כמו 'עד מתי הנתונים מעודכנים'.", input_schema: { type: "object", properties: {} } },
   { name: "visitors", description: "כמה אנשים נכנסו לאולם התצוגה לפי יום ושעה (מונה חדש בכניסה). ברירת מחדל: 7 הימים האחרונים.", input_schema: { type: "object", properties: { from: str("YYYY-MM-DD"), to: str("YYYY-MM-DD") } } },
+  { name: "print_document", description: "הדפסה של קבלה או חשבונית מפריוריטי במדפסת המשרד. רק כשאיש הצוות ביקש במפורש להדפיס. קודם למצוא את מספר המסמך בתיק הלקוח (customer_file). אם יש כמה מסמכים שמתאימים ולא ברור איזה, לשאול איזה להדפיס ולא לנחש.", input_schema: { type: "object", properties: { doc: str("מספר המסמך בפריוריטי, למשל RC269001075"), copies: { type: "integer", description: "כמה עותקים, 1 עד 3 (ברירת מחדל 1)" } }, required: ["doc"] } },
+  { name: "print_status", description: "מה מצב בקשות ההדפסה האחרונות (בתור, הודפס, נכשל).", input_schema: { type: "object", properties: {} } },
   { name: "weekly_brief", description: "הסיכום השבועי האחרון של העסק (מכירות, לידים, מה דורש טיפול).", input_schema: { type: "object", properties: {} } },
 ];
 
-async function runTool(R: Refs, name: string, a: any): Promise<string> {
+async function runTool(R: Refs, name: string, a: any, who = ""): Promise<string> {
   try {
     let out = "";
     if (name === "find_customer") out = await findCustomer(R, String(a.query || ""));
@@ -612,6 +645,8 @@ async function runTool(R: Refs, name: string, a: any): Promise<string> {
     else if (name === "data_freshness") out = await dataFreshness();
     else if (name === "visitors") out = await visitors(a || {});
     else if (name === "weekly_brief") out = await weeklyBrief();
+    else if (name === "print_document") out = await printDocument(a || {}, who);
+    else if (name === "print_status") out = await printStatus();
     else out = "כלי לא מוכר.";
     return out.length > TOOL_CHARS ? out.slice(0, TOOL_CHARS) + "\n…(נחתך, אפשר לצמצם את הבקשה)" : out;
   } catch (e) { return "שגיאה בקריאת הנתונים: " + String((e as any)?.message || e).slice(0, 160); }
@@ -639,6 +674,7 @@ const SYSTEM = () => `את/ה "קלוד", העוזר הפנימי של צוות 
 - מחירון ספקים (כמה עולה לנו פריט אצל ספק, מי הספק הזול, מה יש במחירון של ספק) = supplier_prices. אלה מחירי קנייה שלנו ולא מחיר ללקוח: לציין זאת בתשובה, ולא לחשב מחיר מכירה אם לא ביקשו.
 - המסך נמצא באולם התצוגה: בשאלות על כסף לענות בעד שלוש שורות, במספרים שנשאלו בלבד. אם יש התראה דחופה שנוגעת ישירות לשאלה, להוסיף עליה שורה אחת. פירוט נוסף רק אם מבקשים.
 - כל אנשי הצוות הם הנהלה ורואים הכל, כולל בנק, הלוואות ומשכורות. משכורות מופיעות כתנועות בבנק מסוג משכורות (money_summary או bank_movements); אם אין שם פירוט לפי עובד, לומר זאת.
+- הדפסה: כשאיש צוות מבקש להדפיס קבלה או חשבונית, למצוא את הלקוח, לפתוח את התיק, לבחור את המסמך המתאים ולהשתמש ב-print_document. אם יש יותר ממסמך אחד שמתאים, לשאול איזה. להדפיס רק כשביקשו במפורש. כרגע אפשר להדפיס רק קבלות וחשבוניות.
 - אם שואלים משהו שלא קשור לעסק, לענות בקצרה ולהחזיר לעניין.`;
 
 // Repeated next to every question and every batch of data: a rule only in the system prompt was not enough.
@@ -706,7 +742,7 @@ Deno.serve(async (req: Request) => {
       if (res.stop_reason === "tool_use") {
         messages.push({ role: "assistant", content: res.content });
         const calls = res.content.filter((b: any) => b.type === "tool_use");
-        const results = await Promise.all(calls.map(async (c: any) => { used.push(c.name); const content = await runTool(R, c.name, c.input || {}); for (const w of content.match(LATIN) || []) known.add(w.toLowerCase()); return { type: "tool_result", tool_use_id: c.id, content }; }));
+        const results = await Promise.all(calls.map(async (c: any) => { used.push(c.name); const content = await runTool(R, c.name, c.input || {}, who); for (const w of content.match(LATIN) || []) known.add(w.toLowerCase()); return { type: "tool_result", tool_use_id: c.id, content }; }));
         messages.push({ role: "user", content: [...results, { type: "text", text: HE }] });
         continue;
       }
