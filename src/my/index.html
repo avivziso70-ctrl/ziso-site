@@ -80,7 +80,10 @@ details summary{cursor:pointer;padding:14px 2px;font-weight:600;min-height:48px;
 details summary::-webkit-details-marker{display:none}
 details summary::after{content:"+";color:var(--stone);font-size:1.2rem}details[open] summary::after{content:"–"}
 .docs{margin:0 0 10px;padding:0;list-style:none;font-size:.95rem}
-.docs li{display:flex;justify-content:space-between;gap:10px;padding:8px 2px;border-top:1px dashed var(--grout)}
+.docs li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 2px;border-top:1px dashed var(--grout)}
+.docs .dr{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.docs .pdf{min-height:40px;padding:0 12px;border:1px solid var(--grout);border-radius:999px;background:transparent;color:inherit;font:inherit;font-size:.85rem;cursor:pointer}
+.docs .pdf:disabled{opacity:.7;cursor:default}
 .docs .d{color:var(--stone)}
 .thread{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:8px}
 .thread li{max-width:88%;padding:10px 14px;border-radius:4px;background:var(--surface);border:1px solid var(--grout);white-space:pre-wrap;overflow-wrap:anywhere}
@@ -284,12 +287,13 @@ function draw(j) {
     $('balAs').textContent = 'לפי חשבוניות וקבלות שהופקו' + (m.as_of ? ', נכון ל-' + new Date(m.as_of).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : '') + '. תשלום שנעשה עכשיו יופיע אחרי העדכון הבא.';
   }
   $('paidBox').innerHTML = paid.length ? '<div class="tile">' + paid.map(function (p) { return '<div class="kv"><span>✓ שולם · ' + esc(p.what || '') + ' <span class="d">' + dayS(p.at) + '</span></span><b class="num">' + nis(p.amount) + '</b></div>'; }).join('') + '</div>' : '';
-  var docs = function (t, a) { return a && a.length ? '<details><summary>' + t + ' (' + a.length + ')</summary><ul class="docs">' + a.map(function (x) { return '<li><span><span class="ltr">' + esc(x.doc) + '</span> <span class="d">· ' + dayS(x.date) + (x.method ? ' · ' + esc(x.method) : '') + '</span></span><b class="num">' + nis(x.amount) + '</b></li>'; }).join('') + '</ul></details>' : ''; };
+  var docs = function (t, a) { return a && a.length ? '<details><summary>' + t + ' (' + a.length + ')</summary><ul class="docs">' + a.map(function (x) { return '<li><span><span class="ltr">' + esc(x.doc) + '</span> <span class="d">· ' + dayS(x.date) + (x.method ? ' · ' + esc(x.method) : '') + '</span></span><span class="dr"><b class="num">' + nis(x.amount) + '</b>' + (/^ON/.test(x.doc) ? '' : '<button type="button" class="pdf" data-doc="' + esc(x.doc) + '"' + (pdfSt[x.doc] ? ' disabled' : '') + '>' + (pdfSt[x.doc] || 'PDF ↓') + '</button>') + '</span></li>'; }).join('') + '</ul></details>' : ''; };
   var OST = { 'שולמה': 'שולמה', 'ממתין לתשלום': 'ממתינה לתשלום', 'בוצעה': 'סופקה', 'טיוטא': 'בהכנה', 'פתוחה': 'פתוחה', 'מאושרת לבצוע': 'אושרה' };
   var O = j.orders || [];
   var oh = O.length ? '<details' + (O.length > 1 ? ' open' : '') + '><summary>ההזמנות שלכם (' + O.length + ')</summary><ul class="docs">' + O.map(function (o) { return '<li><span><span class="ltr">' + esc(o.so) + '</span> <span class="d">· ' + dayS(o.date) + ' · ' + esc(OST[o.status] || o.status || '') + '</span></span><b class="num">' + nis(o.amount) + '</b></li>'; }).join('') + '</ul></details>' : '';
   var dh = oh + docs('קבלות', m.receipts) + docs('חשבוניות', m.invoices);
-  $('docBox').innerHTML = dh ? dh + '<p class="fine-print">צריכים העתק של מסמך? כתבו לנו למטה ונשלח.</p>' : (!pay.length && !paid.length && !m.known ? '<p class="lead">תשלומים ומסמכים יופיעו כאן.</p>' : '');
+  var dbh = dh ? dh + '<p class="fine-print">כל קבלה וחשבונית אפשר להוריד כ-PDF. מסמך שעוד לא הוכן לוקח כמה דקות.</p>' : (!pay.length && !paid.length && !m.known ? '<p class="lead">תשלומים ומסמכים יופיעו כאן.</p>' : '');
+  if (dbh !== docHtml) { var op = {}; $('docBox').querySelectorAll('details').forEach(function (e, i) { if (e.open) op[i] = 1; }); docHtml = dbh; $('docBox').innerHTML = dbh; $('docBox').querySelectorAll('details').forEach(function (e, i) { if (op[i]) e.open = true; }); }
   $('thread').innerHTML = (j.notes || []).map(function (x) { return '<li class="' + (x.side === 'team' ? 'team' : 'me') + '">' + esc(x.text) + '<small>' + (x.side === 'team' ? esc(x.by || 'הצוות') : 'אתם') + ' · ' + new Date(x.at).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</small></li>'; }).join('');
   $('reviewSec').classList.toggle('hidden', !(n && del === n));
   show('page');
@@ -324,6 +328,19 @@ $('noteForm').addEventListener('submit', function (e) {
     else { m.className = 'msg err'; m.textContent = j.error === 'too_many' ? 'קיבלנו כבר כמה הודעות היום. דחוף? עדיף בוואטסאפ או בטלפון.' : 'ההודעה לא נשלחה. נסו שוב, או כתבו לנו בוואטסאפ.'; }
   });
 });
+/* ---------- PDF of a receipt / invoice ---------- */
+var DOC_FN = 'https://ppnjosyraosrdephsksu.supabase.co/functions/v1/crm-my-doc', pdfSt = {}, docHtml = '';
+function pdfLabel(doc, t) { pdfSt[doc] = t; document.querySelectorAll('button.pdf[data-doc="' + doc + '"]').forEach(function (b) { b.textContent = t || 'PDF ↓'; b.disabled = !!t; }); }
+function getPdf(doc, tries) {
+  fetch(DOC_FN, { method: 'POST', headers: { 'content-type': 'application/json', apikey: KEY }, body: JSON.stringify({ token: token, pin: pin, doc: doc }) })
+    .then(function (r) { return r.json(); }).then(function (j) {
+      if (j.ok && j.state === 'ready' && j.url) { pdfLabel(doc, ''); location.href = j.url; return; }
+      if (j.ok && j.state === 'pending' && tries < 40) { pdfLabel(doc, 'מכין את המסמך...'); setTimeout(function () { getPdf(doc, tries + 1); }, 6000); return; }
+      pdfLabel(doc, j.ok && j.state === 'pending' ? 'עדיין בהכנה, נסו שוב בעוד כמה דקות' : 'לא זמין כרגע, כתבו לנו ונשלח');
+      setTimeout(function () { pdfLabel(doc, ''); }, 8000);
+    }, function () { pdfLabel(doc, 'אין חיבור, נסו שוב'); setTimeout(function () { pdfLabel(doc, ''); }, 5000); });
+}
+document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('button.pdf'); if (!b || b.disabled || !pin) return; getPdf(b.dataset.doc, 0); });
 function poll() { clearInterval(timer); if (!demo) timer = setInterval(function () { if (!document.hidden && pin) load(); }, 45000); }
 document.addEventListener('visibilitychange', function () { if (!document.hidden && pin && !demo) load(); });
 window.addEventListener('hashchange', function () { location.reload(); });
