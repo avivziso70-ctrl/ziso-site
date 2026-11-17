@@ -34,6 +34,7 @@ th{color:var(--mute);font-weight:600}
 .calc{display:flex;gap:8px;align-items:center;margin-top:8px}.calc input{width:90px}
 .supf{display:flex;gap:8px;align-items:center;margin-top:8px}.supf input{flex:1;font-size:16px}
 .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--brass-soft);font-size:13px}
+.sc dl{margin:6px 0 0}.sc dt{font-weight:600;margin-top:10px}.sc dd{margin:2px 0 0;white-space:pre-line}.sc ul{list-style:none;padding:0;margin:4px 0 0}.sc li{padding:6px 0;border-bottom:1px solid var(--line,#e5e0d6)}.sc li.off{opacity:.55;text-decoration:line-through}.sc a[href^="tel"]{font-weight:600;direction:ltr;unicode-bidi:isolate}
 .hidden{display:none!important}
 @media (pointer:coarse),(max-width:700px){.btn.small{min-height:44px;padding:0 16px}nav.seg button{min-height:48px}details>summary{padding-block:10px;cursor:pointer}}
 a.btn{display:inline-flex;align-items:center;text-decoration:none}
@@ -163,7 +164,9 @@ table.nopic .pic{display:none}
       <datalist id="prioSup"></datalist>
       <p class="mute">שומרים רק שם עסק וטלפון של איש קשר עסקי. שליחת קישור לספק: רק אחרי אישור של אביב.</p>
     </div>
+    <input id="supQ" type="search" placeholder="חיפוש ספק, מוצר או איש קשר" aria-label="חיפוש ספק" style="width:100%;margin:0 0 10px">
     <div id="supList"></div>
+    <div id="svcList"></div>
   </section>
 </main>
 <div id="cartBar" class="hidden" role="region" aria-label="הזמנה לספק"><span class="grow" id="barTxt"></span><button class="btn brass small" id="barGo">להזמנה</button></div>
@@ -366,19 +369,44 @@ $('pendList').addEventListener('click', function (e) {
 });
 
 /* ---------- suppliers ---------- */
-function loadSuppliers() {
-  loadSupMap().then(function () {
-    var list = Object.keys(suppliers).map(function (k) { return suppliers[k]; }).filter(function (s) { return s.kind !== 'wa_inbox'; });
-    if (!list.length) { $('supList').innerHTML = '<p class="mute">עוד אין ספקים בפורטל.</p>'; return; }
-    $('supList').innerHTML = list.map(function (s) {
-      return '<div class="card" data-sid="' + s.id + '"><div class="row"><strong class="grow">' + esc(s.name) + '</strong>' + (s.active ? '' : '<span class="badge">מושבת</span>') + '</div>' +
-        '<p class="mute">' + (s.contact_phone ? esc(s.contact_phone) + ' · ' : '') + (s.last_upload_at ? 'העלאה אחרונה ' + fmtDate(s.last_upload_at) : 'עוד לא העלה') + '</p>' +
-        '<div class="row"><button class="btn small" data-a="copy">העתקת קישור</button>' +
-        '<label class="btn small">העלאה בשם הספק<input type="file" data-a="up" class="hidden" accept=".xlsx,.xlsm,.xls,.csv,.pdf,.jpg,.jpeg,.png,.webp"></label>' +
-        '<button class="btn small" data-a="new">קישור חדש</button><button class="btn small red" data-a="toggle">' + (s.active ? 'השבתה' : 'הפעלה') + '</button></div></div>';
-    }).join('');
-  });
+var contacts = [];
+function scHtml(s, cs) {
+  var li = cs.map(function (c) {
+    return '<li' + (c.active ? '' : ' class="off"') + '><b>' + esc(c.name || '') + '</b>' + (c.role ? ' · ' + esc(c.role) : '') +
+      (c.phone && c.active ? ' · <a href="tel:' + esc(c.phone.replace(/\D/g, '')) + '">' + esc(c.phone) + '</a>' : c.phone ? ' · ' + esc(c.phone) : '') +
+      (c.how_to_order ? '<br><span class="mute">' + esc(c.how_to_order) + '</span>' : '') + '</li>';
+  }).join('');
+  var f = function (t, v, x) { return v ? '<dt>' + t + (x ? ' <span class="badge">' + x + '</span>' : '') + '</dt><dd>' + esc(v) + '</dd>' : ''; };
+  var body = (li ? '<dt>אנשי קשר</dt><dd><ul>' + li + '</ul></dd>' : '') + f('מה קונים מהם', s.products) + f('אספקה', s.delivery_note) +
+    f('הנחות ותנאים', s.terms_note, 'לא מאומת, לא נכנס לחישובי עלות') + f('איך עובדים איתם', s.work_note) + f('מחירים שנאמרו', s.prices_note, 'לא מאומת');
+  return body ? '<details class="sc"><summary>כרטיס ספק' + (cs.length ? ' · ' + cs.filter(function (c) { return c.active; }).length + ' אנשי קשר' : '') + '</summary><dl>' + body + '</dl>' +
+    (s.info_source ? '<p class="mute" style="font-size:13px">מקור: ' + esc(s.info_source) + '</p>' : '') + '</details>' : '';
 }
+function hasInfo(s) { return !!(s.products || s.delivery_note || s.terms_note || s.work_note || s.prices_note) || contacts.some(function (c) { return c.supplier_id === s.id && c.kind !== 'service'; }); }
+function drawSuppliers() {
+  var q = ($('supQ').value || '').trim().toLowerCase();
+  var hit = function (t) { return !q || String(t || '').toLowerCase().indexOf(q) >= 0; };
+  var list = Object.keys(suppliers).map(function (k) { return suppliers[k]; }).filter(function (s) { return s.kind !== 'wa_inbox'; });
+  list.sort(function (a, b) { return (hasInfo(b) - hasInfo(a)) || String(a.name).localeCompare(String(b.name), 'he'); });
+  list = list.filter(function (s) { var cs = contacts.filter(function (c) { return c.supplier_id === s.id && c.kind !== 'service'; }); return hit(s.name) || hit(s.products) || cs.some(function (c) { return hit(c.name) || hit(c.phone); }); });
+  $('supList').innerHTML = list.length ? list.map(function (s) {
+    var cs = contacts.filter(function (c) { return c.supplier_id === s.id && c.kind !== 'service'; });
+    return '<div class="card" data-sid="' + s.id + '"><div class="row"><strong class="grow">' + esc(s.name) + '</strong>' + (s.active ? '' : '<span class="badge">מושבת</span>') + '</div>' +
+      '<p class="mute">' + (s.contact_phone ? esc(s.contact_phone) + ' · ' : '') + (s.last_upload_at ? 'העלאה אחרונה ' + fmtDate(s.last_upload_at) : 'עוד לא העלה') + '</p>' + scHtml(s, cs) +
+      '<div class="row"><button class="btn small" data-a="copy">העתקת קישור</button>' +
+      '<label class="btn small">העלאה בשם הספק<input type="file" data-a="up" class="hidden" accept=".xlsx,.xlsm,.xls,.csv,.pdf,.jpg,.jpeg,.png,.webp"></label>' +
+      '<button class="btn small" data-a="new">קישור חדש</button><button class="btn small red" data-a="toggle">' + (s.active ? 'השבתה' : 'הפעלה') + '</button></div></div>';
+  }).join('') : (q ? '' : '<p class="mute">עוד אין ספקים בפורטל.</p>');
+  var free = contacts.filter(function (c) { return c.kind === 'service' || !c.supplier_id || !suppliers[c.supplier_id]; })
+    .filter(function (c) { return hit(c.name) || hit(c.label) || hit(c.role) || hit(c.phone); });
+  $('svcList').innerHTML = free.length ? '<div class="card sc"><h2 style="margin-top:0">מתקינים, מובילים ושירותים</h2><ul>' + free.map(function (c) {
+    return '<li><b>' + esc(c.label || '') + '</b> · ' + esc(c.name || '') + (c.role && c.role !== c.label ? ' · ' + esc(c.role) : '') + (c.phone ? ' · <a href="tel:' + esc(c.phone.replace(/\D/g, '')) + '">' + esc(c.phone) + '</a>' : '') + (c.how_to_order ? '<br><span class="mute">' + esc(c.how_to_order) + '</span>' : '') + '</li>';
+  }).join('') + '</ul></div>' : '';
+}
+function loadSuppliers() {
+  Promise.all([loadSupMap(), sb.from('sp_contacts').select('*').order('id').then(function (r) { contacts = r.data || []; })]).then(drawSuppliers);
+}
+$('supQ').addEventListener('input', drawSuppliers);
 $('supList').addEventListener('click', function (e) {
   var b = e.target.closest('button[data-a]'); if (!b) return;
   var s = suppliers[b.closest('[data-sid]').dataset.sid];
