@@ -518,6 +518,7 @@ async function printDocument(a: any, who: string) {
     let q = admin.from(table).select("doc,date,amount,cust_name").not("doc", "like", "ON%");
     if (doc) q = q.eq("doc", doc);
     else if (cust) q = q.ilike("cust_name", "%" + cust + "%");
+    if (!doc) q = q.gt("amount", 0); // "the latest receipt" means a real one, not a refund / cancellation
     const { data } = await q.order("date", { ascending: false }).order("doc", { ascending: false }).limit(1);
     if (data?.[0] && (!d || String(data[0].date) > String(d.date))) { d = data[0]; kind = k; }
   };
