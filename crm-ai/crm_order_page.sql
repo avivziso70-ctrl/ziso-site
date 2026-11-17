@@ -7,3 +7,4 @@ alter table public.crm_customers add column if not exists email text;
 alter table public.crm_customers add column if not exists address text;
 alter table public.crm_customers add column if not exists vat_id text;
 alter table public.crm_customers add column if not exists contact_name text;
+alter table public.crm_deals add column if not exists internal_note text;   -- free-text staff note on the order page, never returned by crm_my

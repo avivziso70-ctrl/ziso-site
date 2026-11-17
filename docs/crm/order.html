@@ -51,7 +51,8 @@ body.shy .cost{display:none!important}
 .cu-card .k{font-size:13px;color:var(--mute);display:block}.cu-card .v{font-weight:600;overflow-wrap:anywhere}
 .cu-name{font-size:20px;font-weight:700}
 .form{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px 14px}
-.form label{font-size:14px;color:var(--mute);display:block}.form label input{margin-top:3px;color:var(--ink)}
+.form label{font-size:14px;color:var(--mute);display:block}.form label input,.form label textarea{margin-top:3px;color:var(--ink)}
+.lnote{display:block;font-size:14px;color:var(--amber);margin-top:2px}
 .form .wide{grid-column:1/-1}
 .pick{list-style:none;margin:6px 0 0;padding:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
 .pick button{display:block;width:100%;text-align:right;font:inherit;color:inherit;background:transparent;border:0;border-bottom:1px solid var(--line2);padding:11px 12px;min-height:48px;cursor:pointer}
@@ -180,6 +181,14 @@ details.sec>.bd{padding:0 16px 16px}
       </div>
     </section>
 
+    <section class="panel" aria-labelledby="hNotes">
+      <div class="hd"><h2 id="hNotes">הערות</h2></div>
+      <div class="bd form">
+        <label class="wide">הערה פנימית לצוות <span class="small">(הלקוח לא רואה)</span><textarea id="inNote" rows="3" maxlength="2000" placeholder="מה חשוב לזכור בהזמנה: העדפות, תיאומים, מה סוכם בטלפון"></textarea></label>
+        <label class="wide">הערה שהלקוח רואה בראש הדף שלו <span class="small">(לא חובה)</span><textarea id="pubNote" rows="2" maxlength="400" placeholder="למשל: הארון הגיע מוקדם, נתאם אספקה אחת לכל המוצרים"></textarea></label>
+      </div>
+    </section>
+
     <details class="sec" id="secDv"><summary>אספקה <span class="mute small" id="dvSum"></span></summary><div class="bd">
       <label class="chk"><input type="radio" name="dv" value="business" checked> לבית העסק (טירת כרמל)</label>
       <label class="chk"><input type="radio" name="dv" value="customer"> ישירות לבית הלקוח</label>
@@ -214,7 +223,6 @@ details.sec>.bd{padding:0 16px 16px}
         <input id="shUrl" readonly class="ltr" aria-label="הקישור של הלקוח">
         <div class="row" style="margin-top:8px"><button class="btn small" id="shCopy" type="button">העתקה</button><a class="btn small brass" id="shWa" target="_blank" rel="noopener">שליחה בוואטסאפ</a><a class="btn small" id="shOpen" target="_blank" rel="noopener">לראות כמו הלקוח</a><button class="btn small red" id="shOff2" type="button">ביטול הקישור</button></div>
         <p class="mute" id="shSeen" style="margin:8px 0 0"></p>
-        <label class="mute small" style="display:block;margin-top:10px">עדכון מהצוות שמופיע בראש הדף (לא חובה)<textarea id="pubNote" rows="2" maxlength="400" style="margin-top:3px" placeholder="למשל: הארון הגיע מוקדם, נתאם אספקה אחת לכל המוצרים"></textarea></label>
         <h3 style="font:600 17px var(--body);margin:16px 0 6px">מה הלקוח כתב</h3>
         <div id="cnotes"><p class="mute">הלקוח עוד לא כתב.</p></div>
         <div class="row" style="margin-top:8px;flex-wrap:nowrap"><input id="ansT" maxlength="1000" placeholder="תשובה ללקוח, תופיע אצלו בדף" aria-label="תשובה ללקוח"><button class="btn small brass" id="ansGo" type="button">שליחה</button></div>
@@ -365,7 +373,7 @@ function setDeal(d) {
   history.replaceState(null, '', '?d=' + d.id);
   $('title').textContent = 'הזמנה ' + d.deal_no;
   $('mk').value = d.markup == null ? 40 : d.markup; $('q').value = ''; last = []; drawResults();
-  loadCust(); drawDv(); draw(); loadPos(); drawShare(); loadNotes(); loadCases(); loadPays(); loadStock(deal.lines.map(function (l) { return l.sku; }));
+  loadCust(); drawDv(); drawNotes(); draw(); loadPos(); drawShare(); loadNotes(); loadCases(); loadPays(); loadStock(deal.lines.map(function (l) { return l.sku; }));
 }
 
 /* ---------- save (debounced) ---------- */
@@ -375,7 +383,7 @@ function flush() {
   clearTimeout(saveT);
   if (!deal || !dirty) return Promise.resolve();
   dirty = false; var t = totals(deal);
-  return sb.from('crm_deals').update({ customer_name: deal.customer_name || null, customer_tail9: deal.customer_tail9 || null, customer_phone: deal.customer_phone || null, cust_no: deal.cust_no || null, public_note: (deal.public_note || '').trim() || null,
+  return sb.from('crm_deals').update({ customer_name: deal.customer_name || null, customer_tail9: deal.customer_tail9 || null, customer_phone: deal.customer_phone || null, cust_no: deal.cust_no || null, public_note: (deal.public_note || '').trim() || null, internal_note: (deal.internal_note || '').trim() || null,
     deliver_to: deal.deliver_to || 'business', deliver: deal.deliver || {}, lines: deal.lines, markup: Number($('mk').value) || 0, status: deal.status || 'open',
     total_cost: t.cost, total_sell: t.sell, updated_at: new Date().toISOString() }).eq('id', deal.id).then(function (r) {
     $('saved').textContent = r.error ? 'השמירה לא הצליחה. בדקו חיבור.' : 'נשמר';
@@ -594,7 +602,7 @@ function lineState(l) {
 function lineHtml(l, i) {
   var locked = !!l.po_no, q = Number(l.qty) || 0, p = (Number(l.sell) || 0) / VAT - (Number(l.cost) || 0), st = lineState(l), open = openMore === l.lid || caseOpen === l.lid;
   var h = '<div class="ln" data-i="' + i + '" data-lid="' + esc(l.lid) + '"><div class="d"><b>' + esc(l.desc) + (l.size ? ' ' + esc(l.size) : '') + '</b><span class="mute">' + (l.sku ? '<span class="ltr">' + esc(l.sku) + '</span> · ' : '') + esc((suppliers[l.supplier_id] || {}).name || '') + stockTxt(l.sku) +
-      '<span class="cost"> · ' + (l.cost == null ? 'עלות לא ידועה' : 'עלות ' + money(l.cost) + ' ליח\' · רווח ' + '<span class="' + (p < 0 ? 'err' : 'ok') + '" data-o="pr">' + money(p * q) + '</span>') + '</span></span>' + (st ? ' ' + st : '') + '</div>' +
+      '<span class="cost"> · ' + (l.cost == null ? 'עלות לא ידועה' : 'עלות ' + money(l.cost) + ' ליח\' · רווח ' + '<span class="' + (p < 0 ? 'err' : 'ok') + '" data-o="pr">' + money(p * q) + '</span>') + '</span></span>' + (st ? ' ' + st : '') + (l.note ? '<span class="lnote">✎ ' + esc(l.note) + '</span>' : '') + '</div>' +
     '<div class="qwrap"><label><span class="lbl">כמות' + (l.unit ? ' (' + esc(l.unit) + ')' : '') + '</span><input type="number" min="0.01" step="any" inputmode="decimal" data-f="qty" value="' + esc(l.qty) + '"' + (locked ? ' disabled' : '') + ' aria-label="כמות"></label>' +
     '<label><span class="lbl">מחיר ליח\' כולל מע"מ</span><input type="number" min="0" step="any" inputmode="decimal" data-f="sell" value="' + esc(l.sell) + '" aria-label="מחיר ליחידה כולל מע&quot;מ"></label>' +
     '<span class="tot num" data-o="tot">' + money((Number(l.sell) || 0) * q) + '</span></div>' +
@@ -605,6 +613,7 @@ function lineHtml(l, i) {
       (l.delivered_at ? '' : '<label>צפי הגעה <input type="date" data-f="eta" value="' + esc(l.eta || '') + '"></label>') +
       '<label>נמסר (מתוך ' + esc(l.qty) + ') <input type="number" min="0" step="any" inputmode="decimal" data-f="dq" value="' + esc(l.delivered_qty || '') + '" style="width:84px"></label>' +
       (l.delivered_at ? '<span class="st green">נמסר הכול</span>' : Number(l.delivered_qty) > 0 ? '<span class="st yellow">נמסר חלק</span>' : '') + '</div>' +
+      '<label style="display:block;margin-top:8px;font-size:14px;color:var(--mute)">הערה לשורה (פנימית, הלקוח לא רואה)<input data-f="note" maxlength="300" value="' + esc(l.note || '') + '" placeholder="גוון, מידה מיוחדת, מה סוכם" style="width:100%;margin-top:3px"></label>' +
       '<div class="row" style="margin-top:6px">' + (locked ? '' : '<label class="chk grow"><input type="checkbox" data-f="stock"' + (l.stock ? ' checked' : '') + '> יש במלאי, לא להזמין</label>') +
       '<button type="button" class="btn small" data-case-new="1">שינוי / פגום / החזרה</button>' + (locked ? '' : '<button type="button" class="btn small red" data-del="1">הסרה</button>') + '</div>' + caseHtml(l) + '</div>';
   return h + '</div>';
@@ -632,6 +641,7 @@ $('lines').addEventListener('input', function (e) {
   if (f === 'stock') { l.stock = e.target.checked; closeAsk(); draw(); touch(); return; }
   if (f === 'eta') { if (e.target.value) l.eta = e.target.value; else delete l.eta; touch(); return; }
   if (f === 'cat') { l.cat = e.target.value; draw(); touch(); return; }
+  if (f === 'note') { if (e.target.value.trim()) l.note = e.target.value; else delete l.note; touch(); return; }
   if (f === 'dq') {
     var v = Number(e.target.value) || 0, was = !!l.delivered_at;
     if (v > 0) l.delivered_qty = v; else delete l.delivered_qty;
@@ -854,8 +864,9 @@ function drawShare() {
   $('shUrl').value = url; $('shOpen').href = url;
   $('shWa').href = 'https://wa.me/972' + deal.customer_tail9 + '?text=' + encodeURIComponent('שלום' + (first ? ' ' + first : '') + ', כאן זיסו קרמיקה. זה הדף האישי של ההזמנה שלך: מצב כל מוצר, מועדים, תשלומים ומסמכים, מתעדכן חי. בכניסה מקלידים את 4 הספרות האחרונות של הטלפון.\n' + url);
   $('shSeen').textContent = deal.seen_at ? 'הלקוח פתח את הדף ' + deal.seen_count + ' פעמים, לאחרונה ' + fmtTime(deal.seen_at) + '.' : 'הלקוח עוד לא פתח את הדף.';
-  if (document.activeElement !== $('pubNote')) $('pubNote').value = deal.public_note || '';
 }
+function drawNotes() { if (document.activeElement !== $('pubNote')) $('pubNote').value = deal.public_note || ''; if (document.activeElement !== $('inNote')) $('inNote').value = deal.internal_note || ''; }
+$('inNote').addEventListener('input', function () { deal.internal_note = $('inNote').value; touch(); });
 $('shMake').addEventListener('click', function () {
   if (!deal.customer_tail9) { $('shErr').textContent = 'קודם בוחרים לקוח מכרטיס לקוח, עם טלפון.'; $('cuQ').focus(); return; }
   var a = new Uint8Array(18); crypto.getRandomValues(a);
