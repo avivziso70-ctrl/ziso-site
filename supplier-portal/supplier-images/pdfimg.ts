@@ -5,9 +5,12 @@
 // (cm) in force when the picture is painted (Do). A form XObject is a group that brings its own matrix and resources,
 // so it is walked the same way. Decoding: DCTDecode is a JPEG file as is; FlateDecode is raw pixels (gray, RGB,
 // CMYK, ICC with 1/3/4 channels, or an 8 bit palette). A soft mask (transparent background, typical of product
-// cutouts) is laid over white. Anything else (JPEG 2000, CCITT, 1 bit masks) is skipped.
+// cutouts) is laid over white. JPXDecode is a JPEG 2000 file (Dor Rafael's shower catalog, 17.11.2026), decoded in
+// plain JavaScript: gray or RGB, any number of tiles. Anything else (CCITT, 1 bit masks) is skipped.
 import { PDFArray, PDFDict, PDFDocument, PDFName, PDFNumber, PDFPage, PDFRawStream, PDFRef, PDFStream, decodePDFRawStream } from "npm:pdf-lib@1.17.1";
 import jpeg from "npm:jpeg-js@0.4.4";
+import jpx2k from "npm:jpeg2000@1.1.1";
+import { Buffer } from "node:buffer";
 
 type M = [number, number, number, number, number, number];
 export type Draw = {
@@ -244,6 +247,27 @@ function rawPixels(doc: PDFDocument, s: PDFRawStream, w: number, h: number, cs: 
 }
 
 // Area average down to at most `max` pixels on the long side (never up).
+// A JPEG 2000 picture as RGBA. The decoder gives each tile as interleaved samples, already in RGB.
+function jpxPixels(b: Uint8Array): Px | null {
+  // deno-lint-ignore no-explicit-any
+  const im = new (jpx2k as any).JpxImage();
+  im.parse(Buffer.from(b.buffer, b.byteOffset, b.byteLength));
+  const n: number = im.componentsCount, w: number = im.width, h: number = im.height;
+  if ((n !== 1 && n !== 3) || !(w > 0 && h > 0)) return null;
+  const out = new Uint8Array(w * h * 4).fill(255);
+  // deno-lint-ignore no-explicit-any
+  for (const t of im.tiles as any[]) {
+    const tw: number = t.width, th: number = t.height, x0: number = t.left || 0, y0: number = t.top || 0, s = t.items;
+    for (let y = 0; y < th && y0 + y < h; y++) {
+      let o = ((y0 + y) * w + x0) * 4, i = y * tw * n;
+      for (let x = 0; x < tw && x0 + x < w; x++, o += 4, i += n) {
+        out[o] = s[i]; out[o + 1] = n === 1 ? s[i] : s[i + 1]; out[o + 2] = n === 1 ? s[i] : s[i + 2];
+      }
+    }
+  }
+  return { data: out, w, h };
+}
+
 function shrink(src: Px, max: number): Px {
   const k = Math.max(src.w, src.h) / max;
   if (k <= 1) return src;
@@ -329,7 +353,8 @@ function plainCmyk(b: Uint8Array): Px {
 export const MAX_PX = 5_000_000;
 // Memory one pixel of a picture costs while it is decoded (bytes): a JPEG is unpacked into blocks, lines and pixels,
 // a four-ink JPEG without /Decode twice (see plainCmyk); raw pixels are inflated and copied.
-export const cost = (d: Draw) => d.w * d.h * (d.filter === "DCTDecode" ? (d.cs === "DeviceCMYK" ? (d.inv ? 36 : 64) : 28) : 14);
+// A JPEG 2000 picture takes about twice the work of a JPEG of the same size (measured: 0.43 MP in about 200 ms).
+export const cost = (d: Draw) => d.w * d.h * (d.filter === "JPXDecode" ? 60 : d.filter === "DCTDecode" ? (d.cs === "DeviceCMYK" ? (d.inv ? 36 : 64) : 28) : 14);
 // A picture that can be decoded in `room` bytes of memory. The whole PDF sits in memory next to it, and a worker
 // that runs out of memory is killed, so a picture that does not fit is left out.
 export const fits = (d: Draw, room: number) => d.w * d.h <= MAX_PX && cost(d) <= room;
@@ -343,6 +368,8 @@ export function thumb(doc: PDFDocument, d: Draw, max = 240, quality = 72, strict
       if (d.cs === "DeviceCMYK" && !d.inv) px = plainCmyk(d.stream.contents);
       else { const r = dec(d.stream.contents); px = { data: r.data as Uint8Array, w: r.width, h: r.height }; }
     } catch (e) { if (strict) throw e; return null; }
+  } else if (d.filter === "JPXDecode") {
+    try { px = jpxPixels(d.stream.contents); } catch (e) { if (strict) throw e; return null; }
   } else if (d.filter === "FlateDecode" || d.filter === "") {
     px = rawPixels(doc, d.stream, d.w, d.h, d.cs, d.bpc);
   }
