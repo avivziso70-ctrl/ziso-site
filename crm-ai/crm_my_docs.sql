@@ -12,11 +12,12 @@ create or replace function public.crm_doc_requests_enqueue() returns trigger
 language plpgsql security definer set search_path to 'public' as $$
 begin
   if new.status <> 'queued' then return new; end if;
-  insert into public.priority_jobs (type, params, requested_by, priority, idempotency_key, crm_doc_request_id, approval_msg)
+  insert into public.priority_jobs (type, params, requested_by, priority, idempotency_key, crm_doc_request_id, approval_msg, quiet_only)
   values ('print_document',
           jsonb_build_object('doc', new.doc, 'kind', new.kind, 'tail9', new.tail9, 'allow_original', new.requested_by = 'customer-page'),
           'crm:' || new.requested_by, case when new.requested_by = 'customer-page' then 4 else 3 end, 'crm_doc:' || new.id, new.id,
-          case when new.requested_by = 'customer-page' then 'Aviv 17.11 10:17Z in the CRM builder thread (cmsg_015WfBHagqpBzbKTebtDJ3B5CXPLGXTKt6ptaPqu73x4Ku): "אני מאשר להדפיס את המקור תמיד"' end);
+          case when new.requested_by = 'customer-page' then 'Aviv 17.11 10:17Z in the CRM builder thread (cmsg_015WfBHagqpBzbKTebtDJ3B5CXPLGXTKt6ptaPqu73x4Ku): "אני מאשר להדפיס את המקור תמיד"' end,
+          new.requested_by = 'customer-page');   -- quiet_only: the robot claims it only 20:00-06:30 (Aviv 17.11: Priority work only at night)
   return new;
 end $$;
 
@@ -87,10 +88,10 @@ declare r record; j uuid;
 begin
   select * into r from crm_print_requests where id = p_id and status = 'queued' and job_id is null;
   if not found then return null; end if;
-  insert into priority_jobs (type, params, requested_by, priority, idempotency_key, approval_msg)
+  insert into priority_jobs (type, params, requested_by, priority, idempotency_key, approval_msg, quiet_only)
   values ('print_document',
           jsonb_build_object('doc', r.doc, 'kind', r.kind, 'print_to', r.printer, 'copies', r.copies, 'allow_original', true, 'print_request_id', r.id),
-          'crm-print:' || r.requested_by, 2, 'crm_print:' || r.id, 'Aviv 17.11 10:17Z in the CRM builder thread (cmsg_015WfBHagqpBzbKTebtDJ3B5CXPLGXTKt6ptaPqu73x4Ku): "אני מאשר להדפיס את המקור תמיד"')
+          'crm-print:' || r.requested_by, 2, 'crm_print:' || r.id, 'Aviv 17.11 10:17Z in the CRM builder thread (cmsg_015WfBHagqpBzbKTebtDJ3B5CXPLGXTKt6ptaPqu73x4Ku): "אני מאשר להדפיס את המקור תמיד"', true)
   returning id into j;
   update crm_print_requests set job_id = j, note = null where id = r.id;
   return j;
