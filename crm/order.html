@@ -66,6 +66,9 @@ body.shy .cost{display:none!important}
 .pctl{white-space:nowrap}.ln input.pct{width:64px;min-height:30px;padding:2px 6px;font-size:14px;display:inline-block;margin:0 2px}
 .ln input.pct.lo{border-color:var(--amber);color:var(--amber)}.ln input.pct.bad{border-color:var(--red);color:var(--red)}
 .lnote{display:block;font-size:14px;color:var(--amber);margin-top:2px}
+.pask{border:1px solid var(--line2);border-radius:10px;padding:8px 10px;margin-top:10px;font-size:14.5px}.pask.got{border-color:var(--green)}.pask.bad{border-color:var(--red)}
+.pask .quote{background:var(--surface);border:1px solid var(--line2);border-radius:8px;padding:6px 10px;margin-top:6px;white-space:pre-wrap;overflow-wrap:anywhere}
+.pask input{min-height:40px}.linkb{font:inherit;font-size:14px;color:var(--brass);background:none;border:0;padding:6px 0;min-height:36px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .form .wide{grid-column:1/-1}
 .pick{list-style:none;margin:6px 0 0;padding:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
 .pick button{display:block;width:100%;text-align:right;font:inherit;color:inherit;background:transparent;border:0;border-bottom:1px solid var(--line2);padding:11px 12px;min-height:48px;cursor:pointer}
@@ -387,13 +390,13 @@ $('newDeal').addEventListener('click', function () {
 });
 function openDeal(id) { sb.from('crm_deals').select('*').eq('id', id).single().then(function (r) { if (r.data) setDeal(r.data); else showList(); }); }
 function setDeal(d) {
-  deal = d; deal.lines = deal.lines || []; deal.deliver = deal.deliver || {}; cases = []; openMore = null; caseOpen = null; cust = null; takings = [];
+  deal = d; deal.lines = deal.lines || []; deal.deliver = deal.deliver || {}; cases = []; pasks = []; paOpen = null; paDraft = null; openMore = null; caseOpen = null; cust = null; takings = [];
   deal.lines.forEach(function (l) { if (!l.lid) { l.lid = newLid(); dirty = true; } if (!l.cat) { l.cat = classify((l.desc || '') + ' ' + (l.size || '')); dirty = true; } });
   $('v-list').classList.add('hidden'); $('needDb').classList.add('hidden'); $('v-deal').classList.remove('hidden'); $('bar').classList.remove('hidden');
   history.replaceState(null, '', '?d=' + d.id);
   $('title').textContent = 'הזמנה ' + d.deal_no;
   $('mk').value = d.markup == null ? 40 : d.markup; $('q').value = ''; last = []; sres = null; fsup = null; sKey = ''; drawResults();
-  loadCust(); drawDv(); drawNotes(); draw(); loadPicPaths(); loadPos(); drawShare(); loadNotes(); loadCases(); loadPays(); loadStock(deal.lines.map(function (l) { return l.sku; }));
+  loadCust(); drawDv(); drawNotes(); draw(); loadPicPaths(); loadPos(); drawShare(); loadNotes(); loadCases(); loadPa(); loadPays(); loadStock(deal.lines.map(function (l) { return l.sku; }));
 }
 
 /* ---------- save (debounced) ---------- */
@@ -598,7 +601,7 @@ function drawResults() {
   $('sInfo').textContent = !txt ? 'נבחרו לאחרונה במכשיר הזה' : last.length ? shownN.toLocaleString('he-IL') + ' תוצאות, המתאימות ביותר קודם' : 'לא נמצא במחירונים. אפשר להוסיף כשורה חופשית.';
   $('results').innerHTML = last.map(function (r) {
     var c = netCost(r);
-    return '<li><button type="button" role="option" class="r" data-add="' + r.id + '">' + (r.image_path ? '<span class="thumb" data-p="' + esc(r.image_path) + '"><img alt=""></span>' : '') + '<span class="grow"><b>' + hl(r.description) + (r.size ? ' ' + hl(r.size) : '') + '</b><br><span class="mute small"><span class="ltr">' + hl(r.supplier_code || '') + '</span> · ' + esc((suppliers[r.supplier_id] || {}).name || '') + ' · ' + CATN[r._cat] + stockTxt(r.supplier_code) + '<span class="cost"> · עלות ' + money(c) + '</span></span></span><span class="pr">' + money(sellFor(c)) + '</span></button></li>';
+    return '<li><button type="button" role="option" class="r" data-add="' + r.id + '">' + (r.image_path ? '<span class="thumb" data-p="' + esc(r.image_path) + '"><img alt=""></span>' : '') + '<span class="grow"><b>' + hl(r.description) + (r.size ? ' ' + hl(r.size) : '') + '</b><br><span class="mute small"><span class="ltr">' + hl(r.supplier_code || '') + '</span> · ' + esc((suppliers[r.supplier_id] || {}).name || '') + ' · ' + CATN[r._cat] + stockTxt(r.supplier_code) + '<span class="cost"> · עלות ' + money(c) + '</span>' + (r.est ? '<br><span class="st orange">הערכה</span> מחיר אחרון' + (r.page_ref ? ', ' + esc(r.page_ref) : '') : '') + '</span></span><span class="pr">' + money(sellFor(c)) + '</span></button></li>';
   }).join('') +
     (txt && shownN > last.length && lim < 150 ? '<li><button type="button" class="r" data-more="1"><span class="grow"><b>להציג עוד תוצאות</b><br><span class="mute small">או להוסיף מילה: צבע, מידה, ספק</span></span></button></li>' : '') +
     (txt ? '<li><button type="button" class="r" data-free="1"><span class="grow"><b>+ שורה חופשית:</b> "' + esc(txt) + '"<br><span class="mute small">מוצר שלא במחירון. מקלידים מחיר ידנית</span></span></button></li>' : '');
@@ -627,6 +630,7 @@ $('results').addEventListener('click', function (e) {
     var r = last.filter(function (x) { return String(x.id) === b.dataset.add; })[0]; if (!r) return;
     var c = netCost(r);
     l = { price_id: r.id, supplier_id: r.supplier_id, sku: r.supplier_code, desc: r.description, size: r.size, unit: r.unit, qty: 1, cost: c, sell: sellFor(c), stock: stock[r.supplier_code] >= 1, lid: newLid(), cat: r._cat };
+    if (r.est) { l.est = true; l.src = r.page_ref || ''; }   // a last-known price, not a price list: an estimate until the supplier confirms
     recentAdd(r.id);
   }
   deal.lines.push(l); $('q').value = ''; last = []; sres = null; fsup = null; sKey = ''; hi = -1; drawResults(); closeAsk(); draw(); touch();
@@ -705,9 +709,98 @@ function lineState(l) {
   if (l.po_no) { var p = pos[l.po_id], st = p ? (ST[p.status] || ['grey', p.status]) : ['yellow', 'הוזמן']; if (p && p.receive_state) st = { full: ['green', 'הגיע'], partial: ['yellow', 'הגיע חלק'], gap: ['orange', 'הגיע עם הבדלים'] }[p.receive_state] || st; return '<span class="st ' + st[0] + '">' + esc(l.po_no) + ' · ' + st[1] + '</span>'; }
   if (l.so) return '<span class="st grey">פריוריטי ' + esc(l.so) + '</span>';
   if (l.stock) return '<span class="st grey">מהמלאי</span>';
-  if (l.free) return '<span class="st orange">שורה חופשית</span>';
-  return canOrder(l.supplier_id) ? '' : '<span class="st orange">להזמין ידנית</span>';
+  var pa = paBadge(l);
+  if (l.est) return '<span class="st orange">הערכה · סופי באישור ' + esc(paName(l.supplier_id)) + '</span>' + pa;
+  if (l.free) return '<span class="st orange">שורה חופשית</span>' + pa;
+  return (canOrder(l.supplier_id) ? '' : '<span class="st orange">להזמין ידנית</span>') + pa;
 }
+/* ---------- price request to a supplier that prices every item on request (Onda, through Rima) ----------
+   Sent from the business WhatsApp only when a staff member presses "שליחה". The answer comes back onto the line. */
+var pasks = [], paOpen = null, paSid = null, paPoll = null, paDraft = null;
+function paName(sid) { var s = suppliers[sid] || {}; return s.order_contact || supShort(sid) || 'הספק'; }
+function paSups(l) {
+  if (l.po_no || l.so) return [];
+  if (l.supplier_id) return (suppliers[l.supplier_id] || {}).price_by_ask && suppliers[l.supplier_id].order_wa_phone ? [l.supplier_id] : [];
+  return l.free ? Object.keys(suppliers).filter(function (id) { return suppliers[id].price_by_ask && suppliers[id].order_wa_phone; }) : [];
+}
+function paOf(l) { return pasks.filter(function (a) { return a.lid === l.lid; }); }
+function paBadge(l) {
+  var a = paOf(l);
+  if (a.some(function (x) { return x.state === 'answered'; })) return ' <span class="st green">יש תשובה על המחיר</span>';
+  if (a.some(function (x) { return x.state === 'sent'; })) return ' <span class="st yellow">נשלחה בקשת מחיר</span>';
+  var sids = paSups(l);
+  return l.est && sids.length ? ' <button type="button" class="linkb" data-pa-new="' + sids[0] + '">לבקש מחיר סופי מ' + esc(paName(sids[0])) + '</button>' : '';
+}
+function loadPa() {
+  if (!deal) return;
+  var id = deal.id;
+  sb.from('crm_price_asks').select('*').eq('deal_id', id).order('id').then(function (r) {
+    if (r.error || !deal || deal.id !== id) return;
+    var was = JSON.stringify(pasks); pasks = r.data || [];
+    if (JSON.stringify(pasks) !== was && !$('lines').contains(document.activeElement)) draw();
+    clearTimeout(paPoll);
+    if (pasks.some(function (a) { return a.state === 'sent'; })) paPoll = setTimeout(function () { if (document.hidden) return; loadPa(); }, 45000);
+  });
+}
+document.addEventListener('visibilitychange', function () { if (!document.hidden && pasks.length) loadPa(); });
+function paHtml(l) {
+  var sids = paSups(l), mine = paOf(l);
+  if (!sids.length && !mine.length) return '';
+  var h = mine.map(function (a, i) {
+    if (a.state === 'failed' && i < mine.length - 1) return '';
+    var head = '<b>בקשת מחיר ל' + esc(paName(a.supplier_id)) + '</b> · ' + esc(a.item) + ' <span class="mute small">(' + esc(a.by_name || '') + ', ' + fmtTime(a.asked_at) + ')</span>';
+    var rep = (a.replies || []).map(function (x) { return '<div class="quote">' + esc(x.text) + ' <span class="mute small">' + fmtTime(x.at) + '</span></div>'; }).join('');
+    if (a.state === 'failed') return '<div class="pask bad">' + head + '<br><span class="err">לא נשלחה. ' + esc(a.error || '') + '</span></div>';
+    if (a.state === 'sent') return '<div class="pask">' + head + '<br><span class="mute">נשלחה. התשובה תופיע כאן.</span></div>';
+    if (a.state === 'closed') return '<div class="pask">' + head + rep + '<div style="margin-top:4px">' + (a.price != null ? '<span class="ok">המחיר בשורה עודכן: ' + money(a.price) + ' לפני מע"מ</span>' : '<span class="mute">נסגרה בלי עדכון מחיר</span>') + '</div></div>';
+    return '<div class="pask got" data-pa="' + a.id + '">' + head + rep + '<div class="row" style="margin-top:8px"><label>עלות סופית לפני מע"מ <input type="number" min="0" step="any" inputmode="decimal" data-pa-price="1" style="width:120px"></label>' +
+      '<button type="button" class="btn small brass" data-pa-set="1">עדכון המחיר בשורה</button><button type="button" class="btn small" data-pa-close="1">לסגור בלי עדכון</button></div></div>';
+  }).join('');
+  if (!sids.length) return h;
+  if (paOpen === l.lid && sids.indexOf(paSid) > -1) {
+    var nm = esc(paName(paSid)), dr = paDraft && paDraft.lid === l.lid ? paDraft : {};
+    return h + '<div class="pask" data-pa-form="' + paSid + '"><b>בקשת מחיר מ' + esc(supShort(paSid)) + '</b>' +
+      '<label style="display:block;margin-top:6px;font-size:14px;color:var(--mute)">דגם או תיאור<input data-a="model" maxlength="200" value="' + esc(dr.model || l.desc || '') + '" style="width:100%;margin-top:3px"></label>' +
+      '<div class="row" style="margin-top:6px"><label>מידה <input data-a="size" maxlength="60" value="' + esc(dr.size != null ? dr.size : l.size || '') + '" style="width:110px"></label><label>צבע <input data-a="color" maxlength="60" value="' + esc(dr.color || '') + '" placeholder="לבן מט" style="width:150px"></label></div>' +
+      '<label style="display:block;margin-top:6px;font-size:14px;color:var(--mute)">עוד פרטים (לא חובה)<input data-a="note" maxlength="200" value="' + esc(dr.note || '') + '" placeholder="כיור אינטגרלי, 2 מגירות, ידיות שחורות" style="width:100%;margin-top:3px"></label>' +
+      '<p class="mute small" style="margin:8px 0">נשלח ל' + nm + ' מהוואטסאפ של העסק, יחד עם שם הלקוח: ' + esc(deal.customer_name || 'לקוח') + '. התשובה תופיע כאן בשורה.</p>' +
+      '<div class="row"><button type="button" class="btn small brass" data-pa-send="1">שליחה ל' + nm + '</button><button type="button" class="btn small" data-pa-cancel="1">ביטול</button><span class="err small" data-pa-err="1" role="alert"></span></div></div>';
+  }
+  return h + '<div class="row" style="margin-top:8px">' + sids.map(function (sid) { return '<button type="button" class="btn small" data-pa-new="' + sid + '">בקשת מחיר מ' + esc(supShort(sid)) + '</button>'; }).join('') + '</div>';
+}
+function paClick(b, l, row) {
+  if (b.dataset.paNew) { if (!paDraft || paDraft.lid !== l.lid) paDraft = null; paOpen = l.lid; paSid = b.dataset.paNew; openMore = l.lid; draw(); var c = $('lines').querySelector('[data-lid="' + l.lid + '"] [data-a=color]'); if (c) c.focus(); return; }
+  if (b.dataset.paCancel) { paOpen = null; paDraft = null; draw(); return; }
+  if (b.dataset.paSend) {
+    var f = row.querySelector('[data-pa-form]'), g = function (k) { return f.querySelector('[data-a=' + k + ']').value.trim(); }, er = f.querySelector('[data-pa-err]');
+    if (g('model').length < 2) { er.textContent = 'חסר דגם או תיאור'; return; }
+    var body = { action: 'price_ask', deal_id: deal.id, lid: l.lid, supplier_id: f.dataset.paForm, model: g('model'), size: g('size'), color: g('color'), note: g('note') };
+    paDraft = body; b.disabled = true; b.textContent = 'שולח...'; er.textContent = '';
+    flush().then(function () { return fetch(PO_FN, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + session.access_token }, body: JSON.stringify(body) }); })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (j.ask) pasks.push(j.ask);
+        if (j.ok) { paOpen = null; paDraft = null; draw(); loadPa(); return; }
+        if (j.ask) { draw(); return; }
+        b.disabled = false; b.textContent = 'שליחה'; er.textContent = j.error || 'לא נשלח. נסו שוב';
+      }, function () { b.disabled = false; b.textContent = 'שליחה'; er.textContent = 'אין חיבור. נסו שוב'; });
+    return;
+  }
+  var box = b.closest('[data-pa]'), a = box && pasks.filter(function (x) { return String(x.id) === box.dataset.pa; })[0]; if (!a) return;
+  var price = null;
+  if (b.dataset.paSet) {
+    price = Number(box.querySelector('[data-pa-price]').value);
+    if (!(price > 0)) { box.querySelector('[data-pa-price]').focus(); return; }
+    var pct = pctOf(l), had = l.cost != null;
+    l.cost = r2(price);
+    if (had && pct !== '') l.sell = Math.round(l.cost * (1 + pct / 100) * VAT); else if (!(Number(l.sell) > 0)) l.sell = sellFor(l.cost);
+    delete l.est; l.src = 'אושר מול ' + paName(a.supplier_id) + ' ' + fmtTime(new Date());
+  }
+  a.state = 'closed'; a.price = price;
+  sb.rpc('crm_price_ask_close', { p_id: a.id, p_price: price }).then(function () { });
+  closeAsk(); draw(); if (price != null) touch();
+}
+
 /* profit % = markup on cost before VAT: sell (incl. VAT) = cost × (1 + % / 100) × VAT */
 var PCT_LOW = 25, PCT_BAD = 12;
 function pctOf(l) { var c = Number(l.cost); if (!(c > 0)) return ''; return Math.round(((Number(l.sell) || 0) / VAT / c - 1) * 1000) / 10; }
@@ -728,6 +821,7 @@ function lineHtml(l, i) {
       '<label>נמסר (מתוך ' + esc(l.qty) + ') <input type="number" min="0" step="any" inputmode="decimal" data-f="dq" value="' + esc(l.delivered_qty || '') + '" style="width:84px"></label>' +
       (l.delivered_at ? '<span class="st green">נמסר הכול</span>' : Number(l.delivered_qty) > 0 ? '<span class="st yellow">נמסר חלק</span>' : '') + '</div>' +
       '<label style="display:block;margin-top:8px;font-size:14px;color:var(--mute)">הערה לשורה (פנימית, הלקוח לא רואה)<input data-f="note" maxlength="300" value="' + esc(l.note || '') + '" placeholder="גוון, מידה מיוחדת, מה סוכם" style="width:100%;margin-top:3px"></label>' +
+      (l.src ? '<p class="mute small cost" style="margin:6px 0 0">מקור המחיר: ' + esc(l.src) + '</p>' : '') + paHtml(l) +
       '<div class="row" style="margin-top:6px">' + (locked ? '' : '<label class="chk grow"><input type="checkbox" data-f="stock"' + (l.stock ? ' checked' : '') + '> יש במלאי, לא להזמין</label>') +
       '<button type="button" class="btn small" data-case-new="1">שינוי / פגום / החזרה</button>' + (locked ? '' : '<button type="button" class="btn small red" data-del="1">הסרה</button>') + '</div>' + caseHtml(l) + '</div>';
   return h + '</div>';
@@ -793,6 +887,8 @@ $('lines').addEventListener('change', function (e) {
 $('lines').addEventListener('click', function (e) {
   var row = e.target.closest('.ln'); if (!row) return;
   var l = deal.lines[Number(row.dataset.i)], nb = e.target.closest('[data-case-new]'), nc = e.target.closest('button[data-nc]'), mb = e.target.closest('[data-more]');
+  var pb = e.target.closest('[data-pa-new],[data-pa-cancel],[data-pa-send],[data-pa-set],[data-pa-close]');
+  if (pb) { paClick(pb, l, row); return; }
   if (mb) { openMore = openMore === l.lid ? null : l.lid; if (!openMore && caseOpen === l.lid) caseOpen = null; draw(); var m = $('lines').querySelector('[data-lid="' + l.lid + '"] [data-more]'); if (m) m.focus(); return; }
   if (nb) { caseOpen = l.lid; openMore = l.lid; draw(); var s1 = $('lines').querySelector('[data-lid="' + l.lid + '"] [data-nc=kind]'); if (s1) s1.focus(); return; }
   if (nc) {
@@ -809,7 +905,8 @@ $('lines').addEventListener('click', function (e) {
 /* ---------- purchase orders per supplier ---------- */
 function groups() {
   var g = {};
-  deal.lines.forEach(function (l) { if (l.stock || l.po_no || l.so || l.free || !l.supplier_id || !(Number(l.qty) > 0)) return; (g[l.supplier_id] = g[l.supplier_id] || []).push(l); });
+  deal.lines.forEach(function (l) { if (l.stock || l.po_no || l.so || l.free || l.est || !l.supplier_id || !(Number(l.qty) > 0)) return;   // an estimate is not ordered before the supplier confirms the price
+    (g[l.supplier_id] = g[l.supplier_id] || []).push(l); });
   return Object.keys(g).map(function (sid) { return { sid: sid, lines: g[sid], ok: canOrder(sid), total: r2(g[sid].reduce(function (s, l) { return s + l.cost * l.qty; }, 0)) }; });
 }
 function drawPlan() {
@@ -1032,7 +1129,7 @@ sb.auth.getSession().then(function (r) {
   sb.auth.onAuthStateChange(function (_e, s) { if (s) session = s; });
   me.email = (session.user.email || '').toLowerCase();
   Promise.all([
-    sb.from('sp_suppliers').select('id,name,order_email,order_wa_phone,order_contact,order_paused').then(function (x) { (x.data || []).forEach(function (s) { suppliers[s.id] = s; }); }),
+    sb.from('sp_suppliers').select('id,name,order_email,order_wa_phone,order_contact,order_paused,price_by_ask').then(function (x) { (x.data || []).forEach(function (s) { suppliers[s.id] = s; }); }),
     sb.from('crm_staff').select('email,name').ilike('email', me.email).maybeSingle().then(function (x) { me.name = (x.data || {}).name || me.email; })
   ]).then(function () {
     var id = Number(new URLSearchParams(location.search).get('d'));
