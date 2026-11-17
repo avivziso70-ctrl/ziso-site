@@ -120,6 +120,7 @@ footer nav{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
     <b class="z" aria-hidden="true">ZISO</b>
     <h1 id="gTitle">ההזמנה שלכם מחכה כאן</h1>
     <p id="gText">כדי לשמור על הפרטיות שלכם: 4 הספרות האחרונות של הטלפון שנתתם לנו.</p>
+    <p class="fine-print" style="opacity:.8">הדף אישי ומיועד רק לכם, אל תעבירו את הקישור הלאה. <a href="../privacy.html" style="color:inherit">פרטיות</a></p>
     <label class="sr" for="pin">4 הספרות האחרונות של הטלפון</label>
     <input id="pin" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-describedby="gMsg">
     <button class="btn wide" id="pinGo">כניסה</button>
@@ -186,6 +187,7 @@ footer nav{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
   <footer><div class="wrap">
     <div class="acts"><a class="btn" href="https://wa.me/972504770040" target="_blank" rel="noopener noreferrer">וואטסאפ לצוות</a><a class="btn" href="tel:0504770040">חיוג 050-4770040</a></div>
     <div>זיסו קרמיקה, עוצמה 5, טירת כרמל. א׳ עד ה׳ 08:00 עד 18:00, ו׳ 08:00 עד 13:30.</div>
+    <div>הדף מציג רק את פרטי ההזמנה שלכם, מתוך המערכות של זיסו. רוצים שנסגור את הדף? כתבו לנו ונבטל את הקישור מיד.</div>
     <nav aria-label="מידע משפטי"><a href="../accessibility.html">הצהרת נגישות</a><a href="../privacy.html">פרטיות</a><a href="../terms.html">תנאים</a></nav>
   </div></footer>
 </div>
@@ -272,7 +274,7 @@ function draw(j) {
   if (m.known) {
     var b = Math.abs(m.balance) < 10 ? 0 : Number(m.balance);
     $('bal').className = 'tile bal ' + (b > 0 ? 'due' : 'fine');
-    $('balLab').textContent = b > 0 ? 'יתרה לתשלום' : b < 0 ? 'יתרת זכות לטובתכם' : 'החשבון מאוזן';
+    $('balLab').textContent = b > 0 ? 'יתרה לתשלום' : b < 0 ? 'שולם מראש, לזכותכם' : 'החשבון מאוזן';
     $('balSum').textContent = b ? nis(Math.abs(b)) : 'אין יתרה פתוחה';
     $('balAs').textContent = 'לפי חשבוניות וקבלות שהופקו' + (m.as_of ? ', נכון ל-' + new Date(m.as_of).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : '') + '. תשלום שנעשה עכשיו יופיע אחרי העדכון הבא.';
   }
