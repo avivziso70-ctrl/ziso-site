@@ -55,3 +55,8 @@ end $$;
 create trigger priority_jobs_print_status after update of status on public.priority_jobs for each row execute function public.crm_print_from_job();
 -- Off until the robot prints for real: crm_settings.print_on (default false). Turned on after the first verified test print.
 alter table public.crm_settings add column if not exists print_on boolean not null default false;
+
+-- 17.11.2026 (migration crm_print_hold_until_on): while print_on is off a request waits in the queue (job_id null) instead of being
+-- refused; crm_print_job() creates the robot job, called after insert when print_on is on, and for every waiting request of the last day
+-- when print_on is switched on (trigger crm_settings_print_release). crm_print_enqueue() no longer inserts the job itself.
+-- See the migration for the function bodies: crm_print_job, crm_print_enqueue, crm_print_after_insert, crm_print_release.

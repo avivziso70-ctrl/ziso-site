@@ -508,26 +508,33 @@ async function transferProofs(a: any) {
 // must exist in Priority. The office robot makes the PDF and prints it on the Canon; status comes back in crm_print_requests.
 const PST: Record<string, string> = { queued: "בתור, מחכה לרובוט במשרד", printing: "מדפיס עכשיו", printed: "הודפס", failed: "נכשל", cancelled: "בוטל" };
 async function printDocument(a: any, who: string) {
-  const doc = String(a.doc || "").trim().toUpperCase().replace(/\s+/g, "");
-  if (!/^[A-Z]{2}\d{6,12}$/.test(doc)) return "חסר מספר מסמך תקין (למשל RC269001075 או IN264001274). קודם למצוא אותו בתיק הלקוח.";
   if (!who || who.startsWith("agent:")) return "הדפסה רק לבקשה של איש צוות מחובר.";
-  if (doc.startsWith("ON")) return `${doc} הוא מסמך ביטול, והרובוט עוד לא יודע להדפיס מסמכים כאלה. להדפיס מפריוריטי.`;
-  const { data: set } = await admin.from("crm_settings").select("print_on").eq("id", 1).maybeSingle();
-  if (!set?.print_on) return "ההדפסה מהמערכת עוד לא הופעלה (מחכים שהרובוט במשרד יתחבר למדפסת). בינתיים להדפיס מפריוריטי.";
   const copies = Math.min(Math.max(Math.round(Number(a.copies) || 1), 1), 3);
-  const [rc, inv] = await Promise.all([
-    admin.from("priority_receipts").select("doc,date,amount,cust_name").eq("doc", doc).maybeSingle(),
-    admin.from("priority_invoices").select("doc,date,amount,cust_name").eq("doc", doc).maybeSingle(),
-  ]);
-  const d: any = rc.data || inv.data;
-  if (!d) return `המסמך ${doc} לא נמצא בקבלות או בחשבוניות שבמערכת (מתעדכנות פעם ביום). אם הוא חדש מהיום, אפשר להדפיס מפריוריטי.`;
-  const kind = rc.data ? "receipt" : "invoice";
-  const { data: dup } = await admin.from("crm_print_requests").select("id,status,requested_at").eq("doc", doc).in("status", ["queued", "printing"]).limit(1);
-  if ((dup || []).length) return `${doc} כבר בתור להדפסה (${PST[dup![0].status]}), לא שלחתי שוב.`;
-  const { data: row, error } = await admin.from("crm_print_requests").insert({ doc, kind, cust_name: d.cust_name, amount: d.amount, doc_date: d.date, copies, requested_by: who }).select("id").single();
+  const want = a.kind === "invoice" ? "invoice" : a.kind === "receipt" ? "receipt" : null;
+  let doc = String(a.doc || "").trim().toUpperCase().replace(/\s+/g, "");
+  const cust = String(a.customer || "").trim().replace(/[%,()*\\]/g, "");
+  let d: any = null, kind = "receipt";
+  const pick = async (table: string, k: string) => {
+    let q = admin.from(table).select("doc,date,amount,cust_name").not("doc", "like", "ON%");
+    if (doc) q = q.eq("doc", doc);
+    else if (cust) q = q.ilike("cust_name", "%" + cust + "%");
+    const { data } = await q.order("date", { ascending: false }).order("doc", { ascending: false }).limit(1);
+    if (data?.[0] && (!d || String(data[0].date) > String(d.date))) { d = data[0]; kind = k; }
+  };
+  if (doc && !/^[A-Z]{2}\d{6,12}$/.test(doc)) return "מספר המסמך לא נראה תקין (למשל RC269001075).";
+  if (doc.startsWith("ON")) return `${doc} הוא מסמך ביטול, והרובוט עוד לא יודע להדפיס מסמכים כאלה. להדפיס מפריוריטי.`;
+  // no number: the latest document (of that customer, if named). "קבלה אחרונה" = the latest receipt issued.
+  if (!want || want === "receipt") await pick("priority_receipts", "receipt");
+  if (!want || want === "invoice") { if (!doc || !d) await pick("priority_invoices", "invoice"); }
+  if (!d) return doc ? `המסמך ${doc} לא נמצא בקבלות או בחשבוניות שבמערכת (מתעדכנות פעם ביום).` : cust ? `לא מצאתי ${want === "invoice" ? "חשבונית" : want === "receipt" ? "קבלה" : "מסמך"} על שם "${cust}".` : "לא מצאתי מסמך.";
+  doc = d.doc;
+  const { data: dup } = await admin.from("crm_print_requests").select("id,status").eq("doc", doc).in("status", ["queued", "printing"]).limit(1);
+  if ((dup || []).length) return `${doc} כבר בתור להדפסה, לא שלחתי שוב.`;
+  const { data: row, error } = await admin.from("crm_print_requests").insert({ doc, kind, cust_name: d.cust_name, amount: d.amount, doc_date: d.date, copies, requested_by: who }).select("id,job_id").single();
   if (error) throw error;
   await admin.from("crm_audit").insert({ who, action: "print_request", detail: { id: row.id, doc, kind, copies } });
-  return `נשלח להדפסה במדפסת המשרד: ${kind === "receipt" ? "קבלה" : "חשבונית"} ${doc} · ${cut(d.cust_name || "", 40)} · ${nis(d.amount)} · ${day(d.date)}${copies > 1 ? " · " + copies + " עותקים" : ""}. הרובוט במשרד מדפיס בדרך כלל תוך כמה דקות.`;
+  const what = `${kind === "receipt" ? "קבלה" : "חשבונית"} ${doc} · ${cut(d.cust_name || "", 40)} · ${nis(d.amount)} · ${day(d.date)}${copies > 1 ? " · " + copies + " עותקים" : ""}`;
+  return row.job_id ? `נשלח להדפסה במדפסת המשרד: ${what}. יוצא תוך כמה דקות.` : `נכנס לתור ההדפסה: ${what}. יודפס במדפסת המשרד ברגע שהרובוט במשרד יתעדכן (היום עד 12:00).`;
 }
 async function printStatus() {
   const { data, error } = await admin.from("crm_print_requests").select("doc,kind,cust_name,amount,status,note,requested_at,printed_at").order("requested_at", { ascending: false }).limit(10);
@@ -613,7 +620,7 @@ const TOOLS = [
   { name: "supplier_prices", description: "מחירון ספקים: מחירי הקנייה שספקים העלו ואושרו. לשאלות כמו 'כמה עולה לנו מקלחון אצל ספק X', 'מי הספק הכי זול ל...', 'מה יש במחירון של ספק'. בלי פרמטרים מחזיר אילו ספקים יש במחירון.", input_schema: { type: "object", properties: { q: { type: "string", description: "מילות חיפוש בפריט: תיאור, מק\"ט ספק, מידה או קטגוריה" }, supplier: { type: "string", description: "שם ספק או חלק ממנו" } } } },
   { name: "data_freshness", description: "מתי עודכן כל סוג מידע במערכת (בנק, קבלות, שיקים, חובות, תמונת התזרים). לשאלות כמו 'עד מתי הנתונים מעודכנים'.", input_schema: { type: "object", properties: {} } },
   { name: "visitors", description: "כמה אנשים נכנסו לאולם התצוגה לפי יום ושעה (מונה חדש בכניסה). ברירת מחדל: 7 הימים האחרונים.", input_schema: { type: "object", properties: { from: str("YYYY-MM-DD"), to: str("YYYY-MM-DD") } } },
-  { name: "print_document", description: "הדפסה של קבלה או חשבונית מפריוריטי במדפסת המשרד. רק כשאיש הצוות ביקש במפורש להדפיס. קודם למצוא את מספר המסמך בתיק הלקוח (customer_file). אם יש כמה מסמכים שמתאימים ולא ברור איזה, לשאול איזה להדפיס ולא לנחש.", input_schema: { type: "object", properties: { doc: str("מספר המסמך בפריוריטי, למשל RC269001075"), copies: { type: "integer", description: "כמה עותקים, 1 עד 3 (ברירת מחדל 1)" } }, required: ["doc"] } },
+  { name: "print_document", description: "הדפסה במדפסת המשרד של קבלה או חשבונית מפריוריטי. להשתמש מיד כשמבקשים להדפיס, בלי שאלות הבהרה: 'קבלה אחרונה' = kind receipt בלי מספר ובלי לקוח (הקבלה האחרונה שהופקה). 'הקבלה של X' = customer X (המסמך האחרון שלו). אם יש מספר מסמך, doc. הכלי מוצא את המסמך בעצמו.", input_schema: { type: "object", properties: { doc: str("מספר המסמך בפריוריטי, אם נאמר"), customer: str("שם הלקוח או חלק ממנו, אם נאמר"), kind: { type: "string", enum: ["receipt", "invoice"], description: "קבלה או חשבונית, אם נאמר" }, copies: { type: "integer", description: "כמה עותקים, 1 עד 3 (ברירת מחדל 1)" } } } },
   { name: "print_status", description: "מה מצב בקשות ההדפסה האחרונות (בתור, הודפס, נכשל).", input_schema: { type: "object", properties: {} } },
   { name: "weekly_brief", description: "הסיכום השבועי האחרון של העסק (מכירות, לידים, מה דורש טיפול).", input_schema: { type: "object", properties: {} } },
 ];
@@ -675,7 +682,7 @@ const SYSTEM = () => `את/ה "קלוד", העוזר הפנימי של צוות 
 - מחירון ספקים (כמה עולה לנו פריט אצל ספק, מי הספק הזול, מה יש במחירון של ספק) = supplier_prices. אלה מחירי קנייה שלנו ולא מחיר ללקוח: לציין זאת בתשובה, ולא לחשב מחיר מכירה אם לא ביקשו.
 - המסך נמצא באולם התצוגה: בשאלות על כסף לענות בעד שלוש שורות, במספרים שנשאלו בלבד. אם יש התראה דחופה שנוגעת ישירות לשאלה, להוסיף עליה שורה אחת. פירוט נוסף רק אם מבקשים.
 - כל אנשי הצוות הם הנהלה ורואים הכל, כולל בנק, הלוואות ומשכורות. משכורות מופיעות כתנועות בבנק מסוג משכורות (money_summary או bank_movements); אם אין שם פירוט לפי עובד, לומר זאת.
-- הדפסה: כשאיש צוות מבקש להדפיס קבלה או חשבונית, למצוא את הלקוח, לפתוח את התיק, לבחור את המסמך המתאים ולהשתמש ב-print_document. אם יש יותר ממסמך אחד שמתאים, לשאול איזה. להדפיס רק כשביקשו במפורש. כרגע אפשר להדפיס רק קבלות וחשבוניות.
+- הדפסה: כשמבקשים להדפיס קבלה או חשבונית, לקרוא מיד ל-print_document (הוא מוצא את המסמך לבד) ולענות בשורה אחת מה נשלח. לא לשאול שאלות ולא להסביר מגבלות אם הכלי הצליח. להדפיס רק כשביקשו במפורש.
 - אם שואלים משהו שלא קשור לעסק, לענות בקצרה ולהחזיר לעניין.`;
 
 // Repeated next to every question and every batch of data: a rule only in the system prompt was not enough.
