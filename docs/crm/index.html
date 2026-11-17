@@ -517,7 +517,7 @@ nav.tabs .badge{top:3px;inset-inline-start:calc(50% + 6px);box-shadow:0 0 0 2px 
     <span class="spacer"></span>
     <div class="desk tools" role="group" aria-label="כלים">
       <button class="btn small brass" type="button" id="deskAsk"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg>תשאלו את קלוד</button>
-      <a class="btn small pricebtn" href="deal.html" title="עסקה חדשה ללקוח: מוצרים, עלות, רווח והזמנה מהספקים"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg>תיק עסקה</a>
+      <a class="btn small pricebtn" href="order.html" title="עסקה חדשה ללקוח: מוצרים, עלות, רווח והזמנה מהספקים"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg>תיק עסקה</a>
       <a class="btn small pricebtn" href="prices.html" title="חיפוש מחיר במחירוני הספקים"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg>מחירון ספקים</a>
       <a class="btn small" href="receive.html" title="לצלם חשבונית או תעודת משלוח של סחורה שהגיעה"><svg class="ic" aria-hidden="true"><use href="#i-cam"/></svg>קבלת סחורה</a>
       <button class="btn small" type="button" id="musicBtn" aria-expanded="false" aria-controls="musicPanel"><svg class="ic" aria-hidden="true"><use href="#i-note"/></svg><span id="musicLbl">מוזיקה</span></button>
@@ -527,7 +527,7 @@ nav.tabs .badge{top:3px;inset-inline-start:calc(50% + 6px);box-shadow:0 0 0 2px 
   </header>
   <div id="quickBars">
     <a id="kupaBar" class="hidden" href="kupa.html"><svg class="ic" aria-hidden="true"><use href="#i-cash"/></svg><span>קופה<span class="more"> · לקחת כסף מלקוח</span></span></a>
-    <a id="dealBar" href="deal.html"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg><span>תיק עסקה</span></a>
+    <a id="dealBar" href="order.html"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg><span>תיק עסקה</span></a>
     <a id="priceBar" href="prices.html"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg><span>מחירון</span></a>
     <a id="recvBar" href="receive.html"><svg class="ic" aria-hidden="true"><use href="#i-cam"/></svg><span>הגיעה סחורה<span class="more"> · לצלם חשבונית</span></span></a>
     <button id="voiceBar" class="hidden" type="button"><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg><span>לשאול <span class="more">את קלוד </span>בקול</span></button>
@@ -2189,7 +2189,7 @@ function loadHome(force) {
 }
 /* open loops (Aviv 17.11.2026): every payment, refund, supplier order and deal must close. crm_open_loops() lists what is still open,
    with its age and owner; the hourly job closes loops by itself when the document shows up and opens one task when one is stuck. */
-var LOOP_GO = { kupa: 'kupa.html', prices: 'prices.html#orders', receive: 'receive.html', deal: 'deal.html' };
+var LOOP_GO = { kupa: 'kupa.html', prices: 'prices.html#orders', receive: 'receive.html', deal: 'order.html' };
 function loopsSect(L, row) {
   L = L || []; var st = L.filter(function (l) { return l.stuck; });
   var age = function (t) { var h = Math.max(0, (Date.now() - new Date(t).getTime()) / 3600000); return h < 1 ? 'פחות משעה' : h < 48 ? Math.round(h) + ' שעות' : Math.round(h / 24) + ' ימים'; };
