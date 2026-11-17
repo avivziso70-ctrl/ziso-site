@@ -172,10 +172,10 @@ drawShy();
 
 /* ---------- list ---------- */
 function totals(d) {
-  var cost = 0, sell = 0;
-  (d.lines || []).forEach(function (l) { var q = Number(l.qty) || 0; cost += (Number(l.cost) || 0) * q; sell += (Number(l.sell) || 0) * q; });
+  var cost = 0, sell = 0, unknown = false;
+  (d.lines || []).forEach(function (l) { var q = Number(l.qty) || 0; if (l.cost == null && q > 0 && Number(l.sell) > 0) unknown = true; cost += (Number(l.cost) || 0) * q; sell += (Number(l.sell) || 0) * q; });
   var rev = sell / VAT;
-  return { cost: r2(cost), sell: r2(sell), profit: r2(rev - cost), pct: rev > 0 ? Math.round((rev - cost) / rev * 100) : 0 };
+  return { cost: r2(cost), sell: r2(sell), profit: r2(rev - cost), pct: rev > 0 ? Math.round((rev - cost) / rev * 100) : 0, unknown: unknown };
 }
 function showList() {
   deal = null; $('v-deal').classList.add('hidden'); $('bar').classList.add('hidden'); $('v-list').classList.remove('hidden'); $('title').textContent = 'תיק עסקה';
@@ -186,7 +186,7 @@ function showList() {
     $('dealList').innerHTML = l.length ? l.map(function (d) {
       var t = totals(d);
       return '<button class="dl" data-id="' + d.id + '"><b>' + esc(d.deal_no) + ' · ' + esc(d.customer_name || 'בלי לקוח עדיין') + '</b> ' + (d.status === 'ordered' ? '<span class="st green">הוזמן מהספקים</span>' : '<span class="st grey">בבנייה</span>') +
-        '<br><span class="mute">' + (d.lines || []).length + ' מוצרים · ' + money(t.sell) + ' כולל מע"מ<span class="cost"> · רווח ' + money(t.profit) + ' (' + t.pct + '%)</span> · עודכן ' + fmtTime(d.updated_at) + (d.by_name ? ' · ' + esc(d.by_name) : '') + '</span></button>';
+        '<br><span class="mute">' + (d.lines || []).length + ' מוצרים · ' + money(t.sell) + ' כולל מע"מ<span class="cost"> · רווח ' + (t.unknown ? 'לא ידוע (חסרה עלות)' : money(t.profit) + ' (' + t.pct + '%)') + '</span> · עודכן ' + fmtTime(d.updated_at) + (d.by_name ? ' · ' + esc(d.by_name) : '') + '</span></button>';
     }).join('') : '<p class="mute">אין עסקאות פתוחות.</p>';
   });
 }
@@ -372,7 +372,7 @@ function draw() {
 function drawBar() {
   var t = totals(deal);
   $('bSell').textContent = money(t.sell); $('bCost').textContent = money(t.cost);
-  $('bProfit').textContent = money(t.profit) + ' (' + t.pct + '%)'; $('bP').classList.toggle('neg', t.profit < 0);
+  $('bProfit').textContent = t.unknown ? 'לא ידוע, חסרה עלות' : money(t.profit) + ' (' + t.pct + '%)'; $('bP').classList.toggle('neg', !t.unknown && t.profit < 0);
 }
 $('lines').addEventListener('input', function (e) {
   var row = e.target.closest('.ln'), f = e.target.dataset.f; if (!row || !f) return;
