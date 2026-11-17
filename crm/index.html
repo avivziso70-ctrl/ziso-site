@@ -380,9 +380,12 @@ svg.ic.dots{stroke-width:3}
 
 /* ---------- phone (Aviv 15.11: "the mobile UI isn't good") ---------- */
 @keyframes bellRing{0%,100%{transform:none}15%{transform:rotate(-14deg)}30%{transform:rotate(12deg)}45%{transform:rotate(-9deg)}60%{transform:rotate(6deg)}75%{transform:rotate(-3deg)}}
-#bellBtn.ring svg.ic{animation:bellRing .9s ease-out 2;transform-origin:50% 10%}
+#bellBtn.ring svg.ic{animation:bellRing .9s ease-out 1;transform-origin:50% 10%}
+/* new alert, not opened yet (Aviv 17.11: noticeable but not aggressive): a soft glow three times, then a steady brass outline until the bell is opened */
+#bellBtn.fresh{border-color:var(--brass);animation:bellGlow 2.4s ease-in-out 3}
+@keyframes bellGlow{50%{box-shadow:0 0 0 6px var(--brass-soft)}}
 #bellBtn.ring{border-color:var(--amber);background:var(--brass-soft)}
-@media (prefers-reduced-motion:reduce){#bellBtn.ring svg.ic{animation:none}}
+@media (prefers-reduced-motion:reduce){#bellBtn.ring svg.ic,#bellBtn.fresh{animation:none}}
 nav.tabs button svg.ic{width:22px;height:22px;margin-top:6px}
 nav.tabs .badge{top:3px;inset-inline-start:calc(50% + 6px);box-shadow:0 0 0 2px var(--surface)}
 @media (max-width:1023px){
@@ -821,6 +824,16 @@ function wallBeep() {
       o.frequency.value = 880; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.35, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
       o.connect(g); g.connect(wallCtx.destination); o.start(t); o.stop(t + 0.22);
     });
+  } catch (e) {}
+}
+/* one short, quiet tone for a new alert on the wall screen; the three loud beeps stay only for a customer waiting over 15 minutes */
+function wallChime() {
+  try {
+    wallCtx = wallCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (wallCtx.state === 'suspended') wallCtx.resume();
+    var o = wallCtx.createOscillator(), g = wallCtx.createGain(), t = wallCtx.currentTime;
+    o.type = 'sine'; o.frequency.value = 660; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.08, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+    o.connect(g); g.connect(wallCtx.destination); o.start(t); o.stop(t + 0.52);
   } catch (e) {}
 }
 function wallUpdate() {
@@ -1484,9 +1497,9 @@ function taskAlertRender() {
   taskShown = live;
   var idle = coverMode === 'idle';
   $('coverTask').textContent = idle && list.length ? 'יש משימה שהגיע הזמן שלה. לגעת במסך' : '';
-  if (fresh && WALL && wallOpenNow() && ($('cover').classList.contains('hidden') || idle)) wallBeep();
-  /* a new alert shows itself in its one place: the panel opens on a wide screen, a phone gets a short line and the number on the bell */
-  if (fresh && $('cover').classList.contains('hidden')) { if (innerWidth >= 1024) notifOpen(true, true); else if ($('notifPanel').classList.contains('hidden')) ringBell('התראה חדשה. לפתיחה: הפעמון למעלה'); }
+  if (fresh && WALL && wallOpenNow() && ($('cover').classList.contains('hidden') || idle)) wallChime();
+  /* a new alert waits on the bell (Aviv 17.11: no panel jumping open): the bell rings once, glows softly and keeps the number until opened */
+  if (fresh && $('cover').classList.contains('hidden')) gentleNew('התראה חדשה. לפתיחה: הפעמון למעלה');
 }
 /* ---------- alerts panel: everything that needs attention lands here (timed tasks, new supplier price lists, payments without a receipt, the phone-alerts offer) ---------- */
 function popPlace(p, btn) {
@@ -1501,7 +1514,9 @@ function notifSync() {
   $('bellBtn').setAttribute('aria-label', n ? (n === 1 ? 'התראה אחת' : n + ' התראות') + (late ? ', יש דחופות' : '') : 'התראות, אין חדשות');
   $('notifEmpty').classList.toggle('hidden', !!n);
 }
+function gentleNew(t) { $('bellBtn').classList.add('fresh'); if ($('notifPanel').classList.contains('hidden')) ringBell(t); }
 function notifOpen(on, quiet) {
+  if (on) $('bellBtn').classList.remove('fresh');
   var p = $('notifPanel'); if (on === !p.classList.contains('hidden')) return;
   p.classList.toggle('hidden', !on); $('bellBtn').setAttribute('aria-expanded', String(on));
   if (!on) return;
@@ -1562,7 +1577,7 @@ function takeLoad() {
 function takeAnnounce() {
   if (!takeNew || !$('cover').classList.contains('hidden')) return;
   takeNew = false;
-  if (innerWidth >= 1024) notifOpen(true, true); else if ($('notifPanel').classList.contains('hidden')) ringBell('תשלום התקבל ומחכה לקבלה. לפתיחה: הפעמון למעלה');
+  gentleNew('תשלום התקבל ומחכה לקבלה. לפתיחה: הפעמון למעלה');
 }
 function takeHtml() {
   if (!takes.length) return '';
