@@ -70,6 +70,7 @@ main h2{font-size:1.75rem;line-height:1.15;margin-bottom:12px}
 .bal .lab{color:var(--stone);font-size:.93rem}.bal .sum{font:400 2.2rem/1.1 var(--display)}
 .bal.due .sum{color:var(--due)}.bal.fine .sum{color:var(--ok)}
 .ordh{font-size:.95rem;font-weight:600;color:var(--stone);margin:18px 2px 8px}
+.linkbtn{background:none;border:0;padding:0;color:inherit;text-decoration:underline;font:inherit;cursor:pointer;min-height:32px}
 .fine-print{color:var(--stone);font-size:.86rem;margin:8px 0 0}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:0 22px;border-radius:3px;border:1px solid var(--grout);background:var(--surface);color:inherit;font:600 1rem var(--body);cursor:pointer;text-decoration:none}
 .btn.brass{background:var(--brass);border-color:var(--brass);color:var(--brass-ink)}
@@ -191,7 +192,7 @@ footer nav{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
   <footer><div class="wrap">
     <div class="acts"><a class="btn" href="https://wa.me/972504770040" target="_blank" rel="noopener noreferrer">וואטסאפ לצוות</a><a class="btn" href="tel:0504770040">חיוג 050-4770040</a></div>
     <div>זיסו קרמיקה, עוצמה 5, טירת כרמל. א׳ עד ה׳ 08:00 עד 18:00, ו׳ 08:00 עד 13:30.</div>
-    <div>הדף מציג רק את פרטי ההזמנה שלכם, מתוך המערכות של זיסו. רוצים שנסגור את הדף? כתבו לנו ונבטל את הקישור מיד.</div>
+    <div>הדף מציג רק את פרטי ההזמנה שלכם, מתוך המערכות של זיסו. לא רוצים את הדף? <button type="button" id="closeMe" class="linkbtn">סגירת הדף שלי</button></div>
     <nav aria-label="מידע משפטי"><a href="../accessibility.html">הצהרת נגישות</a><a href="../privacy.html">פרטיות</a><a href="../terms.html">תנאים</a></nav>
   </div></footer>
 </div>
@@ -341,6 +342,16 @@ function getPdf(doc, tries) {
     }, function () { pdfLabel(doc, 'אין חיבור, נסו שוב'); setTimeout(function () { pdfLabel(doc, ''); }, 5000); });
 }
 document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('button.pdf'); if (!b || b.disabled || !pin) return; getPdf(b.dataset.doc, 0); });
+var closeArm = 0;
+$('closeMe').addEventListener('click', function () {
+  var b = $('closeMe');
+  if (Date.now() - closeArm > 6000) { closeArm = Date.now(); b.textContent = 'בטוחים? לחיצה נוספת סוגרת את הדף'; setTimeout(function () { b.textContent = 'סגירת הדף שלי'; }, 6000); return; }
+  b.disabled = true;
+  rpc('crm_my_close', { p_token: token, p_pin: pin }).then(function (j) {
+    if (j.ok) { store.set(''); clearInterval(timer); $('deadT').textContent = 'הדף נסגר'; $('deadP').textContent = 'הקישור כבר לא פעיל. רוצים אותו שוב? כתבו לנו.'; show('dead'); }
+    else { b.disabled = false; b.textContent = 'לא הצליח, נסו שוב'; }
+  });
+});
 function poll() { clearInterval(timer); if (!demo) timer = setInterval(function () { if (!document.hidden && pin) load(); }, 45000); }
 document.addEventListener('visibilitychange', function () { if (!document.hidden && pin && !demo) load(); });
 window.addEventListener('hashchange', function () { location.reload(); });
