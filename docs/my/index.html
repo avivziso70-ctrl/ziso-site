@@ -54,6 +54,8 @@ main h2{font-size:1.75rem;line-height:1.15;margin-bottom:12px}
 .lead{color:var(--stone);margin:-6px 0 14px}
 .tile{background:var(--surface);border:1px solid var(--grout);border-radius:4px;padding:16px;margin-bottom:10px}
 .prod h3{font:600 1.05rem/1.35 var(--body)}
+.prod .ph{display:flex;gap:12px;align-items:flex-start}.prod .ph>div{flex:1;min-width:0}
+.prod .pimg{flex:none;width:64px;height:64px;object-fit:contain;background:#fff;border:1px solid var(--grout);border-radius:4px}
 .prod .meta{color:var(--stone);font-size:.93rem;margin-top:2px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:14px 0 6px;padding:0;list-style:none}
 .steps li{height:6px;border-radius:2px;background:var(--grout)}
@@ -279,12 +281,12 @@ function draw(j) {
   [1, 2, 3, 4].forEach(function (r, i) { $('course').children[i].firstChild.style.width = (n ? Math.round(cnt(r) / n * 100) : 0) + '%'; });
   $('teamNote').classList.toggle('hidden', !d.note); $('teamNoteT').textContent = d.note || '';
   var lastOrd = null, multi = L.some(function (l) { return l.order; });
-  $('prods').innerHTML = L.map(function (l) {
+  $('prods').innerHTML = L.map(function (l, li) {
     var head = '';
     if (multi && (l.order || '') !== lastOrd) { lastOrd = l.order || ''; head = '<h3 class="ordh">' + (l.order ? 'הזמנה <span class="ltr">' + esc(l.order) + '</span>' + (l.order_date ? ' · ' + dayS(l.order_date) : '') : 'מוצרים נוספים') + '</h3>'; }
     var r = RANK[l.stage], q = Number(l.qty) || 0, tot = (Number(l.sell) || 0) * q;
-    return head + '<article class="tile prod' + (r === 4 ? ' done' : '') + '"><h3>' + esc(l.desc) + (l.size ? ' <span class="ltr">' + esc(l.size) + '</span>' : '') + '</h3>' +
-      '<div class="meta"><span>' + q.toLocaleString('he-IL') + (l.unit ? ' ' + esc(l.unit) : '') + (Number(l.sell) > 0 ? ' <span class="unitp num">× ' + nis(px(l.sell)) + '</span>' : '') + '</span>' + (tot ? '<span class="num">' + nis(px(tot)) + '</span>' : '') + '</div>' +
+    return head + '<article class="tile prod' + (r === 4 ? ' done' : '') + '"><div class="ph">' + (pics[li] ? '<img class="pimg" alt="" loading="lazy" src="' + esc(pics[li]) + '">' : '') + '<div><h3>' + esc(l.desc) + (l.size ? ' <span class="ltr">' + esc(l.size) + '</span>' : '') + '</h3>' +
+      '<div class="meta"><span>' + q.toLocaleString('he-IL') + (l.unit ? ' ' + esc(l.unit) : '') + (Number(l.sell) > 0 ? ' <span class="unitp num">× ' + nis(px(l.sell)) + '</span>' : '') + '</span>' + (tot ? '<span class="num">' + nis(px(tot)) + '</span>' : '') + '</div></div></div>' +
       '<ol class="steps" aria-hidden="true">' + [1, 2, 3, 4].map(function (k) { return '<li class="' + (r >= k ? 'on' : r > k - 1 ? 'half' : '') + '"></li>'; }).join('') + '</ol>' + stateLine(l) +
       (Number(l.delivered_qty) > 0 && r < 4 ? '<div class="case closed">נמסרו ' + Number(l.delivered_qty).toLocaleString('he-IL') + ' מתוך ' + q.toLocaleString('he-IL') + '</div>' : '') + caseLines(l) + '</article>';
   }).join('') || '<p class="lead">עוד אין מוצרים ברשימה.</p>';
@@ -320,7 +322,7 @@ function draw(j) {
 function load(first) {
   if (demo) { $('demoBar').classList.remove('hidden'); draw(sample()); return; }
   rpc('crm_my', { p_token: token, p_pin: pin || null }).then(function (j) {
-    if (j.ok) { store.set(pin); draw(j); return; }
+    if (j.ok) { store.set(pin); draw(j); getPics(); return; }
     if (j.error === 'net') { if (first && !data) { $('deadT').textContent = 'אין חיבור כרגע'; $('deadP').textContent = 'בדקו את האינטרנט ונסו שוב בעוד רגע.'; show('dead'); } return; }
     if (j.error === 'not_found') { show('dead'); return; }
     store.set(''); clearInterval(timer);
@@ -347,6 +349,13 @@ $('noteForm').addEventListener('submit', function (e) {
 });
 /* ---------- PDF of a receipt / invoice ---------- */
 var DOC_FN = 'https://ppnjosyraosrdephsksu.supabase.co/functions/v1/crm-my-doc', pdfSt = {}, docHtml = '';
+/* catalog pictures of the products (short-lived links, asked again every 50 minutes) */
+var PIC_FN = 'https://ppnjosyraosrdephsksu.supabase.co/functions/v1/crm-my-pics', pics = {}, picsAt = 0;
+function getPics() {
+  if (demo || Date.now() - picsAt < 50 * 60000) return; picsAt = Date.now();
+  fetch(PIC_FN, { method: 'POST', headers: { 'content-type': 'application/json', apikey: KEY }, body: JSON.stringify({ token: token, pin: pin }) })
+    .then(function (r) { return r.json(); }).then(function (j) { if (!j.ok) return; pics = {}; (j.pics || []).forEach(function (p) { pics[p.i] = p.url; }); if (data && j.pics.length) draw(data); }, function () { picsAt = 0; });
+}
 function pdfLabel(doc, t) { pdfSt[doc] = t; document.querySelectorAll('button.pdf[data-doc="' + doc + '"]').forEach(function (b) { b.textContent = t || 'PDF ↓'; b.disabled = !!t; }); }
 function getPdf(doc, tries) {
   fetch(DOC_FN, { method: 'POST', headers: { 'content-type': 'application/json', apikey: KEY }, body: JSON.stringify({ token: token, pin: pin, doc: doc }) })
