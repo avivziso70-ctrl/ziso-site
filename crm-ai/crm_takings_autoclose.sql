@@ -29,4 +29,4 @@ begin
   return n;
 end $$;
 revoke all on function public.crm_takings_autoclose() from public, anon, authenticated;
-select cron.schedule('crm-takings-autoclose', '25 5-17 * * 0-5', 'select public.crm_takings_autoclose()');
+-- Scheduled through crm_loops_run() (crm_loops.sql, cron crm-loops) since 17.11.2026.
