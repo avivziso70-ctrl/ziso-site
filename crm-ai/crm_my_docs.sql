@@ -1,8 +1,8 @@
 -- The customer downloads the PDF of their own receipts and invoices from their page (Aviv 17.11.2026: "שהלקוח יוכל להוריד pdf לבד").
 -- PDFs are Priority's own documents, made by the office robot (crm_doc_requests -> priority_jobs print_document -> crm_docs,
 -- private bucket priority-docs). A customer gets only documents of the Priority customer behind their link.
--- Requests from the page (requested_by 'customer-page', channel 'crm') pass allow_original: a never-printed document comes out as the original (Aviv 15.11 standing rule:
--- the robot may print a Priority document as "מקור" when it is printed for the first time). Otherwise a copy.
+-- COPIES ONLY for now: an original needs Aviv's own words in the robot thread (the robot's guard asks for approval_msg),
+-- so a never-printed document ends 'skipped' and the page says to ask the team. (17.11: auto-approving originals was refused.)
 -- Entry point: edge function crm-my-doc (service role) signs a 5-minute link. The functions here are not open to anon.
 -- No DROP in this file.
 
@@ -12,7 +12,7 @@ begin
   if new.status <> 'queued' then return new; end if;
   insert into public.priority_jobs (type, params, requested_by, priority, idempotency_key, crm_doc_request_id)
   values ('print_document',
-          jsonb_build_object('doc', new.doc, 'kind', new.kind, 'tail9', new.tail9, 'allow_original', new.requested_by = 'customer-page'),
+          jsonb_build_object('doc', new.doc, 'kind', new.kind, 'tail9', new.tail9, 'allow_original', false),
           'crm:' || new.requested_by, case when new.requested_by = 'customer-page' then 4 else 3 end, 'crm_doc:' || new.id, new.id);
   return new;
 end $$;
