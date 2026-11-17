@@ -2178,13 +2178,27 @@ function loadHome(force) {
     want('moshe') ? sb.from('priority_orders').select('so,date,cust_name,tail9,open_total,lines').gte('date', d90).order('date', { ascending: false }).limit(400) : none,
     want('moshe') ? sb.from('priority_supplier_orders').select('po,sup_name,due,item,open_qty,unit').gt('open_qty', 0).lte('due', wk).gte('due', new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)).order('due').limit(300) : none,
     want('moshe') ? sb.rpc('crm_home_money') : none,
-    takeLoad()
+    takeLoad(),
+    sb.rpc('crm_open_loops')
   ]).then(function (rs) {
     homeData = { role: role, tasks: rs[0].data || [], ai: rs[1].data || [], visits: rs[2].data || [], quotes: rs[3].data || [], kpi: rs[4].data || {}, leads: rs[5].data || [],
       pay: rs[6].data || [], debt: rs[7].data || [], proofs: rs[8].data || [], sync: rs[9].data || [], orders: rs[10].data || [], supOrders: rs[11].data || [],
-      money: rs[12] && !rs[12].error ? rs[12].data : null, moneyErr: !!(rs[12] && rs[12].error) };
+      money: rs[12] && !rs[12].error ? rs[12].data : null, moneyErr: !!(rs[12] && rs[12].error), loops: rs[14] && rs[14].data || [] };
     homeAt = Date.now(); homeBusy = false; homeRender();
   }).catch(function () { homeBusy = false; $('homeBody').innerHTML = '<div class="sect"><div>לא נטען. נסו שוב</div><div class="row"><button class="btn small" type="button" data-hreload>טעינה מחדש</button></div></div>'; });
+}
+/* open loops (Aviv 17.11.2026): every payment, refund, supplier order and deal must close. crm_open_loops() lists what is still open,
+   with its age and owner; the hourly job closes loops by itself when the document shows up and opens one task when one is stuck. */
+var LOOP_GO = { kupa: 'kupa.html', prices: 'prices.html#orders', receive: 'receive.html', deal: 'deal.html' };
+function loopsSect(L, row) {
+  L = L || []; var st = L.filter(function (l) { return l.stuck; });
+  var age = function (t) { var h = Math.max(0, (Date.now() - new Date(t).getTime()) / 3600000); return h < 1 ? 'פחות משעה' : h < 48 ? Math.round(h) + ' שעות' : Math.round(h / 24) + ' ימים'; };
+  return '<div class="sect"><h3>מעגלים פתוחים <span class="n">' + L.length + (st.length ? ' · ' + st.length + ' תקועים' : '') + '</span></h3><div class="small muted">כל תשלום, החזר, הזמנת רכש ועסקה צריכים להיסגר. המערכת בודקת כל שעה מול פריוריטי והספקים וסוגרת לבד כשהמסמך נמצא.</div>' +
+    (L.length ? L.slice().sort(function (a, b) { return (b.stuck - a.stuck) || (a.opened_at < b.opened_at ? -1 : 1); }).slice(0, 12).map(function (l) {
+      var t = esc(l.title) + (l.amount != null ? ' · ' + amt(l.amount) : '');
+      if (l.tail9) t = '<a href="#card/' + esc(l.tail9) + '">' + t + '</a>';
+      return row(l.stuck ? 'תקוע' : 'פתוח', l.stuck ? 'late' : 'warm', t, esc(l.label) + ' · ' + esc(l.owner || '') + ' · פתוח ' + age(l.opened_at) + (l.stuck ? '' : ' · צריך להיסגר עד ' + esc(dayWord(l.due_at)) + ' ' + esc(fmtTime(l.due_at))), LOOP_GO[l.link] ? '<a class="btn small" href="' + LOOP_GO[l.link] + '">לפתוח</a>' : '');
+    }).join('') : '<div class="small muted">כל המעגלים סגורים ✓</div>') + '</div>';
 }
 function homeRender() {
   if (!homeData || !me) return;
@@ -2287,7 +2301,7 @@ function homeRender() {
   if (isOwner()) h += '<div class="seg" role="group" aria-label="מסך הבית של">' + HOME_ROLES.map(function (r) { return '<button type="button" data-hrole="' + r[0] + '" aria-pressed="' + (r[0] === role) + '">' + r[1] + '</button>'; }).join('') + '</div>';
   h += '<div class="hello"><h3>' + homeGreet() + ', ' + esc(isOwner() ? HOME_ROLES.filter(function (r) { return r[0] === role; })[0][1] : (mine.name || '')) + '</h3><div class="small muted">' + esc(fmtDay(new Date())) + '</div><p class="brief">' + line.join(' · ') + '</p></div>';
   h += '<div class="sect urgent"><h3>דחוף עכשיו <span class="n">' + urgent.length + '</span></h3>' + (urgent.length ? urgent.join('') : '<div class="small muted">אין כרגע משהו דחוף ✓</div>') + '</div>';
-  h += '<div class="kpis">' + kpis.join('') + '</div>' + sects.join('');
+  h += '<div class="kpis">' + kpis.join('') + '</div>' + sects.join('') + loopsSect(D.loops, row);
   h += '<p class="fine">מתעדכן לבד כל דקה. ' + (homeAt ? 'נטען ב-' + esc(fmtTime(homeAt)) : '') + '</p>';
   $('homeBody').innerHTML = h;
 }
