@@ -535,7 +535,11 @@ async function printDocument(a: any, who: string) {
   if (error) throw error;
   await admin.from("crm_audit").insert({ who, action: "print_request", detail: { id: row.id, doc, kind, copies } });
   const what = `${kind === "receipt" ? "קבלה" : "חשבונית"} ${doc} · ${cut(d.cust_name || "", 40)} · ${nis(d.amount)} · ${day(d.date)}${copies > 1 ? " · " + copies + " עותקים" : ""}`;
-  return row.job_id ? `נשלח להדפסה במדפסת המשרד: ${what}. יוצא תוך כמה דקות.` : `נכנס לתור ההדפסה: ${what}. יודפס במדפסת המשרד ברגע שהרובוט במשרד יתעדכן (היום עד 12:00).`;
+  // Aviv 17.11: the robot works in Priority only at night (after 20:00, no separate user), so a daytime request prints in the evening.
+  const ilHour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Jerusalem", hour: "2-digit", hour12: false }).format(new Date()));
+  const night = ilHour >= 20 || ilHour < 6;
+  if (row.job_id && night) return `נשלח להדפסה במדפסת המשרד: ${what}. יוצא תוך כמה דקות.`;
+  return `נכנס לתור ההדפסה: ${what}. יודפס במדפסת המשרד הערב אחרי 20:00, כי הרובוט עובד בפריוריטי רק בערב. צריך את זה עכשיו? מדפיסים ידנית מפריוריטי.`;
 }
 async function printStatus() {
   const { data, error } = await admin.from("crm_print_requests").select("doc,kind,cust_name,amount,status,note,requested_at,printed_at").order("requested_at", { ascending: false }).limit(10);
