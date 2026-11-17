@@ -287,7 +287,7 @@ function draw(j) {
     var r = RANK[l.stage], q = Number(l.qty) || 0, tot = (Number(l.sell) || 0) * q;
     return head + '<article class="tile prod' + (r === 4 ? ' done' : '') + '"><div class="ph">' + (pics[li] ? '<img class="pimg" alt="" loading="lazy" src="' + esc(pics[li]) + '">' : '') + '<div><h3>' + esc(l.desc) + (l.size ? ' <span class="ltr">' + esc(l.size) + '</span>' : '') + '</h3>' +
       '<div class="meta"><span>' + q.toLocaleString('he-IL') + (l.unit ? ' ' + esc(l.unit) : '') + (Number(l.sell) > 0 ? ' <span class="unitp num">× ' + nis(px(l.sell)) + '</span>' : '') + '</span>' + (tot ? '<span class="num">' + nis(px(tot)) + '</span>' : '') + '</div></div></div>' +
-      '<ol class="steps" aria-hidden="true">' + [1, 2, 3, 4].map(function (k) { return '<li class="' + (r >= k ? 'on' : r > k - 1 ? 'half' : '') + '"></li>'; }).join('') + '</ol>' + stateLine(l) +
+      '<ol class="steps" aria-hidden="true">' + [1, 2, 3, 4].map(function (k) { return '<li class="' + (r >= k ? 'on' : r > k - 1 ? 'half' : '') + '"></li>'; }).join('') + '</ol>' + stateLine(l) + (l.est ? '<div class="case">מחיר משוער. המחיר הסופי יאושר לפני ההזמנה.</div>' : '') +
       (Number(l.delivered_qty) > 0 && r < 4 ? '<div class="case closed">נמסרו ' + Number(l.delivered_qty).toLocaleString('he-IL') + ' מתוך ' + q.toLocaleString('he-IL') + '</div>' : '') + caseLines(l) + '</article>';
   }).join('') || '<p class="lead">עוד אין מוצרים ברשימה.</p>';
   $('total').textContent = nis(d.total);

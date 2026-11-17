@@ -36,6 +36,9 @@
 // A question to a supplier's order contact (Aviv 15.11: "תראיין אותה, תשאל אותה האם לכלול עוד מישהו? האם יש מיילים"):
 //   { action: "wa_ask", supplier_id, text, by } with x-hook-token, called only by the database function crm_po_ask.
 //   Free text to sp_suppliers.order_wa_phone, so only inside Meta's 24h window; kept in wa_messages (source 'crm') and crm_audit.
+//   Staff: { action: "price_ask", deal_id, lid, supplier_id, model, size, color, note } asks a supplier that prices on request
+//   (price_by_ask) for a price, with the customer's name: free text inside the 24h window, otherwise template
+//   ziso_supplier_price. Saved in crm_price_asks; the answer is attached there by the wa_messages trigger crm_price_ask_in.
 // The WhatsApp token is read here through the service role only, never returned or logged; wa_config is never written.
 // Priority is never written.
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -51,6 +54,9 @@ const WA_TEMPLATE = "ziso_supplier_order";
 const WA_TEMPLATE_BODY = 'שלום {{1}}, זו הזמנת רכש {{2}} מזיסו קרמיקה:\n{{3}}\nסה"כ {{4}} לפני מע"מ.\nנא לאשר את ההזמנה בתשובה להודעה הזו, ולציין אם חסר פריט או שהמחיר השתנה.';
 const WA_CANCEL = "ziso_supplier_cancel";
 const WA_CANCEL_BODY = 'שלום {{1}}, אנחנו מבטלים את הזמנת רכש {{2}} מזיסו קרמיקה (סה"כ {{3}} לפני מע"מ). נא לא לספק אותה, ולאשר בתשובה להודעה הזו שהביטול התקבל.';
+// a price request to a supplier that has no price list (sp_suppliers.price_by_ask, first: Onda). Aviv 17.11.2026.
+const WA_PRICE = "ziso_supplier_price";
+const WA_PRICE_BODY = 'שלום {{1}}, בקשת מחיר מזיסו קרמיקה: {{2}}. עבור לקוח: {{3}}. נשמח למחיר ולזמן אספקה בתשובה להודעה הזו. תודה, {{4}}, זיסו קרמיקה.';
 const WINDOW_MS = 23.5 * 3600 * 1000;
 const BUSINESS_ADDR = "זיסו קרמיקה, עוצמה 5, טירת כרמל";
 const localPhone = (s: unknown) => { let d = String(s ?? "").replace(/\D/g, ""); if (d.startsWith("972")) d = "0" + d.slice(3); return d.length === 10 ? d.slice(0, 3) + "-" + d.slice(3) : d; };
@@ -336,23 +342,26 @@ async function staffAction(req: Request, body: any) {
     return json(req, { ok: true, po });
   }
 
+  if (body.action === "price_ask") { const out = await priceAsk(body, email, staff.name); return json(req, out, out.ok ? 200 : 400); }
+
   if (body.action === "wa_template") {
     if (email !== OWNER) return json(req, { ok: false, error: "רק אביב" }, 403);
     const cfg = await waCfg();
     if (!cfg?.token || !cfg?.waba_id) return json(req, { ok: false, error: "וואטסאפ לא מחובר" }, 503);
     const h = { authorization: `Bearer ${cfg.token}` };
-    // two templates: the order itself and the cancellation notice. body.which picks one to submit; the answer lists both.
+    // three templates: the order, the cancellation notice and the price request. body.which picks one to submit; the answer lists all.
     const DEFS: Record<string, { name: string; text: string; example: string[] }> = {
       order: { name: WA_TEMPLATE, text: WA_TEMPLATE_BODY, example: ["דודי", "Z0002", "MP1009CB צינור פלקס גולד × 2 יח' (₪148.00) · WT-2305 סבוניה × 1 יח' (₪150.00)", "₪298.00"] },
       cancel: { name: WA_CANCEL, text: WA_CANCEL_BODY, example: ["דודי", "Z0002", "₪298.00"] },
+      price: { name: WA_PRICE, text: WA_PRICE_BODY, example: ["רימה", "ארון אמבטיה לוטוס · מידה 100 · צבע קפוצ'ינו · כיור אינטגרלי", "ישראל ישראלי", "שיר"] },
     };
     const look = async (name: string) => {
       const ex = await (await fetch(`${GRAPH}/${cfg.waba_id}/message_templates?name=${name}&fields=name,status,category,rejected_reason`, { headers: h })).json().catch(() => ({}));
       const f = (ex.data || []).find((t: any) => t.name === name);
       return { exists: !!f, status: f?.status || null, category: f?.category || null, reason: f?.rejected_reason || null } as Record<string, unknown>;
     };
-    const all: Record<string, Record<string, unknown>> = { order: await look(WA_TEMPLATE), cancel: await look(WA_CANCEL) };
-    const which = body.which === "cancel" ? "cancel" : "order";
+    const all: Record<string, Record<string, unknown>> = { order: await look(WA_TEMPLATE), cancel: await look(WA_CANCEL), price: await look(WA_PRICE) };
+    const which = body.which === "cancel" ? "cancel" : body.which === "price" ? "price" : "order";
     if (body.submit && !all[which].exists) {
       const d = DEFS[which];
       const r = await fetch(`${GRAPH}/${cfg.waba_id}/message_templates`, { method: "POST", headers: { ...h, "content-type": "application/json" }, body: JSON.stringify({
@@ -531,6 +540,40 @@ export async function waAsk(body: any) {
   await waRecord({ to_phone: sup.order_wa_phone, supplier_name: sup.name, po_no: null }, res.id, "text", text, by, { ask: true });
   await admin.from("crm_audit").insert({ who: by, action: "po_wa_ask", detail: { supplier: sup.name, wamid: res.id, text } });
   return { ok: true, id: res.id };
+}
+
+// A price request from an order line to a supplier that prices on request. A staff member pressed the button: that is the yes.
+// It carries the model, size, colour and the customer's name, nothing else about the customer.
+export async function priceAsk(body: any, email: string, staffName: string | null) {
+  const flat = (t: unknown, n: number) => String(t ?? "").replace(/[\r\n\t]+/g, " ").replace(/ {2,}/g, " ").trim().slice(0, n);
+  const model = flat(body.model, 200), size = flat(body.size, 60), color = flat(body.color, 60), note = flat(body.note, 200);
+  if (model.length < 2) return { ok: false, error: "חסר דגם או תיאור" };
+  const { data: deal } = await admin.from("crm_deals").select("id, deal_no, customer_name").eq("id", Number(body.deal_id) || 0).maybeSingle();
+  if (!deal) return { ok: false, error: "ההזמנה לא נמצאה" };
+  const { data: sup } = await admin.from("sp_suppliers").select("id, name, order_wa_phone, order_contact, active, price_by_ask").eq("id", String(body.supplier_id || "")).maybeSingle();
+  const t9 = tail9(sup?.order_wa_phone);
+  if (!sup || !sup.active || !sup.price_by_ask || !t9) return { ok: false, error: "לספק הזה אין בקשת מחיר בוואטסאפ" };
+  const who = flat(staffName || "צוות זיסו", 40), contact = flat(sup.order_contact, 40), customer = flat(deal.customer_name, 60) || "לקוח";
+  const item = [model, size && "מידה " + size, color && "צבע " + color, note].filter(Boolean).join(" · ");
+  const text = ["שלום" + (contact ? " " + contact : "") + ", בקשת מחיר מזיסו קרמיקה:", model, ...(size ? ["מידה: " + size] : []), ...(color ? ["צבע: " + color] : []), ...(note ? [note] : []),
+    "עבור לקוח: " + customer, "", "נשמח למחיר ולזמן אספקה. תודה, " + who].join("\n");
+  const cfg = await waCfg();
+  let res: { ok: boolean; id?: string; error: string } = { ok: false, error: "וואטסאפ לא מחובר" }, via = "text";
+  if (cfg?.token && cfg?.phone_number_id) {
+    let to = digits(sup.order_wa_phone); if (to.startsWith("0")) to = "972" + to.slice(1);
+    if (await windowOpen(t9)) res = await waPost(cfg, { messaging_product: "whatsapp", to, type: "text", text: { body: text, preview_url: false } });
+    else {
+      via = "template";
+      res = await waPost(cfg, { messaging_product: "whatsapp", to, type: "template", template: { name: WA_PRICE, language: { code: "he" },
+        components: [{ type: "body", parameters: [contact || "שלום", item.slice(0, 600), customer, who].map((x) => ({ type: "text", text: x })) }] } });
+      if (!res.ok && /template|132\d{3}/i.test(res.error)) res.error = "תבנית בקשת המחיר עוד לא מאושרת במטא, אז אי אפשר לפתוח שיחה עם הספק. אפשר לשלוח כשהספק כתב לנו ב-24 השעות האחרונות.";
+    }
+  }
+  if (res.ok && res.id) await waRecord({ to_phone: sup.order_wa_phone, supplier_name: sup.name, po_no: null }, res.id, via, text, email, { ask: true, deal: deal.deal_no, ...(via === "template" ? { template: WA_PRICE } : {}) });
+  const { data: ask } = await admin.from("crm_price_asks").insert({ deal_id: deal.id, lid: flat(body.lid, 40) || null, supplier_id: sup.id, item, customer_name: customer, text, by: email, by_name: who,
+    via, wa_msg_id: res.id || null, state: res.ok ? "sent" : "failed", error: res.ok ? null : (res.error || "error").slice(0, 300) }).select("*").maybeSingle();
+  await admin.from("crm_audit").insert({ who: email, action: "price_ask", detail: { supplier: sup.name, deal: deal.deal_no, ok: res.ok, via, wamid: res.id || null } });
+  return res.ok ? { ok: true, ask } : { ok: false, ask, error: res.error || "לא נשלח" };
 }
 
 // A WhatsApp message from the supplier contact (trigger crm_po_wa_in on wa_messages).

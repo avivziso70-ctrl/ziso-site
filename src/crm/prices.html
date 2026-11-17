@@ -234,6 +234,7 @@ function drawSearch() {
       '<span' + (old ? ' class="warn"' : '') + '>עודכן ' + fmtDate(r.created_at) + (old ? ' · מחיר ישן' : '') + '</span></div></div>' +
       '<div class="pr"><div class="cust"><span class="lbl">ללקוח </span>' + (r.price == null ? '<span class="mute">אין מחיר</span>' : ils ? money(customer(r.price, r.vat_included), 'ILS') : '<span class="mute">מט"ח</span>') + '</div>' +
       (r.price == null ? '' : '<div class="cst"><span class="lbl">עלות </span>' + money(r.price, r.currency) + (r.unit ? ' <span class="lbl">/' + esc(r.unit) + '</span>' : '') + (r.vat_included ? ' <span class="lbl">כולל מע"מ</span>' : '') + '</div>') +
+      (r.est ? '<div class="sub"><span class="st orange">הערכה</span> מחיר אחרון' + (r.page_ref ? ', ' + esc(r.page_ref) : '') + '. סופי באישור ' + esc(s.order_contact || 'הספק') + '</div>' : '') +
       (r.list_price != null ? '<div class="sub">מחירון הספק לצרכן ' + money(ils ? r.list_price * (r.vat_included ? 1 : 1.18) : r.list_price, r.currency) + '</div>' : '') +
       (canOrder(r) ? '<button type="button" class="btn add' + (cart.items[r.id] ? ' in' : '') + '" data-add="' + r.id + '">' + (cart.items[r.id] ? '✓ בהזמנה' : '+ להזמנה') + '</button>' : '') + '</div></li>';
   }).join('');
@@ -749,10 +750,12 @@ function drawTpl(j) {
   var box = $('waTpl');
   var all = j.templates || { order: { exists: j.exists, status: j.status, reason: j.reason } };
   if (!j.ok && !j.templates) { box.innerHTML = '<b>תבניות וואטסאפ לספקים:</b> ' + esc(j.error || 'לא הצלחתי לבדוק') + ' <button class="btn small tplGo" data-which="order">לנסות שוב</button>'; box.classList.remove('hidden'); return; }
-  var NAMES = { order: ['תבנית הזמנה לספק', 'ההודעה הראשונה לספק בוואטסאפ (וכל הודעה אחרי 24 שעות שהוא לא כתב) חייבת תבנית שמטא אישרה.'], cancel: ['תבנית הודעת ביטול', 'כדי שביטול הזמנה יגיע לספק גם בוואטסאפ, צריך תבנית נוספת שמטא אישרה.'] };
-  var html = ['order', 'cancel'].map(function (k) {
+  var NAMES = { order: ['תבנית הזמנה לספק', 'ההודעה הראשונה לספק בוואטסאפ (וכל הודעה אחרי 24 שעות שהוא לא כתב) חייבת תבנית שמטא אישרה.'], cancel: ['תבנית הודעת ביטול', 'כדי שביטול הזמנה יגיע לספק גם בוואטסאפ, צריך תבנית נוספת שמטא אישרה.'],
+    price: ['תבנית בקשת מחיר מספק', 'כדי שבקשת מחיר מדף ההזמנה תגיע לרימה באונדה גם כשהיא לא כתבה לנו ב-24 השעות האחרונות, צריך תבנית שמטא אישרה.'] };
+  var TAIL = { order: '. עד שהיא מאושרת, הזמנה בוואטסאפ יוצאת רק אם הספק כתב לנו ב-24 השעות האחרונות.', cancel: '. עד אז ביטול יוצא במייל, ובוואטסאפ רק אם הספק כתב לנו ב-24 השעות האחרונות.', price: '. עד אז בקשת מחיר יוצאת רק אם הספק כתב לנו ב-24 השעות האחרונות.' };
+  var html = ['order', 'cancel', 'price'].map(function (k) {
     var t = all[k]; if (!t || t.status === 'APPROVED') return '';
-    if (t.exists) return '<p style="margin:6px 0"><b>' + NAMES[k][0] + ':</b> ' + esc(TPL_ST[t.status] || t.status || 'נשלחה לאישור') + (t.reason && t.reason !== 'NONE' ? ' (' + esc(t.reason) + ')' : '') + (k === 'order' ? '. עד שהיא מאושרת, הזמנה בוואטסאפ יוצאת רק אם הספק כתב לנו ב-24 השעות האחרונות.' : '. עד אז ביטול יוצא במייל, ובוואטסאפ רק אם הספק כתב לנו ב-24 השעות האחרונות.') + '</p>';
+    if (t.exists) return '<p style="margin:6px 0"><b>' + NAMES[k][0] + ':</b> ' + esc(TPL_ST[t.status] || t.status || 'נשלחה לאישור') + (t.reason && t.reason !== 'NONE' ? ' (' + esc(t.reason) + ')' : '') + TAIL[k] + '</p>';
     return '<p style="margin:6px 0"><b>צריך לחיצה אחת שלך, ' + NAMES[k][0] + ':</b> ' + NAMES[k][1] + ' ההגשה בלי עלות, וכל הודעה בתבנית עולה כמה אגורות למטא.' + (t.error ? ' <span class="err">' + esc(t.error) + '</span>' : '') + ' <button class="btn brass small tplGo" data-which="' + k + '">הגשה לאישור מטא</button></p>';
   }).join('');
   box.innerHTML = html; box.classList.toggle('hidden', !html);
