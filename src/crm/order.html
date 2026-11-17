@@ -223,7 +223,7 @@ details.sec>.bd{padding:0 16px 16px}
 </main>
 
 <div id="bar" class="hidden" role="region" aria-label="סיכום ההזמנה"><div class="in">
-  <div class="big"><span class="k">סה"כ כולל מע"מ</span><span class="v" id="bSell">₪0</span></div>
+  <div class="big"><span class="k">סה"כ כולל מע"מ</span><span class="v" id="bSell">₪0</span><span class="k" id="bEx"></span></div>
   <div class="due" id="bDueW"><span class="k">נשאר לתשלום</span><span class="v" id="bDue">₪0</span></div>
   <div class="cost"><span class="k">עלות לפני מע"מ</span><span class="v" id="bCost">₪0</span></div>
   <div class="cost profit" id="bP"><span class="k">רווח לפני מע"מ</span><span class="v" id="bProfit">₪0</span></div>
@@ -618,7 +618,7 @@ function draw() {
 function paidSum() { return r2(takings.reduce(function (s, t) { return s + (t.cancelled_at || (t.method === 'card_link' && !t.paid_at) ? 0 : Number(t.amount) || 0); }, 0)); }
 function drawBar() {
   var t = totals(deal), paid = paidSum(), due = r2(t.sell - paid);
-  $('bSell').textContent = money(t.sell); $('bCost').textContent = money(t.cost);
+  $('bSell').textContent = money(t.sell); $('bEx').textContent = t.sell ? 'לפני מע"מ ' + money(Math.round(t.sell / VAT)) : ''; $('bCost').textContent = money(t.cost);
   $('bProfit').textContent = t.unknown ? 'לא ידוע' : money(Math.round(t.profit)) + ' (' + t.pct + '%)'; $('bP').classList.toggle('neg', !t.unknown && t.profit < 0);
   $('bDue').textContent = due < 0 ? 'זיכוי ' + money(-due) : money(due); $('bDueW').classList.toggle('zero', due <= 0 && t.sell > 0);
   $('bDueW').querySelector('.k').textContent = paid > 0 ? 'שולם ' + money(paid) + ' · נשאר' : 'נשאר לתשלום';

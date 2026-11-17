@@ -63,6 +63,12 @@ main h2{font-size:1.75rem;line-height:1.15;margin-bottom:12px}
 .prod.done{opacity:.75}
 .case{margin-top:10px;padding:8px 12px;border-inline-start:3px solid var(--due);background:var(--due-soft);font-size:.93rem;border-radius:0 3px 3px 0}
 .case.closed{border-color:var(--ok);background:var(--ok-soft)}.case .d{color:var(--stone)}
+.prodhd{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}.prodhd h2{margin:0!important}
+.vatsw{display:inline-flex;border:1px solid var(--grout);border-radius:999px;padding:3px;background:var(--surface)}
+.vatsw button{font:600 .9rem var(--body);color:var(--stone);background:transparent;border:0;border-radius:999px;min-height:38px;padding:0 14px;cursor:pointer}
+.vatsw button[aria-pressed=true]{background:var(--brass);color:var(--brass-ink)}
+.prod .meta .unitp{font-size:.88rem}
+.sumrow.sm{padding-top:6px;font-weight:400;color:var(--stone)}
 .sumrow{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:14px 2px 0;font-weight:600}
 .sumrow .big{font:400 1.7rem var(--display)}
 .kv{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--grout)}
@@ -150,8 +156,10 @@ footer nav{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
 
   <main class="wrap">
     <section aria-labelledby="hProd">
-      <h2 id="hProd">המוצרים שלכם</h2>
+      <div class="prodhd"><h2 id="hProd">המוצרים שלכם</h2>
+        <div class="vatsw" role="group" aria-label="הצגת המחירים"><button type="button" data-vat="1" aria-pressed="true">כולל מע"מ</button><button type="button" data-vat="0" aria-pressed="false">לפני מע"מ</button></div></div>
       <div id="prods"></div>
+      <div id="exVat" class="hidden"><div class="sumrow sm"><span>סה"כ לפני מע"מ</span><span class="num" id="totEx"></span></div><div class="sumrow sm"><span>מע"מ 18%</span><span class="num" id="totVat"></span></div></div>
       <div class="sumrow"><span id="totLab">סה"כ העסקה, כולל מע"מ</span><span class="big num" id="total"></span></div>
       <p class="fine-print" id="dest"></p>
     </section>
@@ -207,6 +215,13 @@ var SB = 'https://ppnjosyraosrdephsksu.supabase.co/rest/v1/rpc/', KEY = 'sb_publ
 var token = decodeURIComponent((location.hash || '').replace(/^#/, '')), demo = token === 'demo', pin = '', data = null, timer = null;
 var $ = function (id) { return document.getElementById(id); };
 var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+var VAT = 1.18, withVat = true; try { withVat = localStorage.getItem('ziso-my-vat') !== '0'; } catch (e) { }
+var px = function (n) { return withVat ? Number(n) || 0 : (Number(n) || 0) / VAT; };   // prices are stored including VAT
+document.querySelectorAll('[data-vat]').forEach(function (b) { b.addEventListener('click', function () {
+  withVat = b.dataset.vat === '1'; try { localStorage.setItem('ziso-my-vat', withVat ? '1' : '0'); } catch (e) { }
+  document.querySelectorAll('[data-vat]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); if (data) draw(data);
+}); });
+document.querySelectorAll('[data-vat]').forEach(function (x) { x.setAttribute('aria-pressed', String((x.dataset.vat === '1') === withVat)); });
 var nis = function (n) { return '₪' + (Math.round((Number(n) || 0) * 100) / 100).toLocaleString('he-IL', { maximumFractionDigits: 2 }); };
 var day = function (d) { return d ? new Date(d).toLocaleDateString('he-IL', { day: 'numeric', month: 'long' }) : ''; };
 var dayS = function (d) { return d ? new Date(d).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric', year: '2-digit' }) : ''; };
@@ -269,11 +284,12 @@ function draw(j) {
     if (multi && (l.order || '') !== lastOrd) { lastOrd = l.order || ''; head = '<h3 class="ordh">' + (l.order ? 'הזמנה <span class="ltr">' + esc(l.order) + '</span>' + (l.order_date ? ' · ' + dayS(l.order_date) : '') : 'מוצרים נוספים') + '</h3>'; }
     var r = RANK[l.stage], q = Number(l.qty) || 0, tot = (Number(l.sell) || 0) * q;
     return head + '<article class="tile prod' + (r === 4 ? ' done' : '') + '"><h3>' + esc(l.desc) + (l.size ? ' <span class="ltr">' + esc(l.size) + '</span>' : '') + '</h3>' +
-      '<div class="meta"><span>' + q.toLocaleString('he-IL') + (l.unit ? ' ' + esc(l.unit) : '') + '</span>' + (tot ? '<span class="num">' + nis(tot) + '</span>' : '') + '</div>' +
+      '<div class="meta"><span>' + q.toLocaleString('he-IL') + (l.unit ? ' ' + esc(l.unit) : '') + (Number(l.sell) > 0 ? ' <span class="unitp num">× ' + nis(px(l.sell)) + '</span>' : '') + '</span>' + (tot ? '<span class="num">' + nis(px(tot)) + '</span>' : '') + '</div>' +
       '<ol class="steps" aria-hidden="true">' + [1, 2, 3, 4].map(function (k) { return '<li class="' + (r >= k ? 'on' : r > k - 1 ? 'half' : '') + '"></li>'; }).join('') + '</ol>' + stateLine(l) +
       (Number(l.delivered_qty) > 0 && r < 4 ? '<div class="case closed">נמסרו ' + Number(l.delivered_qty).toLocaleString('he-IL') + ' מתוך ' + q.toLocaleString('he-IL') + '</div>' : '') + caseLines(l) + '</article>';
   }).join('') || '<p class="lead">עוד אין מוצרים ברשימה.</p>';
   $('total').textContent = nis(d.total);
+  $('exVat').classList.toggle('hidden', withVat || !Number(d.total)); $('totEx').textContent = nis(Number(d.total) / VAT); $('totVat').textContent = nis(Number(d.total) - Number(d.total) / VAT);
   var nOrd = {}; L.forEach(function (l) { if (l.order) nOrd[l.order] = 1; }); $('totLab').textContent = Object.keys(nOrd).length > 1 ? 'סה"כ כל ההזמנות, כולל מע"מ' : 'סה"כ העסקה, כולל מע"מ';
   $('dest').textContent = d.deliver_to === 'customer' ? 'אספקה לכתובת: ' + (d.address || 'נתאם איתכם') + '.' : 'איסוף או אספקה מאולם התצוגה בטירת כרמל.';
 
