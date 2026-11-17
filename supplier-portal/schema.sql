@@ -397,3 +397,22 @@ end $$;
 revoke all on function public.sp_link_images(uuid) from public, anon, authenticated;
 -- files that were already in when this was added wait until started by hand: img_job = '{"phase":"refs"}'
 update public.sp_uploads set img_job = '{"phase":"hold"}' where img_job is null;
+
+-- Product photos that do not come inside a catalog file (a WhatsApp chat with a supplier's agent, a phone): a time-limited
+-- upload door per upload. Edge function supplier-photo-in checks the code, keeps the JPEG under
+-- supplier-files/img/<upload>/chat/ and adds a row to sp_images (page 0). Aviv 17.11.2026: every picture goes into the
+-- system, linked to its SKU where the SKU is known. Only the hash of the code is kept. Service role only.
+-- Open a door (the code is shown once): insert into sp_photo_doors (code_hash, upload_id, supplier_id, note, expires_at)
+--   values (encode(sha256(convert_to('<code>', 'utf8')), 'hex'), '<upload>', '<supplier>', '<what>', now() + interval '3 hours');
+create table if not exists public.sp_photo_doors (
+  id bigint generated always as identity primary key,
+  code_hash text not null unique,
+  upload_id uuid not null references public.sp_uploads(id),
+  supplier_id uuid not null references public.sp_suppliers(id),
+  note text,
+  n int not null default 0,
+  max_n int not null default 300,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+alter table public.sp_photo_doors enable row level security;

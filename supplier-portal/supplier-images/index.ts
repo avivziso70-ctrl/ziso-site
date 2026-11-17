@@ -48,6 +48,7 @@ const GROUP_BYTES = 6 * 1024 * 1024;
 const LEASE_MS = 60_000; // a call that died is picked up again after this
 const MEMORY = 190 * 1024 * 1024; // of the worker's 256 MB, for the PDF and the picture being decoded
 const WAIT_CALLS = 400; // calls (answers, database) one worker makes while collecting answers: each takes a little CPU
+const WHOLE_PX = 480; // long side of the thumbnail of a page that is one photograph (a room with the model in it needs more than 240)
 
 const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { "content-type": "application/json" } });
 const b64 = (u: Uint8Array) => Buffer.from(u.buffer, u.byteOffset, u.byteLength).toString("base64");
@@ -121,6 +122,10 @@ function keep(d: Draw, common: Set<string>) {
   if (bw * bh > 0.85) return false; // full page background
   return true;
 }
+// A page that is one photograph: a model's photo facing its price table (Dor Rafael's catalogs, 17.11.2026). keep()
+// leaves a picture that covers the page out as a background; on a page with no other picture and no rows of its own
+// it is the product picture of the rows on the facing page.
+const wholePage = (d: Draw, common: Set<string>) => !common.has(d.sig) && d.w >= 300 && d.h >= 300 && (d.box[2] - d.box[0]) * (d.box[3] - d.box[1]) > 0.85;
 const where = (b: number[]) => {
   const cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
   return `${cy < 0.34 ? "למעלה" : cy > 0.66 ? "למטה" : "באמצע"} ${cx < 0.34 ? "משמאל" : cx > 0.66 ? "מימין" : "במרכז"}`;
@@ -135,14 +140,16 @@ const SYS = `אתה עוזר לחברת קרמיקה וכלים סניטריים
 תקבל עמוד מהקטלוג (אם הוא לא כבד מדי), את התמונות שנשלפו ממנו ממוספרות עם מיקומן בעמוד, ורשימת מק"טים מהעמוד הזה ומהעמודים שלפניו ואחריו (בקטלוגים רבים התמונות בעמוד אחד והטבלה בעמוד שמולו).
 לכל תמונה שמציגה מוצר, החזר את המק"טים מהרשימה שהיא מציגה. כשהתמונה מציגה דגם, החזר את כל המק"טים של אותו דגם ברשימה, בכל המידות, הצבעים והגימורים שלו, גם אם בתמונה נראה רק אחד מהם. השתמש רק במק"טים מהרשימה, מועתקים בדיוק. מק"ט שמתחיל ב-# הוא מזהה של פריט שאין לו מק"ט בקטלוג: התייחס אליו כמו לכל מק"ט, לפי התיאור שלו. תמונה של לוגו, אווירה, חדר מעוצב, אייקון, שרטוט מידות או תמונה שלא ברור לאיזה מק"ט היא שייכת: אל תחזיר אותה. עדיף לדלג מאשר לנחש.`;
 
-type Img = { idx: number; ref: string; box: number[]; jpg: Uint8Array };
+type Img = { idx: number; ref: string; box: number[]; jpg: Uint8Array; whole?: boolean };
 function request(page: number, docBytes: Uint8Array | null, imgs: Img[], codes: Code[]) {
   // deno-lint-ignore no-explicit-any
   const content: any[] = [];
   if (docBytes) content.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: b64(docBytes) } });
   content.push({ type: "text", text: `עמוד ${page} בקטלוג. התמונות שנשלפו מהעמוד:` });
   for (const im of imgs) {
-    content.push({ type: "text", text: `תמונה ${im.idx} (${where(im.box)})` });
+    content.push({ type: "text", text: im.whole
+      ? `תמונה ${im.idx}: העמוד כולו הוא צילום אחד. בקטלוג הזה צילום של דגם (למשל ארון אמבטיה בחדר) עומד מול טבלת המחירים של אותו דגם, בעמוד שלפניו או שאחריו. אם ברור איזה דגם מצולם (שם הדגם כתוב בעמוד, או שהמידות, הצבע והסוג מתאימים רק לדגם אחד), החזר את כל השורות של הדגם הזה, בכל המידות. שורות של שדרוג, תוספת, הובלה או התקנה אינן המוצר שבתמונה: אל תכלול אותן. עמוד שער, עמוד פרק, תנאים או צילום שלא ברור לאיזה דגם הוא שייך: אל תחזיר.`
+      : `תמונה ${im.idx} (${where(im.box)})` });
     content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: b64(im.jpg) } });
   }
   const list = codes.map((c) => `${c.code} | עמ' ${c.page} | ${c.desc}${c.size ? " | " + c.size : ""}`).join("\n");
@@ -235,7 +242,12 @@ async function scan(u: Upload, job: Job) {
       if (!bytes) continue;
       const t0 = ms();
       const doc = await open(bytes);
-      const all = pageDraws(doc, doc.getPage(0)).filter((d) => keep(d, common) && fits(d, DECODE_MAX)).slice(0, MAX_PER_PAGE + 1);
+      const draws = pageDraws(doc, doc.getPage(0));
+      let all = draws.filter((d) => keep(d, common) && fits(d, DECODE_MAX)).slice(0, MAX_PER_PAGE + 1), whole = false;
+      if (!all.length && !(byPage.get(p) || []).length) {
+        const big = draws.filter((d) => wholePage(d, common) && fits(d, DECODE_MAX));
+        if (big.length === 1) { all = big; whole = true; }
+      }
       cpu += ms() - t0;
       if (!all.length || all.length > MAX_PER_PAGE) { await drop([pagePath(u, p)]); continue; }
       const { data: have } = await db.from("sp_images").select("ref").eq("upload_id", u.id).eq("page", p);
@@ -244,20 +256,20 @@ async function scan(u: Upload, job: Job) {
       for (let k = 0; k < all.length; k++) {
         const d = all[k], idx = k + 1, key = `${p}:${d.ref}`, path = `img/${u.id}/${p}-${d.ref}.jpg`; // idx: the place on the page, the same in every slice
         if (skip.has(key)) continue; // a picture on which slices died
-        if (done.has(d.ref)) { const jpg = await stored(path); if (jpg) imgs.push({ idx, ref: d.ref, box: d.box, jpg }); continue; }
+        if (done.has(d.ref)) { const jpg = await stored(path); if (jpg) imgs.push({ idx, ref: d.ref, box: d.box, jpg, whole }); continue; }
         // this worker has done its share: the rest of the page waits for the next one (a new worker always gets one picture)
         if (decoded > 0 && (cpu + est(d) > CPU_MAX || heap + cost(d) > DECODE_MAX || Date.now() - started > SLICE_MS)) { full = true; break; }
         await save(u, { img_job: { ...state(), at: key } }); // if this slice dies here, the next one knows on which picture
         const t1 = ms();
         let t: ReturnType<typeof thumb> = null;
-        try { t = thumb(doc, d); } catch { t = null; }
+        try { t = whole ? thumb(doc, d, WHOLE_PX) : thumb(doc, d); } catch { t = null; }
         cpu += ms() - t1; decoded++; heap += cost(d);
         if (!t) continue;
         const { error } = await db.storage.from("supplier-files").upload(path, t.jpg, { contentType: "image/jpeg", upsert: true });
         if (error) throw new Error("store " + error.message);
         await db.from("sp_images").upsert({ upload_id: u.id, supplier_id: u.supplier_id, page: p, idx, ref: d.ref, path, w: t.w, h: t.h, box: d.box.map((v) => Math.round(v * 1000) / 1000) }, { onConflict: "upload_id,page,ref" });
         found++;
-        imgs.push({ idx, ref: d.ref, box: d.box, jpg: t.jpg });
+        imgs.push({ idx, ref: d.ref, box: d.box, jpg: t.jpg, whole });
       }
       if (full) break;
       const codes = [...(byPage.get(p) || []), ...(byPage.get(p - 1) || []), ...(byPage.get(p + 1) || [])].slice(0, 400);
@@ -335,7 +347,7 @@ async function tick() {
   for (const u of pr || []) {
     await save(u, { img_job: { ...u.img_job, phase: "probing" } });
     tired = true; // a worker that probed does not take a slice as well
-    try { await save(u, { img_job: { ...u.img_job, phase: "probed", result: await probe(u, u.img_job.from || 1, u.img_job.to || 3, u.img_job.art || 0) } }); }
+    try { await save(u, { img_job: { ...u.img_job, phase: "probed", result: await probe(u, u.img_job.from || 1, u.img_job.to || 3, u.img_job.art || 0, u.img_job.px || 0) } }); }
     catch (e) { await save(u, { img_job: { ...u.img_job, phase: "probed", error: String((e as Error).message || e) } }); }
     return;
   }
@@ -373,9 +385,11 @@ function adobe(b: Uint8Array): number {
   }
   return -1;
 }
-// phase 'probe' (set by hand in SQL with from/to): what pictures a few pages hold, to check a new catalog layout
+// phase 'probe' (set by hand in SQL with from/to): what pictures a few pages hold, to check a new catalog layout.
+// art: how many thumbnails come back as rough text; with px (long side) they come back as the JPEG itself in base64,
+// whole-page pictures included.
 // deno-lint-ignore no-explicit-any
-async function probe(u: Upload, from: number, to: number, art = 0): Promise<any> {
+async function probe(u: Upload, from: number, to: number, art = 0, px = 0): Promise<any> {
   const t0 = performance.now();
   const doc = await docOf(u);
   const t1 = performance.now();
@@ -384,9 +398,10 @@ async function probe(u: Upload, from: number, to: number, art = 0): Promise<any>
     const ds = pageDraws(doc, doc.getPage(p - 1));
     out.push({ p, n: ds.length, wt: Math.round(pageWeight(doc, doc.getPage(p - 1)) / 1024), d: ds.slice(0, 30).map((d) => ({ r: d.ref, f: d.filter, cs: d.cs, w: d.w, h: d.h, m: d.smask ? 1 : 0, i: d.inv ? 1 : 0, ad: d.filter === "DCTDecode" && d.cs === "DeviceCMYK" ? adobe(d.stream.contents) : undefined, b: d.box.map((v) => Math.round(v * 100)), kb: Math.round(d.stream.contents.length / 1024) })) });
     for (const d of ds) {
-      if (pics.length >= art || !keep(d, new Set()) || !fits(d, room)) continue;
+      const whole = wholePage(d, new Set());
+      if (pics.length >= art || !(keep(d, new Set()) || (px && whole)) || !fits(d, room)) continue;
       const a0 = performance.now();
-      try { const t = thumb(doc, d, 240, 72, true); pics.push({ p, r: d.ref, ms: Math.round(performance.now() - a0), kb: t ? Math.round(t.jpg.length / 1024) : 0, a: t ? ascii(t.jpg) : null }); }
+      try { const t = thumb(doc, d, px || 240, 72, true); pics.push({ p, r: d.ref, ms: Math.round(performance.now() - a0), kb: t ? Math.round(t.jpg.length / 1024) : 0, ...(px ? { j: t ? b64(t.jpg) : null } : { a: t ? ascii(t.jpg) : null }) }); }
       catch (e) { pics.push({ p, r: d.ref, err: String((e as Error).message || e).slice(0, 200) }); }
     }
   }
