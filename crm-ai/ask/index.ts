@@ -511,6 +511,7 @@ async function printDocument(a: any, who: string) {
   const doc = String(a.doc || "").trim().toUpperCase().replace(/\s+/g, "");
   if (!/^[A-Z]{2}\d{6,12}$/.test(doc)) return "חסר מספר מסמך תקין (למשל RC269001075 או IN264001274). קודם למצוא אותו בתיק הלקוח.";
   if (!who || who.startsWith("agent:")) return "הדפסה רק לבקשה של איש צוות מחובר.";
+  if (doc.startsWith("ON")) return `${doc} הוא מסמך ביטול, והרובוט עוד לא יודע להדפיס מסמכים כאלה. להדפיס מפריוריטי.`;
   const { data: set } = await admin.from("crm_settings").select("print_on").eq("id", 1).maybeSingle();
   if (!set?.print_on) return "ההדפסה מהמערכת עוד לא הופעלה (מחכים שהרובוט במשרד יתחבר למדפסת). בינתיים להדפיס מפריוריטי.";
   const copies = Math.min(Math.max(Math.round(Number(a.copies) || 1), 1), 3);
