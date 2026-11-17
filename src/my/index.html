@@ -69,6 +69,7 @@ main h2{font-size:1.75rem;line-height:1.15;margin-bottom:12px}
 .kv:last-child{border-bottom:0}
 .bal .lab{color:var(--stone);font-size:.93rem}.bal .sum{font:400 2.2rem/1.1 var(--display)}
 .bal.due .sum{color:var(--due)}.bal.fine .sum{color:var(--ok)}
+.ordh{font-size:.95rem;font-weight:600;color:var(--stone);margin:18px 2px 8px}
 .fine-print{color:var(--stone);font-size:.86rem;margin:8px 0 0}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:0 22px;border-radius:3px;border:1px solid var(--grout);background:var(--surface);color:inherit;font:600 1rem var(--body);cursor:pointer;text-decoration:none}
 .btn.brass{background:var(--brass);border-color:var(--brass);color:var(--brass-ink)}
@@ -147,7 +148,7 @@ footer nav{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
     <section aria-labelledby="hProd">
       <h2 id="hProd">המוצרים שלכם</h2>
       <div id="prods"></div>
-      <div class="sumrow"><span>סה"כ העסקה, כולל מע"מ</span><span class="big num" id="total"></span></div>
+      <div class="sumrow"><span id="totLab">סה"כ העסקה, כולל מע"מ</span><span class="big num" id="total"></span></div>
       <p class="fine-print" id="dest"></p>
     </section>
 
@@ -258,14 +259,18 @@ function draw(j) {
   if ($('headline').textContent !== h) $('headline').textContent = h; $('sub').textContent = s;
   [1, 2, 3, 4].forEach(function (r, i) { $('course').children[i].firstChild.style.width = (n ? Math.round(cnt(r) / n * 100) : 0) + '%'; });
   $('teamNote').classList.toggle('hidden', !d.note); $('teamNoteT').textContent = d.note || '';
+  var lastOrd = null, multi = L.some(function (l) { return l.order; });
   $('prods').innerHTML = L.map(function (l) {
+    var head = '';
+    if (multi && (l.order || '') !== lastOrd) { lastOrd = l.order || ''; head = '<h3 class="ordh">' + (l.order ? 'הזמנה <span class="ltr">' + esc(l.order) + '</span>' + (l.order_date ? ' · ' + dayS(l.order_date) : '') : 'מוצרים נוספים') + '</h3>'; }
     var r = RANK[l.stage], q = Number(l.qty) || 0, tot = (Number(l.sell) || 0) * q;
-    return '<article class="tile prod' + (r === 4 ? ' done' : '') + '"><h3>' + esc(l.desc) + (l.size ? ' <span class="ltr">' + esc(l.size) + '</span>' : '') + '</h3>' +
+    return head + '<article class="tile prod' + (r === 4 ? ' done' : '') + '"><h3>' + esc(l.desc) + (l.size ? ' <span class="ltr">' + esc(l.size) + '</span>' : '') + '</h3>' +
       '<div class="meta"><span>' + q.toLocaleString('he-IL') + (l.unit ? ' ' + esc(l.unit) : '') + '</span>' + (tot ? '<span class="num">' + nis(tot) + '</span>' : '') + '</div>' +
       '<ol class="steps" aria-hidden="true">' + [1, 2, 3, 4].map(function (k) { return '<li class="' + (r >= k ? 'on' : r > k - 1 ? 'half' : '') + '"></li>'; }).join('') + '</ol>' + stateLine(l) +
       (Number(l.delivered_qty) > 0 && r < 4 ? '<div class="case closed">נמסרו ' + Number(l.delivered_qty).toLocaleString('he-IL') + ' מתוך ' + q.toLocaleString('he-IL') + '</div>' : '') + caseLines(l) + '</article>';
   }).join('') || '<p class="lead">עוד אין מוצרים ברשימה.</p>';
   $('total').textContent = nis(d.total);
+  var nOrd = {}; L.forEach(function (l) { if (l.order) nOrd[l.order] = 1; }); $('totLab').textContent = Object.keys(nOrd).length > 1 ? 'סה"כ כל ההזמנות, כולל מע"מ' : 'סה"כ העסקה, כולל מע"מ';
   $('dest').textContent = d.deliver_to === 'customer' ? 'אספקה לכתובת: ' + (d.address || 'נתאם איתכם') + '.' : 'איסוף או אספקה מאולם התצוגה בטירת כרמל.';
 
   var pay = m.to_pay || [], paid = m.paid || [];
@@ -280,7 +285,10 @@ function draw(j) {
   }
   $('paidBox').innerHTML = paid.length ? '<div class="tile">' + paid.map(function (p) { return '<div class="kv"><span>✓ שולם · ' + esc(p.what || '') + ' <span class="d">' + dayS(p.at) + '</span></span><b class="num">' + nis(p.amount) + '</b></div>'; }).join('') + '</div>' : '';
   var docs = function (t, a) { return a && a.length ? '<details><summary>' + t + ' (' + a.length + ')</summary><ul class="docs">' + a.map(function (x) { return '<li><span><span class="ltr">' + esc(x.doc) + '</span> <span class="d">· ' + dayS(x.date) + (x.method ? ' · ' + esc(x.method) : '') + '</span></span><b class="num">' + nis(x.amount) + '</b></li>'; }).join('') + '</ul></details>' : ''; };
-  var dh = docs('קבלות', m.receipts) + docs('חשבוניות', m.invoices);
+  var OST = { 'שולמה': 'שולמה', 'ממתין לתשלום': 'ממתינה לתשלום', 'בוצעה': 'סופקה', 'טיוטא': 'בהכנה', 'פתוחה': 'פתוחה', 'מאושרת לבצוע': 'אושרה' };
+  var O = j.orders || [];
+  var oh = O.length ? '<details' + (O.length > 1 ? ' open' : '') + '><summary>ההזמנות שלכם (' + O.length + ')</summary><ul class="docs">' + O.map(function (o) { return '<li><span><span class="ltr">' + esc(o.so) + '</span> <span class="d">· ' + dayS(o.date) + ' · ' + esc(OST[o.status] || o.status || '') + '</span></span><b class="num">' + nis(o.amount) + '</b></li>'; }).join('') + '</ul></details>' : '';
+  var dh = oh + docs('קבלות', m.receipts) + docs('חשבוניות', m.invoices);
   $('docBox').innerHTML = dh ? dh + '<p class="fine-print">צריכים העתק של מסמך? כתבו לנו למטה ונשלח.</p>' : (!pay.length && !paid.length && !m.known ? '<p class="lead">תשלומים ומסמכים יופיעו כאן.</p>' : '');
   $('thread').innerHTML = (j.notes || []).map(function (x) { return '<li class="' + (x.side === 'team' ? 'team' : 'me') + '">' + esc(x.text) + '<small>' + (x.side === 'team' ? esc(x.by || 'הצוות') : 'אתם') + ' · ' + new Date(x.at).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</small></li>'; }).join('');
   $('reviewSec').classList.toggle('hidden', !(n && del === n));
