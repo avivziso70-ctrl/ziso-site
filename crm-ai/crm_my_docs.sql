@@ -3,6 +3,8 @@
 -- private bucket priority-docs). A customer gets only documents of the Priority customer behind their link.
 -- Originals: Aviv 17.11 10:17Z in this thread, "אני מאשר להדפיס את המקור תמיד". Page requests pass allow_original with that approval;
 -- the CRM office print (crm_print_job) carries the same approval_msg.
+-- Aviv 17.11: no separate Priority user for the robot; it works in Priority only at night after 20:00. So a new PDF is ready
+-- by the next morning; a customer request also opens a staff task to send a copy if needed today.
 -- Entry point: edge function crm-my-doc (service role) signs a 5-minute link. The functions here are not open to anon.
 -- No DROP in this file.
 
@@ -38,7 +40,7 @@ begin
   if v_path is not null then return jsonb_build_object('ok', true, 'state', 'ready', 'path', v_path, 'kind', v_kind); end if;
 
   select * into r from crm_doc_requests where doc = p_doc order by id desc limit 1;
-  if r.id is not null and r.status = 'queued' and r.requested_at > now() - interval '2 hours' then
+  if r.id is not null and r.status = 'queued' and r.requested_at > now() - interval '7 hours' then
     return jsonb_build_object('ok', true, 'state', 'pending');
   end if;
   if r.id is not null and r.status in ('skipped', 'failed') and r.requested_at > now() - interval '6 hours' then
@@ -46,6 +48,8 @@ begin
   end if;
   insert into crm_doc_requests (doc, kind, tail9, requested_by, channel, note)
   values (p_doc, v_kind, d.customer_tail9, 'customer-page', 'crm', 'הלקוח ביקש PDF מהדף שלו · ' || d.deal_no);
+  insert into crm_tasks (tail9, text, due, "by") values (d.customer_tail9,
+    'הלקוח ביקש מהדף שלו PDF של ' || p_doc || ' · ' || coalesce(d.customer_name, '') || ' · ' || d.deal_no || '. הרובוט יפיק אותו בלילה אחרי 20:00. אם הלקוח צריך היום, לשלוח לו עותק.', now(), 'דף לקוח');
   return jsonb_build_object('ok', true, 'state', 'pending');
 end $$;
 revoke all on function public.crm_my_doc(text, text, text) from public, anon, authenticated;
