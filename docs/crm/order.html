@@ -38,7 +38,8 @@ textarea{min-height:64px}
 .hidden{display:none!important}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;margin:14px 0;box-shadow:var(--sh)}
 .panel>.hd{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line2)}
-.panel>.hd h2{flex:1}
+.panel>.hd h2{flex:1;white-space:nowrap}.panel>.hd{flex-wrap:wrap}
+.ln input.pct::-webkit-inner-spin-button,.ln input.pct::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}.ln input.pct{-moz-appearance:textfield}
 .panel>.bd{padding:12px 16px 16px}
 .st{display:inline-block;padding:2px 10px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap}
 .st.yellow{background:var(--st-y-bg);color:var(--st-y)}.st.green{background:var(--st-g-bg);color:var(--st-g)}.st.orange{background:var(--st-o-bg);color:var(--st-o)}.st.red{background:var(--st-r-bg);color:var(--st-r)}.st.grey{background:var(--raise);color:var(--mute);border:1px solid var(--line2)}
@@ -52,6 +53,15 @@ body.shy .cost{display:none!important}
 .cu-name{font-size:20px;font-weight:700}
 .form{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px 14px}
 .form label{font-size:14px;color:var(--mute);display:block}.form label input,.form label textarea{margin-top:3px;color:var(--ink)}
+.cunit{display:block;font-size:12px;color:var(--mute);text-align:center;margin-top:2px;white-space:nowrap}
+.thumb{flex:none;width:52px;height:52px;border-radius:8px;border:1px solid var(--line);background:#fff;padding:0;cursor:zoom-in;overflow:hidden}
+.thumb img{width:100%;height:100%;object-fit:contain;display:block}
+.ln .d{display:flex;gap:10px;align-items:flex-start}.ln .d .tx{min-width:0;flex:1}
+.res .r .thumb{width:46px;height:46px}
+#zoom{border:0;border-radius:14px;padding:12px;background:#fff;color:#1e1b17;max-width:92vw}#zoom::backdrop{background:rgba(0,0,0,.6)}
+#zoom img{display:block;width:min(480px,84vw);height:auto}#zoom p{margin:8px 0 0;text-align:center}
+.pctl{white-space:nowrap}.ln input.pct{width:64px;min-height:30px;padding:2px 6px;font-size:14px;display:inline-block;margin:0 2px}
+.ln input.pct.lo{border-color:var(--amber);color:var(--amber)}.ln input.pct.bad{border-color:var(--red);color:var(--red)}
 .lnote{display:block;font-size:14px;color:var(--amber);margin-top:2px}
 .form .wide{grid-column:1/-1}
 .pick{list-style:none;margin:6px 0 0;padding:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
@@ -168,7 +178,7 @@ details.sec>.bd{padding:0 16px 16px}
     <!-- the shopping list -->
     <section class="panel" aria-labelledby="hList">
       <div class="hd"><h2 id="hList">רשימת המוצרים</h2>
-        <label class="mute small cost row" style="gap:6px;flex-wrap:nowrap">רווח % <input id="mk" type="number" min="0" inputmode="decimal" style="width:76px;min-height:36px;padding:4px 8px"></label></div>
+        <label class="mute small cost row" style="gap:6px;flex-wrap:nowrap">רווח % <input id="mk" type="number" min="0" inputmode="decimal" style="width:76px;min-height:36px;padding:4px 8px"></label><button class="btn small cost" id="mkAll" type="button" title="מעדכן את המחיר ללקוח בכל השורות לפי האחוז">לכל השורות</button></div>
       <div class="bd">
         <div id="lines"></div>
         <div class="newrow">
@@ -231,6 +241,7 @@ details.sec>.bd{padding:0 16px 16px}
   </section>
 </main>
 
+<dialog id="zoom" aria-label="תמונת המוצר"><img alt=""><p></p></dialog>
 <div id="bar" class="hidden" role="region" aria-label="סיכום ההזמנה"><div class="in">
   <div class="big"><span class="k">סה"כ כולל מע"מ</span><span class="v" id="bSell">₪0</span><span class="k" id="bEx"></span></div>
   <div class="due" id="bDueW"><span class="k">נשאר לתשלום</span><span class="v" id="bDue">₪0</span></div>
@@ -340,7 +351,7 @@ function totals(d) {
   var cost = 0, sell = 0, unknown = false;
   (d.lines || []).forEach(function (l) { var q = Number(l.qty) || 0; if (l.cost == null && q > 0 && Number(l.sell) > 0) unknown = true; cost += (Number(l.cost) || 0) * q; sell += (Number(l.sell) || 0) * q; });
   var rev = sell / VAT;
-  return { cost: r2(cost), sell: r2(sell), profit: r2(rev - cost), pct: rev > 0 ? Math.round((rev - cost) / rev * 100) : 0, unknown: unknown };
+  return { cost: r2(cost), sell: r2(sell), profit: r2(rev - cost), pct: cost > 0 ? Math.round((rev - cost) / cost * 100) : 0, unknown: unknown };
 }
 function showList() {
   deal = null; cust = null; $('v-deal').classList.add('hidden'); $('bar').classList.add('hidden'); $('v-list').classList.remove('hidden'); $('title').textContent = 'הזמנות';
@@ -373,7 +384,7 @@ function setDeal(d) {
   history.replaceState(null, '', '?d=' + d.id);
   $('title').textContent = 'הזמנה ' + d.deal_no;
   $('mk').value = d.markup == null ? 40 : d.markup; $('q').value = ''; last = []; drawResults();
-  loadCust(); drawDv(); drawNotes(); draw(); loadPos(); drawShare(); loadNotes(); loadCases(); loadPays(); loadStock(deal.lines.map(function (l) { return l.sku; }));
+  loadCust(); drawDv(); drawNotes(); draw(); loadPicPaths(); loadPos(); drawShare(); loadNotes(); loadCases(); loadPays(); loadStock(deal.lines.map(function (l) { return l.sku; }));
 }
 
 /* ---------- save (debounced) ---------- */
@@ -504,7 +515,7 @@ $('q').addEventListener('input', function () { clearTimeout(sT); sT = setTimeout
 function search() {
   var words = $('q').value.trim().split(/\s+/).map(function (w) { return w.replace(/[,()*%\\"]/g, ''); }).filter(Boolean).slice(0, 6);
   if (!words.length) { last = []; drawResults(); return; }
-  var q = sb.from('sp_prices').select('id,supplier_id,supplier_code,description,size,unit,price,currency,vat_included,category').eq('status', 'active');
+  var q = sb.from('sp_prices').select('id,supplier_id,supplier_code,description,size,unit,price,currency,vat_included,category,image_path').eq('status', 'active');
   words.forEach(function (w) {
     var ids = supIds(w), f = 'description.ilike.*' + w + '*,supplier_code.ilike.*' + w + '*,size.ilike.*' + w + '*,category.ilike.*' + w + '*';
     if (ids.length) f += ',supplier_id.in.(' + ids.join(',') + ')';
@@ -515,7 +526,7 @@ function search() {
     if ($('q').value !== asked) return;
     if (r.error) { $('sInfo').textContent = 'שגיאה בחיפוש'; return; }
     last = (r.data || []).filter(function (x) { return x.price != null && (!x.currency || x.currency === 'ILS'); });
-    last.forEach(function (x) { x._cat = classify((x.description || '') + ' ' + (x.size || '') + ' ' + (x.category || '')); });
+    last.forEach(function (x) { if (x.image_path) picPath[x.id] = x.image_path; x._cat = classify((x.description || '') + ' ' + (x.size || '') + ' ' + (x.category || '')); });
     hi = -1; drawResults(); loadStock(last.map(function (x) { return x.supplier_code; }));
   });
 }
@@ -540,9 +551,9 @@ function drawResults() {
   $('sInfo').textContent = last.length ? list.length + ' מתוך ' + last.length + (last.length >= 60 ? '+' : '') + ' תוצאות, מהזול ליקר' : 'לא נמצא במחירונים. אפשר להוסיף כשורה חופשית.';
   $('results').innerHTML = list.slice(0, 30).map(function (r, i) {
     var c = netCost(r);
-    return '<li><button type="button" role="option" class="r' + (i === hi ? ' on' : '') + '" data-add="' + r.id + '"><span class="grow"><b>' + esc(r.description) + (r.size ? ' ' + esc(r.size) : '') + '</b><br><span class="mute small"><span class="ltr">' + esc(r.supplier_code || '') + '</span> · ' + esc((suppliers[r.supplier_id] || {}).name || '') + ' · ' + CATN[r._cat] + stockTxt(r.supplier_code) + '<span class="cost"> · עלות ' + money(c) + '</span></span></span><span class="pr">' + money(sellFor(c)) + '</span></button></li>';
+    return '<li><button type="button" role="option" class="r' + (i === hi ? ' on' : '') + '" data-add="' + r.id + '">' + (r.image_path ? '<span class="thumb" data-p="' + esc(r.image_path) + '"><img alt=""></span>' : '') + '<span class="grow"><b>' + esc(r.description) + (r.size ? ' ' + esc(r.size) : '') + '</b><br><span class="mute small"><span class="ltr">' + esc(r.supplier_code || '') + '</span> · ' + esc((suppliers[r.supplier_id] || {}).name || '') + ' · ' + CATN[r._cat] + stockTxt(r.supplier_code) + '<span class="cost"> · עלות ' + money(c) + '</span></span></span><span class="pr">' + money(sellFor(c)) + '</span></button></li>';
   }).join('') + '<li><button type="button" class="r' + (hi === list.slice(0, 30).length ? ' on' : '') + '" data-free="1"><span class="grow"><b>+ שורה חופשית:</b> "' + esc(txt) + '"<br><span class="mute small">מוצר שלא במחירון. מקלידים מחיר ידנית</span></span></button></li>';
-  $('results').classList.remove('hidden'); $('q').setAttribute('aria-expanded', 'true');
+  $('results').classList.remove('hidden'); $('q').setAttribute('aria-expanded', 'true'); loadPics($('results'));
 }
 $('q').addEventListener('keydown', function (e) {
   var n = Math.min(shown().length, 30) + 1;
@@ -566,6 +577,40 @@ $('results').addEventListener('click', function (e) {
   var inp = $('lines').querySelector('[data-lid="' + l.lid + '"] [data-f=' + (l.free ? 'sell' : 'qty') + ']'); if (inp) { inp.focus(); inp.select(); }
 });
 $('mk').addEventListener('input', function () { drawResults(); touch(); });
+var mkArm = 0;
+$('mkAll').addEventListener('click', function () {
+  var b = $('mkAll'), pct = Number($('mk').value) || 0, n = deal.lines.filter(function (l) { return Number(l.cost) > 0 && !l.so; }).length;
+  if (!n) { b.textContent = 'אין שורות עם עלות'; setTimeout(function () { b.textContent = 'לכל השורות'; }, 2500); return; }
+  if (Date.now() - mkArm > 5000) { mkArm = Date.now(); b.textContent = 'לעדכן ' + n + ' מחירים ל-' + pct + '%? לחיצה נוספת'; setTimeout(function () { b.textContent = 'לכל השורות'; }, 5000); return; }
+  mkArm = 0; b.textContent = 'לכל השורות';
+  deal.lines.forEach(function (l) { if (Number(l.cost) > 0 && !l.so) l.sell = Math.round(Number(l.cost) * (1 + pct / 100) * VAT * 100) / 100; });
+  closeAsk(); draw(); touch();
+});
+
+/* ---------- product pictures from the supplier catalogs (private bucket, short-lived links; same as the prices page) ---------- */
+var picPath = {}, picUrl = {}, picAsked = {};
+function loadPicPaths() {
+  var ids = deal.lines.map(function (l) { return l.price_id; }).filter(function (id) { return id && !(id in picAsked); });
+  if (!ids.length) return; ids.forEach(function (id) { picAsked[id] = 1; });
+  sb.from('sp_prices').select('id,image_path').in('id', ids).not('image_path', 'is', null).then(function (r) {
+    (r.data || []).forEach(function (x) { picPath[x.id] = x.image_path; });
+    if ((r.data || []).length && deal && !$('lines').contains(document.activeElement)) draw();
+  });
+}
+function loadPics(root) {
+  var els = [].slice.call(root.querySelectorAll('.thumb')), need = {};
+  els.forEach(function (b) { var u = picUrl[b.dataset.p]; if (u && u.until > Date.now()) b.firstChild.src = u.url; else need[b.dataset.p] = 1; });
+  var paths = Object.keys(need); if (!paths.length) return;
+  sb.storage.from('supplier-files').createSignedUrls(paths, 3600).then(function (r) {
+    (r.data || []).forEach(function (x) { if (x.signedUrl) picUrl[x.path] = { url: x.signedUrl, until: Date.now() + 50 * 60000 }; });
+    els.forEach(function (b) { var u = picUrl[b.dataset.p]; if (u) b.firstChild.src = u.url; else b.remove(); });
+  });
+}
+document.addEventListener('click', function (e) {
+  var b = e.target.closest && e.target.closest('button.thumb'), z = $('zoom');
+  if (b && b.firstChild.src) { e.stopPropagation(); z.querySelector('img').src = b.firstChild.src; z.querySelector('p').textContent = b.dataset.t || ''; z.showModal(); }
+  else if (e.target === z) z.close();
+}, true);
 
 /* ---------- lines, grouped by category ---------- */
 var ST = { queued: ['grey', 'יוצא בדקות הקרובות'], sending: ['grey', 'נשלח עכשיו'], sent: ['yellow', 'ממתין לאישור הספק'], confirmed: ['green', 'הספק אישר'], attention: ['orange', 'לבדוק'], failed: ['red', 'השליחה נכשלה'], cancelled: ['grey', 'בוטל'] };
@@ -599,12 +644,17 @@ function lineState(l) {
   if (l.free) return '<span class="st orange">שורה חופשית</span>';
   return canOrder(l.supplier_id) ? '' : '<span class="st orange">להזמין ידנית</span>';
 }
+/* profit % = markup on cost before VAT: sell (incl. VAT) = cost × (1 + % / 100) × VAT */
+var PCT_LOW = 25, PCT_BAD = 12;
+function pctOf(l) { var c = Number(l.cost); if (!(c > 0)) return ''; return Math.round(((Number(l.sell) || 0) / VAT / c - 1) * 1000) / 10; }
+function pctCls(l) { var v = pctOf(l); return v === '' ? '' : v < PCT_BAD ? 'bad' : v < PCT_LOW ? 'lo' : ''; }
 function lineHtml(l, i) {
   var locked = !!l.po_no, q = Number(l.qty) || 0, p = (Number(l.sell) || 0) / VAT - (Number(l.cost) || 0), st = lineState(l), open = openMore === l.lid || caseOpen === l.lid;
-  var h = '<div class="ln" data-i="' + i + '" data-lid="' + esc(l.lid) + '"><div class="d"><b>' + esc(l.desc) + (l.size ? ' ' + esc(l.size) : '') + '</b><span class="mute">' + (l.sku ? '<span class="ltr">' + esc(l.sku) + '</span> · ' : '') + esc((suppliers[l.supplier_id] || {}).name || '') + stockTxt(l.sku) +
-      '<span class="cost"> · ' + (l.cost == null ? 'עלות לא ידועה' : 'עלות ' + money(l.cost) + ' ליח\' · רווח ' + '<span class="' + (p < 0 ? 'err' : 'ok') + '" data-o="pr">' + money(p * q) + '</span>') + '</span></span>' + (st ? ' ' + st : '') + (l.note ? '<span class="lnote">✎ ' + esc(l.note) + '</span>' : '') + '</div>' +
+  var pic = l.price_id && picPath[l.price_id];
+  var h = '<div class="ln" data-i="' + i + '" data-lid="' + esc(l.lid) + '"><div class="d">' + (pic ? '<button type="button" class="thumb" data-p="' + esc(pic) + '" data-t="' + esc(l.desc) + '" aria-label="הגדלת התמונה"><img alt="" loading="lazy"></button>' : '') + '<div class="tx"><b>' + esc(l.desc) + (l.size ? ' ' + esc(l.size) : '') + '</b><span class="mute">' + (l.sku ? '<span class="ltr">' + esc(l.sku) + '</span> · ' : '') + esc((suppliers[l.supplier_id] || {}).name || '') + stockTxt(l.sku) +
+      '<span class="cost"> · ' + (l.cost == null ? 'עלות לא ידועה' : '<label class="pctl">רווח <input type="number" step="any" inputmode="decimal" class="pct ' + pctCls(l) + '" data-f="pct" value="' + pctOf(l) + '" aria-label="אחוז רווח על העלות"' + (l.so ? ' disabled' : '') + '>%</label> <span class="' + (p < 0 ? 'err' : 'ok') + '" data-o="pr">' + money(p * q) + '</span>') + '</span></span>' + (st ? ' ' + st : '') + (l.note ? '<span class="lnote">✎ ' + esc(l.note) + '</span>' : '') + '</div></div>' +
     '<div class="qwrap"><label><span class="lbl">כמות' + (l.unit ? ' (' + esc(l.unit) + ')' : '') + '</span><input type="number" min="0.01" step="any" inputmode="decimal" data-f="qty" value="' + esc(l.qty) + '"' + (locked ? ' disabled' : '') + ' aria-label="כמות"></label>' +
-    '<label><span class="lbl">מחיר ליח\' כולל מע"מ</span><input type="number" min="0" step="any" inputmode="decimal" data-f="sell" value="' + esc(l.sell) + '" aria-label="מחיר ליחידה כולל מע&quot;מ"></label>' +
+    '<label><span class="lbl">מחיר ליח\' כולל מע"מ</span><input type="number" min="0" step="any" inputmode="decimal" data-f="sell" value="' + esc(l.sell) + '" aria-label="מחיר ליחידה כולל מע&quot;מ"><span class="cost cunit">עלות ' + (l.cost == null ? '?' : money(l.cost)) + ' ליח\' לפני מע"מ</span></label>' +
     '<span class="tot num" data-o="tot">' + money((Number(l.sell) || 0) * q) + '</span></div>' +
     '<button type="button" class="btn small icon ghost mbtn" data-more="1" aria-expanded="' + open + '" aria-label="עוד על ' + esc(l.desc) + '">⋯</button>';
   if (open) h += '<div class="more"><div class="row">' +
@@ -625,7 +675,7 @@ function draw() {
     var sum = by[c[0]].reduce(function (s, i) { var l = deal.lines[i]; return s + (Number(l.sell) || 0) * (Number(l.qty) || 0); }, 0);
     return '<div class="cat"><h3><span class="grow">' + c[1] + ' · ' + by[c[0]].length + '</span><span class="num" data-catsum="' + c[0] + '">' + money(sum) + '</span></h3>' + by[c[0]].map(function (i) { return lineHtml(deal.lines[i], i); }).join('') + '</div>';
   }).join('') : '<p class="mute" style="margin:4px 0">הרשימה ריקה. מתחילים לחפש מוצר בשורה למטה.</p>';
-  drawBar(); drawPlan();
+  drawBar(); drawPlan(); loadPics($('lines'));
 }
 function paidSum() { return r2(takings.reduce(function (s, t) { return s + (t.cancelled_at || (t.method === 'card_link' && !t.paid_at) ? 0 : Number(t.amount) || 0); }, 0)); }
 function drawBar() {
@@ -649,7 +699,14 @@ $('lines').addEventListener('input', function (e) {
     touch(); return;
   }
   if (f === 'cost') { l.cost = e.target.value === '' ? null : Number(e.target.value); drawBar(); touch(); return; }
-  l[f] = e.target.value === '' ? '' : Number(e.target.value);
+  if (f === 'pct') {
+    if (e.target.value === '' || !(Number(l.cost) > 0)) return;
+    l.sell = Math.round(Number(l.cost) * (1 + Number(e.target.value) / 100) * VAT * 100) / 100; l.pct_set = true;
+    var si = row.querySelector('[data-f=sell]'); if (si) si.value = l.sell;
+    e.target.className = 'pct ' + pctCls(l);
+  } else
+ { l[f] = e.target.value === '' ? '' : Number(e.target.value);
+    if (f === 'sell') { var pi = row.querySelector('[data-f=pct]'); if (pi) { pi.value = pctOf(l); pi.className = 'pct ' + pctCls(l); } } }
   var q = Number(l.qty) || 0, p = (Number(l.sell) || 0) / VAT - (Number(l.cost) || 0), o = row.querySelector('[data-o=pr]');
   row.querySelector('[data-o=tot]').textContent = money((Number(l.sell) || 0) * q);
   if (o) { o.textContent = money(p * q); o.className = p < 0 ? 'err' : 'ok'; }
