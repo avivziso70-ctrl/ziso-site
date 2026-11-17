@@ -292,7 +292,7 @@ function draw(j) {
   var O = j.orders || [];
   var oh = O.length ? '<details' + (O.length > 1 ? ' open' : '') + '><summary>ההזמנות שלכם (' + O.length + ')</summary><ul class="docs">' + O.map(function (o) { return '<li><span><span class="ltr">' + esc(o.so) + '</span> <span class="d">· ' + dayS(o.date) + ' · ' + esc(OST[o.status] || o.status || '') + '</span></span><b class="num">' + nis(o.amount) + '</b></li>'; }).join('') + '</ul></details>' : '';
   var dh = oh + docs('קבלות', m.receipts) + docs('חשבוניות', m.invoices);
-  var dbh = dh ? dh + '<p class="fine-print">כל קבלה וחשבונית אפשר להוריד כ-PDF. מסמך שעוד לא הוכן לוקח כמה דקות.</p>' : (!pay.length && !paid.length && !m.known ? '<p class="lead">תשלומים ומסמכים יופיעו כאן.</p>' : '');
+  var dbh = dh ? dh + '<p class="fine-print">כל קבלה וחשבונית אפשר להוריד כ-PDF. מסמך חדש מוכן להורדה עד הבוקר שאחרי. צריכים אותו מיד? כתבו לנו ונשלח עותק.</p>' : (!pay.length && !paid.length && !m.known ? '<p class="lead">תשלומים ומסמכים יופיעו כאן.</p>' : '');
   if (dbh !== docHtml) { var op = {}; $('docBox').querySelectorAll('details').forEach(function (e, i) { if (e.open) op[i] = 1; }); docHtml = dbh; $('docBox').innerHTML = dbh; $('docBox').querySelectorAll('details').forEach(function (e, i) { if (op[i]) e.open = true; }); }
   $('thread').innerHTML = (j.notes || []).map(function (x) { return '<li class="' + (x.side === 'team' ? 'team' : 'me') + '">' + esc(x.text) + '<small>' + (x.side === 'team' ? esc(x.by || 'הצוות') : 'אתם') + ' · ' + new Date(x.at).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</small></li>'; }).join('');
   $('reviewSec').classList.toggle('hidden', !(n && del === n));
@@ -335,9 +335,9 @@ function getPdf(doc, tries) {
   fetch(DOC_FN, { method: 'POST', headers: { 'content-type': 'application/json', apikey: KEY }, body: JSON.stringify({ token: token, pin: pin, doc: doc }) })
     .then(function (r) { return r.json(); }).then(function (j) {
       if (j.ok && j.state === 'ready' && j.url) { pdfLabel(doc, ''); location.href = j.url; return; }
-      if (j.ok && j.state === 'pending' && tries < 40) { pdfLabel(doc, 'מכין את המסמך...'); setTimeout(function () { getPdf(doc, tries + 1); }, 6000); return; }
-      pdfLabel(doc, j.ok && j.state === 'pending' ? 'עדיין בהכנה, נסו שוב בעוד כמה דקות' : 'לא זמין כרגע, כתבו לנו ונשלח');
-      setTimeout(function () { pdfLabel(doc, ''); }, 8000);
+      if (j.ok && j.state === 'pending' && tries < 1) { pdfLabel(doc, 'מכין את המסמך...'); setTimeout(function () { getPdf(doc, tries + 1); }, 6000); return; }
+      pdfLabel(doc, j.ok && j.state === 'pending' ? 'יהיה כאן עד מחר בבוקר' : 'לא זמין כרגע, כתבו לנו ונשלח');
+      setTimeout(function () { pdfLabel(doc, ''); }, 10000);
     }, function () { pdfLabel(doc, 'אין חיבור, נסו שוב'); setTimeout(function () { pdfLabel(doc, ''); }, 5000); });
 }
 document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('button.pdf'); if (!b || b.disabled || !pin) return; getPdf(b.dataset.doc, 0); });
