@@ -54,12 +54,15 @@ body.shy .cost{display:none!important}
 .form{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px 14px}
 .form label{font-size:14px;color:var(--mute);display:block}.form label input,.form label textarea{margin-top:3px;color:var(--ink)}
 .cunit{display:block;font-size:12px;color:var(--mute);text-align:center;margin-top:2px;white-space:nowrap}
-.thumb{flex:none;width:52px;height:52px;border-radius:8px;border:1px solid var(--line);background:#fff;padding:0;cursor:zoom-in;overflow:hidden}
+.thumb{flex:none;width:72px;height:72px;border-radius:10px;border:1px solid var(--line);background:#fff;padding:0;cursor:zoom-in;overflow:hidden}
 .thumb img{width:100%;height:100%;object-fit:contain;display:block}
 .ln .d{display:flex;gap:10px;align-items:flex-start}.ln .d .tx{min-width:0;flex:1}
-.res .r .thumb{width:46px;height:46px}
-#zoom{border:0;border-radius:14px;padding:12px;background:#fff;color:#1e1b17;max-width:92vw}#zoom::backdrop{background:rgba(0,0,0,.6)}
-#zoom img{display:block;width:min(480px,84vw);height:auto}#zoom p{margin:8px 0 0;text-align:center}
+.res .r .thumb{width:64px;height:64px}
+#zoom{border:0;border-radius:16px;padding:58px 16px 16px;background:#fff;color:#1e1b17;min-width:min(300px,88vw);max-width:94vw;max-height:94vh;overflow:auto;box-shadow:0 24px 70px rgba(0,0,0,.4)}
+#zoom::backdrop{background:rgba(0,0,0,.68)}
+#zoom img{display:block;margin:0 auto;max-width:100%;height:auto;cursor:zoom-out}
+#zoom .zt{margin:12px 0 0;font-weight:600;font-size:17px;text-align:center;max-width:560px}#zoom .zm{margin:2px 0 0;color:#5f5d58;font-size:14.5px;text-align:center}
+#zoom .zx{position:absolute;top:8px;inset-inline-end:8px;width:44px;height:44px;border-radius:50%;border:1px solid #dcd7cd;background:#fff;color:#1e1b17;cursor:pointer;display:grid;place-items:center;padding:0}
 .pctl{white-space:nowrap}.ln input.pct{width:64px;min-height:30px;padding:2px 6px;font-size:14px;display:inline-block;margin:0 2px}
 .ln input.pct.lo{border-color:var(--amber);color:var(--amber)}.ln input.pct.bad{border-color:var(--red);color:var(--red)}
 .lnote{display:block;font-size:14px;color:var(--amber);margin-top:2px}
@@ -247,7 +250,7 @@ details.sec>.bd{padding:0 16px 16px}
   </section>
 </main>
 
-<dialog id="zoom" aria-label="תמונת המוצר"><img alt=""><p></p></dialog>
+<dialog id="zoom" aria-label="תמונת המוצר"><button type="button" class="zx" aria-label="סגירת התמונה"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg></button><img alt=""><p class="zt"></p><p class="zm"></p></dialog>
 <div id="bar" class="hidden" role="region" aria-label="סיכום ההזמנה"><div class="in">
   <div class="big"><span class="k">סה"כ כולל מע"מ</span><span class="v" id="bSell">₪0</span><span class="k" id="bEx"></span></div>
   <div class="due" id="bDueW"><span class="k">נשאר לתשלום</span><span class="v" id="bDue">₪0</span></div>
@@ -659,10 +662,18 @@ function loadPics(root) {
     els.forEach(function (b) { var u = picUrl[b.dataset.p]; if (u) b.firstChild.src = u.url; else b.remove(); });
   });
 }
+/* the picture, opened: as big as it can be shown sharply (stored pictures are small), with a close button; any press or Esc closes */
+function zoomOpen(src, title, meta) {
+  var z = $('zoom'), im = z.querySelector('img');
+  var fit = function () { if (!im.naturalWidth) return; var k = Math.min(2, Math.min(innerWidth * .86, 620) / im.naturalWidth, innerHeight * .6 / im.naturalHeight); im.style.width = Math.max(120, Math.round(im.naturalWidth * k)) + 'px'; };
+  im.style.width = ''; im.onload = fit; im.src = src; fit();
+  z.querySelector('.zt').textContent = title || ''; z.querySelector('.zm').textContent = meta || '';
+  if (!z.open) z.showModal();
+}
 document.addEventListener('click', function (e) {
   var b = e.target.closest && e.target.closest('button.thumb'), z = $('zoom');
-  if (b && b.firstChild.src) { e.stopPropagation(); z.querySelector('img').src = b.firstChild.src; z.querySelector('p').textContent = b.dataset.t || ''; z.showModal(); }
-  else if (e.target === z) z.close();
+  if (b && b.firstChild.src) { e.stopPropagation(); zoomOpen(b.firstChild.src, b.dataset.t, b.dataset.m); }
+  else if (z.open && (e.target === z || e.target.closest('#zoom'))) z.close();
 }, true);
 
 /* ---------- lines, grouped by category ---------- */
@@ -704,7 +715,7 @@ function pctCls(l) { var v = pctOf(l); return v === '' ? '' : v < PCT_BAD ? 'bad
 function lineHtml(l, i) {
   var locked = !!l.po_no, q = Number(l.qty) || 0, p = (Number(l.sell) || 0) / VAT - (Number(l.cost) || 0), st = lineState(l), open = openMore === l.lid || caseOpen === l.lid;
   var pic = l.price_id && picPath[l.price_id];
-  var h = '<div class="ln" data-i="' + i + '" data-lid="' + esc(l.lid) + '"><div class="d">' + (pic ? '<button type="button" class="thumb" data-p="' + esc(pic) + '" data-t="' + esc(l.desc) + '" aria-label="הגדלת התמונה"><img alt="" loading="lazy"></button>' : '') + '<div class="tx"><b>' + esc(l.desc) + (l.size ? ' ' + esc(l.size) : '') + '</b><span class="mute">' + (l.sku ? '<span class="ltr">' + esc(l.sku) + '</span> · ' : '') + esc((suppliers[l.supplier_id] || {}).name || '') + stockTxt(l.sku) +
+  var h = '<div class="ln" data-i="' + i + '" data-lid="' + esc(l.lid) + '"><div class="d">' + (pic ? '<button type="button" class="thumb" data-p="' + esc(pic) + '" data-t="' + esc(l.desc) + '" data-m="' + esc([l.sku, l.size, (suppliers[l.supplier_id] || {}).name].filter(Boolean).join(' · ')) + '" aria-label="הגדלת התמונה"><img alt="" loading="lazy"></button>' : '') + '<div class="tx"><b>' + esc(l.desc) + (l.size ? ' ' + esc(l.size) : '') + '</b><span class="mute">' + (l.sku ? '<span class="ltr">' + esc(l.sku) + '</span> · ' : '') + esc((suppliers[l.supplier_id] || {}).name || '') + stockTxt(l.sku) +
       '<span class="cost"> · ' + (l.cost == null ? 'עלות לא ידועה' : '<label class="pctl">רווח <input type="number" step="any" inputmode="decimal" class="pct ' + pctCls(l) + '" data-f="pct" value="' + pctOf(l) + '" aria-label="אחוז רווח על העלות"' + (l.so ? ' disabled' : '') + '>%</label> <span class="' + (p < 0 ? 'err' : 'ok') + '" data-o="pr">' + money(p * q) + '</span>') + '</span></span>' + (st ? ' ' + st : '') + (l.note ? '<span class="lnote">✎ ' + esc(l.note) + '</span>' : '') + '</div></div>' +
     '<div class="qwrap"><label><span class="lbl">כמות' + (l.unit ? ' (' + esc(l.unit) + ')' : '') + '</span><input type="number" min="0.01" step="any" inputmode="decimal" data-f="qty" value="' + esc(l.qty) + '"' + (locked ? ' disabled' : '') + ' aria-label="כמות"></label>' +
     '<label><span class="lbl">מחיר ליח\' כולל מע"מ</span><input type="number" min="0" step="any" inputmode="decimal" data-f="sell" value="' + esc(l.sell) + '" aria-label="מחיר ליחידה כולל מע&quot;מ"><span class="cost cunit">עלות ' + (l.cost == null ? '?' : money(l.cost)) + ' ליח\' לפני מע"מ</span></label>' +
