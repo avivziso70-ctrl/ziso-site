@@ -1,8 +1,8 @@
 -- The customer downloads the PDF of their own receipts and invoices from their page (Aviv 17.11.2026: "שהלקוח יוכל להוריד pdf לבד").
 -- PDFs are Priority's own documents, made by the office robot (crm_doc_requests -> priority_jobs print_document -> crm_docs,
 -- private bucket priority-docs). A customer gets only documents of the Priority customer behind their link.
--- COPIES ONLY for now: an original needs Aviv's own words in the robot thread (the robot's guard asks for approval_msg),
--- so a never-printed document ends 'skipped' and the page says to ask the team. (17.11: auto-approving originals was refused.)
+-- Originals: Aviv 17.11 10:17Z in this thread, "אני מאשר להדפיס את המקור תמיד". Page requests pass allow_original with that approval;
+-- the CRM office print (crm_print_job) carries the same approval_msg.
 -- Entry point: edge function crm-my-doc (service role) signs a 5-minute link. The functions here are not open to anon.
 -- No DROP in this file.
 
@@ -10,10 +10,11 @@ create or replace function public.crm_doc_requests_enqueue() returns trigger
 language plpgsql security definer set search_path to 'public' as $$
 begin
   if new.status <> 'queued' then return new; end if;
-  insert into public.priority_jobs (type, params, requested_by, priority, idempotency_key, crm_doc_request_id)
+  insert into public.priority_jobs (type, params, requested_by, priority, idempotency_key, crm_doc_request_id, approval_msg)
   values ('print_document',
-          jsonb_build_object('doc', new.doc, 'kind', new.kind, 'tail9', new.tail9, 'allow_original', false),
-          'crm:' || new.requested_by, case when new.requested_by = 'customer-page' then 4 else 3 end, 'crm_doc:' || new.id, new.id);
+          jsonb_build_object('doc', new.doc, 'kind', new.kind, 'tail9', new.tail9, 'allow_original', new.requested_by = 'customer-page'),
+          'crm:' || new.requested_by, case when new.requested_by = 'customer-page' then 4 else 3 end, 'crm_doc:' || new.id, new.id,
+          case when new.requested_by = 'customer-page' then 'Aviv 17.11 10:17Z in the CRM builder thread (cmsg_015WfBHagqpBzbKTebtDJ3B5CXPLGXTKt6ptaPqu73x4Ku): "אני מאשר להדפיס את המקור תמיד"' end);
   return new;
 end $$;
 
@@ -75,3 +76,18 @@ begin
 end $$;
 revoke all on function public.crm_my_docs_prefetch() from public, anon, authenticated;
 select cron.schedule('crm-my-docs-prefetch', '*/15 * * * *', 'select public.crm_my_docs_prefetch()');
+
+create or replace function public.crm_print_job(p_id bigint) returns uuid
+language plpgsql security definer set search_path to 'public' as $$
+declare r record; j uuid;
+begin
+  select * into r from crm_print_requests where id = p_id and status = 'queued' and job_id is null;
+  if not found then return null; end if;
+  insert into priority_jobs (type, params, requested_by, priority, idempotency_key, approval_msg)
+  values ('print_document',
+          jsonb_build_object('doc', r.doc, 'kind', r.kind, 'print_to', r.printer, 'copies', r.copies, 'allow_original', true, 'print_request_id', r.id),
+          'crm-print:' || r.requested_by, 2, 'crm_print:' || r.id, 'Aviv 17.11 10:17Z in the CRM builder thread (cmsg_015WfBHagqpBzbKTebtDJ3B5CXPLGXTKt6ptaPqu73x4Ku): "אני מאשר להדפיס את המקור תמיד"')
+  returning id into j;
+  update crm_print_requests set job_id = j, note = null where id = r.id;
+  return j;
+end $$;
