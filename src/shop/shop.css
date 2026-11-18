@@ -93,3 +93,7 @@ footer.foot a{margin:0 6px}
 .btn.site{font-weight:600;white-space:nowrap}
 @media (max-width:560px){.brand span{display:none}.btn.site{padding:0 12px;font-size:15px}.bar{gap:8px}}
 .brand b{white-space:nowrap}
+.done{text-align:center;padding:18px 4px 6px}.done .tick{width:64px;height:64px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center;margin:0 auto 14px}
+.done h2{font-family:var(--display);font-weight:400;font-size:30px;margin:0 0 6px}.done .num{font-size:19px;margin:0 0 12px}.done .num b{font-size:24px;letter-spacing:.04em}
+.done p{color:var(--mute);margin:6px auto;max-width:44ch}.done .num{color:var(--ink)}
+#payBox{--zp-ink:var(--ink);--zp-mute:var(--mute);--zp-line:var(--line);--zp-accent:var(--brass);--zp-surface:#fff}

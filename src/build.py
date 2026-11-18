@@ -113,7 +113,7 @@ def client_section():
 """ % (PORTAL, newp)
 
 def header(active=""):
-  links = [("./#products", "מוצרים", "products"), ("calculator.html", "מחשבון כמויות", "calculator"), ("tik-lakoach.html", "תיק לקוח", "tik"),
+  links = [("./#products", "מוצרים", "products"), ("shop/", "חנות אונליין", "shop"), ("calculator.html", "מחשבון כמויות", "calculator"), ("tik-lakoach.html", "תיק לקוח", "tik"),
            ("about.html", "עלינו", "about"), ("contact.html", "צור קשר", "contact")] + ([("./#client", "אזור לקוחות", "")] if PORTAL_ON else [])
   if GALLERY: links.insert(1, ("gallery.html", "עבודות", "gallery"))
   nav = "".join('<a href="%s"%s>%s</a>' % (h, ' aria-current="page"' if k and k == active else "", t) for h, t, k in links)
@@ -488,8 +488,10 @@ def build():
   shutil.copytree(os.path.join(HERE, "supplier"), os.path.join(DIST, "supplier"))
   #   dashboard/          <- team dashboard "לוח בקרה" (Supabase login, dash_bundle, noindex, blocked in robots.txt)
   shutil.copytree(os.path.join(HERE, "dashboard"), os.path.join(DIST, "dashboard"))
-  #   shop/               <- online store (hidden preview: noindex, unlinked, blocked in robots.txt; checkout staff-only until shop_settings.live)
+  #   shop/               <- online store (public since 18.11.2026: linked from the nav, in the sitemap; shop_settings.live gates checkout)
   shutil.copytree(os.path.join(HERE, "shop"), os.path.join(DIST, "shop"))
+  #   pay/                <- ZisoPay: the in-page card payment component shared by the store, the customer page and the till
+  shutil.copytree(os.path.join(HERE, "pay"), os.path.join(DIST, "pay"))
   #   my/                 <- the customer's live order page (personal #token link + last 4 phone digits, noindex, blocked in robots.txt)
   shutil.copytree(os.path.join(HERE, "my"), os.path.join(DIST, "my"))
 
@@ -800,10 +802,10 @@ go.addEventListener('click',function(e){{if(go.getAttribute('aria-disabled')!=='
   write("showroom.html", "זיסו קרמיקה | פגישת עיצוב חינם עם מעצבת פנים באולם בטירת כרמל",
     "חדר רחצה שנבחר עם מעצבת פנים מוסמכת, לא עם איש מכירות. אולם תצוגה לריצוף ואמבטיה בטירת כרמל מאז 1985. פגישת ייעוץ ועיצוב באולם בחינם.",
     header() + landing_body(WA_VISIT, PHONE, PHONE_INTL, HOURS_HTML, ADDR_Q, GALLERY) + FOOTER, [BUSINESS])
-  urls = ["", "pegisha.html", "about.html", "contact.html", "calculator.html", "tik-lakoach.html", "accessibility.html", "privacy.html", "terms.html", "data-deletion.html"] + [a["slug"] + ".html" for a in AREA_PAGES] + [g["slug"] + ".html" for g in GUIDE_PAGES] + (["gallery.html"] if GALLERY else []) + [c["slug"] + ".html" for c in CATS]
+  urls = ["", "shop/", "pegisha.html", "about.html", "contact.html", "calculator.html", "tik-lakoach.html", "accessibility.html", "privacy.html", "terms.html", "data-deletion.html"] + [a["slug"] + ".html" for a in AREA_PAGES] + [g["slug"] + ".html" for g in GUIDE_PAGES] + (["gallery.html"] if GALLERY else []) + [c["slug"] + ".html" for c in CATS]
   open(os.path.join(DIST, "sitemap.xml"), "w").write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n%s</urlset>\n' %
     "".join("  <url><loc>%s%s</loc><lastmod>%s</lastmod></url>\n" % (SITE, u, TODAY) for u in urls))
-  open(os.path.join(DIST, "robots.txt"), "w").write("User-agent: *\nAllow: /\nDisallow: /toda\nDisallow: /crm\nDisallow: /supplier\nDisallow: /dashboard\nDisallow: /shop\nDisallow: /my\nSitemap: %ssitemap.xml\n" % SITE)
+  open(os.path.join(DIST, "robots.txt"), "w").write("User-agent: *\nAllow: /\nDisallow: /toda\nDisallow: /crm\nDisallow: /supplier\nDisallow: /dashboard\nDisallow: /my\nSitemap: %ssitemap.xml\n" % SITE)
   open(os.path.join(DIST, "CNAME"), "w").write("www.zisoceramics.com\n")
   open(os.path.join(DIST, "googlee191b4da733a4939.html"), "w").write("google-site-verification: googlee191b4da733a4939.html")  # Search Console
   # llms.txt: a plain summary for AI assistants (llmstxt.org); facts only, the same ones the site states.

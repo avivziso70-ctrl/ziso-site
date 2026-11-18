@@ -42,7 +42,7 @@ function shipFee(ship: Record<string, any> | null, lines: { name: string; qty: n
 }
 let memo: { at: number; body: Record<string, unknown> } | null = null; // the open store's catalogue, kept 10 minutes per instance
 const clean = (v: unknown, n: number) => String(v ?? "").replace(/[\u0000-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, n);
-const settings = async () => (await admin.from("shop_settings").select("live, vat, delivery_fee, lead_text, ship").eq("id", 1).single()).data!;
+const settings = async () => (await admin.from("shop_settings").select("live, vat, delivery_fee, lead_text, ship, pay_frame").eq("id", 1).single()).data!;
 
 async function staffEmail(req: Request) {
   const jwt = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
@@ -126,7 +126,7 @@ Deno.serve(async (req: Request) => {
     const charged = test ? TEST_SUM : total;
     const tail9 = phone.slice(-9);
 
-    const { data: pay, error: payErr } = await admin.from("crm_pay_requests").insert({ tail9, amount: charged, description: "הזמנה מהחנות", test, created_by: staff || "shop" }).select("id").single();
+    const { data: pay, error: payErr } = await admin.from("crm_pay_requests").insert({ tail9, amount: charged, description: "הזמנה מהחנות", test, created_by: staff || "shop" }).select("*").single();
     if (payErr) return json(req, { ok: false, error: "שגיאה ביצירת ההזמנה" }, 500);
     const { data: order, error: oErr } = await admin.from("shop_orders").insert({
       name, phone, email, delivery, address: delivery === "delivery" ? address : null, city: delivery === "delivery" ? city : null, notes: notes || null,
@@ -137,6 +137,12 @@ Deno.serve(async (req: Request) => {
     const desc = ("הזמנה " + order!.id + " מהחנות").slice(0, 80);
     await admin.from("crm_pay_requests").update({ description: desc }).eq("id", pay!.id);
 
+    // Payment inside our own page (shop_settings.pay_frame, component /pay/pay.js): no Tranzila pay request is made, so the customer
+    // gets no link mail. The page pays through the row's public token and crm-pay-notify confirms it (zpay / zk in the notify).
+    if (st.pay_frame && body.frame === true && (pay as any).pay_token) {
+      await admin.from("crm_audit").insert({ who: staff || "shop", action: "shop_checkout", tail9, detail: { order: order!.id, pay: pay!.id, total, charged, test, lines: items.length, frame: true } });
+      return json(req, { ok: true, pay: (pay as any).pay_token, token: order!.token, order: order!.id, test });
+    }
     // On a test the page charges ₪5 as one line and the copy goes to Aviv; live, the customer gets Tranzila's mail with the real lines.
     const lines = test
       ? [{ name: "בדיקת חנות - הזמנה " + order!.id, unit_price: TEST_SUM, units_number: 1, type: "I", price_type: "G", currency_code: "ILS" }]
