@@ -98,7 +98,8 @@ Deno.serve(async (req: Request) => {
     const staff = await staffEmail(req);
     if (!st.live && !staff) return json(req, { ok: false, error: "החנות עוד לא פתוחה לציבור" }, 403);
     if (!(Deno.env.get("TRANZILA_APP_KEY") && Deno.env.get("TRANZILA_SECRET"))) return json(req, { ok: false, error: "התשלום עוד לא מוגדר" }, 503);
-    const test = !st.live;
+    // signed-in staff can still make a ₪5 test order after the store opened (shop/?test=1)
+    const test = !st.live || (!!staff && body.test === true);
     const name = clean(body.name, 60), email = clean(body.email, 120).toLowerCase(), phone = String(body.phone || "").replace(/\D/g, "");
     const delivery = body.delivery === "delivery" ? "delivery" : "pickup";
     const address = clean(body.address, 120), city = clean(body.city, 60), notes = clean(body.notes, 300);
@@ -139,7 +140,7 @@ Deno.serve(async (req: Request) => {
 
     // Payment inside our own page (shop_settings.pay_frame, component /pay/pay.js): no Tranzila pay request is made, so the customer
     // gets no link mail. The page pays through the row's public token and crm-pay-notify confirms it (zpay / zk in the notify).
-    if (st.pay_frame && body.frame === true && (pay as any).pay_token) {
+    if ((st.pay_frame || (test && body.test === true)) && body.frame === true && (pay as any).pay_token) {
       await admin.from("crm_audit").insert({ who: staff || "shop", action: "shop_checkout", tail9, detail: { order: order!.id, pay: pay!.id, total, charged, test, lines: items.length, frame: true } });
       return json(req, { ok: true, pay: (pay as any).pay_token, token: order!.token, order: order!.id, test });
     }

@@ -5,6 +5,7 @@
   var sb = window.supabase ? supabase.createClient(SB_URL, 'sb_publishable_yjpTHQkvH5-l4v-HCcEj4w_ofAYpQmV', { auth: { persistSession: true, autoRefreshToken: true } }) : null;
   var PAGE = 48;
   var $ = function (id) { return document.getElementById(id); };
+  var TEST = /[?&]test=1/.test(location.search);   // staff only: a ₪5 test order on the open store
   var state = { items: [], models: [], byKey: {}, byId: {}, live: false, ship: null, group: '', sub: '', color: '', q: '', sort: '', shown: PAGE, session: null };
   var cart = load();
 
@@ -189,7 +190,7 @@
       // items that left the catalog drop out of a saved cart
       Object.keys(cart).forEach(function (id) { if (!state.byId[id]) delete cart[id]; }); save();
       if (state.ship) $('delivRow').hidden = false;
-      if (!state.live) $('previewBar').hidden = false;
+      if (!state.live || (TEST && state.session)) { $('previewBar').hidden = false; if (state.live) $('previewBar').textContent = 'מצב בדיקה לצוות: התשלום בהזמנה הזו הוא ₪5 בלבד, והיא לא יוצאת לספק.'; }
       if (c.gated) { $('gate').hidden = false; return; }
       openStore();
     });
@@ -350,7 +351,7 @@
     var items = Object.keys(cart).map(function (id) { return { id: Number(id), qty: cart[id] }; });
     $('payBtn').disabled = true; msg.textContent = 'פותחים את דף התשלום המאובטח…';
     var jwt = state.session && state.session.access_token;
-    post({ action: 'checkout', items: items, name: f.name.value, phone: phone, email: f.email.value, delivery: deliv, address: f.address.value, city: f.city.value, notes: f.notes.value, terms: true, marketing: f.marketing.checked, frame: !!window.ZisoPay }, jwt).then(function (r) {
+    post({ action: 'checkout', items: items, name: f.name.value, phone: phone, email: f.email.value, delivery: deliv, address: f.address.value, city: f.city.value, notes: f.notes.value, terms: true, marketing: f.marketing.checked, frame: !!window.ZisoPay, test: TEST && !!jwt }, jwt).then(function (r) {
       if (!r.ok) { $('payBtn').disabled = false; msg.className = 'msg err'; msg.textContent = r.error || 'משהו השתבש. נסו שוב או התקשרו 050-4770040.'; return; }
       try { localStorage.setItem('ziso_last_order', r.token); } catch (x) {}
       // payment inside the page (ZisoPay); the Tranzila link page is the fallback while a pay token is not given
