@@ -776,7 +776,10 @@ sb.auth.getSession().then(function (r) {
   session = r.data.session;
   if (!session) { $('needLogin').classList.remove('hidden'); $('v-search').classList.add('hidden'); return; }
   sb.auth.onAuthStateChange(function (_e, s) { if (s) session = s; });
-  loadSupMap().then(function () { loadPending(); loadFacets(); search(); drawBar(); loadOrders(); checkTpl(); });
+  // a link can open a tab directly: prices.html#orders (the CRM's "stuck loop" alerts and messages to the owner use it)
+  var first = { '#orders': 'orders', '#pending': 'pending', '#suppliers': 'suppliers' }[location.hash];
+  // the owner's template check goes first, so nothing later in the chain can skip it
+  loadSupMap().then(function () { checkTpl(); if (first) show(first); loadPending(); loadFacets(); search(); drawBar(); loadOrders(); });
   show('search');
   sb.from('priority_suppliers').select('sup,name').eq('active', true).order('name').then(function (p) {
     $('prioSup').innerHTML = (p.data || []).map(function (x) { return '<option value="' + esc(x.name) + '" data-sup="' + esc(x.sup) + '"></option>'; }).join('');
