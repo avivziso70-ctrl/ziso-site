@@ -172,6 +172,10 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function load() { try { return JSON.parse(localStorage.getItem('ziso_cart') || '{}') || {}; } catch (e) { return {}; } }
   function save() { try { localStorage.setItem('ziso_cart', JSON.stringify(cart)); } catch (e) {} renderCount(); pushCart(); }
+  // measurement (track.js): runs only after cookie consent; product data and totals only, never personal details
+  function trk(ev, x) { if (window.shopTrack) window.shopTrack(ev, x); }
+  function gi(it, q) { return { item_id: String(it.id), item_name: String(it.name || '').slice(0, 100), price: Number(it.price), quantity: q }; }
+  function cartData() { var items = [], v = 0; Object.keys(cart).forEach(function (id) { var it = state.byId[id]; if (!it) return; items.push(gi(it, cart[id])); v += it.price * cart[id]; }); return { currency: 'ILS', value: Math.round(v * 100) / 100, items: items }; }
   function post(body, jwt) {
     var h = { 'content-type': 'application/json' };
     if (jwt) h.authorization = 'Bearer ' + jwt;
@@ -340,7 +344,9 @@
     var t = e.target.closest('button'); if (!t) return;
     if (t.dataset.add) {
       var mod = state.byKey[t.dataset.add], id = mod.variants[mod.cur].item.id, sel = document.querySelector('[data-qty="' + mod.n + '"]');
-      cart[id] = Math.min(50, (cart[id] || 0) + Number(sel ? sel.value : 1)); save();
+      var addQ = Number(sel ? sel.value : 1), addIt = state.byId[id];
+      cart[id] = Math.min(50, (cart[id] || 0) + addQ); save();
+      if (addIt) trk('add_to_cart', { currency: 'ILS', value: addIt.price * addQ, items: [gi(addIt, addQ)] });
       t.textContent = 'נוסף ✓'; setTimeout(function () { t.textContent = 'הוספה לסל'; }, 1400);
     } else if (t.dataset.inc) { cart[t.dataset.inc] = Math.min(50, cart[t.dataset.inc] + 1); save(); renderCart(); }
     else if (t.dataset.dec) { if (--cart[t.dataset.dec] <= 0) delete cart[t.dataset.dec]; save(); renderCart(); }
@@ -362,9 +368,10 @@
     refocus(fromSwatch ? '#m' + mod.n + ' .swatch[aria-pressed=true]' : '#m' + mod.n + ' select[data-dim="' + dim + '"]');
   }
   document.addEventListener('change', function (e) { var t = e.target; if (t.matches && t.matches('select[data-dim]')) choose(t.dataset.m, t.dataset.dim, t.value, false); });
-  $('cartBtn').addEventListener('click', function () { renderCart(); $('cartDlg').showModal(); });
+  $('cartBtn').addEventListener('click', function () { renderCart(); $('cartDlg').showModal(); if (Object.keys(cart).length) trk('view_cart', cartData()); });
   $('moreBtn').addEventListener('click', function () { state.shown += PAGE; render(); });
-  var tm; $('q').addEventListener('input', function (e) { clearTimeout(tm); tm = setTimeout(function () { state.q = e.target.value; state.shown = PAGE; render(); }, 150); });
+  var tm, tmS; $('q').addEventListener('input', function (e) { clearTimeout(tm); tm = setTimeout(function () { state.q = e.target.value; state.shown = PAGE; render(); }, 150);
+    clearTimeout(tmS); var term = e.target.value.trim(); if (term.length >= 2) tmS = setTimeout(function () { trk('search', { search_term: term.slice(0, 60) }); }, 1500); });
   $('sort').addEventListener('change', function (e) { state.sort = e.target.value; render(); });
   document.querySelectorAll('input[name=delivery]').forEach(function (r) { r.addEventListener('change', function () { $('addr').hidden = r.value !== 'delivery' || !r.checked; renderCart(); }); });
 
@@ -387,6 +394,7 @@
     if (deliv === 'delivery' && (f.address.value.trim().length < 3 || f.city.value.trim().length < 2)) return bad(f.address, 'נא למלא כתובת ועיר למשלוח.');
     if (!f.terms.checked) return bad(f.terms, 'כדי להמשיך יש לאשר את התקנון ותנאי הביטול.');
     var items = Object.keys(cart).map(function (id) { return { id: Number(id), qty: cart[id] }; });
+    var bought = cartData(); trk('begin_checkout', bought);
     $('payBtn').disabled = true; msg.textContent = 'פותחים את דף התשלום המאובטח…';
     var jwt = state.session && state.session.access_token;
     post({ action: 'checkout', items: items, name: f.name.value, phone: phone, email: f.email.value, delivery: deliv, address: f.address.value, city: f.city.value, notes: f.notes.value, terms: true, marketing: f.marketing.checked, frame: !!window.ZisoPay, test: TEST && !!jwt, session: sess }, jwt).then(function (r) {
@@ -399,6 +407,7 @@
       step('pay'); $('payOrder').textContent = 'הזמנה ' + r.order + (r.test ? ' · תשלום בדיקה' : '');
       payUi = window.ZisoPay.mount($('payBox'), { pay: r.pay,
         onPaid: function () {
+          if (!r.test) { bought.transaction_id = String(r.order); trk('purchase', bought); }
           cart = {}; save(); renderCount(); $('doneNum').textContent = r.order;
           $('doneText').textContent = 'התשלום התקבל. אישור הזמנה יגיע בדקות הקרובות למייל ' + mail + '. ' + (deliv === 'delivery' ? 'ההזמנה תגיע אליכם ' : 'ההזמנה תהיה מוכנה לאיסוף ') + (document.querySelector('.leadText') || {}).textContent + ', ונעדכן אתכם בטלפון. לכל שאלה: 050-4770040.';
           step('done'); $('doneStep').focus();
