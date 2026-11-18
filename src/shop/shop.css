@@ -89,3 +89,7 @@ footer.foot a{margin:0 6px}
 .doc h2{font-size:20px;margin:26px 0 6px}
 @media (max-width:560px){.hero{padding-top:18px}.tools select{flex:1}.swatch{width:34px;height:34px}.body h2{font-size:15px}.brand span{display:none}.grid{grid-template-columns:repeat(2,1fr);gap:10px}.body{padding:10px}.price{font-size:19px}.add{flex-direction:column}.add select{width:100%}}
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+.btn.site{font-weight:600;white-space:nowrap}
+@media (max-width:560px){.brand span{display:none}.btn.site{padding:0 12px;font-size:15px}.bar{gap:8px}}
+.brand b{white-space:nowrap}
