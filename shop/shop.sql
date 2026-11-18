@@ -112,6 +112,9 @@ begin
         'הזמנה ' || o.id || ' מהחנות' || case when o.delivery = 'delivery' then ' · משלוח ל' || coalesce(o.city, '') else ' · איסוף עצמי' end, false,
         left((select string_agg((i ->> 'qty') || '× ' || coalesce(i ->> 'code', '') || ' ' || (i ->> 'name'), '; ') from jsonb_array_elements(o.items) i), 900),
         new.pr_id, 1, coalesce(new.paid_at, now()));
+      -- the supplier orders (crm-po, crm-ai/crm_po_shop.sql): sent on the supplier's order channel and followed until confirmed.
+      -- A failure here never blocks the payment; the bridge's 5-minute run picks up an order whose call got lost.
+      begin perform crm_po_shop(o.id); exception when others then null; end;
     end if;
   end if;
   return new;

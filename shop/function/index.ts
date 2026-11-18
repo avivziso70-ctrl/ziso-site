@@ -173,9 +173,12 @@ Deno.serve(async (req: Request) => {
     const owner = staff === OWNER, now = new Date().toISOString();
     const audit = (what: string, detail: unknown) => admin.from("crm_audit").insert({ who: staff, action: what, detail });
     if (action === "admin_orders") {
-      const { data } = await admin.from("shop_orders").select("id, created_at, name, phone, email, delivery, address, city, notes, items, items_total, delivery_fee, total, charged, test, status, mail_state, tracking, courier, staff_note, sent_at, done_at")
+      const { data } = await admin.from("shop_orders").select("id, created_at, name, phone, email, delivery, address, city, notes, items, items_total, delivery_fee, total, charged, test, status, mail_state, tracking, courier, staff_note, sent_at, done_at, po_state, po_note")
         .neq("status", "failed").order("id", { ascending: false }).limit(200);
-      return json(req, { ok: true, owner, orders: data || [] });
+      // the supplier orders the CRM made for each web order (crm_po.shop_order_id)
+      const ids = (data || []).filter((o: any) => o.po_state).map((o: any) => o.id);
+      const { data: pos } = ids.length ? await admin.from("crm_po").select("shop_order_id, po_no, supplier_name, status, summary, receive_state, cancel_ack").in("shop_order_id", ids) : { data: [] };
+      return json(req, { ok: true, owner, orders: (data || []).map((o: any) => ({ ...o, pos: (pos || []).filter((p: any) => p.shop_order_id === o.id) })) });
     }
     if (action === "admin_order") {
       const id = Number(body.id), patch: Record<string, unknown> = {};
