@@ -30,8 +30,18 @@ async function tranzila(path: string, body: unknown, scheme: "A" | "B") {
   return { http: r.status, j: (await r.json().catch(() => ({}))) as Record<string, any> };
 }
 const ilDate = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jerusalem" });
+// Courier fee by what is in the parcel: a kitchen / granite / steel sink is a heavy box, a ceramic basin a big fragile one, the rest a small one.
+const parcel = (name: string) => !/(^|\s)כיור/.test(name) || /לכיור/.test(name) ? "" : /(גרניט|נירוסטה|מטבח|פורצלן בעובי)/.test(name) ? "h" : "b";
+function shipFee(ship: Record<string, any> | null, lines: { name: string; qty: number }[]) {
+  if (!ship) return null;
+  let b = 0, h = 0;
+  for (const l of lines) { const c = parcel(l.name); if (c === "b") b += l.qty; else if (c === "h") h += l.qty; }
+  if (!b && !h) return Number(ship.small);
+  return h * Number(ship.heavy) + (b ? Number(ship.sink) + (b - 1) * Number(ship.extra_sink || 0) : 0);
+}
+let memo: { at: number; body: Record<string, unknown> } | null = null; // the open store's catalogue, kept 10 minutes per instance
 const clean = (v: unknown, n: number) => String(v ?? "").replace(/[\u0000-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, n);
-const settings = async () => (await admin.from("shop_settings").select("live, vat, delivery_fee, lead_text").eq("id", 1).single()).data!;
+const settings = async () => (await admin.from("shop_settings").select("live, vat, delivery_fee, lead_text, ship").eq("id", 1).single()).data!;
 
 async function staffEmail(req: Request) {
   const jwt = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
@@ -53,6 +63,7 @@ Deno.serve(async (req: Request) => {
     const st = await settings();
     // while the store is closed, products are shown only to signed-in staff
     if (!st.live && !(await staffEmail(req))) return json(req, { ok: true, live: false, gated: true, lead_text: st.lead_text, delivery_fee: st.delivery_fee, items: [] });
+    if (st.live && memo && Date.now() - memo.at < 600000) return json(req, memo.body, 200, { "cache-control": "public, max-age=300" });
     // the API returns at most 1000 rows per call: read the catalogue page by page
     const rows: Record<string, any>[] = [];
     for (let from = 0; ; from += 1000) {
@@ -67,8 +78,10 @@ Deno.serve(async (req: Request) => {
       const { data: s } = await admin.storage.from("supplier-files").createSignedUrls(paths.slice(i, i + 500), 86400);
       for (const x of s || []) if (x.signedUrl && x.path) signed.set(x.path, x.signedUrl);
     }
-    const items = rows.map((r) => ({ id: r.id, code: r.code, name: r.name, size: r.size, unit: r.unit, category: r.category, price: Number(r.price), img: r.image_path ? signed.get(r.image_path) || null : null }));
-    return json(req, { ok: true, live: st.live, lead_text: st.lead_text, delivery_fee: st.delivery_fee, items }, 200, st.live ? { "cache-control": "public, max-age=600" } : { "cache-control": "private, no-store" });
+    const items = rows.map((r) => ({ id: r.id, code: r.code, name: r.name, size: r.size, unit: r.unit, category: r.category, price: Number(r.price), img: r.image_path ? signed.get(r.image_path) || null : null, big: parcel(String(r.name)) || undefined }));
+    const out = { ok: true, live: st.live, lead_text: st.lead_text, ship: st.ship || null, items };
+    if (st.live) memo = { at: Date.now(), body: out };
+    return json(req, out, 200, st.live ? { "cache-control": "public, max-age=300" } : { "cache-control": "private, no-store" });
   }
 
   if (action === "status") {
@@ -92,7 +105,7 @@ Deno.serve(async (req: Request) => {
     if (!/^0(5\d|[2-9])\d{7}$/.test(phone)) return json(req, { ok: false, error: "מספר טלפון לא תקין" }, 400);
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json(req, { ok: false, error: "כתובת מייל לא תקינה" }, 400);
     if (body.terms !== true) return json(req, { ok: false, error: "יש לאשר את תקנון האתר ותנאי הביטול" }, 400);
-    if (delivery === "delivery" && (st.delivery_fee === null || st.delivery_fee === undefined)) return json(req, { ok: false, error: "כרגע איסוף מאולם התצוגה בלבד" }, 400);
+    if (delivery === "delivery" && !st.ship) return json(req, { ok: false, error: "כרגע איסוף מאולם התצוגה בלבד" }, 400);
     if (delivery === "delivery" && (address.length < 3 || city.length < 2)) return json(req, { ok: false, error: "כתובת למשלוח חסרה" }, 400);
 
     const want = new Map<number, number>();
@@ -106,7 +119,7 @@ Deno.serve(async (req: Request) => {
     if (found.size !== want.size) return json(req, { ok: false, error: "חלק מהמוצרים בסל כבר לא זמינים. רעננו את הדף." }, 409);
     const items = [...want].map(([id, qty]) => { const r = found.get(id)!; return { id, code: r.code, name: r.name, size: r.size, qty, price: Number(r.price) }; });
     const itemsTotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-    const fee = delivery === "delivery" ? Number(st.delivery_fee) : 0;
+    const fee = delivery === "delivery" ? Number(shipFee(st.ship, items)) : 0;
     const total = Math.round((itemsTotal + fee) * 100) / 100;
     if (!(total >= 1 && total <= 200000)) return json(req, { ok: false, error: "סכום לא תקין" }, 400);
     const charged = test ? TEST_SUM : total;
@@ -148,11 +161,7 @@ Deno.serve(async (req: Request) => {
       return json(req, { ok: false, error: "דף התשלום לא נפתח. נסו שוב או התקשרו 050-4770040." }, 502);
     }
     await admin.from("crm_pay_requests").update({ pr_id: String(x.j.pr_id ?? ""), pr_link: String(x.j.pr_link) }).eq("id", pay!.id);
-    if (!test) {
-      // the office gets the usual receipt task once Tranzila confirms the money (crm_takings_task / crm_pay_paid)
-      await admin.from("crm_takings").insert({ by: "חנות אונליין", amount: total, method: "card_link", payer_name: name, tail9, reason: desc, goods_taken: false,
-        goods: items.map((i) => `${i.qty}× ${i.code || ""} ${i.name}`).join("; ").slice(0, 900), pay_pr_id: String(x.j.pr_id ?? ""), payments: 1 });
-    }
+    // the taking (and its receipt task) is written by the shop_order_paid trigger when Tranzila confirms the money
     await admin.from("crm_audit").insert({ who: staff || "shop", action: "shop_checkout", tail9, detail: { order: order!.id, pay: pay!.id, total, charged, test, lines: items.length } });
     return json(req, { ok: true, pr_link: x.j.pr_link, token: order!.token, order: order!.id, test });
   }
