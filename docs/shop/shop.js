@@ -272,6 +272,11 @@
     else if (m.colors.length > 1) text += ' בוחרים את הגימור שמתאים לבית.';
     return text;
   }
+  // The catalogue often shows one photo for all the colours of a model: say so, so nobody orders white while looking at gold.
+  function sharedTone(m, v) {
+    var c = v.attrs['צבע'];
+    return !!(c && v.item.img && m.colors.length > 1 && m.variants.some(function (o) { return o !== v && o.item.img === v.item.img && o.attrs['צבע'] && o.attrs['צבע'] !== c; }));
+  }
   function card(m) {
     var v = m.variants[m.cur], it = v.item, opts = '', controls = '';
     for (var n = 1; n <= 10; n++) opts += '<option>' + n + '</option>';
@@ -291,6 +296,7 @@
     Object.keys(v.attrs).forEach(function (k) { if (!m.dims.some(function (d) { return d.name === k; })) facts.push(k + ': ' + v.attrs[k]); });
     if (it.code) facts.push('מק״ט ' + it.code);
     return '<li class="card" id="m' + m.n + '"><div class="ph">' + (it.img ? '<img loading="lazy" src="' + esc(it.img) + '" alt="' + esc(m.title) + '">' : '<span class="none" aria-hidden="true">זיסו</span>') +
+      (sharedTone(m, v) ? '<span class="tone">התמונה עשויה להציג גוון אחר. יסופק: ' + esc(v.attrs['צבע']) + '</span>' : '') +
       (m.variants.length > 1 ? '<span class="badge">' + (m.colors.length > 1 ? m.colors.length + ' צבעים' : m.variants.length + ' אפשרויות') + '</span>' : '') + '</div>' +
       '<div class="body"><span class="kicker">' + esc(m.sub || m.group) + '</span><h2>' + esc(m.title) + '</h2>' +
       (function (b) { return b ? '<p class="blurb">' + esc(b) + '</p>' : ''; })(blurb(m, v)) + (facts.length ? '<span class="small">' + esc(facts.join(' · ')) + '</span>' : '') + (v.desc ? '<p class="desc">' + esc(v.desc) + '</p>' : '') + controls +
