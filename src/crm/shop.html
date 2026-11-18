@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0f1113">
+<title>ניהול החנות | זיסו צוות</title>
+<link rel="icon" href="../img/logo.jpg">
+<link rel="stylesheet" href="../fonts.css">
+<style>
+:root{--wall:#0f1113;--surface:#1d2024;--graphite:#22262a;--line:#3a3f45;--ink:#f2efe8;--mute:#b9b3a7;--brass:#cfae74;--brass-ink:#1a1610;--brass-soft:#2d271d;
+  --red:#e07a6a;--green:#8fc9a0;--amber:#e3b86a;--display:"Bellefair","Times New Roman",serif;--body:"Assistant","Segoe UI",Arial,sans-serif}
+@media (prefers-color-scheme: light){:root{--wall:#f3f2ef;--surface:#fff;--graphite:#ecebe7;--line:#d2cec5;--ink:#1e1b17;--mute:#5f5d58;--brass:#8a6a35;--brass-ink:#fff;--brass-soft:#efe7da;--red:#b8432f;--green:#2e7d4f;--amber:#8c6200}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--wall);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.45}
+header{position:sticky;top:0;z-index:3;background:var(--wall);border-bottom:1px solid var(--line);padding:10px 16px 0}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.grow{flex:1;min-width:0}
+h1,h2{font-family:var(--display);font-weight:400;margin:0}h1{font-size:26px}h2{font-size:22px;margin:22px 0 8px}
+a{color:var(--brass)}
+main{max-width:860px;margin:0 auto;padding:0 16px 64px}
+.btn{font:inherit;color:inherit;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:600;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;white-space:nowrap}
+.btn.brass{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
+.btn.red{color:var(--red)}.btn[disabled]{opacity:.5;cursor:default}
+nav.seg{display:flex;gap:4px;margin-top:10px;overflow-x:auto}
+nav.seg button{font:inherit;color:var(--mute);background:none;border:0;border-bottom:3px solid transparent;min-height:46px;padding:0 14px;font-weight:600;cursor:pointer;white-space:nowrap}
+nav.seg button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--brass)}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+input,select,textarea{font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 12px;min-height:44px;width:100%}
+label.f{display:block;font-size:15px;color:var(--mute);margin:8px 0}label.f input,label.f select{margin-top:4px;color:var(--ink)}
+.mute{color:var(--mute);font-size:15px}.err{color:var(--red)}.ok{color:var(--green)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0}
+.hidden{display:none!important}
+.st{display:inline-block;padding:2px 10px;border-radius:999px;font-size:14px;font-weight:700;white-space:nowrap}
+.st.yellow{background:#f3d36b;color:#2a2205}.st.green{background:#7fcf97;color:#0d2a17}.st.blue{background:#8fb8e8;color:#0b2038}.st.red{background:var(--red);color:#fff}.st.grey{background:var(--line);color:var(--ink)}
+.oc{border-inline-start:6px solid var(--line)}.oc.yellow{border-inline-start-color:#f3d36b}.oc.blue{border-inline-start-color:#8fb8e8}.oc.green{border-inline-start-color:#7fcf97}.oc.red{border-inline-start-color:var(--red)}
+.ltr{direction:ltr;unicode-bidi:isolate}
+.ln{border-top:1px solid var(--line);padding:6px 0;font-size:16px;display:flex;gap:8px}.ln span:last-child{margin-inline-start:auto;white-space:nowrap}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:14px 0 4px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px}.stat b{display:block;font-size:24px;font-family:var(--display);font-weight:400}.stat span{color:var(--mute);font-size:14px}
+.p{display:grid;grid-template-columns:64px 1fr;gap:12px;align-items:start}.p img{width:64px;height:64px;object-fit:contain;background:#fff;border-radius:8px;border:1px solid var(--line)}
+.p.off{opacity:.55}.pr{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}.pr input{width:110px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px}.tools input{flex:1 1 200px;width:auto}.tools select{flex:1 1 140px;width:auto}
+table.m{width:100%;border-collapse:collapse}table.m td{padding:6px 0;border-top:1px solid var(--line)}table.m input{width:90px}
+#label{display:none}
+@media print{body>*:not(#label){display:none!important}#label{display:block;color:#000;background:#fff;font-family:Arial,sans-serif;padding:8mm;width:100mm}
+  #label h3{font-size:22pt;margin:0 0 4mm}#label p{font-size:14pt;margin:0 0 2mm}#label .from{font-size:10pt;border-top:1px solid #000;margin-top:5mm;padding-top:3mm}@page{size:100mm 150mm;margin:0}}
+</style>
+</head>
+<body>
+<header>
+  <div class="row"><h1 class="grow">ניהול החנות</h1><a class="btn" href="../shop/" target="_blank" rel="noopener">לחנות</a><a class="btn" href="./">CRM</a></div>
+  <nav class="seg" role="tablist"><button role="tab" data-tab="orders" aria-selected="true">הזמנות</button><button role="tab" data-tab="products" aria-selected="false">מוצרים ומחירים</button><button role="tab" data-tab="settings" aria-selected="false">הגדרות</button></nav>
+</header>
+<main>
+  <div id="needLogin" class="card hidden" role="alert">צריך להתחבר קודם. <a href="./">כניסה ל-CRM</a> ואז לחזור לכאן.</div>
+  <div id="msg" class="card hidden" role="status" aria-live="polite"></div>
+  <section id="t-orders" class="hidden">
+    <div class="stats" id="stats"></div>
+    <div class="tools"><select id="oFilter" aria-label="סינון הזמנות"><option value="open">פתוחות (שולם / בדרך)</option><option value="all">הכל</option><option value="done">נמסרו</option><option value="cancelled">בוטלו</option><option value="new">לא שולמו</option></select><button class="btn" id="oReload">רענון</button></div>
+    <div id="orders"></div>
+  </section>
+  <section id="t-products" class="hidden">
+    <div class="tools"><input id="pq" type="search" placeholder="חיפוש לפי שם או מק״ט" aria-label="חיפוש מוצר"><select id="pSup" aria-label="ספק"><option value="">כל הספקים</option></select><select id="pOnly" aria-label="סינון"><option value="">הכל</option><option value="hidden">מוסתרים</option><option value="manual">מחיר ידני</option></select></div>
+    <div class="mute" id="pMeta"></div>
+    <div id="products"></div>
+    <div class="row" style="justify-content:center;margin-top:12px"><button class="btn hidden" id="pMore">עוד מוצרים</button></div>
+  </section>
+  <section id="t-settings" class="hidden"><div id="settings"></div></section>
+</main>
+<div id="label"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+<script>
+(function () {
+'use strict';
+var SB_URL = 'https://ppnjosyraosrdephsksu.supabase.co';
+var sb = supabase.createClient(SB_URL, 'sb_publishable_yjpTHQkvH5-l4v-HCcEj4w_ofAYpQmV', { auth: { persistSession: true, autoRefreshToken: true } });
+var FN = SB_URL + '/functions/v1/shop';
+var $ = function (id) { return document.getElementById(id); };
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function money(n) { return '₪' + Number(n || 0).toLocaleString('he-IL', { maximumFractionDigits: 2 }); }
+function when(t) { var d = new Date(t); return d.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' }) + ' ' + d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }); }
+var session = null, owner = false, orders = [], prods = [], pTotal = 0, sett = null, pTimer = null;
+function call(body) {
+  return fetch(FN, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + session.access_token }, body: JSON.stringify(body) })
+    .then(function (r) { return r.json(); }).catch(function () { return { ok: false, error: 'אין חיבור. נסו שוב.' }; });
+}
+function say(text, bad) { var m = $('msg'); m.textContent = text; m.className = 'card ' + (bad ? 'err' : 'ok'); clearTimeout(say.t); say.t = setTimeout(function () { m.classList.add('hidden'); }, 5000); }
+
+/* ---------- orders ---------- */
+var ST = { new: ['grey', 'לא שולם'], paid: ['yellow', 'שולם · לטיפול'], sent: ['blue', 'נשלח / מוכן לאיסוף'], done: ['green', 'נמסר'], cancelled: ['red', 'בוטל'] };
+var MAIL = { queued: 'מייל אישור בתור', sending: 'מייל אישור נשלח עכשיו', sent: 'מייל אישור נשלח', failed: 'מייל האישור נכשל', unknown: 'לא ברור אם מייל האישור נשלח' };
+function loadOrders() {
+  $('orders').innerHTML = '<p class="mute">טוען…</p>';
+  call({ action: 'admin_orders' }).then(function (r) {
+    if (!r.ok) { $('orders').innerHTML = '<p class="err">' + esc(r.error || 'שגיאה') + '</p>'; return; }
+    owner = !!r.owner; orders = r.orders; drawOrders();
+  });
+}
+function drawOrders() {
+  var real = orders.filter(function (o) { return !o.test; });
+  var paid = real.filter(function (o) { return ['paid', 'sent', 'done'].indexOf(o.status) >= 0; });
+  var month = new Date().toISOString().slice(0, 7);
+  var mSum = paid.filter(function (o) { return o.created_at.slice(0, 7) === month; }).reduce(function (s, o) { return s + Number(o.total); }, 0);
+  $('stats').innerHTML = '<div class="stat"><b>' + orders.filter(function (o) { return o.status === 'paid'; }).length + '</b><span>מחכות לטיפול</span></div>' +
+    '<div class="stat"><b>' + orders.filter(function (o) { return o.status === 'sent'; }).length + '</b><span>בדרך ללקוח</span></div>' +
+    '<div class="stat"><b>' + money(mSum) + '</b><span>מכירות החודש</span></div><div class="stat"><b>' + paid.length + '</b><span>הזמנות ששולמו</span></div>';
+  var f = $('oFilter').value;
+  var list = orders.filter(function (o) { return f === 'all' ? true : f === 'open' ? (o.status === 'paid' || o.status === 'sent') : o.status === f; });
+  $('orders').innerHTML = list.length ? list.map(orderCard).join('') : '<p class="mute">אין הזמנות כאן.</p>';
+}
+function orderCard(o) {
+  var st = ST[o.status] || ['grey', o.status], ship = o.delivery === 'delivery';
+  var tel = '0' + String(o.phone).replace(/^972/, '').replace(/^0/, '');
+  var h = '<div class="card oc ' + st[0] + '" data-o="' + o.id + '"><div class="row"><b class="grow">הזמנה ' + o.id + ' · ' + esc(o.name) + '</b><span class="st ' + st[0] + '">' + st[1] + '</span></div>' +
+    '<div class="mute">' + when(o.created_at) + ' · ' + (o.test ? 'בדיקה, חויב ' + money(o.charged) : money(o.total)) + (o.mail_state ? ' · ' + (MAIL[o.mail_state] || '') : '') + '</div>' +
+    '<div style="margin:6px 0"><a class="ltr" href="tel:' + esc(tel) + '">' + esc(tel) + '</a> · <a href="mailto:' + esc(o.email) + '">' + esc(o.email) + '</a></div>' +
+    '<div>' + (ship ? '<b>משלוח:</b> ' + esc([o.address, o.city].filter(Boolean).join(', ')) : '<b>איסוף עצמי</b> מאולם התצוגה') + '</div>' +
+    (o.notes ? '<div class="mute">הערת הלקוח: ' + esc(o.notes) + '</div>' : '') +
+    '<div style="margin-top:8px">' + (o.items || []).map(function (i) { return '<div class="ln"><span>' + Number(i.qty) + ' ×</span><span>' + esc(i.name) + (i.size ? ' ' + esc(i.size) : '') + (i.code ? ' <span class="mute ltr">' + esc(i.code) + '</span>' : '') + '</span><span>' + money(i.price * i.qty) + '</span></div>'; }).join('') +
+    (ship ? '<div class="ln"><span></span><span>משלוח</span><span>' + money(o.delivery_fee) + '</span></div>' : '') + '</div>';
+  if (o.status !== 'new') {
+    h += (ship ? '<div class="two"><label class="f">חברת שליחויות<input data-k="courier" value="' + esc(o.courier || '') + '"></label><label class="f">מספר מעקב<input data-k="tracking" class="ltr" value="' + esc(o.tracking || '') + '"></label></div>' : '') +
+      '<label class="f">הערה פנימית<input data-k="staff_note" value="' + esc(o.staff_note || '') + '"></label><div class="row" style="margin-top:8px">';
+    if (o.status === 'paid') h += '<button class="btn brass" data-st="sent">' + (ship ? 'יצא למשלוח' : 'מוכן לאיסוף') + '</button>';
+    if (o.status === 'sent') h += '<button class="btn brass" data-st="done">נמסר ללקוח</button><button class="btn" data-st="paid">החזרה לטיפול</button>';
+    if (o.status === 'done') h += '<button class="btn" data-st="sent">ביטול "נמסר"</button>';
+    if (o.status === 'cancelled') h += '<button class="btn" data-st="paid">שחזור ההזמנה</button>';
+    h += '<button class="btn" data-save="1">שמירה</button>' + (ship ? '<button class="btn" data-label="1">מדבקת משלוח</button>' : '') +
+      (o.status === 'paid' || o.status === 'sent' ? '<button class="btn red" data-st="cancelled">ביטול הזמנה</button>' : '') + '</div>' +
+      (o.status === 'cancelled' && !o.test ? '<div class="mute" style="margin-top:6px">הביטול כאן רק מסמן את ההזמנה. את הזיכוי ללקוח עושים ב<a href="kupa.html">קופה</a>.</div>' : '');
+  }
+  return h + '</div>';
+}
+$('orders').addEventListener('click', function (e) {
+  var b = e.target.closest('button'); if (!b) return;
+  var card = b.closest('[data-o]'), id = Number(card.dataset.o), o = orders.filter(function (x) { return x.id === id; })[0];
+  if (b.dataset.label) { printLabel(o); return; }
+  var body = { action: 'admin_order', id: id };
+  card.querySelectorAll('[data-k]').forEach(function (i) { body[i.dataset.k] = i.value; });
+  if (b.dataset.st) {
+    if (b.dataset.st === 'cancelled' && b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'בטוח? לחיצה נוספת מבטלת'; return; }
+    body.status = b.dataset.st;
+  }
+  b.disabled = true;
+  call(body).then(function (r) { if (!r.ok) { say(r.error || 'שגיאה', true); b.disabled = false; return; } say('נשמר'); loadOrders(); });
+});
+function printLabel(o) {
+  var tel = '0' + String(o.phone).replace(/^972/, '').replace(/^0/, '');
+  $('label').innerHTML = '<h3>' + esc(o.name) + '</h3><p>' + esc(o.address || '') + '</p><p><b>' + esc(o.city || '') + '</b></p><p class="ltr">' + esc(tel) + '</p>' +
+    (o.notes ? '<p>' + esc(o.notes) + '</p>' : '') + '<p>הזמנה ' + o.id + ' · ' + (o.items || []).reduce(function (s, i) { return s + Number(i.qty); }, 0) + ' פריטים · שביר</p>' +
+    '<div class="from">שולח: זיסו קרמיקה בע"מ, עוצמה 5 טירת כרמל, 050-4770040</div>';
+  window.print();
+}
+$('oFilter').addEventListener('change', drawOrders); $('oReload').addEventListener('click', loadOrders);
+
+/* ---------- products ---------- */
+function loadProducts(more) {
+  if (!more) { prods = []; $('products').innerHTML = '<p class="mute">טוען…</p>'; }
+  call({ action: 'admin_products', q: $('pq').value, supplier: $('pSup').value, only: $('pOnly').value, offset: prods.length }).then(function (r) {
+    if (!r.ok) { $('products').innerHTML = '<p class="err">' + esc(r.error || 'שגיאה') + '</p>'; return; }
+    owner = !!r.owner; pTotal = r.total; prods = prods.concat(r.items);
+    $('pMeta').textContent = pTotal.toLocaleString('he-IL') + ' מוצרים' + (owner ? '' : ' · שינוי מחירים והסתרה: רק אביב');
+    $('products').innerHTML = prods.length ? prods.map(prodCard).join('') : '<p class="mute">לא נמצאו מוצרים.</p>';
+    $('pMore').classList.toggle('hidden', prods.length >= pTotal);
+  });
+}
+function prodCard(p, i) {
+  var profit = p.cost ? Math.round((p.price - p.cost) / p.cost * 100) : null;
+  return '<div class="card p' + (p.hidden ? ' off' : '') + '" data-p="' + i + '">' + (p.img ? '<img loading="lazy" alt="" src="' + esc(p.img) + '">' : '<div></div>') + '<div><b>' + esc(p.name) + (p.size ? ' ' + esc(p.size) : '') + '</b>' +
+    '<div class="mute">' + (p.code ? '<span class="ltr">' + esc(p.code) + '</span> · ' : '') + esc(supName(p.supplier)) + (p.hidden ? ' · <b class="err">מוסתר מהחנות</b>' : '') + '</div>' +
+    '<div>מחיר בחנות: <b>' + money(p.price) + '</b>' + (p.manual ? ' <span class="st yellow">ידני</span> <span class="mute">לפי הכלל: ' + money(p.calc) + '</span>' : '') +
+    (p.cost != null ? '<br><span class="mute">עלות כולל מע"מ ' + money(p.cost) + ' · רווח ' + profit + '% על העלות</span>' : '') + '</div>' +
+    (owner ? '<div class="pr"><input type="number" inputmode="numeric" min="1" step="1" placeholder="מחיר ידני" aria-label="מחיר ידני כולל מע״מ" value="' + (p.manual ? p.price : '') + '"><button class="btn" data-act="price">שמירת מחיר</button>' +
+      (p.manual ? '<button class="btn" data-act="auto">חזרה לכלל</button>' : '') + '<button class="btn' + (p.hidden ? '' : ' red') + '" data-act="hide">' + (p.hidden ? 'החזרה לחנות' : 'הסתרה') + '</button></div>' : '') + '</div></div>';
+}
+function supName(id) { var s = sett && sett.suppliers.filter(function (x) { return x.id === id; })[0]; return s ? s.name : ''; }
+$('products').addEventListener('click', function (e) {
+  var b = e.target.closest('button[data-act]'); if (!b) return;
+  var card = b.closest('[data-p]'), i = Number(card.dataset.p), p = prods[i], body = { action: 'admin_item', key: p.key };
+  if (b.dataset.act === 'price') { var v = Number(card.querySelector('input').value); if (!(v > 0)) { say('צריך להקליד מחיר', true); return; } body.price = v; }
+  if (b.dataset.act === 'auto') body.price = null;
+  if (b.dataset.act === 'hide') body.hidden = !p.hidden;
+  b.disabled = true;
+  call(body).then(function (r) {
+    if (!r.ok) { say(r.error || 'שגיאה', true); b.disabled = false; return; }
+    p.hidden = r.hidden; p.price = r.price; p.manual = r.manual;
+    var d = document.createElement('div'); d.innerHTML = prodCard(p, i); card.replaceWith(d.firstChild);
+    say('נשמר. באתר זה מתעדכן תוך עד 10 דקות.');
+  });
+});
+$('pq').addEventListener('input', function () { clearTimeout(pTimer); pTimer = setTimeout(function () { loadProducts(); }, 350); });
+$('pSup').addEventListener('change', function () { loadProducts(); }); $('pOnly').addEventListener('change', function () { loadProducts(); });
+$('pMore').addEventListener('click', function () { loadProducts(true); });
+
+/* ---------- settings ---------- */
+function loadSettings() {
+  return call({ action: 'admin_settings' }).then(function (r) {
+    if (!r.ok) { $('settings').innerHTML = '<p class="err">' + esc(r.error || 'שגיאה') + '</p>'; return; }
+    sett = r; owner = !!r.owner;
+    $('pSup').innerHTML = '<option value="">כל הספקים</option>' + r.suppliers.map(function (s) { return '<option value="' + esc(s.id) + '">' + esc(s.name) + ' (' + s.count + ')</option>'; }).join('');
+    var sh = r.ship || {}, dis = owner ? '' : ' disabled';
+    $('settings').innerHTML = '<div class="card"><b>מצב החנות: ' + (r.live ? '<span class="ok">פתוחה לציבור</span>' : 'סגורה לציבור (תצוגה לצוות בלבד, כל תשלום הוא בדיקה של ₪5)') + '</b>' +
+      '<div class="mute">' + r.suppliers.reduce(function (s, x) { return s + x.count; }, 0).toLocaleString('he-IL') + ' מוצרים באתר · מע"מ ' + r.vat + '%</div></div>' +
+      (owner ? '' : '<p class="mute">את ההגדרות משנה רק אביב.</p>') +
+      '<h2>זמן אספקה</h2><div class="card"><label class="f">הטקסט שמופיע בחנות, בתקנון ובמייל ללקוח<input id="sLead" value="' + esc(r.lead_text) + '"' + dis + '></label></div>' +
+      '<h2>דמי משלוח (כולל מע"מ)</h2><div class="card"><div class="two">' +
+      [['small', 'חבילה קטנה (ברזים, אביזרים)'], ['sink', 'כיור קרמי'], ['extra_sink', 'כל כיור קרמי נוסף'], ['heavy', 'כיור מטבח / גרניט / נירוסטה']].map(function (k) { return '<label class="f">' + k[1] + '<input type="number" inputmode="numeric" min="0" data-ship="' + k[0] + '" value="' + esc(sh[k[0]] == null ? '' : sh[k[0]]) + '"' + dis + '></label>'; }).join('') + '</div></div>' +
+      (owner ? '<h2>תמחור לפי ספק</h2><div class="card"><div class="mute">מחיר בחנות = העלות שלנו × המכפיל + מע"מ, ולא יותר מהמחיר לצרכן של הספק. מכפיל 2 = 50% רווח מהמחיר לפני מע"מ.</div><table class="m">' +
+        r.suppliers.map(function (s) { return '<tr><td>' + esc(s.name) + '<div class="mute">' + s.count + ' מוצרים</div></td><td style="text-align:left"><input type="number" step="0.05" min="1.2" max="5" aria-label="מכפיל ' + esc(s.name) + '" data-mult="' + esc(s.id) + '" value="' + s.mult + '"></td></tr>'; }).join('') + '</table></div>' +
+        '<div class="row"><button class="btn brass" id="sSave">שמירת ההגדרות</button></div>' : '') +
+      '<p class="mute">שינוי בתקנון, הוספת ספק או סוג מוצר, ופתיחת החנות לציבור: לבקש מקלוד.</p>';
+  });
+}
+$('settings').addEventListener('click', function (e) {
+  var b = e.target.closest('#sSave'); if (!b) return;
+  var ship = {}, mult = {};
+  document.querySelectorAll('[data-ship]').forEach(function (i) { ship[i.dataset.ship] = Number(i.value); });
+  document.querySelectorAll('[data-mult]').forEach(function (i) { mult[i.dataset.mult] = Number(i.value); });
+  b.disabled = true;
+  call({ action: 'admin_settings_set', lead_text: $('sLead').value, ship: ship, multipliers: mult }).then(function (r) {
+    b.disabled = false; if (!r.ok) { say(r.error || 'שגיאה', true); return; } say('נשמר. באתר זה מתעדכן תוך עד 10 דקות.'); loadSettings();
+  });
+});
+
+/* ---------- tabs ---------- */
+var loaded = {};
+function show(tab) {
+  ['orders', 'products', 'settings'].forEach(function (t) { $('t-' + t).classList.toggle('hidden', t !== tab); });
+  document.querySelectorAll('nav.seg button').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.tab === tab)); });
+  if (!loaded[tab]) { loaded[tab] = 1; if (tab === 'orders') loadOrders(); if (tab === 'products') loadProducts(); }
+  try { history.replaceState(null, '', '#' + tab); } catch (x) {}
+}
+document.querySelector('nav.seg').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) show(b.dataset.tab); });
+sb.auth.getSession().then(function (r) {
+  session = r.data.session;
+  if (!session) { $('needLogin').classList.remove('hidden'); return; }
+  sb.auth.onAuthStateChange(function (_e, s) { if (s) session = s; });
+  loadSettings().then(function () { var h = location.hash.slice(1); show(['orders', 'products', 'settings'].indexOf(h) >= 0 ? h : 'orders'); });
+});
+})();
+</script>
+</body>
+</html>

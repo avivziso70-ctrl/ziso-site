@@ -3,6 +3,7 @@
 //   { action: "checkout", items:[{id,qty}], name, phone, email, delivery, address?, city?, notes?, terms:true, marketing? }
 //                                                 -> { pr_link, token }  (Tranzila hosted payment page; we never see card data)
 //   { action: "status", token }                   -> the order's state, for the customer's own status page
+//   admin_* (staff JWT, page crm/shop.html): admin_orders, admin_order, admin_products, admin_settings; owner only: admin_item, admin_settings_set
 // While shop_settings.live = false: checkout needs a signed-in staff user (Supabase JWT) and every payment is a ₪5 test.
 // Prices are recomputed here from shop_catalog() on every checkout; the browser's prices are never trusted.
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -164,6 +165,107 @@ Deno.serve(async (req: Request) => {
     // the taking (and its receipt task) is written by the shop_order_paid trigger when Tranzila confirms the money
     await admin.from("crm_audit").insert({ who: staff || "shop", action: "shop_checkout", tail9, detail: { order: order!.id, pay: pay!.id, total, charged, test, lines: items.length } });
     return json(req, { ok: true, pr_link: x.j.pr_link, token: order!.token, order: order!.id, test });
+  }
+  // ---- admin (crm/shop.html): signed-in staff handle orders; products, prices and settings are the owner's ----
+  if (action.startsWith("admin_")) {
+    const staff = await staffEmail(req);
+    if (!staff) return json(req, { ok: false, error: "צריך להתחבר ל-CRM" }, 401);
+    const owner = staff === OWNER, now = new Date().toISOString();
+    const audit = (what: string, detail: unknown) => admin.from("crm_audit").insert({ who: staff, action: what, detail });
+    if (action === "admin_orders") {
+      const { data } = await admin.from("shop_orders").select("id, created_at, name, phone, email, delivery, address, city, notes, items, items_total, delivery_fee, total, charged, test, status, mail_state, tracking, courier, staff_note, sent_at, done_at")
+        .neq("status", "failed").order("id", { ascending: false }).limit(200);
+      return json(req, { ok: true, owner, orders: data || [] });
+    }
+    if (action === "admin_order") {
+      const id = Number(body.id), patch: Record<string, unknown> = {};
+      const { data: o } = await admin.from("shop_orders").select("id, status").eq("id", id).maybeSingle();
+      if (!o) return json(req, { ok: false, error: "ההזמנה לא נמצאה" }, 404);
+      if (body.status !== undefined) {
+        const to = String(body.status), ok: Record<string, string[]> = { paid: ["sent", "cancelled"], sent: ["done", "paid", "cancelled"], done: ["sent"], cancelled: ["paid"] };
+        if (!(ok[o.status] || []).includes(to)) return json(req, { ok: false, error: "אי אפשר לשנות את הסטטוס הזה" }, 409);
+        patch.status = to;
+        if (to === "sent") patch.sent_at = now;
+        if (to === "done") patch.done_at = now;
+      }
+      if (body.tracking !== undefined) patch.tracking = clean(body.tracking, 60) || null;
+      if (body.courier !== undefined) patch.courier = clean(body.courier, 40) || null;
+      if (body.staff_note !== undefined) patch.staff_note = clean(body.staff_note, 500) || null;
+      if (!Object.keys(patch).length) return json(req, { ok: false, error: "אין שינוי" }, 400);
+      const { error } = await admin.from("shop_orders").update(patch).eq("id", id);
+      if (error) return json(req, { ok: false, error: "השמירה נכשלה" }, 500);
+      await audit("shop_admin_order", { id, ...patch });
+      return json(req, { ok: true });
+    }
+    if (action === "admin_products") {
+      const q = clean(body.q, 60).replace(/[,()*%\\"'.:]/g, " ").trim(), off = Math.max(0, Number(body.offset) || 0);
+      let rq = admin.rpc("shop_catalog_full", {}, { count: "exact" });
+      if (q) rq = rq.or(`name.ilike.*${q.split(/\s+/).join("*")}*,code.ilike.*${q}*`);
+      if (/^[0-9a-f-]{36}$/i.test(String(body.supplier || ""))) rq = rq.eq("supplier_id", body.supplier);
+      if (body.only === "hidden") rq = rq.eq("hidden", true);
+      if (body.only === "manual") rq = rq.not("ov_price", "is", null);
+      const { data, count, error } = await rq.order("name").order("id").range(off, off + 39);
+      if (error) return json(req, { ok: false, error: "החיפוש נכשל" }, 500);
+      const rows = (data || []) as Record<string, any>[];
+      const { data: sg } = rows.length ? await admin.storage.from("supplier-files").createSignedUrls(rows.map((r) => r.image_path), 3600) : { data: [] };
+      const img = new Map((sg || []).map((x: any) => [x.path, x.signedUrl]));
+      return json(req, { ok: true, owner, total: count ?? rows.length, items: rows.map((r) => ({ key: r.key, code: r.code, name: r.name, size: r.size, supplier: r.supplier_id, price: Number(r.price), cost: owner ? Number(r.cost) : undefined, calc: Number(r.calc), manual: r.ov_price != null, hidden: r.hidden, img: img.get(r.image_path) || null })) });
+    }
+    if (action === "admin_settings") {
+      const { data: st } = await admin.from("shop_settings").select("live, vat, lead_text, ship, multipliers").eq("id", 1).single();
+      const ids = Object.keys(st!.multipliers || {});
+      const { data: sup } = await admin.from("sp_suppliers").select("id, name").in("id", ids);
+      const n = new Map<string, number>();
+      for (let from = 0; ; from += 1000) {
+        const { data } = await admin.rpc("shop_catalog_full").select("supplier_id, hidden").order("id").range(from, from + 999);
+        for (const r of (data || []) as any[]) if (!r.hidden) n.set(r.supplier_id, (n.get(r.supplier_id) || 0) + 1);
+        if (!data || data.length < 1000) break;
+      }
+      return json(req, { ok: true, owner, live: st!.live, vat: Number(st!.vat), lead_text: st!.lead_text, ship: st!.ship,
+        suppliers: (sup || []).map((x: any) => ({ id: x.id, name: x.name, mult: owner ? Number(st!.multipliers[x.id]) : undefined, count: n.get(x.id) || 0 })).sort((a: any, b: any) => b.count - a.count) });
+    }
+    if (!owner) return json(req, { ok: false, error: "רק אביב יכול לשנות מוצרים, מחירים והגדרות" }, 403);
+    if (action === "admin_item") {
+      const key = String(body.key || "").slice(0, 400);
+      const { data: rows } = await admin.rpc("shop_catalog_full").eq("key", key).limit(1);
+      const r = (rows || [])[0] as Record<string, any> | undefined;
+      if (!r) return json(req, { ok: false, error: "המוצר לא נמצא" }, 404);
+      const hidden = body.hidden === undefined ? !!r.hidden : body.hidden === true;
+      let price: number | null = body.price === undefined ? (r.ov_price == null ? null : Number(r.ov_price)) : (body.price === null || body.price === "" ? null : Math.ceil(Number(body.price)));
+      if (price !== null && !(price > 0 && price <= 200000)) return json(req, { ok: false, error: "מחיר לא תקין" }, 400);
+      // never below what the product costs us (incl. VAT)
+      if (price !== null && price < Number(r.cost)) return json(req, { ok: false, error: "המחיר נמוך מהעלות שלנו (" + Math.ceil(Number(r.cost)) + " ₪ כולל מע\"מ)" }, 400);
+      const { error } = !hidden && price === null ? await admin.from("shop_item_overrides").delete().eq("key", key)
+        : await admin.from("shop_item_overrides").upsert({ key, hidden, price, updated_at: now, updated_by: staff });
+      if (error) return json(req, { ok: false, error: "השמירה נכשלה" }, 500);
+      memo = null;
+      await audit("shop_admin_item", { key, hidden, price });
+      return json(req, { ok: true, hidden, price: price ?? Number(r.calc), manual: price !== null });
+    }
+    if (action === "admin_settings_set") {
+      const { data: st } = await admin.from("shop_settings").select("ship, multipliers").eq("id", 1).single();
+      const patch: Record<string, unknown> = { updated_at: now };
+      if (body.lead_text !== undefined) { const t = clean(body.lead_text, 60); if (!t) return json(req, { ok: false, error: "חסר זמן אספקה" }, 400); patch.lead_text = t; }
+      if (body.ship && typeof body.ship === "object") {
+        const ship: Record<string, number> = {};
+        for (const k of ["small", "sink", "extra_sink", "heavy"]) { const v = Number(body.ship[k]); if (!(v >= 0 && v <= 2000)) return json(req, { ok: false, error: "מחיר משלוח לא תקין" }, 400); ship[k] = Math.round(v); }
+        patch.ship = ship;
+      }
+      if (body.multipliers && typeof body.multipliers === "object") {
+        const m: Record<string, number> = { ...(st!.multipliers || {}) };
+        for (const [id, v] of Object.entries(body.multipliers)) {
+          if (!(id in m)) return json(req, { ok: false, error: "ספק לא מוכר" }, 400);   // adding or removing a supplier is not done from here
+          const x = Number(v); if (!(x >= 1.2 && x <= 5)) return json(req, { ok: false, error: "מכפיל בין 1.2 ל-5" }, 400);
+          m[id] = Math.round(x * 100) / 100;
+        }
+        patch.multipliers = m;
+      }
+      const { error } = await admin.from("shop_settings").update(patch).eq("id", 1);
+      if (error) return json(req, { ok: false, error: "השמירה נכשלה" }, 500);
+      memo = null;
+      await audit("shop_admin_settings", patch);
+      return json(req, { ok: true });
+    }
   }
   return json(req, { ok: false, error: "action" }, 400);
 });
