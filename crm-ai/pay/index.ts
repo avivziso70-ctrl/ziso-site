@@ -24,7 +24,7 @@ const TERMINAL = "avivziso", OWNER = "avivziso70@gmail.com", BIZ_EMAIL = "info@z
 const ORIGINS = ["https://www.zisoceramics.com", "https://zisoceramics.com", "http://localhost:8000"];
 function cors(req: Request) {
   const o = req.headers.get("origin") || "";
-  return { "access-control-allow-origin": ORIGINS.includes(o) ? o : ORIGINS[0], "access-control-allow-headers": "authorization, content-type", "access-control-allow-methods": "POST, OPTIONS", vary: "origin", "content-type": "application/json" };
+  return { "access-control-allow-origin": ORIGINS.includes(o) ? o : ORIGINS[0], "access-control-allow-headers": "authorization, content-type, apikey, x-client-info", "access-control-allow-methods": "POST, OPTIONS", vary: "origin", "content-type": "application/json" };
 }
 const json = (req: Request, body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: cors(req) });
 
