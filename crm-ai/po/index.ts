@@ -722,6 +722,22 @@ export async function waReply(body: any) {
   return { ok: true, status: patch.status || po.status, cancel_ack: patch.cancel_ack || po.cancel_ack || null };
 }
 
+// Read only, hook token (database function crm_wa_templates): where our three supplier templates stand at Meta.
+// Names and statuses only. Nothing is submitted here: submitting a template stays the owner's own click.
+async function waTemplates() {
+  const cfg = await waCfg();
+  if (!cfg?.token || !cfg?.waba_id) return { ok: false, error: "וואטסאפ לא מחובר" };
+  const out: Record<string, unknown> = {};
+  for (const name of [WA_TEMPLATE, WA_CANCEL, WA_PRICE]) {
+    const r = await fetch(`${GRAPH}/${cfg.waba_id}/message_templates?name=${name}&fields=name,status,category,rejected_reason`, { headers: { authorization: `Bearer ${cfg.token}` } });
+    const ex = await r.json().catch(() => ({}));
+    const f = (ex.data || []).find((t: any) => t.name === name);
+    out[name] = f ? { exists: true, status: f.status, category: f.category, reason: f.rejected_reason || null }
+      : { exists: false, http: r.status, error: ex.error ? String(ex.error.message || "").slice(0, 160) : null };
+  }
+  return { ok: true, templates: out };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors(req) });
   if (req.method !== "POST") return json(req, { ok: false, error: "POST only" }, 405);
@@ -732,6 +748,7 @@ Deno.serve(async (req: Request) => {
     if (hk) {
       const { data: keys } = await admin.from("crm_push_keys").select("hook_token").eq("id", 1).maybeSingle();
       if (!keys?.hook_token || hk !== keys.hook_token) return json(req, { ok: false, error: "forbidden" }, 403);
+      if (body?.action === "wa_templates") return json(req, await waTemplates());
       if (body?.action !== "wa_reply" && body?.action !== "wa_ask" && body?.action !== "shop_order") return json(req, { ok: false, error: "unknown action" }, 400);
       const out: any = body.action === "shop_order" ? await shopOrder(Number(body.order_id)) : body.action === "wa_ask" ? await waAsk(body) : await waReply(body);
       return json(req, out, out.ok ? 200 : 400);
