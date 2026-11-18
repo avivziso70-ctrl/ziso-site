@@ -103,3 +103,20 @@ footer.foot a{margin:0 6px}
 .ord{border-top:1px solid var(--line);padding:10px 0;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.ord b{font-weight:700}.ord .grow{flex:1}
 .tag{display:inline-block;padding:1px 10px;border-radius:999px;font-size:14px;font-weight:700;background:var(--soft);color:var(--ink)}.tag.ok{background:#dcefe2;color:#1d4a2e}.tag.off{background:#f3dcd7;color:#7a2a1e}
 .blurb{margin:2px 0 6px;font-size:15px;line-height:1.4;color:var(--mute)}
+
+/* trust (18.11: learned from the big Israeli stores) */
+.trust{list-style:none;margin:16px 0 4px;padding:0;display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.trust li{display:flex;gap:10px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:13px;line-height:1.35;color:var(--mute)}
+.trust b{display:block;color:var(--ink);font-size:14px}
+.trust svg{flex:none;width:24px;height:24px;fill:none;stroke:var(--brass);stroke-width:1.700;stroke-linecap:round;stroke-linejoin:round}
+.perks{margin:6px 0 0;font-size:12.5px;color:var(--mute);line-height:1.4}
+.perks span{white-space:nowrap}
+.perks span::before{content:"✓ ";color:var(--brass);font-weight:700}
+.faq{margin:34px auto 10px;max-width:760px}
+.faq h2{font-family:var(--display);font-weight:400;font-size:28px;margin:0 0 10px}
+.faq details{border-bottom:1px solid var(--line);padding:4px 0}
+.faq summary{cursor:pointer;padding:12px 0;font-weight:700;font-size:16px;list-style-position:inside}
+.faq summary:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.faq p{margin:0 0 12px;color:var(--mute);line-height:1.6}
+@media (max-width:980px){.trust{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:560px){.trust{grid-template-columns:1fr 1fr;gap:8px}.trust li{padding:10px;font-size:12px}.trust li:last-child{grid-column:1/-1}}

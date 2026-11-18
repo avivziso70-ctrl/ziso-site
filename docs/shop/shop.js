@@ -291,6 +291,7 @@
       '<div class="body"><span class="kicker">' + esc(m.sub || m.group) + '</span><h2>' + esc(m.title) + '</h2>' +
       (function (b) { return b ? '<p class="blurb">' + esc(b) + '</p>' : ''; })(blurb(m, v)) + (facts.length ? '<span class="small">' + esc(facts.join(' · ')) + '</span>' : '') + (v.desc ? '<p class="desc">' + esc(v.desc) + '</p>' : '') + controls +
       '<div class="price" aria-live="polite">' + money(it.price) + ' <small>כולל מע״מ</small></div>' +
+      '<p class="perks"><span>אחריות יבואן</span> · <span>משלוח או איסוף חינם</span></p>' +
       '<div class="add"><select aria-label="כמות" data-qty="' + m.n + '">' + opts + '</select>' +
       '<button class="btn brass" type="button" data-add="' + m.n + '">הוספה לסל</button></div></div></li>';
   }
