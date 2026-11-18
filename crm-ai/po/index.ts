@@ -42,6 +42,7 @@
 // The WhatsApp token is read here through the service role only, never returned or logged; wa_config is never written.
 // Priority is never written.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { SHOP_BASE, shopMailResult, shopOutbox } from "../../shop/function/mail.ts";
 
 const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { autoRefreshToken: false, persistSession: false } });
 const IMPORT_SHA256 = "f34768d670cc85ef42eb41294bd0d101707b94e00ad2659ecf28439dbc6852d0";
@@ -441,9 +442,12 @@ async function bridgeAction(req: Request, body: any) {
     await admin.from("crm_po").update({ cancel_email_state: "unknown", cancel_error: "לא ברור אם מייל הביטול נשלח. לבדוק בתיבת דואר יוצא.", updated_at: now }).eq("cancel_email_state", "sending").lt("cancel_claimed_at", stale);
     const { data: canc } = await admin.from("crm_po").update({ cancel_email_state: "sending", cancel_claimed_at: now, updated_at: now }).eq("cancel_email_state", "queued").eq("status", "cancelled").select("*");
     for (const po of (canc || []) as Po[]) orders.push({ id: -po.id, po_no: po.po_no, to: po.to_email, cc: po.cc || [], ...renderCancelEmail(po) });
+    // the online store's order confirmations to customers ride the same sender (ids above SHOP_BASE)
+    try { orders.push(...(await shopOutbox(admin, now))); } catch (e) { console.error("shop outbox", e); }
     return json(req, { ok: true, orders });
   }
   const id = Number(body.id);
+  if (id > SHOP_BASE && (body.action === "sent" || body.action === "send_failed")) return json(req, { ok: await shopMailResult(admin, id, body.action === "sent", body, now) });
   if (body.action === "watch") {
     const since = new Date(Date.now() - 45 * 864e5).toISOString();
     const { data } = await admin.from("crm_po").select("id, gmail_thread_id, gmail_msg_id, replies").in("status", ["sent", "attention", "confirmed"]).in("channel", ["email", "both"]).not("gmail_thread_id", "is", null).gt("sent_at", since).limit(100);
