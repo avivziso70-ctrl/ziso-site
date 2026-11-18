@@ -37,20 +37,28 @@ alter table public.crm_secrets enable row level security;
 -- the switch: refunds stay off until Aviv approves after a real ₪1 test
 alter table public.crm_settings add column if not exists refunds_on boolean not null default false;
 
+-- a refund of an online store order (crm-refund action refund_shop, Aviv 18.11.2026: "ביטול הזמנה = החזרת הכסף וכל הפעולות
+-- החשבונאיות הנגזרות"). The store is booked apart from the showroom, so the office task and the open loop name the store order.
+alter table public.crm_refunds add column if not exists shop_order_id bigint;
+create index if not exists crm_refunds_shop_order on public.crm_refunds (shop_order_id) where shop_order_id is not null;
+-- the switch for refund_shop: off until Aviv's own first real test of a store-order refund passed; while off only he can run it
+alter table public.crm_settings add column if not exists shop_refunds_on boolean not null default false;
+
 -- a refund that went through opens an urgent task for the office (credit invoice in Priority) and pushes to all phones;
 -- a refund whose result is unknown opens a task to check it in Tranzila.
 create or replace function public.crm_refunds_task() returns trigger language plpgsql security definer set search_path to 'public' as $$
-declare who text; v_task bigint; v_token text; txt text;
+declare who text; v_task bigint; v_token text; txt text; shop text;
 begin
   if new.status not in ('done', 'unknown') or old.status = new.status then return new; end if;
   who := coalesce((select s.name from crm_staff s where lower(s.email) = lower(new."by") limit 1), new."by");
+  shop := case when new.shop_order_id is not null then 'חנות אונליין · הזמנה ' || new.shop_order_id || ': ' else '' end;
   if new.status = 'done' then
-    txt := 'דחוף, להוציא חשבונית זיכוי בפריוריטי: ' || who || ' החזיר ₪' || to_char(new.amount, 'FM999G999G990D00')
+    txt := shop || 'דחוף, להוציא חשבונית זיכוי בפריוריטי: ' || who || ' החזיר ₪' || to_char(new.amount, 'FM999G999G990D00')
       || ' באשראי' || coalesce(' ל' || btrim(new.payer_name), '') || ' (עסקה מקורית ' || new.tz_index || ' מ-' || to_char(new.tz_day, 'DD.MM.YY')
       || ' על ₪' || to_char(new.orig_amount, 'FM999G999G990D00') || '). סיבה: ' || btrim(new.reason)
       || '. להקליד בפריוריטי ולסמן בוצע.';
   else
-    txt := 'לבדוק בטרנזילה: ' || who || ' ניסה להחזיר ₪' || to_char(new.amount, 'FM999G999G990D00')
+    txt := shop || 'לבדוק בטרנזילה: ' || who || ' ניסה להחזיר ₪' || to_char(new.amount, 'FM999G999G990D00')
       || ' על עסקה ' || new.tz_index || ' ולא התקבלה תשובה ברורה. לבדוק במסוף אם הזיכוי עבר, ורק אז לנסות שוב.';
   end if;
   insert into crm_tasks (tail9, text, due, "by") values (new.tail9, txt, now(), new."by") returning id into v_task;
