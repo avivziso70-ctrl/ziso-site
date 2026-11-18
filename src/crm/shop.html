@@ -136,8 +136,9 @@ function orderCard(o) {
     if (o.status === 'done') h += '<button class="btn" data-st="sent">ביטול "נמסר"</button>';
     if (o.status === 'cancelled') h += '<button class="btn" data-st="paid">שחזור ההזמנה</button>';
     h += '<button class="btn" data-save="1">שמירה</button>' + (ship ? '<button class="btn" data-label="1">מדבקת משלוח</button>' : '') +
-      (o.status === 'paid' || o.status === 'sent' ? '<button class="btn red" data-st="cancelled">ביטול הזמנה</button>' : '') + '</div>' +
-      (o.status === 'cancelled' && !o.test ? '<div class="mute" style="margin-top:6px">הביטול כאן רק מסמן את ההזמנה. את הזיכוי ללקוח עושים ב<a href="kupa.html">קופה</a>.</div>' : '');
+      (o.status === 'paid' || o.status === 'sent' ? '<button class="btn red" data-st="cancelled">ביטול והחזר ' + money(o.test ? o.charged : o.total) + ' לכרטיס</button><button class="btn" data-st="cancelled" data-norefund="1">בוטל, הכסף כבר הוחזר</button>' : '') + '</div>' +
+      (o.refund_state === 'done' ? '<div class="mute" style="margin-top:6px">הוחזרו ' + money(o.refund_amount) + ' לכרטיס. משימת חשבונית זיכוי נפתחה למשרד ב-CRM.</div>' : '') +
+      (o.refund_state === 'unknown' || o.refund_state === 'failed' ? '<div class="err" style="margin-top:6px">' + (o.refund_state === 'unknown' ? 'לא ברור אם הזיכוי עבר. לבדוק במסוף טרנזילה לפני כל ניסיון נוסף.' : 'הזיכוי נכשל: ' + esc(o.refund_error || '')) + '</div>' : '');
   }
   return h + '</div>';
 }
@@ -148,8 +149,9 @@ $('orders').addEventListener('click', function (e) {
   var body = { action: 'admin_order', id: id };
   card.querySelectorAll('[data-k]').forEach(function (i) { body[i.dataset.k] = i.value; });
   if (b.dataset.st) {
-    if (b.dataset.st === 'cancelled' && b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'בטוח? לחיצה נוספת מבטלת ושולחת ללקוח מייל ביטול'; return; }
+    if (b.dataset.st === 'cancelled' && b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = b.dataset.norefund ? 'בטוח? מבטל בלי להחזיר כסף, ושולח ללקוח מייל' : 'בטוח? לחיצה נוספת מחזירה ' + money(o.test ? o.charged : o.total) + ' לכרטיס, מבטלת ושולחת מייל'; return; }
     body.status = b.dataset.st;
+    if (b.dataset.norefund) body.no_refund = true;
   }
   b.disabled = true;
   call(body).then(function (r) { if (!r.ok) { say(r.error || 'שגיאה', true); b.disabled = false; return; } say('נשמר'); loadOrders(); });
