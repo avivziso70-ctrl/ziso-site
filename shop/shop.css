@@ -97,3 +97,8 @@ footer.foot a{margin:0 6px}
 .done h2{font-family:var(--display);font-weight:400;font-size:30px;margin:0 0 6px}.done .num{font-size:19px;margin:0 0 12px}.done .num b{font-size:24px;letter-spacing:.04em}
 .done p{color:var(--mute);margin:6px auto;max-width:44ch}.done .num{color:var(--ink)}
 #payBox{--zp-ink:var(--ink);--zp-mute:var(--mute);--zp-line:var(--line);--zp-accent:var(--brass);--zp-surface:#fff}
+.btn.acc{gap:6px;padding:0 14px}
+@media (max-width:560px){.btn.acc{padding:0;width:44px}.btn.acc span{display:none}.btn.site{padding:0 10px}.brand img{width:34px;height:34px}.brand b{font-size:20px}}
+#accDlg h3{font-family:var(--display);font-weight:400;font-size:22px;margin:18px 0 6px}
+.ord{border-top:1px solid var(--line);padding:10px 0;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.ord b{font-weight:700}.ord .grow{flex:1}
+.tag{display:inline-block;padding:1px 10px;border-radius:999px;font-size:14px;font-weight:700;background:var(--soft);color:var(--ink)}.tag.ok{background:#dcefe2;color:#1d4a2e}.tag.off{background:#f3dcd7;color:#7a2a1e}
