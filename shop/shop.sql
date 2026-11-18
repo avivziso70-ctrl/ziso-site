@@ -151,3 +151,8 @@ begin
   return new;
 end $$;
 create or replace trigger shop_order_paid after update of status on public.crm_pay_requests for each row execute function public.shop_order_paid();
+
+-- Pictures cut again at full size from the supplier's catalogue (18.11.2026). path = the thumbnail's path (img/…);
+-- the full-size file sits beside it under hd/… in the same bucket. Written by the shop function only.
+create table if not exists public.shop_hd_images (path text primary key, w int, h int, src_w int, src_h int, updated_at timestamptz not null default now());
+alter table public.shop_hd_images enable row level security;

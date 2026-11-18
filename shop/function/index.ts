@@ -54,6 +54,7 @@ async function customerOf(session: unknown) {
   return c as Record<string, any> | null;
 }
 // verified = the address was proven by a sign-in link. A session opened by a first checkout is not; it ends the day the
+const hdPath = (p: string) => "hd/" + p.slice(4); // img/<upload>/<page>-<ref>.jpg -> hd/<upload>/<page>-<ref>.jpg
 // address owner signs in by link, so typing someone else's address at checkout never gives a lasting way into their account.
 async function newSession(customerId: number, verified = false) {
   const t = secret();
@@ -103,6 +104,10 @@ Deno.serve(async (req: Request) => {
       rows.push(...((data || []) as Record<string, any>[]));
       if (!data || data.length < 1000) break;
     }
+    // shop_hd_images: pictures cut again from the supplier's catalogue at full size (hd/…); the 240 px thumbnail is the fallback
+    const { data: hdRows } = await admin.from("shop_hd_images").select("path").limit(10000);
+    const hd = new Set((hdRows || []).map((x: any) => x.path as string));
+    for (const r of rows) if (r.image_path && hd.has(r.image_path)) r.image_path = hdPath(r.image_path);
     const paths = [...new Set(rows.map((r) => r.image_path).filter(Boolean))] as string[];
     const signed = new Map<string, string>();
     for (let i = 0; i < paths.length; i += 500) {
@@ -303,6 +308,47 @@ Deno.serve(async (req: Request) => {
         suppliers: (sup || []).map((x: any) => ({ id: x.id, name: x.name, mult: owner ? Number(st!.multipliers[x.id]) : undefined, count: n.get(x.id) || 0 })).sort((a: any, b: any) => b.count - a.count) });
     }
     if (!owner) return json(req, { ok: false, error: "רק אביב יכול לשנות מוצרים, מחירים והגדרות" }, 403);
+    // ---- full-size pictures: the owner's browser cuts them from the catalogue files and stores them under hd/ ----
+    if (action === "img_plan") {
+      const need = new Set<string>();
+      for (let from = 0; ; from += 1000) {
+        const { data } = await admin.rpc("shop_catalog").select("image_path").order("id").range(from, from + 999);
+        for (const r of data || []) if (r.image_path) need.add(r.image_path);
+        if (!data || data.length < 1000) break;
+      }
+      const ups = [...new Set([...need].map((x) => x.split("/")[1]))];
+      const images: any[] = [];
+      for (const id of ups) for (let from = 0; ; from += 1000) {
+        const { data } = await admin.from("sp_images").select("path,page,box").eq("upload_id", id).order("id").range(from, from + 999);
+        for (const r of data || []) if (need.has(r.path)) images.push({ path: r.path, up: id, page: r.page, box: r.box });
+        if (!data || data.length < 1000) break;
+      }
+      const { data: us } = await admin.from("sp_uploads").select("id,file_name,file_path,archive_paths,size_bytes").in("id", ups);
+      const uploads = [];
+      for (const u of us || []) {
+        const ps: string[] = u.archive_paths?.length ? u.archive_paths : (!String(u.file_path || "").startsWith("wa:") && u.file_path ? [u.file_path] : []);
+        const { data: sg } = ps.length ? await admin.storage.from("supplier-files").createSignedUrls(ps, 14400) : { data: [] };
+        uploads.push({ id: u.id, name: u.file_name, bytes: u.size_bytes, parts: (sg || []).map((x: any) => x.signedUrl) });
+      }
+      const { data: have } = await admin.from("shop_hd_images").select("path").limit(10000);
+      return json(req, { ok: true, uploads, images, have: (have || []).map((x: any) => x.path), need: need.size });
+    }
+    if (action === "img_up") {
+      const list = (Array.isArray(body.paths) ? body.paths : []).slice(0, 60).filter((x: unknown) => typeof x === "string" && /^img\/[0-9a-f-]{36}\/[\w.-]+\.jpg$/.test(x as string));
+      const out = [];
+      for (const x of list) {
+        const { data } = await admin.storage.from("supplier-files").createSignedUploadUrl(hdPath(x), { upsert: true });
+        out.push({ path: x, url: data?.signedUrl || null });
+      }
+      return json(req, { ok: true, urls: out });
+    }
+    if (action === "img_done") {
+      const rows = (Array.isArray(body.rows) ? body.rows : []).slice(0, 200).filter((x: any) => x && typeof x.path === "string" && x.path.startsWith("img/"))
+        .map((x: any) => ({ path: x.path, w: Number(x.w) || 0, h: Number(x.h) || 0, src_w: Number(x.sw) || 0, src_h: Number(x.sh) || 0, updated_at: now }));
+      if (rows.length) { const { error } = await admin.from("shop_hd_images").upsert(rows, { onConflict: "path" }); if (error) return json(req, { ok: false, error: "db" }, 500); }
+      memo = null;
+      return json(req, { ok: true, n: rows.length });
+    }
     if (action === "admin_item") {
       const key = String(body.key || "").slice(0, 400);
       const { data: rows } = await admin.rpc("shop_catalog_full").eq("key", key).limit(1);
