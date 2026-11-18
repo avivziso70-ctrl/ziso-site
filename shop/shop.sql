@@ -43,11 +43,21 @@ create policy shop_orders_staff_read on public.shop_orders for select to authent
 create table if not exists public.shop_item_images (code text primary key, path text not null, note text, updated_at timestamptz not null default now());
 alter table public.shop_item_images enable row level security;
 
+-- Per-product management from the admin page (crm/shop.html): hide a product, or set its price by hand (incl. VAT).
+-- key = supplier_id:code (or supplier_id:description|size when the supplier gives no code), stable across price-list uploads.
+create table if not exists public.shop_item_overrides (key text primary key, hidden boolean not null default false, price numeric check (price is null or price > 0),
+  updated_at timestamptz not null default now(), updated_by text);
+alter table public.shop_item_overrides enable row level security;
+alter table public.shop_orders add column if not exists tracking text, add column if not exists courier text, add column if not exists staff_note text,
+  add column if not exists sent_at timestamptz, add column if not exists done_at timestamptz;   -- status: new -> paid -> sent -> done / cancelled
+
 -- One row per product: newest list wins. Sold online (Aviv 18.11.2026): only what people reasonably order on the web
 -- (taps, sinks, shower fittings, bathroom accessories), from every supplier listed in multipliers, and only with a picture.
 -- include_re / exclude_re live in shop_settings so the range changes without a deploy.
-create or replace function public.shop_catalog(p_ids bigint[] default null)
-returns table (id bigint, code text, name text, size text, unit text, category text, price numeric, image_path text)
+-- shop_catalog_full = everything the admin sees (cost incl. VAT, the computed price, overrides); shop_catalog = what is sold.
+create or replace function public.shop_catalog_full()
+returns table (id bigint, code text, name text, size text, unit text, category text, price numeric, image_path text,
+               key text, supplier_id uuid, cost numeric, calc numeric, ov_price numeric, hidden boolean)
 language sql stable security invoker set search_path = public as $$
   with st as (select vat, multipliers, include_re, exclude_re from shop_settings where id = 1),
   src as (
@@ -60,13 +70,23 @@ language sql stable security invoker set search_path = public as $$
        and (st.exclude_re is null or p.description !~* st.exclude_re)),
   one as (
     select distinct on (supplier_id, coalesce(supplier_code, description || '|' || coalesce(size, ''))) *
-      from src order by supplier_id, coalesce(supplier_code, description || '|' || coalesce(size, '')), up_at desc, image_path nulls last, id)
-  select one.id, one.supplier_code, one.description, one.size, one.unit, one.category,
-         least(ceil(one.price * one.mult * case when one.vat_included then 1 else 1 + one.vat / 100 end),
-               coalesce(ceil(one.list_price * case when one.vat_included then 1 else 1 + one.vat / 100 end), 'infinity'::numeric)),
-         coalesce(ov.path, one.image_path)   -- shop_item_images: the picture of this exact finish
-    from one left join shop_item_images ov on ov.code = one.supplier_code
-   where (p_ids is null or one.id = any(p_ids)) and coalesce(ov.path, one.image_path) is not null;
+      from src order by supplier_id, coalesce(supplier_code, description || '|' || coalesce(size, '')), up_at desc, image_path nulls last, id),
+  calc as (
+    select one.*, one.supplier_id::text || ':' || coalesce(one.supplier_code, one.description || '|' || coalesce(one.size, '')) k,
+           case when one.vat_included then 1 else 1 + one.vat / 100 end vf from one)
+  select c.id, c.supplier_code, c.description, c.size, c.unit, c.category,
+         coalesce(o.price, least(ceil(c.price * c.mult * c.vf), coalesce(ceil(c.list_price * c.vf), 'infinity'::numeric))),
+         coalesce(ov.path, c.image_path),   -- shop_item_images: the picture of this exact finish
+         c.k, c.supplier_id, round(c.price * c.vf, 2),
+         least(ceil(c.price * c.mult * c.vf), coalesce(ceil(c.list_price * c.vf), 'infinity'::numeric)), o.price, coalesce(o.hidden, false)
+    from calc c left join shop_item_images ov on ov.code = c.supplier_code left join shop_item_overrides o on o.key = c.k
+   where coalesce(ov.path, c.image_path) is not null;
+$$;
+create or replace function public.shop_catalog(p_ids bigint[] default null)
+returns table (id bigint, code text, name text, size text, unit text, category text, price numeric, image_path text)
+language sql stable security invoker set search_path = public as $$
+  select f.id, f.code, f.name, f.size, f.unit, f.category, f.price, f.image_path from shop_catalog_full() f
+   where not f.hidden and (p_ids is null or f.id = any(p_ids));
 $$;
 -- security invoker: only the service role (the shop edge function) gets rows; anon is stopped by RLS on shop_settings / sp_prices.
 -- No drop / revoke statements here: they raise a Supabase confirmation nobody sees and the migration hangs.
