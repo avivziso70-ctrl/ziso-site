@@ -31,3 +31,21 @@ begin
   return v_id;
 end $$;
 revoke all on function public.crm_po_shop(bigint) from public, anon, authenticated;
+
+-- A store order that staff cancel does not cancel its supplier orders by itself: a cancellation notice to a supplier is a
+-- person's decision (the goods may stay for stock, or it may be too late). The office gets one task in the bell instead.
+create or replace function public.crm_po_shop_cancel_trg() returns trigger language plpgsql security definer set search_path to 'public' as $$
+declare v_pos text; v_head text;
+begin
+  select string_agg(p.po_no || ' (' || coalesce(p.supplier_name, 'ספק') || ')', ', ' order by p.id) into v_pos
+    from crm_po p where p.shop_order_id = new.id and p.status <> 'cancelled';
+  if v_pos is null then return new; end if;
+  v_head := 'הזמנת חנות ' || new.id || ' בוטלה, והזמנות הספק שלה עדיין פתוחות';
+  if exists (select 1 from crm_tasks t where t.done_at is null and t.text like v_head || '%') then return new; end if;
+  insert into crm_tasks (text, due, "by", at)
+  values (v_head || ': ' || v_pos || '. לבטל אותן מול הספק במחירון ספקים, בלשונית "הזמנות לספקים", או לסמן בוצע אם הסחורה נשארת במלאי.', now(), 'חנות', now());
+  return new;
+end $$;
+revoke all on function public.crm_po_shop_cancel_trg() from public, anon, authenticated;
+create or replace trigger crm_po_shop_cancel after update of status on public.shop_orders
+  for each row when (new.status = 'cancelled' and old.status is distinct from 'cancelled') execute function public.crm_po_shop_cancel_trg();
