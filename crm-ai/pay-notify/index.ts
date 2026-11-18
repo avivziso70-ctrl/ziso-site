@@ -13,6 +13,11 @@
 //     in the audit row, and the cron job crm-pay-recheck asks again every minute for 24 hours ({ action: "recheck" });
 //   - the audit row keeps field NAMES of Tranzila's answer (never values), so the reason can be read afterwards.
 // Service calls (recheck, shape) need the x-hook-token header that only the database knows (crm_push_keys).
+//
+// 18.11.2026 (Aviv: payment inside our own pages): a payment made in Tranzila's iframe has no pr_id. The frame URL carries
+// zpay = crm_pay_requests.id and zk = that row's pay_token, and Tranzila echoes them in the notify; the row is found by
+// both together, and everything after that is the same check. The confirmation code is kept on the paid row (paid_code),
+// and a code that already paid another request of the same amount is refused, so one payment never confirms two requests.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { autoRefreshToken: false, persistSession: false } });
@@ -75,6 +80,24 @@ async function verify(code: string, sum: number) {
   return { ok: false, diag };
 }
 
+// Mark a request paid, once per real payment: the same confirmation code with the same amount on another paid request
+// in the last 3 days is refused (the office gets a task), whoever sent the notify.
+async function markPaid(row: { id: number; tail9: string | null }, code: string, sum: number, at: string, via?: string) {
+  const since = new Date(Date.now() - 3 * 864e5).toISOString();
+  const { data: used } = await admin.from("crm_pay_requests").select("id, paid_code, paid_sum").eq("status", "paid").neq("id", row.id).gte("paid_at", since).not("paid_code", "is", null).limit(500);
+  const twin = (used || []).find((u) => sameCode(String(u.paid_code), code) && Math.abs(Number(u.paid_sum) - sum) < 0.005);
+  if (twin) {
+    const { data: seen } = await admin.from("crm_audit").select("id").eq("action", "pay_notify_dup").eq("detail->>id", String(row.id)).limit(1);
+    if (!seen?.length) await admin.from("crm_tasks").insert({ tail9: row.tail9, due: new Date().toISOString(), by: "טרנזילה",
+      text: "לבדוק תשלום: הגיע אישור תשלום על ₪" + sum.toLocaleString("en-US", { maximumFractionDigits: 2 }) + " עם מספר אישור שכבר נרשם על בקשת תשלום אחרת. הבקשה לא סומנה כשולמה. לבדוק בטרנזילה אם יש כאן שני חיובים או אחד." });
+    await admin.from("crm_audit").insert({ who: "tranzila", action: "pay_notify_dup", tail9: row.tail9, detail: { id: row.id, other: twin.id, sum } });
+    return false;
+  }
+  await admin.from("crm_pay_requests").update({ status: "paid", paid_at: at, paid_sum: sum, verified: true, paid_code: code }).eq("id", row.id).neq("status", "paid");
+  await admin.from("crm_audit").insert({ who: "tranzila", action: "pay_paid", tail9: row.tail9, detail: { id: row.id, sum, ...(via ? { via } : {}) } });
+  return true;
+}
+
 // ---- service calls (hook token) ----
 // recheck: notifies that could not be confirmed in the last 24 hours are looked up again.
 async function recheck() {
@@ -95,9 +118,8 @@ async function recheck() {
     if (!pr || pr.status === "paid" || Math.abs(Number(pr.amount) - e.sum) >= 0.005) continue;
     const v = await verify(e.code, e.sum);
     if (!v.ok) { left++; continue; }
-    await admin.from("crm_pay_requests").update({ status: "paid", paid_at: e.at, paid_sum: e.sum, verified: true }).eq("id", id).neq("status", "paid");
+    if (!(await markPaid(pr, e.code, e.sum, e.at, "recheck"))) continue;
     if (e.task) await admin.from("crm_tasks").update({ done_at: new Date().toISOString(), done_by: "טרנזילה" }).eq("id", e.task).is("done_at", null);
-    await admin.from("crm_audit").insert({ who: "tranzila", action: "pay_paid", tail9: pr.tail9, detail: { id, sum: e.sum, via: "recheck" } });
     fixed++;
   }
   return { ok: true, fixed, left };
@@ -152,34 +174,33 @@ Deno.serve(async (req: Request) => {
     } catch { /* keep query-string fields */ }
   } else if (req.method !== "GET") return ok();
   // Field names only (never values), so we can see what a real notify carries while the setup is new.
-  if (f.has("Response") || f.has("sum")) await admin.from("crm_audit").insert({ who: "tranzila", action: "pay_notify_seen", detail: { method: req.method, keys: [...new Set(f.keys())].slice(0, 40), has_pr: f.has("pr_id"), ok: ["000", "0"].includes((f.get("Response") || "").trim()) } });
+  if (f.has("Response") || f.has("sum")) await admin.from("crm_audit").insert({ who: "tranzila", action: "pay_notify_seen", detail: { method: req.method, keys: [...new Set(f.keys())].slice(0, 40), has_pr: f.has("pr_id"), has_zpay: f.has("zpay") && f.has("zk"), ok: ["000", "0"].includes((f.get("Response") || "").trim()) } });
   const prId = (f.get("pr_id") || "").trim(), code = (f.get("ConfirmationCode") || "").trim();
+  const zpay = (f.get("zpay") || "").trim(), zk = (f.get("zk") || "").trim().toLowerCase();
+  const byFrame = /^\d{1,12}$/.test(zpay) && /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(zk);   // paid in the iframe on our page
   const resp = (f.get("Response") || "").trim(), sum = Number(f.get("sum"));
-  if (!/^\d{1,12}$/.test(prId) || !(resp === "000" || resp === "0") || !/^[0-9A-Za-z]{1,20}$/.test(code) || !(sum > 0)) return ok();
+  if ((!byFrame && !/^\d{1,12}$/.test(prId)) || !(resp === "000" || resp === "0") || !/^[0-9A-Za-z]{1,20}$/.test(code) || !(sum > 0)) return ok();
 
-  const { data: row } = await admin.from("crm_pay_requests").select("id, tail9, amount, status").eq("pr_id", prId).maybeSingle();
+  const q = admin.from("crm_pay_requests").select("id, tail9, amount, status, pr_id");
+  const { data: row } = await (byFrame ? q.eq("id", Number(zpay)).eq("pay_token", zk) : q.eq("pr_id", prId)).maybeSingle();
   if (!row || row.status === "paid" || Math.abs(Number(row.amount) - sum) >= 0.005) return ok();
 
   let v = await verify(code, sum);
   if (!v.ok) { await sleep(3000); v = await verify(code, sum); } // the list can be a moment behind the notify
-  if (v.ok) {
-    await admin.from("crm_pay_requests").update({ status: "paid", paid_at: new Date().toISOString(), paid_sum: sum, verified: true }).eq("id", row.id).neq("status", "paid");
-    await admin.from("crm_audit").insert({ who: "tranzila", action: "pay_paid", tail9: row.tail9, detail: { id: row.id, sum } });
-    return ok();
-  }
+  if (v.ok) { await markPaid(row, code, sum, new Date().toISOString(), byFrame ? "frame" : undefined); return ok(); }
   // Not confirmed yet: tell the office once (a task shows in the CRM alerts) and keep the code for the recheck.
   const since = new Date(Date.now() - 24 * 3600e3).toISOString();
   const { data: earlier } = await admin.from("crm_audit").select("id").eq("action", "pay_notify_unverified").gte("at", since).eq("detail->>id", String(row.id)).limit(1);
   let task: number | null = null;
   if (!earlier?.length) {
     const [tk, cu] = await Promise.all([
-      admin.from("crm_takings").select("payer_name").eq("pay_pr_id", prId).limit(1).maybeSingle(),
+      admin.from("crm_takings").select("payer_name").eq("pay_pr_id", String(row.pr_id || prId || "-")).limit(1).maybeSingle(),
       admin.from("crm_customers").select("name").eq("tail9", row.tail9).is("deleted_at", null).limit(1).maybeSingle(),
     ]);
     const name = String(tk.data?.payer_name || cu.data?.name || "לקוח").trim();
     const { data: t } = await admin.from("crm_tasks").insert({
       tail9: row.tail9, due: new Date().toISOString(), by: "טרנזילה",
-      text: "לבדוק תשלום: טרנזילה דיווחה שהתקבלו ₪" + sum.toLocaleString("en-US", { maximumFractionDigits: 2 }) + " מ" + name + " בלינק תשלום, אבל האישור האוטומטי עוד לא הצליח. המערכת בודקת שוב כל דקה. אם זה לא הופך ל\"שולם\" תוך כמה דקות, לבדוק בטרנזילה שהעסקה עברה.",
+      text: "לבדוק תשלום: טרנזילה דיווחה שהתקבלו ₪" + sum.toLocaleString("en-US", { maximumFractionDigits: 2 }) + " מ" + name + " בתשלום באשראי, אבל האישור האוטומטי עוד לא הצליח. המערכת בודקת שוב כל דקה. אם זה לא הופך ל\"שולם\" תוך כמה דקות, לבדוק בטרנזילה שהעסקה עברה.",
     }).select("id").maybeSingle();
     task = t?.id ?? null;
   }
