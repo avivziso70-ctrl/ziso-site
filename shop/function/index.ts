@@ -3,6 +3,7 @@
 //   { action: "checkout", items:[{id,qty}], name, phone, email, delivery, address?, city?, notes?, terms:true, marketing? }
 //                                                 -> { pr_link, token }  (Tranzila hosted payment page; we never see card data)
 //   { action: "status", token }                   -> the order's state, for the customer's own status page
+//   login_start {email} / login_finish {code} / me, cart_save, logout {session} -> the customer account (sign-in link by mail, no password)
 //   admin_* (staff JWT, page crm/shop.html): admin_orders, admin_order, admin_products, admin_settings; owner only: admin_item, admin_settings_set
 // While shop_settings.live = false: checkout needs a signed-in staff user (Supabase JWT) and every payment is a ₪5 test.
 // Prices are recomputed here from shop_catalog() on every checkout; the browser's prices are never trusted.
@@ -39,6 +40,35 @@ function shipFee(ship: Record<string, any> | null, lines: { name: string; qty: n
   for (const l of lines) { const c = parcel(l.name); if (c === "b") b += l.qty; else if (c === "h") h += l.qty; }
   if (!b && !h) return Number(ship.small);
   return h * Number(ship.heavy) + (b ? Number(ship.sink) + (b - 1) * Number(ship.extra_sink || 0) : 0);
+}
+// ---- customer account (no password): a device holds a random session secret, the table keeps only its hash ----
+const sha = async (t: string) => hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)));
+const secret = () => hex(crypto.getRandomValues(new Uint8Array(24)));
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+async function customerOf(session: unknown) {
+  const t = String(session || "");
+  if (!/^[0-9a-f]{48}$/.test(t)) return null;
+  const { data: s } = await admin.from("shop_sessions").select("customer_id, expires_at").eq("token_hash", await sha(t)).maybeSingle();
+  if (!s || new Date(s.expires_at) < new Date()) return null;
+  const { data: c } = await admin.from("shop_customers").select("*").eq("id", s.customer_id).maybeSingle();
+  return c as Record<string, any> | null;
+}
+// verified = the address was proven by a sign-in link. A session opened by a first checkout is not; it ends the day the
+// address owner signs in by link, so typing someone else's address at checkout never gives a lasting way into their account.
+async function newSession(customerId: number, verified = false) {
+  const t = secret();
+  await admin.from("shop_sessions").insert({ token_hash: await sha(t), customer_id: customerId, verified, expires_at: new Date(Date.now() + 180 * 864e5).toISOString() });
+  return t;
+}
+function cleanCart(v: unknown) {
+  const out: Record<string, number> = {};
+  if (v && typeof v === "object") for (const [k, q] of Object.entries(v as Record<string, unknown>).slice(0, 80)) if (/^\d{1,12}$/.test(k) && Number.isInteger(Number(q)) && Number(q) > 0) out[k] = Math.min(50, Number(q));
+  return out;
+}
+async function profile(c: Record<string, any>) {
+  const { data: orders } = await admin.from("shop_orders").select("id, created_at, status, total, delivery, tracking, courier, items").eq("customer_id", c.id).in("status", ["paid", "sent", "done", "cancelled"]).eq("test", false).order("id", { ascending: false }).limit(20);
+  return { email: c.email, name: c.name, phone: c.phone, address: c.address, city: c.city, cart: c.cart || {},
+    orders: (orders || []).map((o: any) => ({ id: o.id, at: o.created_at, status: o.status, total: Number(o.total), delivery: o.delivery, tracking: o.tracking, courier: o.courier, n: (o.items || []).reduce((s: number, i: any) => s + Number(i.qty), 0) })) };
 }
 let memo: { at: number; body: Record<string, unknown> } | null = null; // the open store's catalogue, kept 10 minutes per instance
 const clean = (v: unknown, n: number) => String(v ?? "").replace(/[\u0000-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, n);
@@ -85,6 +115,40 @@ Deno.serve(async (req: Request) => {
     return json(req, out, 200, st.live ? { "cache-control": "public, max-age=300" } : { "cache-control": "private, no-store" });
   }
 
+  // ---- customer account ----
+  if (action === "login_start") {
+    // always the same answer, so the page never tells who has an account
+    const email = clean(body.email, 120).toLowerCase(), now = new Date();
+    if (!EMAIL_RE.test(email)) return json(req, { ok: false, error: "כתובת מייל לא תקינה" }, 400);
+    const { count } = await admin.from("shop_login_links").select("id", { count: "exact", head: true }).eq("email", email).gt("created_at", new Date(now.getTime() - 3600e3).toISOString());
+    if ((count || 0) < 4) {
+      const code = secret();
+      await admin.from("shop_login_links").insert({ code_hash: await sha(code), code, email, expires_at: new Date(now.getTime() + 30 * 60e3).toISOString() });
+    }
+    return json(req, { ok: true });
+  }
+  if (action === "login_finish") {
+    const code = String(body.code || "");
+    if (!/^[0-9a-f]{48}$/.test(code)) return json(req, { ok: false, error: "הקישור לא תקין" }, 400);
+    const now = new Date().toISOString();
+    const { data: l } = await admin.from("shop_login_links").update({ used_at: now, code: null }).eq("code_hash", await sha(code)).is("used_at", null).gt("expires_at", now).select("email").maybeSingle();
+    if (!l) return json(req, { ok: false, error: "הקישור כבר נוצל או שפג תוקפו. אפשר לבקש קישור חדש." }, 400);
+    let { data: c } = await admin.from("shop_customers").select("*").eq("email", l.email).maybeSingle();
+    if (!c) c = (await admin.from("shop_customers").insert({ email: l.email }).select("*").single()).data;
+    // orders this address made as a guest join the account now that the address is proven
+    await admin.from("shop_orders").update({ customer_id: c!.id }).eq("email", l.email).is("customer_id", null);
+    await admin.from("shop_customers").update({ last_seen: now }).eq("id", c!.id);
+    await admin.from("shop_sessions").delete().eq("customer_id", c!.id).eq("verified", false);
+    return json(req, { ok: true, session: await newSession(c!.id, true), me: await profile(c!) });
+  }
+  if (action === "me" || action === "cart_save" || action === "logout") {
+    const c = await customerOf(body.session);
+    if (!c) return json(req, { ok: false, error: "session" }, 401);
+    if (action === "logout") { await admin.from("shop_sessions").delete().eq("token_hash", await sha(String(body.session))); return json(req, { ok: true }); }
+    if (action === "cart_save") { await admin.from("shop_customers").update({ cart: cleanCart(body.cart), last_seen: new Date().toISOString() }).eq("id", c.id); return json(req, { ok: true }); }
+    return json(req, { ok: true, me: await profile(c) });
+  }
+
   if (action === "status") {
     const token = String(body.token || "");
     if (!/^[0-9a-f-]{36}$/i.test(token)) return json(req, { ok: false }, 400);
@@ -127,12 +191,20 @@ Deno.serve(async (req: Request) => {
     const charged = test ? TEST_SUM : total;
     const tail9 = phone.slice(-9);
 
+    // The customer: the signed-in one, or a new account opened for a first-time address (this device is then signed in).
+    // An address that already has an account is never signed in from a checkout; its order joins the account at the next sign-in.
+    let cust = await customerOf(body.session), session: string | null = null;
+    if (!cust && !test) {
+      const { data: made } = await admin.from("shop_customers").insert({ email }).select("*").maybeSingle();
+      if (made) { cust = made; session = await newSession(made.id); }
+    }
+    if (cust && !test) await admin.from("shop_customers").update({ name, phone, tail9, ...(delivery === "delivery" ? { address, city } : {}), ...(body.marketing === true ? { marketing_ok: true } : {}), cart: {}, last_seen: new Date().toISOString() }).eq("id", cust.id);
     const { data: pay, error: payErr } = await admin.from("crm_pay_requests").insert({ tail9, amount: charged, description: "הזמנה מהחנות", test, created_by: staff || "shop" }).select("*").single();
     if (payErr) return json(req, { ok: false, error: "שגיאה ביצירת ההזמנה" }, 500);
     const { data: order, error: oErr } = await admin.from("shop_orders").insert({
       name, phone, email, delivery, address: delivery === "delivery" ? address : null, city: delivery === "delivery" ? city : null, notes: notes || null,
       items, items_total: itemsTotal, delivery_fee: fee, total, charged, test, terms_at: new Date().toISOString(), marketing_ok: body.marketing === true,
-      pay_request_id: pay!.id, created_by: staff,
+      pay_request_id: pay!.id, created_by: staff, customer_id: cust?.id ?? null,
     }).select("id, token").single();
     if (oErr) return json(req, { ok: false, error: "שגיאה ביצירת ההזמנה" }, 500);
     const desc = ("הזמנה " + order!.id + " מהחנות").slice(0, 80);
@@ -142,7 +214,7 @@ Deno.serve(async (req: Request) => {
     // gets no link mail. The page pays through the row's public token and crm-pay-notify confirms it (zpay / zk in the notify).
     if ((st.pay_frame || (test && body.test === true)) && body.frame === true && (pay as any).pay_token) {
       await admin.from("crm_audit").insert({ who: staff || "shop", action: "shop_checkout", tail9, detail: { order: order!.id, pay: pay!.id, total, charged, test, lines: items.length, frame: true } });
-      return json(req, { ok: true, pay: (pay as any).pay_token, token: order!.token, order: order!.id, test });
+      return json(req, { ok: true, pay: (pay as any).pay_token, token: order!.token, order: order!.id, test, session });
     }
     // On a test the page charges ₪5 as one line and the copy goes to Aviv; live, the customer gets Tranzila's mail with the real lines.
     const lines = test
@@ -171,7 +243,7 @@ Deno.serve(async (req: Request) => {
     await admin.from("crm_pay_requests").update({ pr_id: String(x.j.pr_id ?? ""), pr_link: String(x.j.pr_link) }).eq("id", pay!.id);
     // the taking (and its receipt task) is written by the shop_order_paid trigger when Tranzila confirms the money
     await admin.from("crm_audit").insert({ who: staff || "shop", action: "shop_checkout", tail9, detail: { order: order!.id, pay: pay!.id, total, charged, test, lines: items.length } });
-    return json(req, { ok: true, pr_link: x.j.pr_link, token: order!.token, order: order!.id, test });
+    return json(req, { ok: true, pr_link: x.j.pr_link, token: order!.token, order: order!.id, test, session });
   }
   // ---- admin (crm/shop.html): signed-in staff handle orders; products, prices and settings are the owner's ----
   if (action.startsWith("admin_")) {

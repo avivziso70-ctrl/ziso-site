@@ -50,16 +50,48 @@ ${ship ? sum("משלוח", ils(o.delivery_fee)) : ""}${sum('סה"כ כולל מ�
   return { subject, html, text };
 }
 
+// Sign-in link for a returning customer (no password): valid 30 minutes, one use.
+export const LOGIN_BASE = 2_000_000_000;
+export function renderLoginMail(code: string) {
+  const link = `${SITE}/shop/?in=${code}`;
+  const c = { bg: "#f6f4ef", card: "#ffffff", line: "#ddd6c8", ink: "#1e1b17", mute: "#5f5a52", brass: "#8a6a35" };
+  const serif = `'Times New Roman',Georgia,serif`, sans = `Assistant,'Segoe UI',Arial,sans-serif`;
+  const html = `<!doctype html><html lang="he" dir="rtl"><body style="margin:0;padding:0;background:${c.bg}">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${c.bg}" dir="rtl"><tr><td align="center" style="padding:24px 12px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px" dir="rtl">
+<tr><td align="center" style="padding:6px 0 18px"><img src="${SITE}/img/logo.jpg" width="56" height="56" alt="" style="border-radius:50%;display:block;margin:0 auto 8px"><div style="font-family:${serif};font-size:26px;letter-spacing:.03em;color:${c.ink}">זיסו קרמיקה</div></td></tr>
+<tr><td style="background:${c.card};border:1px solid ${c.line};border-radius:14px;padding:28px 24px;text-align:center">
+<h1 style="margin:0 0 10px;font-family:${serif};font-weight:400;font-size:26px;color:${c.ink}">כניסה לחשבון בחנות</h1>
+<p style="margin:0 0 20px;font-family:${sans};font-size:16px;line-height:1.5;color:${c.mute}">לחיצה על הכפתור מחברת את המכשיר הזה לחשבון שלכם: הסל, הפרטים וההזמנות.</p>
+<a href="${link}" style="display:inline-block;background:${c.brass};color:#ffffff;font-family:${sans};font-size:17px;font-weight:700;text-decoration:none;padding:13px 34px;border-radius:999px">כניסה לחנות</a>
+<p style="margin:20px 0 0;font-family:${sans};font-size:14px;line-height:1.5;color:${c.mute}">הקישור תקף ל-30 דקות ולשימוש אחד. לא ביקשתם להיכנס? אפשר להתעלם מהמייל הזה.</p>
+</td></tr>
+<tr><td align="center" style="padding:18px 8px 6px;font-family:${sans};font-size:13px;color:${c.mute}">זיסו קרמיקה בע"מ · עוצמה 5, טירת כרמל · 050-4770040</td></tr>
+</table></td></tr></table></body></html>`;
+  const text = ["כניסה לחשבון בחנות של זיסו קרמיקה:", link, "", "הקישור תקף ל-30 דקות ולשימוש אחד. לא ביקשתם להיכנס? אפשר להתעלם מהמייל הזה.", "", "זיסו קרמיקה בע\"מ · 050-4770040"].join("\n");
+  return { subject: "זיסו קרמיקה - קישור כניסה לחנות", html, text };
+}
+async function loginOutbox(admin: Db, now: string) {
+  const { data: claimed } = await admin.from("shop_login_links").update({ mail_state: "sending", mail_claimed_at: now }).eq("mail_state", "queued").is("used_at", null).gt("expires_at", now).not("code", "is", null).select("id, email, code");
+  return ((claimed || []) as Order[]).map((l) => ({ id: LOGIN_BASE + Number(l.id), po_no: "login-" + l.id, to: l.email, cc: [], ...renderLoginMail(l.code) }));
+}
+
 // Claimed once: a mail whose result never came back turns "unknown" after 20 minutes and is never sent twice.
 export async function shopOutbox(admin: Db, now: string) {
   const stale = new Date(Date.now() - 20 * 60e3).toISOString();
   await admin.from("shop_orders").update({ mail_state: "unknown" }).eq("mail_state", "sending").lt("mail_claimed_at", stale);
   const { data: claimed } = await admin.from("shop_orders").update({ mail_state: "sending", mail_claimed_at: now }).eq("mail_state", "queued").eq("status", "paid").select("*");
-  if (!claimed?.length) return [];
+  const logins = await loginOutbox(admin, now).catch(() => []);
+  if (!claimed?.length) return logins;
   const { data: st } = await admin.from("shop_settings").select("lead_text").eq("id", 1).maybeSingle();
-  return (claimed as Order[]).map((o) => ({ id: SHOP_BASE + Number(o.id), po_no: "shop-" + o.id, to: o.test ? (o.created_by || "info@zisoceramics.com") : o.email, cc: [], ...renderShopMail(o, st?.lead_text || "עד 14 ימי עסקים") }));
+  const orders = (claimed as Order[]).map((o) => ({ id: SHOP_BASE + Number(o.id), po_no: "shop-" + o.id, to: o.test ? (o.created_by || "info@zisoceramics.com") : o.email, cc: [], ...renderShopMail(o, st?.lead_text || "עד 14 ימי עסקים") }));
+  return [...logins, ...orders];
 }
 export async function shopMailResult(admin: Db, id: number, ok: boolean, body: any, now: string) {
+  if (id > LOGIN_BASE) {   // the secret leaves the table once the mail is out
+    const { data } = await admin.from("shop_login_links").update(ok ? { mail_state: "sent", code: null } : { mail_state: "failed", code: null, mail_error: String(body.error || "").slice(0, 300) }).eq("id", id - LOGIN_BASE).eq("mail_state", "sending").select("id").maybeSingle();
+    return !!data;
+  }
   const patch = ok ? { mail_state: "sent", mail_sent_at: now, mail_msg_id: String(body.msg_id || "") || null, mail_error: null } : { mail_state: "failed", mail_error: String(body.error || "").slice(0, 300) || "שליחה נכשלה" };
   const { data } = await admin.from("shop_orders").update(patch).eq("id", id - SHOP_BASE).in("mail_state", ["sending", "unknown"]).select("id").maybeSingle();
   return !!data;
