@@ -309,7 +309,7 @@ Deno.serve(async (req: Request) => {
     }
     if (!owner) return json(req, { ok: false, error: "רק אביב יכול לשנות מוצרים, מחירים והגדרות" }, 403);
     // ---- full-size pictures: the owner's browser cuts them from the catalogue files and stores them under hd/ ----
-    if (action === "img_plan") {
+    if (action === "admin_img_plan") {
       const need = new Set<string>();
       for (let from = 0; ; from += 1000) {
         const { data } = await admin.rpc("shop_catalog").select("image_path").order("id").range(from, from + 999);
@@ -333,7 +333,7 @@ Deno.serve(async (req: Request) => {
       const { data: have } = await admin.from("shop_hd_images").select("path").limit(10000);
       return json(req, { ok: true, uploads, images, have: (have || []).map((x: any) => x.path), need: need.size });
     }
-    if (action === "img_up") {
+    if (action === "admin_img_up") {
       const list = (Array.isArray(body.paths) ? body.paths : []).slice(0, 60).filter((x: unknown) => typeof x === "string" && /^img\/[0-9a-f-]{36}\/[\w.-]+\.jpg$/.test(x as string));
       const out = [];
       for (const x of list) {
@@ -342,7 +342,7 @@ Deno.serve(async (req: Request) => {
       }
       return json(req, { ok: true, urls: out });
     }
-    if (action === "img_done") {
+    if (action === "admin_img_done") {
       const rows = (Array.isArray(body.rows) ? body.rows : []).slice(0, 200).filter((x: any) => x && typeof x.path === "string" && x.path.startsWith("img/"))
         .map((x: any) => ({ path: x.path, w: Number(x.w) || 0, h: Number(x.h) || 0, src_w: Number(x.sw) || 0, src_h: Number(x.sh) || 0, updated_at: now }));
       if (rows.length) { const { error } = await admin.from("shop_hd_images").upsert(rows, { onConflict: "path" }); if (error) return json(req, { ok: false, error: "db" }, 500); }
