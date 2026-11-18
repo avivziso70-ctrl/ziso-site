@@ -738,8 +738,13 @@ export async function shopCancelWa(now: string) {
   if (!cfg?.token || !cfg?.phone_number_id || !cfg?.waba_id) return;
   const ex = await (await fetch(`${GRAPH}/${cfg.waba_id}/message_templates?name=${WA_SHOP_CANCEL}&fields=name,status`, { headers: { authorization: `Bearer ${cfg.token}` } })).json().catch(() => ({}));
   if (!(ex.data || []).some((t: any) => t.name === WA_SHOP_CANCEL && t.status === "APPROVED")) return;
-  const { data: rows } = await admin.from("shop_orders").update({ cancel_wa_state: "sending", cancel_wa_at: now }).eq("cancel_wa_state", "queued").eq("status", "cancelled").select("id, name, phone, cancelled_at");
-  for (const o of (rows || []) as { id: number; name: string | null; phone: string | null; cancelled_at: string | null }[]) {
+  const { data: rows } = await admin.from("shop_orders").update({ cancel_wa_state: "sending", cancel_wa_at: now }).eq("cancel_wa_state", "queued").eq("status", "cancelled").select("id, name, phone, cancelled_at, refund_state");
+  for (const o of (rows || []) as { id: number; name: string | null; phone: string | null; cancelled_at: string | null; refund_state: string | null }[]) {
+    // the approved wording promises a refund to the card: not true for an order refunded another way (cash, transfer)
+    if (o.refund_state === "elsewhere") {
+      await admin.from("shop_orders").update({ cancel_wa_state: "skipped", cancel_wa_error: "ההחזר לא בוצע לכרטיס, ההודעה בוואטסאפ לא מתאימה. נשלח מייל" }).eq("id", o.id);
+      continue;
+    }
     // a notice that waited days for Meta's approval is no longer news: the customer already has the mail
     if (o.cancelled_at && Date.now() - new Date(o.cancelled_at).getTime() > 72 * 3600e3) {
       await admin.from("shop_orders").update({ cancel_wa_state: "skipped", cancel_wa_error: "עברו יותר מ-3 ימים מהביטול" }).eq("id", o.id);
