@@ -35,6 +35,10 @@ create table if not exists public.shop_orders (
 -- order confirmation mail to the customer (shop/function/mail.ts): queued when paid, sent by the Gmail bridge
 alter table public.shop_orders add column if not exists mail_state text, add column if not exists mail_claimed_at timestamptz,
   add column if not exists mail_sent_at timestamptz, add column if not exists mail_msg_id text, add column if not exists mail_error text;
+-- supplier purchase orders for a paid web order (Aviv 18.11: sent automatically where the supplier has an order contact, and followed
+-- until confirmed). Created by the CRM's own purchase-order mechanism (crm-po), which claims paid, non-test orders with po_state null:
+-- creating -> done (crm_po rows carry shop_order_id) / manual (a supplier without an order contact: staff task).
+alter table public.shop_orders add column if not exists po_state text, add column if not exists po_note text, add column if not exists po_at timestamptz;
 alter table public.shop_orders enable row level security;
 create policy shop_orders_staff_read on public.shop_orders for select to authenticated
   using (exists (select 1 from crm_staff s where s.active and lower(s.email) = lower(auth.jwt() ->> 'email')));
@@ -87,6 +91,10 @@ returns table (id bigint, code text, name text, size text, unit text, category t
 language sql stable security invoker set search_path = public as $$
   select f.id, f.code, f.name, f.size, f.unit, f.category, f.price, f.image_path from shop_catalog_full() f
    where not f.hidden and (p_ids is null or f.id = any(p_ids));
+$$;
+create or replace function public.shop_supplier_counts() returns table (supplier_id uuid, n bigint)
+language sql stable security invoker set search_path = public as $$
+  select f.supplier_id, count(*) from shop_catalog_full() f where not f.hidden group by 1;
 $$;
 -- security invoker: only the service role (the shop edge function) gets rows; anon is stopped by RLS on shop_settings / sp_prices.
 -- No drop / revoke statements here: they raise a Supabase confirmation nobody sees and the migration hangs.

@@ -215,12 +215,8 @@ Deno.serve(async (req: Request) => {
       const { data: st } = await admin.from("shop_settings").select("live, vat, lead_text, ship, multipliers").eq("id", 1).single();
       const ids = Object.keys(st!.multipliers || {});
       const { data: sup } = await admin.from("sp_suppliers").select("id, name").in("id", ids);
-      const n = new Map<string, number>();
-      for (let from = 0; ; from += 1000) {
-        const { data } = await admin.rpc("shop_catalog_full").select("supplier_id, hidden").order("id").range(from, from + 999);
-        for (const r of (data || []) as any[]) if (!r.hidden) n.set(r.supplier_id, (n.get(r.supplier_id) || 0) + 1);
-        if (!data || data.length < 1000) break;
-      }
+      const { data: cnt } = await admin.rpc("shop_supplier_counts");
+      const n = new Map<string, number>(((cnt || []) as any[]).map((r) => [r.supplier_id, Number(r.n)]));
       return json(req, { ok: true, owner, live: st!.live, vat: Number(st!.vat), lead_text: st!.lead_text, ship: st!.ship,
         suppliers: (sup || []).map((x: any) => ({ id: x.id, name: x.name, mult: owner ? Number(st!.multipliers[x.id]) : undefined, count: n.get(x.id) || 0 })).sort((a: any, b: any) => b.count - a.count) });
     }
