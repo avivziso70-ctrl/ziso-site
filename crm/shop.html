@@ -90,6 +90,7 @@ function say(text, bad) { var m = $('msg'); m.textContent = text; m.className = 
 
 /* ---------- orders ---------- */
 var ST = { new: ['grey', 'לא שולם'], paid: ['yellow', 'שולם · לטיפול'], sent: ['blue', 'נשלח / מוכן לאיסוף'], done: ['green', 'נמסר'], cancelled: ['red', 'בוטל'] };
+var PO = { queued: ['grey', 'בתור'], sending: ['grey', 'נשלחת'], sent: ['yellow', 'מחכה לאישור הספק'], confirmed: ['green', 'הספק אישר'], attention: ['red', 'דורש טיפול'], failed: ['red', 'השליחה נכשלה'], cancelled: ['grey', 'בוטלה'] };
 var MAIL = { queued: 'מייל אישור בתור', sending: 'מייל אישור נשלח עכשיו', sent: 'מייל אישור נשלח', failed: 'מייל האישור נכשל', unknown: 'לא ברור אם מייל האישור נשלח' };
 function loadOrders() {
   $('orders').innerHTML = '<p class="mute">טוען…</p>';
@@ -120,6 +121,11 @@ function orderCard(o) {
     (o.notes ? '<div class="mute">הערת הלקוח: ' + esc(o.notes) + '</div>' : '') +
     '<div style="margin-top:8px">' + (o.items || []).map(function (i) { return '<div class="ln"><span>' + Number(i.qty) + ' ×</span><span>' + esc(i.name) + (i.size ? ' ' + esc(i.size) : '') + (i.code ? ' <span class="mute ltr">' + esc(i.code) + '</span>' : '') + '</span><span>' + money(i.price * i.qty) + '</span></div>'; }).join('') +
     (ship ? '<div class="ln"><span></span><span>משלוח</span><span>' + money(o.delivery_fee) + '</span></div>' : '') + '</div>';
+  if (o.po_state || (o.pos || []).length) {
+    h += '<div style="margin-top:8px"><b>הזמנות לספקים</b>' + (o.pos || []).map(function (p) { var t = PO[p.status] || ['grey', p.status];
+      return '<div class="ln"><span class="ltr">' + esc(p.po_no) + '</span><span>' + esc(p.supplier_name) + (p.summary ? '<div class="mute">' + esc(p.summary) + '</div>' : '') + '</span><span class="st ' + t[0] + '">' + t[1] + '</span></div>'; }).join('') +
+      (o.po_note ? '<div class="mute">' + esc(o.po_note) + '</div>' : '') + (o.po_state === 'manual' ? '<div class="err">חלק מההזמנה צריך טיפול ידני. נפתחה משימה ב-CRM.</div>' : '') + '</div>';
+  } else if (o.status === 'paid' && !o.test) h += '<div class="mute" style="margin-top:8px">ההזמנה לספק תצא אוטומטית בשעות העבודה.</div>';
   if (o.status !== 'new') {
     h += (ship ? '<div class="two"><label class="f">חברת שליחויות<input data-k="courier" value="' + esc(o.courier || '') + '"></label><label class="f">מספר מעקב<input data-k="tracking" class="ltr" value="' + esc(o.tracking || '') + '"></label></div>' : '') +
       '<label class="f">הערה פנימית<input data-k="staff_note" value="' + esc(o.staff_note || '') + '"></label><div class="row" style="margin-top:8px">';
