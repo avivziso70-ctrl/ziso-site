@@ -171,7 +171,7 @@
   function money(n) { return '₪' + Number(n).toLocaleString('he-IL', { maximumFractionDigits: 2 }); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function load() { try { return JSON.parse(localStorage.getItem('ziso_cart') || '{}') || {}; } catch (e) { return {}; } }
-  function save() { try { localStorage.setItem('ziso_cart', JSON.stringify(cart)); } catch (e) {} renderCount(); }
+  function save() { try { localStorage.setItem('ziso_cart', JSON.stringify(cart)); } catch (e) {} renderCount(); pushCart(); }
   function post(body, jwt) {
     var h = { 'content-type': 'application/json' };
     if (jwt) h.authorization = 'Bearer ' + jwt;
@@ -192,7 +192,7 @@
       if (state.ship) $('delivRow').hidden = false;
       if (!state.live || (TEST && state.session)) { $('previewBar').hidden = false; if (state.live) $('previewBar').textContent = 'מצב בדיקה לצוות: התשלום בהזמנה הזו הוא ₪5 בלבד, והיא לא יוצאת לספק.'; }
       if (c.gated) { $('gate').hidden = false; return; }
-      openStore();
+      openStore(); account();
     });
   }
   function openStore() { $('gate').hidden = true; $('store').hidden = false; render(); }
@@ -351,9 +351,10 @@
     var items = Object.keys(cart).map(function (id) { return { id: Number(id), qty: cart[id] }; });
     $('payBtn').disabled = true; msg.textContent = 'פותחים את דף התשלום המאובטח…';
     var jwt = state.session && state.session.access_token;
-    post({ action: 'checkout', items: items, name: f.name.value, phone: phone, email: f.email.value, delivery: deliv, address: f.address.value, city: f.city.value, notes: f.notes.value, terms: true, marketing: f.marketing.checked, frame: !!window.ZisoPay, test: TEST && !!jwt }, jwt).then(function (r) {
+    post({ action: 'checkout', items: items, name: f.name.value, phone: phone, email: f.email.value, delivery: deliv, address: f.address.value, city: f.city.value, notes: f.notes.value, terms: true, marketing: f.marketing.checked, frame: !!window.ZisoPay, test: TEST && !!jwt, session: sess }, jwt).then(function (r) {
       if (!r.ok) { $('payBtn').disabled = false; msg.className = 'msg err'; msg.textContent = r.error || 'משהו השתבש. נסו שוב או התקשרו 050-4770040.'; return; }
       try { localStorage.setItem('ziso_last_order', r.token); } catch (x) {}
+      if (r.session) { setSess(r.session); $('accLabel').textContent = f.name.value.trim().split(/\s+/)[0]; me = { email: f.email.value.trim(), name: f.name.value.trim(), phone: phone, orders: [], cart: {} }; }
       // payment inside the page (ZisoPay); the Tranzila link page is the fallback while a pay token is not given
       if (!r.pay || !window.ZisoPay) { cart = {}; save(); location.href = r.pr_link; return; }
       var mail = f.email.value.trim();
@@ -367,6 +368,56 @@
         onError: function (text) { step('form'); $('payBtn').disabled = false; msg.className = 'msg err'; msg.textContent = (text || 'טופס התשלום לא נפתח.') + ' נסו שוב או התקשרו 050-4770040.'; } });
     }).catch(function () { $('payBtn').disabled = false; msg.className = 'msg err'; msg.textContent = 'אין חיבור. נסו שוב.'; });
   });
+
+  /* ---------- customer account: sign-in link by mail, no password; the device keeps a session secret ---------- */
+  var me = null, sess = null, cartTimer = null;
+  try { sess = localStorage.getItem('ziso_session') || null; } catch (e) {}
+  function setSess(t) { sess = t || null; try { if (sess) localStorage.setItem('ziso_session', sess); else localStorage.removeItem('ziso_session'); } catch (e) {} }
+  function pushCart() { if (!sess) return; clearTimeout(cartTimer); cartTimer = setTimeout(function () { post({ action: 'cart_save', session: sess, cart: cart }); }, 1200); }
+  function signedIn(profile, merge) {
+    me = profile;
+    if (merge) { Object.keys(me.cart || {}).forEach(function (id) { if (state.byId[id]) cart[id] = Math.max(cart[id] || 0, me.cart[id]); }); save(); }
+    var first = String(me.name || '').trim().split(/\s+/)[0];
+    $('accLabel').textContent = first || 'החשבון שלי'; $('accBtn').setAttribute('aria-label', 'החשבון שלי' + (first ? ': ' + first : ''));
+    var f = $('checkout');
+    [['name', me.name], ['phone', me.phone], ['email', me.email], ['address', me.address], ['city', me.city]].forEach(function (p) { if (p[1] && !f[p[0]].value) f[p[0]].value = p[1]; });
+    drawAccount();
+  }
+  var OST = { paid: ['התקבלה, בטיפול', ''], sent: ['בדרך אליכם / מוכנה לאיסוף', 'ok'], done: ['נמסרה', 'ok'], cancelled: ['בוטלה', 'off'] };
+  function drawAccount() {
+    $('accOut').hidden = !!me; $('accIn').hidden = !me; if (!me) { $('accLabel').textContent = 'כניסה'; return; }
+    $('accHello').textContent = 'שלום' + (me.name ? ' ' + me.name : '') + '. המכשיר הזה מחובר לחשבון שלך.';
+    $('accInfo').innerHTML = esc(me.email) + (me.phone ? ' · <span dir="ltr">' + esc(me.phone) + '</span>' : '') + (me.address ? '<br>' + esc(me.address) + (me.city ? ', ' + esc(me.city) : '') : '');
+    $('accOrders').innerHTML = (me.orders || []).length ? me.orders.map(function (o) {
+      var st = OST[o.status] || [o.status, ''];
+      return '<div class="ord"><b>הזמנה ' + o.id + '</b><span class="small">' + new Date(o.at).toLocaleDateString('he-IL') + ' · ' + o.n + ' פריטים</span><span class="grow"></span><span>' + money(o.total) + '</span><span class="tag ' + st[1] + '">' + st[0] + '</span>' +
+        (o.tracking ? '<div class="small" style="flex-basis:100%">' + esc(o.courier || 'משלוח') + ' · מספר מעקב <span dir="ltr">' + esc(o.tracking) + '</span></div>' : '') + '</div>';
+    }).join('') : '<p class="small">עוד אין הזמנות בחשבון.</p>';
+  }
+  function account() {
+    var m = /[?&]in=([0-9a-f]{48})/.exec(location.search);
+    if (m) {
+      try { history.replaceState(null, '', location.pathname); } catch (e) {}
+      post({ action: 'login_finish', code: m[1] }).then(function (r) {
+        $('accDlg').showModal();
+        if (!r.ok) { drawAccount(); $('accMsg').className = 'msg err'; $('accMsg').textContent = r.error || 'הכניסה לא הצליחה. אפשר לבקש קישור חדש.'; return; }
+        setSess(r.session); signedIn(r.me, true);
+      });
+    } else if (sess) post({ action: 'me', session: sess }).then(function (r) { if (r.ok) signedIn(r.me, true); else if (r.error === 'session') setSess(null); });
+  }
+  $('accBtn').addEventListener('click', function () { drawAccount(); $('accDlg').showModal(); if (sess && me) post({ action: 'me', session: sess }).then(function (r) { if (r.ok) { me = r.me; drawAccount(); } }); });
+  $('accDlg').addEventListener('click', function (e) { if (e.target.hasAttribute('data-close')) $('accDlg').close(); });
+  $('accForm').addEventListener('submit', function (e) {
+    e.preventDefault(); var mail = e.target.email.value.trim(), msg = $('accMsg');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) { msg.className = 'msg err'; msg.textContent = 'נא למלא כתובת מייל תקינה.'; e.target.email.focus(); return; }
+    $('accSend').disabled = true; msg.className = 'msg'; msg.textContent = 'שולחים…';
+    post({ action: 'login_start', email: mail }).then(function (r) {
+      $('accSend').disabled = false;
+      if (!r.ok) { msg.className = 'msg err'; msg.textContent = r.error || 'משהו השתבש. נסו שוב.'; return; }
+      msg.className = 'msg ok'; msg.textContent = 'שלחנו קישור כניסה ל-' + mail + '. הוא מגיע תוך כמה דקות ותקף ל-30 דקות. כדאי לבדוק גם בתיקיית הספאם.';
+    });
+  });
+  $('logoutBtn').addEventListener('click', function () { post({ action: 'logout', session: sess }); setSess(null); me = null; drawAccount(); });
 
   var payUi = null;
   // the cart dialog has three faces: the cart + details form, the payment, the confirmation

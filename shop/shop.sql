@@ -44,6 +44,36 @@ alter table public.shop_orders enable row level security;
 create policy shop_orders_staff_read on public.shop_orders for select to authenticated
   using (exists (select 1 from crm_staff s where s.active and lower(s.email) = lower(auth.jwt() ->> 'email')));
 
+-- Customer accounts without a password (Aviv 18.11.2026: the customer is recognised, the cart is kept, and can always sign in again).
+-- A sign-in link goes by mail (shop_login_links, sent by the Gmail bridge); the device then holds a random session secret and the
+-- table keeps only its hash. A first checkout opens the account and signs that device in (verified = false, see the function).
+-- Shared customers with the CRM: tail9 is the same phone key as crm_customers. All three tables: service role only.
+create table if not exists public.shop_customers (
+  id bigint generated always as identity primary key,
+  email text not null unique check (email = lower(email)),
+  name text, phone text, tail9 text, address text, city text,
+  cart jsonb not null default '{}'::jsonb,                 -- {price id: qty}, the cart follows the customer between devices
+  marketing_ok boolean not null default false,
+  created_at timestamptz not null default now(), last_seen timestamptz
+);
+alter table public.shop_customers enable row level security;
+create index if not exists shop_customers_tail9_idx on public.shop_customers (tail9);
+create table if not exists public.shop_sessions (
+  token_hash text primary key, customer_id bigint not null references public.shop_customers(id), verified boolean not null default false,
+  created_at timestamptz not null default now(), last_used timestamptz not null default now(), expires_at timestamptz not null
+);
+alter table public.shop_sessions enable row level security;
+create table if not exists public.shop_login_links (
+  id bigint generated always as identity primary key,
+  code_hash text not null unique, email text not null, code text,   -- code: kept only until the mail left
+  created_at timestamptz not null default now(), expires_at timestamptz not null, used_at timestamptz,
+  mail_state text not null default 'queued', mail_claimed_at timestamptz, mail_error text
+);
+alter table public.shop_login_links enable row level security;
+create index if not exists shop_login_links_email_idx on public.shop_login_links (email, created_at);
+alter table public.shop_orders add column if not exists customer_id bigint references public.shop_customers(id);
+create index if not exists shop_orders_customer_idx on public.shop_orders (customer_id);
+
 -- Picture override per SKU (finish). Filled by matching each catalogue picture to its finish by colour.
 create table if not exists public.shop_item_images (code text primary key, path text not null, note text, updated_at timestamptz not null default now());
 alter table public.shop_item_images enable row level security;
