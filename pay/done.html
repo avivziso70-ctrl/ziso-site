@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>תשלום | זיסו קרמיקה</title>
+<style>body{margin:0;font-family:Assistant,"Segoe UI",Arial,sans-serif;color:#1e1b17;background:#fff;display:grid;place-items:center;min-height:100vh;text-align:center;padding:16px}</style>
+</head>
+<body>
+<p id="t">רגע אחד…</p>
+<script>
+// Tranzila sends the payment frame here when the card step ends. The page only tells the page around it; whether the
+// payment really went through is checked on the server.
+(function () {
+  var fail = /[?&]fail=1/.test(location.search);
+  document.getElementById('t').textContent = fail ? 'התשלום לא עבר.' : 'התשלום התקבל, מאשרים…';
+  try { if (window.parent && window.parent !== window) window.parent.postMessage({ zisoPay: fail ? 'fail' : 'done' }, location.origin); } catch (e) {}
+})();
+</script>
+</body>
+</html>

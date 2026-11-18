@@ -3,11 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="robots" content="noindex, nofollow">
-<title>חנות | זיסו קרמיקה</title>
+<title>חנות אונליין: ברזים, כיורים ואביזרי אמבט | זיסו קרמיקה</title>
+<meta name="description" content="החנות של זיסו קרמיקה: ברזים, כיורים, מערכות מקלחת ואביזרי אמבט במשלוח עד הבית לכל הארץ או באיסוף מאולם התצוגה בטירת כרמל. מחירים כולל מע״מ.">
+<link rel="canonical" href="https://www.zisoceramics.com/shop/">
 <link rel="icon" href="../img/logo.jpg">
 <link rel="stylesheet" href="../fonts.css">
-<link rel="stylesheet" href="shop.css?v=1811b">
+<link rel="stylesheet" href="shop.css?v=1811c">
 </head>
 <body>
 <a class="skip" href="#main">דילוג לתוכן</a>
@@ -80,14 +81,26 @@
           <li>המוכר: זיסו קרמיקה בע״מ, ח.פ. 517079661, עוצמה 5 טירת כרמל. טלפון 050-4770040, info@zisoceramics.com.</li>
           <li>המחירים כוללים מע״מ. זמן אספקה: <span class="leadText">עד 14 ימי עסקים</span> מאישור התשלום, במשלוח עד הבית (בתשלום, לפי גודל החבילה) או באיסוף עצמי ללא עלות.</li>
           <li>אפשר לבטל את העסקה תוך 14 יום מקבלת המוצר, לפי חוק הגנת הצרכן, בהודעה בטלפון, במייל או בוואטסאפ. דמי ביטול: 5% מהמחיר או ₪100, הנמוך מביניהם. בביטול עקב פגם או איחור אין דמי ביטול. פרטים ב<a href="terms.html" target="_blank">תקנון</a>.</li>
-          <li>התשלום מתבצע בדף המאובטח של טרנזילה. אנחנו לא רואים ולא שומרים את פרטי הכרטיס.</li>
+          <li>התשלום מתבצע בטופס מאובטח של חברת הסליקה טרנזילה. אנחנו לא רואים ולא שומרים את פרטי הכרטיס.</li>
         </ul>
       </div>
       <label class="check"><input type="checkbox" name="terms" required><span>קראתי ואני מסכים/ה ל<a href="terms.html" target="_blank">תקנון ולתנאי הביטול</a> ול<a href="../privacy.html" target="_blank">מדיניות הפרטיות</a>.</span></label>
       <label class="check"><input type="checkbox" name="marketing"><span>אשמח לקבל מזיסו קרמיקה עדכונים ומבצעים בוואטסאפ ובמייל (לא חובה, אפשר להסיר בכל עת).</span></label>
-      <div class="row" style="margin-top:16px"><button class="btn brass" type="submit" id="payBtn">למעבר לתשלום מאובטח</button></div>
+      <div class="row" style="margin-top:16px"><button class="btn brass" type="submit" id="payBtn">המשך לתשלום מאובטח</button></div>
       <p class="msg" id="payMsg" role="alert"></p>
     </form>
+    <div id="payStep" hidden>
+      <p class="small" id="payOrder"></p>
+      <div id="payBox"></div>
+      <p class="msg err" id="payErr" role="alert"></p>
+    </div>
+    <div id="doneStep" class="done" hidden tabindex="-1">
+      <div class="tick" aria-hidden="true"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+      <h2>ההזמנה התקבלה ואושרה</h2>
+      <p class="num">מספר הזמנה <b id="doneNum"></b></p>
+      <p id="doneText"></p>
+      <div class="row" style="justify-content:center;margin-top:18px"><button class="btn brass" type="button" data-close>המשך קנייה</button></div>
+    </div>
   </div>
 </dialog>
 
@@ -97,6 +110,7 @@
   <br><a href="terms.html">תקנון וביטול עסקה</a><a href="../privacy.html">פרטיות</a><a href="../accessibility.html">הצהרת נגישות</a>
 </footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
-<script src="shop.js?v=1811"></script>
+<script src="../pay/pay.js?v=1811"></script>
+<script src="shop.js?v=1811c"></script>
 </body>
 </html>
