@@ -88,6 +88,10 @@ language sql stable security invoker set search_path = public as $$
   select f.id, f.code, f.name, f.size, f.unit, f.category, f.price, f.image_path from shop_catalog_full() f
    where not f.hidden and (p_ids is null or f.id = any(p_ids));
 $$;
+create or replace function public.shop_supplier_counts() returns table (supplier_id uuid, n bigint)
+language sql stable security invoker set search_path = public as $$
+  select f.supplier_id, count(*) from shop_catalog_full() f where not f.hidden group by 1;
+$$;
 -- security invoker: only the service role (the shop edge function) gets rows; anon is stopped by RLS on shop_settings / sp_prices.
 -- No drop / revoke statements here: they raise a Supabase confirmation nobody sees and the migration hangs.
 
