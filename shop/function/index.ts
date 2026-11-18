@@ -312,7 +312,7 @@ Deno.serve(async (req: Request) => {
     if (action === "admin_img_plan") {
       const need = new Set<string>();
       for (let from = 0; ; from += 1000) {
-        const { data } = await admin.rpc("shop_catalog").select("image_path").order("id").range(from, from + 999);
+        const { data } = await admin.rpc("shop_catalog").select("id,image_path").order("id").range(from, from + 999);
         for (const r of data || []) if (r.image_path) need.add(r.image_path);
         if (!data || data.length < 1000) break;
       }
