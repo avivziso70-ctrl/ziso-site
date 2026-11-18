@@ -84,6 +84,12 @@ main h2{font-size:1.75rem;line-height:1.15;margin-bottom:12px}
 .btn.brass{background:var(--brass);border-color:var(--brass);color:var(--brass-ink)}
 .btn.wide{width:100%}
 .btn[disabled]{opacity:.55;cursor:default}
+.payform{--zp-ink:var(--graphite);--zp-mute:var(--stone);--zp-line:var(--grout);--zp-accent:var(--brass);--zp-surface:var(--surface);margin-top:6px}
+.payform + .linkbtn{color:var(--stone);margin-top:6px}
+.paying .kv{display:none}
+.payok{background:var(--ok-soft);border-color:transparent}.payok h3{font:600 1.1rem var(--body);color:var(--ok);margin:0 0 4px}.payok p{margin:0}
+.payok .code{display:inline-block;margin-top:8px;padding:4px 10px;border:1px solid var(--ok);border-radius:3px;font-weight:600}
+.payerr{color:var(--due);font-weight:600;margin:10px 0 0}
 details{border-top:1px solid var(--grout)}
 details summary{cursor:pointer;padding:14px 2px;font-weight:600;min-height:48px;list-style:none;display:flex;justify-content:space-between}
 details summary::-webkit-details-marker{display:none}
@@ -168,6 +174,7 @@ footer nav{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
 
     <section aria-labelledby="hMoney">
       <h2 id="hMoney">חשבון ותשלומים</h2>
+      <div id="payOk" aria-live="polite"></div>
       <div id="payBox"></div>
       <div class="tile bal hidden" id="bal"><div class="lab" id="balLab"></div><div class="sum num" id="balSum"></div><p class="fine-print" id="balAs"></p></div>
       <div id="paidBox"></div>
@@ -210,6 +217,7 @@ footer nav{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
 <div id="dead" class="gate hidden"><div class="box"><b class="z" aria-hidden="true">ZISO</b><h1 id="deadT">הקישור לא בתוקף</h1><p id="deadP">בקשו מאיתנו קישור חדש ונשלח מיד.</p>
   <a class="btn wide" href="https://wa.me/972504770040" style="background:var(--gold);border-color:var(--gold);color:#1a1610">וואטסאפ לזיסו קרמיקה</a></div></div>
 
+<script src="../pay/pay.js?v=1811b"></script>
 <script>
 (function () {
 'use strict';
@@ -296,7 +304,9 @@ function draw(j) {
   $('dest').textContent = d.deliver_to === 'customer' ? 'אספקה לכתובת: ' + (d.address || 'נתאם איתכם') + '.' : 'איסוף או אספקה מאולם התצוגה בטירת כרמל.';
 
   var pay = m.to_pay || [], paid = m.paid || [];
-  $('payBox').innerHTML = pay.map(function (p) { return '<div class="tile"><div class="kv" style="border:0;padding-top:0"><span>' + esc(p.what || 'תשלום') + '</span><b class="num">' + nis(p.amount) + '</b></div><a class="btn brass wide" href="' + esc(p.link) + '" target="_blank" rel="noopener noreferrer">לתשלום מאובטח ' + nis(p.amount) + '</a></div>'; }).join('');
+  // With a pay token the card form opens inside this page (ZisoPay, /pay/pay.js); without one the button is Tranzila's link.
+  // While a form is open the tiles are left alone, so the 45-second refresh does not close it under the customer's hands.
+  if (!payOpen) $('payBox').innerHTML = pay.map(function (p, i) { return '<div class="tile"><div class="kv" style="border:0;padding-top:0"><span>' + esc(p.what || 'תשלום') + '</span><b class="num">' + nis(p.amount) + '</b></div>' + (p.token && window.ZisoPay ? '<button type="button" class="btn brass wide" data-pay="' + i + '">לתשלום מאובטח ' + nis(p.amount) + '</button>' : '<a class="btn brass wide" href="' + esc(p.link) + '" target="_blank" rel="noopener noreferrer">לתשלום מאובטח ' + nis(p.amount) + '</a>') + '</div>'; }).join('');
   $('bal').classList.toggle('hidden', !m.known);
   if (m.known) {
     var b = Math.abs(m.balance) < 10 ? 0 : Number(m.balance);
@@ -317,6 +327,33 @@ function draw(j) {
   $('reviewSec').classList.toggle('hidden', !(n && del === n));
   show('page');
 }
+
+/* ---------- pay inside the page ---------- */
+var payOpen = null, PAY_FN = 'https://ppnjosyraosrdephsksu.supabase.co/functions/v1/crm-pay';
+function payClose() { if (payOpen) { payOpen.h.destroy(); payOpen = null; } if (data) draw(data); }
+$('payBox').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-pay]'), x = e.target.closest('[data-payx]');
+  if (x) { payClose(); return; }
+  if (!b || payOpen || !data) return;
+  var p = ((data.money || {}).to_pay || [])[Number(b.dataset.pay)]; if (!p || !p.token) return;
+  var tile = b.parentNode, form = document.createElement('div'), back = document.createElement('button');
+  form.className = 'payform'; back.type = 'button'; back.className = 'linkbtn'; back.dataset.payx = '1'; back.textContent = 'לא עכשיו, לסגור את הטופס';
+  b.remove(); tile.classList.add('paying'); tile.insertAdjacentHTML('afterbegin', '<h3 style="font:600 1rem var(--body);margin:0 0 12px">' + esc(p.what || 'תשלום') + '</h3>'); tile.appendChild(form); tile.appendChild(back);
+  payOpen = { h: ZisoPay.mount(form, { pay: p.token,
+    onPaid: function () {
+      fetch(PAY_FN, { method: 'POST', headers: { 'content-type': 'application/json', apikey: KEY }, body: JSON.stringify({ action: 'pay_info', t: p.token }) })
+        .then(function (r) { return r.json(); }).catch(function () { return {}; }).then(function (r) {
+          $('payOk').innerHTML = '<div class="tile payok"><h3>✓ התשלום התקבל, תודה</h3><p>' + esc(p.what || 'תשלום') + ' · <b class="num">' + nis(r.amount || p.amount) + '</b></p>' +
+            (r.code ? '<span class="code">מספר אישור <span class="ltr num">' + esc(r.code) + '</span></span>' : '') + '<p class="fine-print">כדאי לשמור את מספר האישור. התשלום מופיע גם ברשימה למטה.</p></div>';
+          payOpen.h.destroy(); payOpen = null; load();
+        });
+    },
+    onError: function (msg) {
+      payOpen.h.destroy(); payOpen = null; form.remove(); back.remove(); tile.classList.remove('paying'); tile.querySelector('h3').remove();
+      tile.insertAdjacentHTML('beforeend', '<p class="payerr" role="alert">' + esc(msg || 'טופס התשלום לא נפתח.') + '</p><a class="btn wide" style="margin-top:10px" href="' + esc(p.link) + '" target="_blank" rel="noopener noreferrer">לתשלום בעמוד המאובטח של טרנזילה</a>');
+    } }) };
+  form.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+});
 
 /* ---------- load ---------- */
 function load(first) {

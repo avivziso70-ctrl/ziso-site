@@ -88,7 +88,8 @@ begin
         from crm_deal_cases c where c.deal_id = d.id and c.lid = l.j ->> 'lid'),
       'eta', coalesce(l.j ->> 'eta', case when p.id is not null and p.received_at is null and p.status in ('sent', 'confirmed') and lt.orders >= 3
         then to_char((coalesce(p.sent_at, p.created_at) + make_interval(days => ceil(lt.median_days)::int)) at time zone 'Asia/Jerusalem', 'YYYY-MM-DD') end),
-      'eta_from', case when l.j ->> 'eta' is not null then 'team' when lt.orders >= 3 then 'stats' end
+      'eta_from', case when l.j ->> 'eta' is not null then 'team' when lt.orders >= 3 then 'stats' end,
+      'est', coalesce(l.j ->> 'est', '') = 'true'
     ) order by l.n), '[]'::jsonb) into v_lines
   from jsonb_array_elements(coalesce(d.lines, '[]'::jsonb)) with ordinality l(j, n)
   left join crm_po p on p.id = nullif(l.j ->> 'po_id', '')::bigint and p.deal_id = d.id
@@ -115,7 +116,7 @@ begin
     end if;
   end if;
   v_money := v_money || jsonb_build_object(
-    'to_pay', (select coalesce(jsonb_agg(jsonb_build_object('amount', q.amount, 'what', q.description, 'link', q.pr_link) order by q.id desc), '[]'::jsonb)
+    'to_pay', (select coalesce(jsonb_agg(jsonb_build_object('amount', q.amount, 'what', q.description, 'link', q.pr_link, 'token', case when (select s.pay_frame_on from crm_settings s where s.id = 1) then q.pay_token end) order by q.id desc), '[]'::jsonb)
       from crm_pay_requests q where q.tail9 = d.customer_tail9 and q.status = 'created' and not coalesce(q.test, false) and q.pr_link is not null and q.created_at > now() - interval '30 days'),
     'paid', (select coalesce(jsonb_agg(jsonb_build_object('amount', coalesce(q.paid_sum, q.amount), 'what', q.description, 'at', q.paid_at) order by q.paid_at desc), '[]'::jsonb)
       from crm_pay_requests q where q.tail9 = d.customer_tail9 and q.status = 'paid' and not coalesce(q.test, false) and q.paid_at > now() - interval '180 days'));

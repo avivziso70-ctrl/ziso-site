@@ -626,7 +626,7 @@ nav.tabs .badge{top:3px;inset-inline-start:calc(50% + 6px);box-shadow:0 0 0 2px 
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
-<script src="piggy.js"></script>
+<script src="piggy.js?v=1811"></script>
 <script>
 (function () {
 'use strict';
@@ -1272,7 +1272,7 @@ function payDraft(amount, test) {
     toast('יוצר לינק בטרנזילה…');
     payFn({ action: 'create', tail9: curTail, amount: amount, test: !!test }).then(function (j) {
       if (!j.ok) throw new Error(j.error || 'שגיאה');
-      putDraft(payText(j.amount, j.pr_link));
+      putDraft(payText(j.amount, j.page_link || j.pr_link));   // page_link = our own payment page, given once in-page payment is switched on
       if (!test && window.zisoPiggy) zisoPiggy();
     }).catch(function (e) { toast('הלינק לא נוצר: ' + e.message, 6000); });
   });
