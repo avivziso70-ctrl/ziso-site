@@ -115,7 +115,7 @@ def client_section():
 def header(active=""):
   links = [("./#products", "מוצרים", "products"), ("shop/", "חנות אונליין", "shop"), ("calculator.html", "מחשבון כמויות", "calculator"), ("tik-lakoach.html", "תיק לקוח", "tik"),
            ("about.html", "עלינו", "about"), ("contact.html", "צור קשר", "contact")] + ([("./#client", "אזור לקוחות", "")] if PORTAL_ON else [])
-  if GALLERY: links.insert(1, ("gallery.html", "עבודות", "gallery"))
+  if GALLERY: links.insert(2, ("gallery.html", "עבודות", "gallery"))
   nav = "".join('<a href="%s"%s>%s</a>' % (h, ' aria-current="page"' if k and k == active else "", t) for h, t, k in links)
   return '''<a class="skip" href="#main">דילוג לתוכן הראשי</a>
 <header class="top"><div class="wrap">
@@ -502,10 +502,10 @@ def build():
 <div data-sc-parallax="-0.6">
 <h1>תרגיש בבית<br>לעצב את <em>הבית</em></h1>
 <p>אולם תצוגה לריצוף ואמבטיה בטירת כרמל: גרניט פורצלן, כלים סניטריים, ארונות אמבטיה, מקלחונים וברזים, עם מעצבות פנים מוסמכות שעוזרות לכם לבחור. פגישת ייעוץ ועיצוב באולם בחינם, דקות מחיפה.</p>
-<div class="actions"><a class="btn brass" href="{wa}" target="_blank" rel="noopener">לפגישת ייעוץ חינם בוואטסאפ</a><a class="btn ghost" href="pegisha.html">בחירת יום ושעה</a></div>
+<div class="actions"><a class="btn brass" href="shop/">חנות אונליין</a><a class="btn ghost" href="{wa}" target="_blank" rel="noopener">קביעת פגישה בוואטסאפ</a><a class="btn ghost" href="pegisha.html">בחירת יום ושעה</a></div>
 <dl class="facts onwall">
 <div><dt>כתובת</dt><dd>עוצמה 5, טירת כרמל</dd></div>
-<div><dt>טלפון וואטסאפ</dt><dd class="ltr">{phone}</dd></div>
+<div><dt>טלפון</dt><dd class="ltr">{phone}</dd></div>
 <div><dt>שעות פתיחה</dt><dd>{hours}</dd></div></dl>
 </div>
 </div><div class="scrollcue" aria-hidden="true"></div><button class="pause" type="button" data-pause aria-pressed="false" hidden>עצירת הסרט</button></div>
