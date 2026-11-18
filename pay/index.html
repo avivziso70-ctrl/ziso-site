@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#25292c">
+<title>תשלום מאובטח | זיסו קרמיקה</title>
+<meta property="og:title" content="תשלום מאובטח לזיסו קרמיקה">
+<meta property="og:description" content="תשלום בכרטיס אשראי בחיבור מוצפן, דרך חברת הסליקה טרנזילה.">
+<meta property="og:image" content="https://www.zisoceramics.com/img/logo.jpg">
+<link rel="icon" href="../img/logo.jpg">
+<link rel="stylesheet" href="../fonts.css">
+<style>
+/* The payment page a customer opens from a WhatsApp link: /pay/?t=<pay token>. Same wall and porcelain as the customer's
+   own page (/my/). One job: pay, then see a clear confirmation with the approval number. The card form is ZisoPay (pay.js). */
+:root{--porcelain:#f3f2ef;--surface:#fff;--graphite:#22262a;--stone:#5f5d58;--grout:#dfdcd6;--brass:#8a6a35;--brass-ink:#fff;
+  --wall:#25292c;--wall-ink:#f2efe8;--wall-mute:#c9c3b7;--gold:#cfae74;--ok:#2e7d4f;--ok-soft:#e3f1e8;--due:#a23b2a;
+  --display:"Bellefair","Times New Roman",serif;--body:"Assistant","Segoe UI",Arial,sans-serif}
+@media (prefers-color-scheme:dark){:root{--porcelain:#15171a;--surface:#1d2024;--graphite:#ecebe7;--stone:#a8a49d;--grout:#30343a;--brass:#cfae74;--brass-ink:#1a1610;
+  --wall:#0f1113;--ok:#8fc9a0;--ok-soft:#1c2c23;--due:#ec9183;color-scheme:dark}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--porcelain);color:var(--graphite);font:17px/1.55 var(--body);-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column}
+h1,h2{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+.hidden{display:none!important}
+.wrap{max-width:520px;margin-inline:auto;padding-inline:18px;width:100%}
+.ltr{direction:ltr;unicode-bidi:isolate}.num{font-variant-numeric:tabular-nums}
+.wall{background:var(--wall);color:var(--wall-ink);padding:calc(14px + env(safe-area-inset-top)) 0 26px}
+.mark{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.mark b{font:400 1.5rem/1 var(--display);letter-spacing:.3em;direction:ltr}
+.mark span{font-size:.85rem;color:var(--wall-mute)}
+.wall h1{font-size:clamp(1.9rem,8vw,2.6rem);line-height:1.1;margin-top:24px}
+.wall p{color:var(--wall-mute);margin:8px 0 0}
+main{flex:1;padding:18px 0 28px}
+.tile{background:var(--surface);border:1px solid var(--grout);border-radius:4px;padding:18px 16px}
+#form{--zp-ink:var(--graphite);--zp-mute:var(--stone);--zp-line:var(--grout);--zp-accent:var(--brass);--zp-surface:var(--surface)}
+.fine{color:var(--stone);font-size:.86rem;margin:12px 2px 0}
+.btn{display:flex;align-items:center;justify-content:center;min-height:50px;padding:0 22px;border-radius:3px;border:1px solid var(--grout);background:var(--surface);color:inherit;font:600 1rem var(--body);text-decoration:none;margin-top:14px}
+.btn.brass{background:var(--brass);border-color:var(--brass);color:var(--brass-ink)}
+.err{color:var(--due);font-weight:600;margin:0}
+.ok{text-align:center;padding:28px 16px}
+.ok .tick{width:64px;height:64px;border-radius:50%;background:var(--ok-soft);color:var(--ok);display:grid;place-items:center;margin:0 auto 14px}
+.ok h2{font-size:2rem;line-height:1.1}.ok h2:focus{outline:0}
+.ok .sum{font:400 2.4rem/1.1 var(--display);margin:10px 0 2px}
+.ok .what{color:var(--stone);margin:0}
+.ok dl{margin:18px 0 0;border-top:1px solid var(--grout);text-align:start}
+.ok dl div{display:flex;justify-content:space-between;gap:12px;padding:11px 2px;border-bottom:1px solid var(--grout)}
+.ok dt{color:var(--stone)}.ok dd{margin:0;font-weight:600}
+@media (prefers-reduced-motion:no-preference){.ok .tick{animation:pop .5s cubic-bezier(.2,.9,.3,1.3)}@keyframes pop{from{transform:scale(.4);opacity:0}}}
+.load{display:grid;place-items:center;gap:12px;padding:44px 0;color:var(--stone)}
+.spin{width:34px;height:34px;border:3px solid var(--grout);border-top-color:var(--brass);border-radius:50%;animation:r 1s linear infinite}
+@keyframes r{to{transform:rotate(360deg)}}@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+footer{color:var(--stone);font-size:.85rem;text-align:center;padding:0 18px calc(22px + env(safe-area-inset-bottom))}
+footer a{white-space:nowrap}
+</style>
+</head>
+<body>
+<header class="wall"><div class="wrap">
+  <div class="mark"><b aria-label="זיסו קרמיקה">ZISO</b><span>תשלום מאובטח</span></div>
+  <h1 id="title">רגע אחד…</h1>
+  <p id="sub"></p>
+</div></header>
+
+<main class="wrap" aria-live="polite">
+  <div id="loading" class="load" role="status"><div class="spin"></div><span>פותחים את בקשת התשלום…</span></div>
+
+  <div id="pay" class="hidden">
+    <div class="tile"><div id="form"></div></div>
+    <p class="fine hidden" id="alt">הטופס לא נפתח אצלכם? <a id="altLink" target="_blank" rel="noopener noreferrer">לתשלום בעמוד המאובטח של טרנזילה</a></p>
+  </div>
+
+  <div id="fail" class="hidden">
+    <div class="tile"><p class="err" id="failT" role="alert"></p>
+      <a class="btn brass hidden" id="failLink" target="_blank" rel="noopener noreferrer">לתשלום בעמוד המאובטח של טרנזילה</a>
+      <a class="btn" href="https://wa.me/972504770040">וואטסאפ לזיסו קרמיקה</a></div>
+  </div>
+
+  <div id="done" class="hidden">
+    <div class="tile ok">
+      <div class="tick" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+      <h2 id="doneT" tabindex="-1">התשלום התקבל, תודה</h2>
+      <div class="sum num" id="doneSum"></div>
+      <p class="what" id="doneWhat"></p>
+      <dl>
+        <div id="rowCode"><dt>מספר אישור</dt><dd class="ltr num" id="doneCode"></dd></div>
+        <div id="rowAt"><dt>מועד</dt><dd id="doneAt"></dd></div>
+      </dl>
+      <p class="fine">כדאי לשמור צילום מסך של האישור. הכול אצלנו מסודר, אין צורך לעשות שום דבר נוסף.</p>
+    </div>
+  </div>
+</main>
+
+<footer>זיסו קרמיקה בע"מ · עוצמה 5, טירת כרמל · <a href="tel:+972504770040" class="ltr">050-4770040</a> · <a href="../privacy.html">פרטיות</a> · <a href="../terms.html">תנאים</a></footer>
+
+<script src="pay.js?v=1811b"></script>
+<script>
+(function () {
+'use strict';
+var FN = 'https://ppnjosyraosrdephsksu.supabase.co/functions/v1/crm-pay', KEY = 'sb_publishable_yjpTHQkvH5-l4v-HCcEj4w_ofAYpQmV';
+var $ = function (id) { return document.getElementById(id); };
+var t = (new URLSearchParams(location.search).get('t') || '').trim().toLowerCase();
+var nis = function (n) { return '₪' + (Math.round((Number(n) || 0) * 100) / 100).toLocaleString('he-IL', { maximumFractionDigits: 2 }); };
+function show(id) { ['loading', 'pay', 'fail', 'done'].forEach(function (x) { $(x).classList.toggle('hidden', x !== id); }); }
+function info() {
+  return fetch(FN, { method: 'POST', headers: { 'content-type': 'application/json', apikey: KEY }, body: JSON.stringify({ action: 'pay_info', t: t }) })
+    .then(function (r) { return r.json(); }).catch(function () { return { ok: false, net: true }; });
+}
+function fail(title, text, link) {
+  $('title').textContent = title; $('sub').textContent = ''; $('failT').textContent = text;
+  $('failLink').classList.toggle('hidden', !link); if (link) $('failLink').href = link;
+  show('fail');
+}
+function done(r) {
+  $('title').textContent = 'שולם'; $('sub').textContent = '';
+  $('doneSum').textContent = nis(r.amount); $('doneWhat').textContent = r.description || '';
+  $('rowCode').classList.toggle('hidden', !r.code); $('doneCode').textContent = r.code || '';
+  $('rowAt').classList.toggle('hidden', !r.paid_at);
+  if (r.paid_at) $('doneAt').textContent = new Date(r.paid_at).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  show('done'); $('doneT').focus();
+}
+if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(t)) { fail('הקישור לא תקין', 'נראה שהקישור נחתך בדרך. בקשו מאיתנו קישור חדש ונשלח מיד.'); return; }
+info().then(function (r) {
+  if (r.net) { fail('אין חיבור כרגע', 'בדקו את האינטרנט ורעננו את הדף.'); return; }
+  if (!r.ok) { fail('הקישור לא בתוקף', 'בקשת התשלום לא נמצאה. בקשו מאיתנו קישור חדש ונשלח מיד.'); return; }
+  if (r.status === 'paid') { done(r); return; }
+  if (r.status !== 'created' || !window.ZisoPay) { fail('אי אפשר לשלם בקישור הזה', 'בקשת התשלום כבר לא פתוחה. כתבו לנו ונשלח קישור חדש.', r.status === 'created' ? r.link : null); return; }
+  $('title').textContent = r.description || 'תשלום לזיסו קרמיקה';
+  $('sub').textContent = 'תשלום בכרטיס אשראי, כאן בדף.';
+  if (r.link) { $('altLink').href = r.link; $('alt').classList.remove('hidden'); }
+  show('pay');
+  var h = ZisoPay.mount($('form'), { pay: t,
+    onPaid: function () { info().then(function (p) { h.destroy(); done(p.ok ? p : r); }); },
+    onError: function (msg) { h.destroy(); fail(r.description || 'תשלום לזיסו קרמיקה', msg || 'טופס התשלום לא נפתח.', r.link); } });
+});
+})();
+</script>
+</body>
+</html>

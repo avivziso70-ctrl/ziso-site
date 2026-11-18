@@ -7,20 +7,20 @@
   var DUR = 2000, timer = null, styled = false;
 
   var CSS = '' +
-    '.zp{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));width:180px;height:210px;margin-left:-90px;pointer-events:none;z-index:2147483000;direction:ltr}' +
-    '.zp svg{position:absolute;overflow:visible}' +
-    '.zp .zpPig{left:0;bottom:0;width:180px;height:180px}' +
-    '.zp .zpIt{position:absolute;left:65px;bottom:16px;width:50px;height:50px;opacity:0}.zp .zpIt svg{position:static;width:100%;height:100%}' +
-    '.zp .zpSay{position:absolute;top:0;right:-18px;background:#fff;color:#7a2340;font:700 18px/1 "Assistant","Segoe UI",Arial,sans-serif;padding:7px 11px;border-radius:14px;border:2px solid #e07aa0;direction:rtl;opacity:0}' +
-    '.zp .zpMouth,.zp .zpBody{transform-box:fill-box;transform-origin:50% 50%}' +
+    '.zpig{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));width:180px;height:210px;margin-left:-90px;pointer-events:none;z-index:2147483000;direction:ltr}' +
+    '.zpig svg{position:absolute;overflow:visible}' +
+    '.zpig .zpPig{left:0;bottom:0;width:180px;height:180px}' +
+    '.zpig .zpIt{position:absolute;left:65px;bottom:16px;width:50px;height:50px;opacity:0}.zpig .zpIt svg{position:static;width:100%;height:100%}' +
+    '.zpig .zpSay{position:absolute;top:0;right:-18px;background:#fff;color:#7a2340;font:700 18px/1 "Assistant","Segoe UI",Arial,sans-serif;padding:7px 11px;border-radius:14px;border:2px solid #e07aa0;direction:rtl;opacity:0}' +
+    '.zpig .zpMouth,.zpig .zpBody{transform-box:fill-box;transform-origin:50% 50%}' +
     '@media (prefers-reduced-motion: no-preference){' +
-      '.zp .zpPig{animation:zpIn ' + DUR + 'ms cubic-bezier(.3,1.4,.5,1) both}' +
-      '.zp .zpBody{animation:zpPuff ' + DUR + 'ms ease-out both}' +
-      '.zp .zpMouth{animation:zpChomp ' + DUR + 'ms linear both}' +
-      '.zp .zpIt{animation:zpFall 520ms cubic-bezier(.5,0,.9,.6) both}' +
-      '.zp .zpSay{animation:zpSay ' + DUR + 'ms ease-out both}' +
+      '.zpig .zpPig{animation:zpIn ' + DUR + 'ms cubic-bezier(.3,1.4,.5,1) both}' +
+      '.zpig .zpBody{animation:zpPuff ' + DUR + 'ms ease-out both}' +
+      '.zpig .zpMouth{animation:zpChomp ' + DUR + 'ms linear both}' +
+      '.zpig .zpIt{animation:zpFall 520ms cubic-bezier(.5,0,.9,.6) both}' +
+      '.zpig .zpSay{animation:zpSay ' + DUR + 'ms ease-out both}' +
     '}' +
-    '@media (prefers-reduced-motion: reduce){.zp .zpSay{opacity:1}.zp .zpBody{transform:scale(1.06)}}' +
+    '@media (prefers-reduced-motion: reduce){.zpig .zpSay{opacity:1}.zpig .zpBody{transform:scale(1.06)}}' +
     '@keyframes zpIn{0%{transform:translateY(60px) scale(.5);opacity:0}12%{transform:none;opacity:1}92%{transform:none;opacity:1}100%{transform:translateY(40px) scale(.7);opacity:0}}' +
     '@keyframes zpPuff{0%,36%{transform:none}42%{transform:scale(1.04)}55%{transform:scale(1.08)}68%{transform:scale(1.1)}81%{transform:scale(1.15,1.12)}86%{transform:scale(1.03)}90%,100%{transform:scale(1.06)}}' +
     '@keyframes zpChomp{0%{transform:scaleY(.5)}24%{transform:scaleY(1.3)}38%{transform:scaleY(1.3)}41%{transform:scaleY(.15)}47%{transform:scaleY(1.3)}52%{transform:scaleY(1.3)}55%{transform:scaleY(.15)}60%{transform:scaleY(1.3)}65%{transform:scaleY(1.3)}68%{transform:scaleY(.15)}72%{transform:scaleY(1.3)}78%{transform:scaleY(1.3)}81%{transform:scaleY(.15)}100%{transform:scaleY(.5)}}' +
@@ -60,7 +60,7 @@
       style(); stop();
       var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
       var w = document.createElement('div');
-      w.className = 'zp'; w.setAttribute('aria-hidden', 'true');
+      w.className = 'zpig'; w.setAttribute('aria-hidden', 'true');
       var h = PIG + '<div class="zpSay">יאמי!</div>';
       if (!calm) ITEMS.forEach(function (it, i) {
         h += '<div class="zpIt" style="--dx:' + it[1] + 'px;--r:' + it[2] + 'deg;animation-delay:' + (230 + i * 250) + 'ms">' + it[0] + '</div>';
