@@ -5,14 +5,17 @@
   var sb = window.supabase ? supabase.createClient(SB_URL, 'sb_publishable_yjpTHQkvH5-l4v-HCcEj4w_ofAYpQmV', { auth: { persistSession: true, autoRefreshToken: true } }) : null;
   var PAGE = 48;
   var $ = function (id) { return document.getElementById(id); };
-  var state = { items: [], models: [], byKey: {}, byId: {}, live: false, fee: null, group: '', sub: '', color: '', q: '', sort: '', shown: PAGE, session: null };
+  var state = { items: [], models: [], byKey: {}, byId: {}, live: false, ship: null, group: '', sub: '', color: '', q: '', sort: '', shown: PAGE, session: null };
   var cart = load();
 
   // ---------- catalogue brain: categories, models, colours ----------
   // Finishes the supplier prints at the end of a product name. One model in several finishes becomes one card.
   var COLORS = {
-    'כרום': '#c9ced3', 'שחור מט': '#1d1d1f', 'זהב מוברש': '#c8a45a', 'ניקל מוברש': '#a9a8a2', 'רוז גולד מוברש': '#c98f7c', 'גאן מטאל': '#55585c',
-    'לבן מבריק': '#ffffff', 'לבן מט': '#f1efe9', 'אבן מט': '#b9b2a4', 'בטון כהה מט': '#6b6b69', 'בטון בהיר מט': '#b4b4b0', 'גרפיט': '#3d4043', 'מוקה': '#7a6654', 'לאטה': '#cbb59a',
+    'כרום': '#c9ced3', 'שחור מט': '#1d1d1f', 'שחור': '#1d1d1f', 'זהב מוברש': '#c8a45a', 'זהב מט': '#c8a45a', 'זהב מבריק': '#d9b354', 'זהב': '#d0aa55', 'ניקל מוברש': '#a9a8a2', 'ניקל מבריק': '#cfd2d4', 'ניקל כרום': '#c9ced3', 'כרום ניקל': '#c9ced3', 'כרום מוברש': '#b3b5b4', 'ניקל': '#bdbfbf', 'מוברש': '#a9a8a2', 'נירוסטה מוברש': '#a9a8a2',
+    'רוז גולד מוברש': '#c98f7c', 'רוז גולד מט': '#c98f7c', 'רוז גולד': '#cf9684', 'רוז-גולד': '#cf9684', 'רוזגולד': '#cf9684', 'ברונזה': '#8a6a45', 'גאן מטאל': '#55585c',
+    'לבן מבריק': '#ffffff', 'לבן מט': '#f1efe9', 'לבן': '#ffffff', 'אבן מט': '#b9b2a4', 'בטון כהה מט': '#6b6b69', 'בטון בהיר מט': '#b4b4b0', 'אפור גרפיט': '#4a4d50', 'גרפיט מט': '#3d4043', 'גרפיט': '#3d4043', 'אפור מט': '#8e8f8d', 'מוקה מט': '#7a6654', 'מוקה': '#7a6654', 'לאטה': '#cbb59a',
+    'תכלת מט': '#a9c7d6', 'חאקי מט': '#8f8d6c', 'ורוד מט': '#e3b9b3', 'קרם': '#ece2cf', 'סלמון מט': '#e2a58f', 'ירוק מט': '#7f9a80', 'קשמיר מט': '#cdbfae', 'יסמין מט': '#efe9d8',
+    'שחור מט קלקתא': '#2a2a2c', 'לבן מט קלקתא': '#eeeae2', 'גרפיט מוברש': '#55585c', 'סאטן מוברש': '#b0aea8', 'כחול קרח מט': '#bcd3de', 'אפור גרפיט מט': '#4a4d50',
     'גוונים מט': 'linear-gradient(135deg,#3d4043 0 25%,#7a6654 25% 50%,#cbb59a 50% 75%,#f1efe9 75%)'
   };
   var COLOR_NAMES = Object.keys(COLORS).sort(function (a, b) { return b.length - a.length; });
@@ -24,15 +27,16 @@
     ['אסלות', /אסל|מונובלוק/, [['תלויות', /תלוי/], ['מונובלוק', /מונובלוק/]]],
     ['מקלחונים', /מקלחון|אמבטיון|WALK IN|דופן/i, [['חזית', /חזית/], ['פינתיים', /פינתי/], ['מעוגלים', /מעוגל/], ['אמבטיונים', /אמבטיון/], ['Walk in', /WALK IN/i]]],
     ['ארונות אמבטיה', /תחתון|ארון/, [['ארון עם כיור', /תחתון/], ['ארונות עמוד', /עמוד/]]],
-    ['ברזים', /ברז|סוללה/, [['ברזי רחצה', /רחצה/], ['ברזי מטבח', /מטבח/], ['אמבט ומקלחת', /אמבט|מקלחת|סוללה/]]],
-    ['מקלחת', /ראש מקלחת|זרוע|מזלף|מולף|סט מקלחת|מערכת|נקודת מים|צינור/, [['סטים ומערכות', /סט מקלחת|מערכת/], ['ראשי מקלחת', /^(?!.*זרוע).*ראש מקלחת/], ['זרועות', /זרוע/], ['מזלפים וצינורות', /מזלף|מולף|צינור/], ['נקודות מים', /נקודת מים/]]],
-    ['כיורים', /כיור|קוריאן|ונטיל|ווטיל/, [['כיורים מונחים', /מונח|משטח/], ['כיורים אינטגרליים', /אינטגרלי|קוריאן/], ['כיורי שירותים', /שירותים/]]]
+    ['ברזים', /ברז|סוללה|מערכת קיר לכיור/, [['ברזי מטבח', /מטבח/], ['סוללות לאמבטיה', /סוללה|מהרצפה/], ['ברזי קיר', /קיר/], ['ברזי רחצה', /./]]],
+    ['מקלחת', /ראש מקלחת|ראש טוש|ראש גשם|זרוע|מזלף|מולף|סט מקלחת|סט \d+ חלקים|מוט פינוק|מוט רחצה|מערכת|נקודת מים|צינור|אינטרפוץ|מתיזן/, [['סטים ומערכות', /סט מקלחת|סט \d+ חלקים|מערכת|מוט פינוק|מוט רחצה|Set/], ['אינטרפוץ ומתיזים', /אינטרפוץ|מתיזן/], ['ראשי מקלחת', /^(?!.*זרוע).*ראש (מקלחת|טוש|גשם)/], ['זרועות', /זרוע/], ['מזלפים וצינורות', /מזלף|מולף|צינור/], ['נקודות מים', /נקודת מים/]]],
+    ['אביזרי אמבט', /קולב|מחזיק|מדף|סבוניה|דיספנסר|(^|\s)כוס(\s|$)|מעמד|מתל[הי]|(^|\s)תלי\s|מברשת|מתקן/, [['קולבים', /קולב/], ['מחזיקי נייר', /נייר/], ['מתלי מגבות', /מגבת|מגבות|תלי\s/], ['מדפים', /מדף/], ['סבוניות ודיספנסרים', /סבוניה|דיספנסר|סבון/], ['כוסות ומברשות', /כוס|מברשת/]]],
+    ['כיורים', /כיור|קוריאן|ונטיל|ווטיל|סיפון/, [['ונטילים וסיפונים', /^(ונטיל|ווטיל|סיפון)/], ['כיורי מטבח', /מטבח|גרניט/], ['כיורי נירוסטה', /נירוסטה/], ['כיורי שירותים', /שירותים/], ['כיורים אינטגרליים', /אינטגרלי|קוריאן/], ['כיורים מונחים', /./]]]
   ];
   var OTHER = 'אביזרים ועוד';
   function classify(name, category) {
     for (var i = 0; i < TREE.length; i++) if (TREE[i][1].test(name)) return sub(TREE[i], name);
     if (/אסל/.test(category || '')) return sub(TREE[1], name);
-    if (/כיור/.test(category || '') || SINK_SERIES.test(name)) return [TREE[6][0], 'כיורים מונחים'];
+    if (/כיור/.test(category || '') || SINK_SERIES.test(name)) return ['כיורים', 'כיורים מונחים'];
     return [OTHER, ''];
   }
   function sub(node, name) { for (var j = 0; j < node[2].length; j++) if (node[2][j][1].test(name)) return [node[0], node[2][j][0]]; return [node[0], '']; }
@@ -83,7 +87,7 @@
         if (cls[0] === 'כיורים' && (m = /\s(\d{2,3}(?:\/\d{2,3})?)(?=\s|$)/.exec(title)) && !/שירותים/.test(title)) { title = title.replace(m[0], '').trim(); attrs['מידה'] = m[1] + ' ס״מ'; if (size) desc = (desc ? desc + ' · ' : '') + size; }
         else if (size) attrs['מידה'] = size;
       }
-      if (cls[0] === 'כיורים' && !/כיור|משטח|קוריאן|ונטיל|ווטיל/.test(title)) title = 'כיור ' + title;
+      if (cls[0] === 'כיורים' && !/כיור|משטח|קוריאן|ונטיל|ווטיל|סיפון/.test(title)) title = 'כיור ' + title;
       var key = cls[0] + '|' + title.toLowerCase().replace(/["'״׳.,()\-|\/]/g, ' ').replace(/\s+/g, ' ').trim();
       var mod = map[key];
       if (!mod) { mod = map[key] = { key: key, title: title, group: cls[0], sub: cls[1], variants: [] }; list.push(mod); }
@@ -178,13 +182,13 @@
     sess.then(function (s) { state.session = s; return post({ action: 'catalog' }, s && s.access_token); }).then(function (c) {
       $('loading').hidden = true;
       if (!c || !c.ok) { $('loading').hidden = false; $('loading').textContent = 'לא הצלחנו לטעון את המוצרים. נסו לרענן, או התקשרו 050-4770040.'; return; }
-      state.live = !!c.live; state.fee = c.delivery_fee;
+      state.live = !!c.live; state.ship = c.ship || null;
       document.querySelectorAll('#leadText,.leadText').forEach(function (e) { e.textContent = c.lead_text; });
       state.items = c.items; state.byId = {}; state.items.forEach(function (it) { state.byId[it.id] = it; });
       state.models = buildModels(state.items); state.byKey = {}; state.models.forEach(function (m, i) { m.n = i; state.byKey[i] = m; });
       // items that left the catalog drop out of a saved cart
       Object.keys(cart).forEach(function (id) { if (!state.byId[id]) delete cart[id]; }); save();
-      if (state.fee != null) { $('delivRow').hidden = false; $('delivFee').textContent = money(state.fee); }
+      if (state.ship) $('delivRow').hidden = false;
       if (!state.live) $('previewBar').hidden = false;
       if (c.gated) { $('gate').hidden = false; return; }
       openStore();
@@ -282,9 +286,12 @@
         '<div class="q"><button type="button" data-dec="' + id + '" aria-label="הפחתה">−</button><span aria-live="polite">' + q + '</span><button type="button" data-inc="' + id + '" aria-label="הוספה">+</button></div></div>';
     }).join('');
     var deliv = document.querySelector('input[name=delivery]:checked');
-    var fee = deliv && deliv.value === 'delivery' && state.fee != null ? Number(state.fee) : 0;
+    var nb = 0, nh = 0, S = state.ship; ids.forEach(function (id) { var c = state.byId[id].big; if (c === 'b') nb += cart[id]; else if (c === 'h') nh += cart[id]; });
+    var ship = !S ? 0 : (!nb && !nh) ? Number(S.small) : nh * Number(S.heavy) + (nb ? Number(S.sink) + (nb - 1) * Number(S.extra_sink || 0) : 0);
+    if (state.ship) $('delivFee').textContent = money(ship);
+    var fee = deliv && deliv.value === 'delivery' ? ship : 0;
     $('totals').innerHTML = '<div class="tot"><span>מוצרים</span><span>' + money(sum) + '</span></div>' +
-      '<div class="tot"><span>' + (fee ? 'משלוח' : 'איסוף עצמי') + '</span><span>' + (fee ? money(fee) : 'ללא עלות') + '</span></div>' +
+      '<div class="tot"><span>' + (fee ? 'משלוח עד הבית' : 'איסוף עצמי') + '</span><span>' + (fee ? money(fee) : 'ללא עלות') + '</span></div>' +
       '<div class="tot big"><span>סה״כ לתשלום (כולל מע״מ)</span><span>' + money(sum + fee) + '</span></div>' +
       (state.live ? '' : '<p class="small">תצוגה מקדימה: בתשלום יחויבו ₪5 בדיקה בלבד.</p>');
     $('checkout').hidden = false;

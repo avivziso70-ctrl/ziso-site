@@ -8,7 +8,9 @@ create table if not exists public.shop_settings (
   vat numeric not null default 18,
   multipliers jsonb not null default '{"162e5a6f-93b2-458c-b0ca-6d40e75d611b": 2}', -- supplier_id -> cost multiplier; a supplier not listed is not sold
   delivery_fee numeric,                             -- null = pickup from the showroom only
-  lead_text text not null default 'עד 21 ימי עסקים',
+  lead_text text not null default 'עד 14 ימי עסקים',
+  include_re text, exclude_re text,                 -- which product names are sold online
+  ship jsonb,                                       -- courier fees incl. VAT: {"small":35,"sink":65,"extra_sink":30}; null = pickup only
   updated_at timestamptz not null default now()
 );
 insert into public.shop_settings (id) values (1) on conflict do nothing;
@@ -38,35 +40,48 @@ create policy shop_orders_staff_read on public.shop_orders for select to authent
 create table if not exists public.shop_item_images (code text primary key, path text not null, note text, updated_at timestamptz not null default now());
 alter table public.shop_item_images enable row level security;
 
--- One row per product: newest list wins; upgrade options, measuring, installation, delivery, drilling and made-to-measure rows are not sold.
+-- One row per product: newest list wins. Sold online (Aviv 18.11.2026): only what people reasonably order on the web
+-- (taps, sinks, shower fittings, bathroom accessories), from every supplier listed in multipliers, and only with a picture.
+-- include_re / exclude_re live in shop_settings so the range changes without a deploy.
 create or replace function public.shop_catalog(p_ids bigint[] default null)
 returns table (id bigint, code text, name text, size text, unit text, category text, price numeric, image_path text)
 language sql stable security invoker set search_path = public as $$
-  with st as (select vat, multipliers from shop_settings where id = 1),
+  with st as (select vat, multipliers, include_re, exclude_re from shop_settings where id = 1),
   src as (
     select p.*, u.created_at up_at, (st.multipliers ->> p.supplier_id::text)::numeric mult, st.vat
       from sp_prices p join sp_uploads u on u.id = p.upload_id, st
      where p.status = 'active' and p.price > 0 and st.multipliers ? p.supplier_id::text
        and p.description !~* '(שדרוג|מדידה|התקנ|הובלה|משלוח|קידוח|מחיר לכל המידות|תוספת|סבלות|^דגם [0-9]+$)'
-       and coalesce(p.category, '') !~* '(מידות מיוחדות|נילווים|נלווים|תקנון|איזור מרוחק)'),  -- made-to-measure showers need a measuring visit: not sold online
+       and coalesce(p.category, '') !~* '(מידות מיוחדות|נילווים|נלווים|תקנון|איזור מרוחק)'
+       and (st.include_re is null or p.description ~* st.include_re)
+       and (st.exclude_re is null or p.description !~* st.exclude_re)),
   one as (
-    select distinct on (coalesce(supplier_code, description || '|' || coalesce(size, ''))) *
-      from src order by coalesce(supplier_code, description || '|' || coalesce(size, '')), up_at desc, image_path nulls last, id)
+    select distinct on (supplier_id, coalesce(supplier_code, description || '|' || coalesce(size, ''))) *
+      from src order by supplier_id, coalesce(supplier_code, description || '|' || coalesce(size, '')), up_at desc, image_path nulls last, id)
   select one.id, one.supplier_code, one.description, one.size, one.unit, one.category,
          least(ceil(one.price * one.mult * case when one.vat_included then 1 else 1 + one.vat / 100 end),
                coalesce(ceil(one.list_price * case when one.vat_included then 1 else 1 + one.vat / 100 end), 'infinity'::numeric)),
-         coalesce(ov.path, one.image_path)   -- shop_item_images: the picture of this exact finish, where the list gives one picture to all finishes
+         coalesce(ov.path, one.image_path)   -- shop_item_images: the picture of this exact finish
     from one left join shop_item_images ov on ov.code = one.supplier_code
-   where p_ids is null or one.id = any(p_ids);
+   where (p_ids is null or one.id = any(p_ids)) and coalesce(ov.path, one.image_path) is not null;
 $$;
 -- security invoker: only the service role (the shop edge function) gets rows; anon is stopped by RLS on shop_settings / sp_prices.
 -- No drop / revoke statements here: they raise a Supabase confirmation nobody sees and the migration hangs.
 
 -- When Tranzila confirms the payment (crm-pay-notify sets crm_pay_requests.status = 'paid'), the order turns paid.
 create or replace function public.shop_order_paid() returns trigger language plpgsql security definer set search_path = public as $$
+declare o shop_orders;
 begin
   if new.status = 'paid' and old.status is distinct from 'paid' then
-    update shop_orders set status = 'paid' where pay_request_id = new.id and status = 'new';
+    update shop_orders set status = 'paid' where pay_request_id = new.id and status = 'new' returning * into o;
+    -- the till gets the money only now, once per order: an abandoned checkout never creates a taking (asked by the CRM thread)
+    if found and not o.test then
+      insert into crm_takings ("by", amount, method, payer_name, tail9, reason, goods_taken, goods, pay_pr_id, payments, paid_at)
+      values ('חנות אונליין', o.total, 'card_link', o.name, right(o.phone, 9),
+        'הזמנה ' || o.id || ' מהחנות' || case when o.delivery = 'delivery' then ' · משלוח ל' || coalesce(o.city, '') else ' · איסוף עצמי' end, false,
+        left((select string_agg((i ->> 'qty') || '× ' || coalesce(i ->> 'code', '') || ' ' || (i ->> 'name'), '; ') from jsonb_array_elements(o.items) i), 900),
+        new.pr_id, 1, coalesce(new.paid_at, now()));
+    end if;
   end if;
   return new;
 end $$;
