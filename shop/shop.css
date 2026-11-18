@@ -102,3 +102,4 @@ footer.foot a{margin:0 6px}
 #accDlg h3{font-family:var(--display);font-weight:400;font-size:22px;margin:18px 0 6px}
 .ord{border-top:1px solid var(--line);padding:10px 0;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.ord b{font-weight:700}.ord .grow{flex:1}
 .tag{display:inline-block;padding:1px 10px;border-radius:999px;font-size:14px;font-weight:700;background:var(--soft);color:var(--ink)}.tag.ok{background:#dcefe2;color:#1d4a2e}.tag.off{background:#f3dcd7;color:#7a2a1e}
+.blurb{margin:2px 0 6px;font-size:15px;line-height:1.4;color:var(--mute)}

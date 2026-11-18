@@ -13,6 +13,7 @@
     '.zp-box{position:relative;border:1px solid var(--zp-line,#ddd6c8);border-radius:12px;background:var(--zp-surface,#fff);overflow:hidden;min-height:330px}' +
     '.zp-box iframe{display:block;width:100%;height:330px;border:0;background:#fff}' +
     '.zp-wait{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:var(--zp-surface,#fff);padding:16px;text-align:center}' +
+    '.zp-wait[hidden],.zp-err[hidden]{display:none}' +
     '.zp-spin{width:34px;height:34px;border:3px solid var(--zp-line,#ddd6c8);border-top-color:var(--zp-accent,#8a6a35);border-radius:50%;animation:zp-r 1s linear infinite}' +
     '@keyframes zp-r{to{transform:rotate(360deg)}}@media (prefers-reduced-motion:reduce){.zp-spin{animation:none}}' +
     '.zp-note{color:var(--zp-mute,#5f5a52);font-size:.86em;margin:10px 0 0;display:flex;gap:6px;align-items:flex-start}' +
