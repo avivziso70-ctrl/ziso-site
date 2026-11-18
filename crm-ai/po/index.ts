@@ -39,6 +39,14 @@
 //   Staff: { action: "price_ask", deal_id, lid, supplier_id, model, size, color, note } asks a supplier that prices on request
 //   (price_by_ask) for a price, with the customer's name: free text inside the 24h window, otherwise template
 //   ziso_supplier_price. Saved in crm_price_asks; the answer is attached there by the wa_messages trigger crm_price_ask_in.
+// Online store (Aviv 18.11.2026: "כשלקוח מזמין - שתשלח הזמנה לספק אוטומטית במידה ומחוברים לו אנשי קשר כמו שצריך - ותאזין
+//   לתשובה"): { action: "shop_order", order_id } with x-hook-token, called by the database function crm_po_shop when a store
+//   order turns paid, and again from the outbox for an order the call missed. The order is read here (never from the caller):
+//   paid, not a test, not handled yet. One crm_po per supplier (origin 'shop', shop_order_id), on the supplier's registered
+//   order channel, delivered to the business, with "הזמנת אתר N" as the reference (the customer's name and phone stay with us).
+//   Not sent, and a staff task instead: supplier with no order contact or paused, an item we hold in stock, a failed send.
+//   Outside working hours the order waits for the first outbox run of the next working day. Answers, no-answer alerts and
+//   cancellations are the same as for any order.
 // The WhatsApp token is read here through the service role only, never returned or logged; wa_config is never written.
 // Priority is never written.
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -61,7 +69,7 @@ const WA_PRICE_BODY = 'שלום {{1}}, בקשת מחיר מזיסו קרמיקה
 const WINDOW_MS = 23.5 * 3600 * 1000;
 const BUSINESS_ADDR = "זיסו קרמיקה, עוצמה 5, טירת כרמל";
 const localPhone = (s: unknown) => { let d = String(s ?? "").replace(/\D/g, ""); if (d.startsWith("972")) d = "0" + d.slice(3); return d.length === 10 ? d.slice(0, 3) + "-" + d.slice(3) : d; };
-export const customerLine = (po: Record<string, any>) => (po.customer_name ? "עבור לקוח: " + po.customer_name : "");
+export const customerLine = (po: Record<string, any>) => (po.customer_name ? (po.shop_order_id ? "סימוכין: " : "עבור לקוח: ") + po.customer_name : "");
 // one line for the supplier: where the goods go
 export function deliverLine(po: Record<string, any>) {
   const d = po.deliver || {};
@@ -282,6 +290,107 @@ export async function sendWaCancel(po: Po, by: string): Promise<{ ok: boolean; e
   return { ok: true };
 }
 
+// One order to one supplier: prices re-read from the supplier's active list, total computed here, WhatsApp at once and the
+// email through the outbox. Used by staff "create" and by the online store's paid orders (shopOrder).
+type Place = { customerName: string | null; customerT9: string | null; deliver: Record<string, unknown> | null; note: string | null; by: string; byName: string | null; dealId?: number; shopOrderId?: number };
+async function placePo(sup: any, qtyById: Map<number, number>, o: Place, now: string): Promise<{ ok: boolean; po?: Po; error?: string; code?: number; warn?: string }> {
+  const wa = !!(sup.order_wa_phone && tail9(sup.order_wa_phone));
+  const mail = !!sup.order_email;
+  const channel = wa && mail ? "both" : wa ? "whatsapp" : "email";
+  const { data: prices } = await admin.from("sp_prices").select("id, supplier_id, supplier_code, description, size, unit, price, currency, vat_included, status").in("id", [...qtyById.keys()]);
+  const byId = new Map((prices || []).map((p: any) => [Number(p.id), p]));
+  const lines: Line[] = [];
+  for (const [id, qty] of qtyById) {
+    const p: any = byId.get(id);
+    if (!p || p.supplier_id !== sup.id || p.status !== "active") return { ok: false, error: "פריט לא נמצא במחירון הפעיל של הספק", code: 400 };
+    if (p.price == null || (p.currency && p.currency !== "ILS")) return { ok: false, error: `לפריט ${p.supplier_code} אין מחיר בשקלים`, code: 400 };
+    const price = p.vat_included ? r2(Number(p.price) / 1.18) : Number(p.price);
+    lines.push({ price_id: id, sku: p.supplier_code, desc: p.description, size: p.size, unit: p.unit, qty, price, total: r2(price * qty) });
+  }
+  const total = r2(lines.reduce((s, l) => s + l.total, 0));
+  const { data: po, error } = await admin.from("crm_po").insert({
+    supplier_id: sup.id, supplier_name: sup.name, channel, to_phone: wa ? sup.order_wa_phone : null,
+    to_email: mail ? sup.order_email : null, email_state: channel === "both" ? "queued" : null, cc: !mail ? [] : [...new Set([...TEAM_CC, ...((sup.order_cc || []) as string[]).map((e) => String(e).trim().toLowerCase()).filter(Boolean)])], contact: sup.order_contact, lines, total_cost: total, note: o.note, deliver_to: o.deliver ? "customer" : "business", deliver: o.deliver, customer_name: o.customerName, customer_tail9: o.customerT9,
+    ...(o.dealId ? { deal_id: o.dealId } : {}), ...(o.shopOrderId ? { origin: "shop", shop_order_id: o.shopOrderId } : {}),
+    status: wa ? "sending" : "queued", claimed_at: wa ? now : null, by: o.by, by_name: o.byName, updated_at: now,
+  }).select("*").single();
+  if (error) return { ok: false, error: error.message, code: 500 };
+  await admin.from("crm_audit").insert({ who: o.by, action: "po_create", detail: { id: po.id, po: po.po_no, supplier: sup.name, lines: lines.length, total, channel: po.channel, ...(o.shopOrderId ? { shop_order: o.shopOrderId } : {}) } });
+  if (!wa) return { ok: true, po };
+  const out = await sendWa(po, o.by);
+  // "both": the email still goes out through the outbox even if the WhatsApp failed
+  if (out.status !== "sent") return channel === "both" ? { ok: true, po: out, warn: out.error } : { ok: false, po: out, error: out.error, code: 502 };
+  return { ok: true, po: out };
+}
+
+const SHOP_BY = "חנות אונליין";
+// Sun-Thu 08:00-18:00, Fri 08:00-13:30 in Israel: an automatic order never reaches a supplier's phone at night or on Saturday.
+export function workHours(d = new Date()) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Jerusalem", weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(d).map((x) => [x.type, x.value]));
+  const hm = Number(p.hour) * 100 + Number(p.minute);
+  return p.weekday !== "Sat" && hm >= 800 && hm <= (p.weekday === "Fri" ? 1330 : 1800);
+}
+// A paid store order becomes one supplier order per supplier. Safe to call again: the row is claimed once (po_state), and a
+// supplier that already has an order for this store order is skipped.
+export async function shopOrder(orderId: number, hours = workHours()): Promise<Record<string, unknown>> {
+  if (!Number.isInteger(orderId) || orderId <= 0) return { ok: false, error: "bad order" };
+  if (!hours) return { ok: true, later: true };
+  const now = new Date().toISOString();
+  const { data: o } = await admin.from("shop_orders").update({ po_state: "creating", po_at: now }).eq("id", orderId).eq("status", "paid").eq("test", false).is("po_state", null).select("id, items, phone").maybeSingle();
+  if (!o) return { ok: true, skipped: true };
+  const sent: string[] = [], manual: string[] = [];
+  try {
+    const qty = new Map<number, number>();
+    for (const i of (o.items || []) as any[]) { const id = Number(i?.id), q = Number(i?.qty); if (Number.isInteger(id) && q > 0) qty.set(id, r2((qty.get(id) || 0) + q)); }
+    const { data: prices } = await admin.from("sp_prices").select("id, supplier_id, supplier_code, description, size").in("id", [...qty.keys()]);
+    const rows = (prices || []) as any[];
+    const lost = [...qty.keys()].filter((id) => !rows.some((p) => Number(p.id) === id));
+    if (lost.length) manual.push(`${lost.length} פריטים בהזמנה לא נמצאו במחירון הספקים, להזמין ידנית`);
+    const codes = [...new Set(rows.map((p) => String(p.supplier_code || "")).filter(Boolean))];
+    const { data: stock } = codes.length ? await admin.rpc("crm_stock_sys", { p_codes: codes }) : { data: [] };
+    const have = new Map(((stock || []) as any[]).map((x) => [String(x.code), Number(x.available)]));
+    const { data: old } = await admin.from("crm_po").select("supplier_id, po_no").eq("shop_order_id", o.id);
+    const placed = new Map(((old || []) as any[]).map((x) => [String(x.supplier_id), String(x.po_no)]));
+    const bySup = new Map<string, any[]>();
+    for (const p of rows) bySup.set(p.supplier_id, [...(bySup.get(p.supplier_id) || []), p]);
+    const { data: sups } = await admin.from("sp_suppliers").select("id, name, order_email, order_contact, order_cc, order_wa_phone, order_paused, active").in("id", [...bySup.keys()]);
+    const item = (p: any) => `${p.supplier_code || ""} ${p.description || ""}${p.size ? " " + p.size : ""} × ${qty.get(Number(p.id))}`.replace(/\s+/g, " ").trim();
+    for (const [sid, list] of bySup) {
+      const sup: any = ((sups || []) as any[]).find((x) => x.id === sid);
+      const name = sup?.name || "ספק";
+      const inStock = list.filter((p) => (have.get(String(p.supplier_code || "")) ?? 0) >= qty.get(Number(p.id))!);
+      const need = list.filter((p) => !inStock.includes(p));
+      if (inStock.length) manual.push(`במלאי לפי פריוריטי, לא הוזמן מ${name}. לבדוק במדף ולהכין: ${inStock.map(item).join("; ")}`);
+      if (!need.length) continue;
+      if (placed.has(sid)) { sent.push(`${placed.get(sid)} ${name}`); continue; }
+      const todo = `להזמין ידנית מ${name}: ${need.map(item).join("; ")}`;
+      if (!sup || !sup.active || (!sup.order_email && !tail9(sup.order_wa_phone))) { manual.push(`אין איש קשר להזמנות. ${todo}`); continue; }
+      if (sup.order_paused) { manual.push(`ההזמנות לספק מושהות. ${todo}`); continue; }
+      const out = await placePo(sup, new Map(need.map((p) => [Number(p.id), qty.get(Number(p.id))!])), { customerName: "הזמנת אתר " + o.id, customerT9: tail9(o.phone) || null, deliver: null, note: null, by: SHOP_BY, byName: SHOP_BY, shopOrderId: Number(o.id) }, now);
+      if (out.po && out.po.status !== "failed") sent.push(`${out.po.po_no} ${name}`);
+      if (!out.ok) manual.push(out.po ? `הזמנה ${out.po.po_no} ל${name} לא יצאה: ${out.error}. ${todo}` : `${out.error}. ${todo}`);
+      else if (out.warn) manual.push(`הזמנה ${out.po!.po_no} ל${name}: הוואטסאפ לא יצא (${out.warn}), המייל יוצא`);
+    }
+  } catch (e) {
+    console.error("shop order", o.id, e);
+    manual.push("שגיאה בפתיחת ההזמנות לספקים, לבדוק בלשונית הזמנות לספקים מה נשלח: " + String(e).slice(0, 150));
+  }
+  if (manual.length) await admin.from("crm_tasks").insert({ tail9: tail9(o.phone) || null, text: (`הזמנת אתר ${o.id}: ` + manual.join(" | ")).slice(0, 900), due: now, by: SHOP_BY });
+  const note = [sent.length ? "נשלח לספק: " + sent.join(", ") : "", ...manual].filter(Boolean).join(" | ").slice(0, 600);
+  await admin.from("shop_orders").update({ po_state: manual.length ? "manual" : "done", po_note: note || null, po_at: now }).eq("id", o.id);
+  return { ok: true, order: o.id, sent, manual };
+}
+// From the outbox (every 5 minutes): orders the paid trigger's call missed or that waited for working hours, and an order
+// stuck half way (the function died): that one is not retried, staff check what went out.
+async function shopSweep(now: string) {
+  if (!workHours()) return;
+  const stale = new Date(Date.now() - 10 * 60e3).toISOString();
+  const { data: stuck } = await admin.from("shop_orders").update({ po_state: "manual", po_note: "לא ברור אילו הזמנות לספקים נשלחו, לבדוק בלשונית הזמנות לספקים", po_at: now }).eq("po_state", "creating").lt("po_at", stale).select("id, phone");
+  for (const o of (stuck || []) as any[]) await admin.from("crm_tasks").insert({ tail9: tail9(o.phone) || null, text: `הזמנת אתר ${o.id}: לא ברור אילו הזמנות לספקים נשלחו. לבדוק בלשונית הזמנות לספקים ולהשלים ידנית מה שחסר.`, due: now, by: SHOP_BY });
+  const { data: wait } = await admin.from("shop_orders").select("id").eq("status", "paid").eq("test", false).is("po_state", null).order("id").limit(5);
+  for (const o of (wait || []) as any[]) await shopOrder(Number(o.id));
+}
+
 async function staffAction(req: Request, body: any) {
   const jwt = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   const { data: u } = await admin.auth.getUser(jwt);
@@ -297,7 +406,6 @@ async function staffAction(req: Request, body: any) {
     const mail = !!(sup && sup.order_email);
     if (!sup || !sup.active || (!mail && !wa)) return json(req, { ok: false, error: "לספק הזה אין מייל או וואטסאפ להזמנות" }, 400);
     if (sup.order_paused) return json(req, { ok: false, error: "ההזמנות לספק הזה מושהות עד שהמחירון יתוקן" }, 409);
-    const channel = wa && mail ? "both" : wa ? "whatsapp" : "email";
     const want = Array.isArray(body.lines) ? body.lines : [];
     if (!want.length || want.length > 60) return json(req, { ok: false, error: "צריך בין שורה אחת ל-60 שורות" }, 400);
     const qtyById = new Map<number, number>();
@@ -306,17 +414,6 @@ async function staffAction(req: Request, body: any) {
       if (!Number.isInteger(id) || !(qty > 0) || qty > 100000) return json(req, { ok: false, error: "כמות לא תקינה" }, 400);
       qtyById.set(id, r2((qtyById.get(id) || 0) + qty));
     }
-    const { data: prices } = await admin.from("sp_prices").select("id, supplier_id, supplier_code, description, size, unit, price, currency, vat_included, status").in("id", [...qtyById.keys()]);
-    const byId = new Map((prices || []).map((p: any) => [Number(p.id), p]));
-    const lines: Line[] = [];
-    for (const [id, qty] of qtyById) {
-      const p: any = byId.get(id);
-      if (!p || p.supplier_id !== sup.id || p.status !== "active") return json(req, { ok: false, error: "פריט לא נמצא במחירון הפעיל של הספק" }, 400);
-      if (p.price == null || (p.currency && p.currency !== "ILS")) return json(req, { ok: false, error: `לפריט ${p.supplier_code} אין מחיר בשקלים` }, 400);
-      const price = p.vat_included ? r2(Number(p.price) / 1.18) : Number(p.price);
-      lines.push({ price_id: id, sku: p.supplier_code, desc: p.description, size: p.size, unit: p.unit, qty, price, total: r2(price * qty) });
-    }
-    const total = r2(lines.reduce((s, l) => s + l.total, 0));
     const dv = body.deliver && typeof body.deliver === "object" ? body.deliver : {};
     const toCustomer = dv.to === "customer";
     const clip = (v: unknown, n: number) => String(v ?? "").replace(/[\r\n\t]+/g, " ").trim().slice(0, n);
@@ -327,20 +424,9 @@ async function staffAction(req: Request, body: any) {
     const deliver = toCustomer ? { name: clip(dv.name, 80), phone: digits(dv.phone).slice(0, 15), address: clip(dv.address, 160), note: clip(dv.note, 120) || null, tail9: tail9(dv.tail9) || null } : null;
     if (deliver && (!deliver.name || deliver.phone.length < 9 || deliver.address.length < 5)) return json(req, { ok: false, error: "לאספקה לבית הלקוח צריך שם, טלפון וכתובת מלאה" }, 400);
     const note = typeof body.note === "string" ? body.note.trim().slice(0, 500) || null : null;
-    const { data: po, error } = await admin.from("crm_po").insert({
-      supplier_id: sup.id, supplier_name: sup.name, channel, to_phone: wa ? sup.order_wa_phone : null,
-      to_email: mail ? sup.order_email : null, email_state: channel === "both" ? "queued" : null, cc: !mail ? [] : [...new Set([...TEAM_CC, ...((sup.order_cc || []) as string[]).map((e) => String(e).trim().toLowerCase()).filter(Boolean)])], contact: sup.order_contact, lines, total_cost: total, note, deliver_to: toCustomer ? "customer" : "business", deliver, customer_name: customerName, customer_tail9: customerT9, ...(Number.isInteger(Number(body.deal_id)) && Number(body.deal_id) > 0 ? { deal_id: Number(body.deal_id) } : {}),
-      status: wa ? "sending" : "queued", claimed_at: wa ? now : null, by: email, by_name: staff.name, updated_at: now,
-    }).select("*").single();
-    if (error) return json(req, { ok: false, error: error.message }, 500);
-    await admin.from("crm_audit").insert({ who: email, action: "po_create", detail: { id: po.id, po: po.po_no, supplier: sup.name, lines: lines.length, total, channel: po.channel } });
-    if (wa) {
-      const out = await sendWa(po, email);
-      // "both": the email still goes out through the outbox even if the WhatsApp failed
-      if (out.status !== "sent") return channel === "both" ? json(req, { ok: true, po: out, warn: out.error }) : json(req, { ok: false, po: out, error: out.error }, 502);
-      return json(req, { ok: true, po: out });
-    }
-    return json(req, { ok: true, po });
+    const out = await placePo(sup, qtyById, { customerName, customerT9, deliver, note, by: email, byName: staff.name, ...(Number.isInteger(Number(body.deal_id)) && Number(body.deal_id) > 0 ? { dealId: Number(body.deal_id) } : {}) }, now);
+    if (!out.ok) return json(req, { ok: false, ...(out.po ? { po: out.po } : {}), error: out.error }, out.code || 400);
+    return json(req, { ok: true, po: out.po, ...(out.warn ? { warn: out.warn } : {}) });
   }
 
   if (body.action === "price_ask") { const out = await priceAsk(body, email, staff.name); return json(req, out, out.ok ? 200 : 400); }
@@ -429,6 +515,7 @@ async function staffAction(req: Request, body: any) {
 async function bridgeAction(req: Request, body: any) {
   const now = new Date().toISOString();
   if (body.action === "outbox") {
+    try { await shopSweep(now); } catch (e) { console.error("shop sweep", e); }
     const stale = new Date(Date.now() - 20 * 60e3).toISOString();
     await admin.from("crm_po").update({ status: "attention", error: "לא ברור אם המייל נשלח. לבדוק בתיבת דואר יוצא לפני שליחה חוזרת.", updated_at: now })
       .eq("status", "sending").eq("channel", "email").lt("claimed_at", stale);
@@ -645,8 +732,8 @@ Deno.serve(async (req: Request) => {
     if (hk) {
       const { data: keys } = await admin.from("crm_push_keys").select("hook_token").eq("id", 1).maybeSingle();
       if (!keys?.hook_token || hk !== keys.hook_token) return json(req, { ok: false, error: "forbidden" }, 403);
-      if (body?.action !== "wa_reply" && body?.action !== "wa_ask") return json(req, { ok: false, error: "unknown action" }, 400);
-      const out = body.action === "wa_ask" ? await waAsk(body) : await waReply(body);
+      if (body?.action !== "wa_reply" && body?.action !== "wa_ask" && body?.action !== "shop_order") return json(req, { ok: false, error: "unknown action" }, 400);
+      const out: any = body.action === "shop_order" ? await shopOrder(Number(body.order_id)) : body.action === "wa_ask" ? await waAsk(body) : await waReply(body);
       return json(req, out, out.ok ? 200 : 400);
     }
     const k = req.headers.get("x-import-key");
