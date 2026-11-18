@@ -32,6 +32,9 @@ create table if not exists public.shop_orders (
   status text not null default 'new',                     -- new -> paid -> handled / cancelled
   created_by text
 );
+-- order confirmation mail to the customer (shop/function/mail.ts): queued when paid, sent by the Gmail bridge
+alter table public.shop_orders add column if not exists mail_state text, add column if not exists mail_claimed_at timestamptz,
+  add column if not exists mail_sent_at timestamptz, add column if not exists mail_msg_id text, add column if not exists mail_error text;
 alter table public.shop_orders enable row level security;
 create policy shop_orders_staff_read on public.shop_orders for select to authenticated
   using (exists (select 1 from crm_staff s where s.active and lower(s.email) = lower(auth.jwt() ->> 'email')));
@@ -73,7 +76,7 @@ create or replace function public.shop_order_paid() returns trigger language plp
 declare o shop_orders;
 begin
   if new.status = 'paid' and old.status is distinct from 'paid' then
-    update shop_orders set status = 'paid' where pay_request_id = new.id and status = 'new' returning * into o;
+    update shop_orders set status = 'paid', mail_state = 'queued' where pay_request_id = new.id and status = 'new' returning * into o;
     -- the till gets the money only now, once per order: an abandoned checkout never creates a taking (asked by the CRM thread)
     if found and not o.test then
       insert into crm_takings ("by", amount, method, payer_name, tail9, reason, goods_taken, goods, pay_pr_id, payments, paid_at)
