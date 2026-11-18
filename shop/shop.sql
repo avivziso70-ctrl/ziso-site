@@ -13,6 +13,7 @@ create table if not exists public.shop_settings (
   ship jsonb,                                       -- courier fees incl. VAT: {"small":35,"sink":65,"extra_sink":30}; null = pickup only
   updated_at timestamptz not null default now()
 );
+alter table public.shop_settings add column if not exists pay_frame boolean not null default false;  -- true = card payment inside our page (ZisoPay), no Tranzila link page
 insert into public.shop_settings (id) values (1) on conflict do nothing;
 alter table public.shop_settings enable row level security;
 

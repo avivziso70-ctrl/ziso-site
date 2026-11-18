@@ -350,13 +350,32 @@
     var items = Object.keys(cart).map(function (id) { return { id: Number(id), qty: cart[id] }; });
     $('payBtn').disabled = true; msg.textContent = 'פותחים את דף התשלום המאובטח…';
     var jwt = state.session && state.session.access_token;
-    post({ action: 'checkout', items: items, name: f.name.value, phone: phone, email: f.email.value, delivery: deliv, address: f.address.value, city: f.city.value, notes: f.notes.value, terms: true, marketing: f.marketing.checked }, jwt).then(function (r) {
+    post({ action: 'checkout', items: items, name: f.name.value, phone: phone, email: f.email.value, delivery: deliv, address: f.address.value, city: f.city.value, notes: f.notes.value, terms: true, marketing: f.marketing.checked, frame: !!window.ZisoPay }, jwt).then(function (r) {
       if (!r.ok) { $('payBtn').disabled = false; msg.className = 'msg err'; msg.textContent = r.error || 'משהו השתבש. נסו שוב או התקשרו 050-4770040.'; return; }
       try { localStorage.setItem('ziso_last_order', r.token); } catch (x) {}
-      cart = {}; save();
-      location.href = r.pr_link;
+      // payment inside the page (ZisoPay); the Tranzila link page is the fallback while a pay token is not given
+      if (!r.pay || !window.ZisoPay) { cart = {}; save(); location.href = r.pr_link; return; }
+      var mail = f.email.value.trim();
+      step('pay'); $('payOrder').textContent = 'הזמנה ' + r.order + (r.test ? ' · תשלום בדיקה' : '');
+      payUi = window.ZisoPay.mount($('payBox'), { pay: r.pay,
+        onPaid: function () {
+          cart = {}; save(); renderCount(); $('doneNum').textContent = r.order;
+          $('doneText').textContent = 'התשלום התקבל. אישור הזמנה יגיע בדקות הקרובות למייל ' + mail + '. ' + (deliv === 'delivery' ? 'ההזמנה תגיע אליכם ' : 'ההזמנה תהיה מוכנה לאיסוף ') + (document.querySelector('.leadText') || {}).textContent + ', ונעדכן אתכם בטלפון. לכל שאלה: 050-4770040.';
+          step('done'); $('doneStep').focus();
+        },
+        onError: function (text) { step('form'); $('payBtn').disabled = false; msg.className = 'msg err'; msg.textContent = (text || 'טופס התשלום לא נפתח.') + ' נסו שוב או התקשרו 050-4770040.'; } });
     }).catch(function () { $('payBtn').disabled = false; msg.className = 'msg err'; msg.textContent = 'אין חיבור. נסו שוב.'; });
   });
 
+  var payUi = null;
+  // the cart dialog has three faces: the cart + details form, the payment, the confirmation
+  function step(which) {
+    if (which !== 'pay' && payUi) { payUi.destroy(); payUi = null; }
+    $('lines').hidden = $('totals').hidden = which !== 'form'; $('checkout').hidden = which !== 'form' || !Object.keys(cart).length;
+    $('payStep').hidden = which !== 'pay'; $('doneStep').hidden = which !== 'done';
+    $('cartH').textContent = which === 'pay' ? 'תשלום מאובטח' : which === 'done' ? 'תודה!' : 'הסל שלך';
+    $('cartDlg').scrollTop = 0; var d = document.querySelector('#cartDlg .dlg'); if (d) d.scrollTop = 0;
+  }
+  $('cartDlg').addEventListener('close', function () { if (!$('payStep').hidden || !$('doneStep').hidden) { step('form'); $('payBtn').disabled = false; $('payMsg').textContent = ''; renderCart(); } });
   renderCount(); start();
 })();
