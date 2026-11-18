@@ -66,6 +66,10 @@ const WA_CANCEL_BODY = 'שלום {{1}}, אנחנו מבטלים את הזמנת 
 // a price request to a supplier that has no price list (sp_suppliers.price_by_ask, first: Onda). Aviv 17.11.2026.
 const WA_PRICE = "ziso_supplier_price";
 const WA_PRICE_BODY = 'שלום {{1}}, בקשת מחיר מזיסו קרמיקה: {{2}}. עבור לקוח: {{3}}. נשמח למחיר ולזמן אספקה בתשובה להודעה הזו. תודה, {{4}}, זיסו קרמיקה.';
+// A store order that staff cancelled (Aviv 18.11.2026: "כשאני מבטל הזמנה למישהו - הוא מקבל מייל / וואטסאפ"): a service
+// message to the customer about their own order. The store queues it, crm-po sends it once Meta approved the template.
+const WA_SHOP_CANCEL = "ziso_order_cancelled";
+const WA_SHOP_CANCEL_BODY = 'שלום {{1}}, הזמנה מספר {{2}} באתר זיסו קרמיקה בוטלה. הסכום ששולם יוחזר לכרטיס האשראי שבו שילמתם, לא יאוחר מ-14 ימים. לשאלות אפשר להשיב להודעה הזו או להתקשר 050-4770040.';
 const WINDOW_MS = 23.5 * 3600 * 1000;
 const BUSINESS_ADDR = "זיסו קרמיקה, עוצמה 5, טירת כרמל";
 const localPhone = (s: unknown) => { let d = String(s ?? "").replace(/\D/g, ""); if (d.startsWith("972")) d = "0" + d.slice(3); return d.length === 10 ? d.slice(0, 3) + "-" + d.slice(3) : d; };
@@ -436,19 +440,20 @@ async function staffAction(req: Request, body: any) {
     const cfg = await waCfg();
     if (!cfg?.token || !cfg?.waba_id) return json(req, { ok: false, error: "וואטסאפ לא מחובר" }, 503);
     const h = { authorization: `Bearer ${cfg.token}` };
-    // three templates: the order, the cancellation notice and the price request. body.which picks one to submit; the answer lists all.
+    // four templates: the supplier order, its cancellation notice, the price request, and the store's cancellation notice to a customer. body.which picks one to submit; the answer lists all.
     const DEFS: Record<string, { name: string; text: string; example: string[] }> = {
       order: { name: WA_TEMPLATE, text: WA_TEMPLATE_BODY, example: ["דודי", "Z0002", "MP1009CB צינור פלקס גולד × 2 יח' (₪148.00) · WT-2305 סבוניה × 1 יח' (₪150.00)", "₪298.00"] },
       cancel: { name: WA_CANCEL, text: WA_CANCEL_BODY, example: ["דודי", "Z0002", "₪298.00"] },
       price: { name: WA_PRICE, text: WA_PRICE_BODY, example: ["רימה", "ארון אמבטיה לוטוס · מידה 100 · צבע קפוצ'ינו · כיור אינטגרלי", "ישראל ישראלי", "שיר"] },
+      shop_cancel: { name: WA_SHOP_CANCEL, text: WA_SHOP_CANCEL_BODY, example: ["דנה", "1042"] },
     };
     const look = async (name: string) => {
       const ex = await (await fetch(`${GRAPH}/${cfg.waba_id}/message_templates?name=${name}&fields=name,status,category,rejected_reason`, { headers: h })).json().catch(() => ({}));
       const f = (ex.data || []).find((t: any) => t.name === name);
       return { exists: !!f, status: f?.status || null, category: f?.category || null, reason: f?.rejected_reason || null } as Record<string, unknown>;
     };
-    const all: Record<string, Record<string, unknown>> = { order: await look(WA_TEMPLATE), cancel: await look(WA_CANCEL), price: await look(WA_PRICE) };
-    const which = body.which === "cancel" ? "cancel" : body.which === "price" ? "price" : "order";
+    const all: Record<string, Record<string, unknown>> = { order: await look(WA_TEMPLATE), cancel: await look(WA_CANCEL), price: await look(WA_PRICE), shop_cancel: await look(WA_SHOP_CANCEL) };
+    const which = ["cancel", "price", "shop_cancel"].includes(body.which) ? String(body.which) : "order";
     if (body.submit && !all[which].exists) {
       const d = DEFS[which];
       const r = await fetch(`${GRAPH}/${cfg.waba_id}/message_templates`, { method: "POST", headers: { ...h, "content-type": "application/json" }, body: JSON.stringify({
@@ -531,6 +536,7 @@ async function bridgeAction(req: Request, body: any) {
     for (const po of (canc || []) as Po[]) orders.push({ id: -po.id, po_no: po.po_no, to: po.to_email, cc: po.cc || [], ...renderCancelEmail(po) });
     // the online store's order confirmations to customers ride the same sender (ids above SHOP_BASE)
     try { orders.push(...(await shopOutbox(admin, now))); } catch (e) { console.error("shop outbox", e); }
+    try { await shopCancelWa(now); } catch (e) { console.error("shop cancel wa", e); }
     return json(req, { ok: true, orders });
   }
   const id = Number(body.id);
@@ -722,13 +728,45 @@ export async function waReply(body: any) {
   return { ok: true, status: patch.status || po.status, cancel_ack: patch.cancel_ack || po.cancel_ack || null };
 }
 
+// WhatsApp notice to a store customer whose order staff cancelled. The store queues it (shop_orders.cancel_wa_state =
+// 'queued'). It waits there until Meta approved the template, then goes out once: a row is claimed before the send, and a
+// send whose result is unknown is never repeated. No phone number is written to the audit.
+export async function shopCancelWa(now: string) {
+  const { data: wait, error } = await admin.from("shop_orders").select("id").eq("cancel_wa_state", "queued").eq("status", "cancelled").limit(1);
+  if (error || !wait?.length) return;
+  const cfg = await waCfg();
+  if (!cfg?.token || !cfg?.phone_number_id || !cfg?.waba_id) return;
+  const ex = await (await fetch(`${GRAPH}/${cfg.waba_id}/message_templates?name=${WA_SHOP_CANCEL}&fields=name,status`, { headers: { authorization: `Bearer ${cfg.token}` } })).json().catch(() => ({}));
+  if (!(ex.data || []).some((t: any) => t.name === WA_SHOP_CANCEL && t.status === "APPROVED")) return;
+  const { data: rows } = await admin.from("shop_orders").update({ cancel_wa_state: "sending", cancel_wa_at: now }).eq("cancel_wa_state", "queued").eq("status", "cancelled").select("id, name, phone, cancelled_at");
+  for (const o of (rows || []) as { id: number; name: string | null; phone: string | null; cancelled_at: string | null }[]) {
+    // a notice that waited days for Meta's approval is no longer news: the customer already has the mail
+    if (o.cancelled_at && Date.now() - new Date(o.cancelled_at).getTime() > 72 * 3600e3) {
+      await admin.from("shop_orders").update({ cancel_wa_state: "skipped", cancel_wa_error: "עברו יותר מ-3 ימים מהביטול" }).eq("id", o.id);
+      continue;
+    }
+    let to = digits(o.phone); if (to.startsWith("0")) to = "972" + to.slice(1);
+    if (!/^9725\d{8}$/.test(to)) {
+      await admin.from("shop_orders").update({ cancel_wa_state: "skipped", cancel_wa_error: "אין מספר נייד תקין בהזמנה" }).eq("id", o.id);
+      continue;
+    }
+    const name = String(o.name || "").replace(/\s+/g, " ").trim().slice(0, 60) || "רב";
+    const res = await waPost(cfg, { messaging_product: "whatsapp", to, type: "template", template: { name: WA_SHOP_CANCEL, language: { code: "he" },
+      components: [{ type: "body", parameters: [{ type: "text", text: name }, { type: "text", text: String(o.id) }] }] } });
+    await admin.from("shop_orders").update(res.ok ? { cancel_wa_state: "sent", cancel_wa_error: null } : { cancel_wa_state: "failed", cancel_wa_error: String(res.error || "שליחה נכשלה").slice(0, 300) }).eq("id", o.id);
+    if (res.ok && res.id) await waRecord({ to_phone: to, supplier_name: o.name, po_no: "shop-cancel-" + o.id } as unknown as Po, res.id, "template",
+      WA_SHOP_CANCEL_BODY.replace("{{1}}", name).replace("{{2}}", String(o.id)), "חנות", { template: WA_SHOP_CANCEL });
+    await admin.from("crm_audit").insert({ who: "חנות", action: "shop_cancel_wa", detail: { order: o.id, ok: res.ok, error: res.ok ? null : res.error } });
+  }
+}
+
 // Read only, hook token (database function crm_wa_templates): where our three supplier templates stand at Meta.
 // Names and statuses only. Nothing is submitted here: submitting a template stays the owner's own click.
 async function waTemplates() {
   const cfg = await waCfg();
   if (!cfg?.token || !cfg?.waba_id) return { ok: false, error: "וואטסאפ לא מחובר" };
   const out: Record<string, unknown> = {};
-  for (const name of [WA_TEMPLATE, WA_CANCEL, WA_PRICE]) {
+  for (const name of [WA_TEMPLATE, WA_CANCEL, WA_PRICE, WA_SHOP_CANCEL]) {
     const r = await fetch(`${GRAPH}/${cfg.waba_id}/message_templates?name=${name}&fields=name,status,category,rejected_reason`, { headers: { authorization: `Bearer ${cfg.token}` } });
     const ex = await r.json().catch(() => ({}));
     const f = (ex.data || []).find((t: any) => t.name === name);
