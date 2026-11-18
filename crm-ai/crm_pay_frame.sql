@@ -11,3 +11,7 @@ alter table public.crm_pay_requests add column if not exists payments int not nu
 -- payment through the frame was confirmed by crm-pay-notify. While off, everything keeps using Tranzila's link.
 -- crm_my (crm_my_priority.sql) gives the pay token of each open request only when it is on.
 alter table crm_settings add column if not exists pay_frame_on boolean not null default false;
+-- 18.11.2026 09:06Z: first real payment through the frame confirmed (request 19, audit pay_paid via 'frame'), so the
+-- switch was turned on by hand: update crm_settings set pay_frame_on = true where id = 1.
+-- Requests with instalments (payments > 1) still get Tranzila's link: crm_my and crm-pay give the token / page link
+-- only for a single payment, until the frame's instalment mode was seen working.
