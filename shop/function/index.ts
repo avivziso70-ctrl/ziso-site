@@ -257,7 +257,7 @@ Deno.serve(async (req: Request) => {
     const owner = staff === OWNER, now = new Date().toISOString();
     const audit = (what: string, detail: unknown) => admin.from("crm_audit").insert({ who: staff, action: what, detail });
     if (action === "admin_orders") {
-      const { data } = await admin.from("shop_orders").select("id, created_at, name, phone, email, delivery, address, city, notes, items, items_total, delivery_fee, total, charged, test, status, mail_state, tracking, courier, staff_note, sent_at, done_at, po_state, po_note, cancel_mail_state, cancelled_at, cancel_wa_state")
+      const { data } = await admin.from("shop_orders").select("id, created_at, name, phone, email, delivery, address, city, notes, items, items_total, delivery_fee, total, charged, test, status, mail_state, tracking, courier, staff_note, sent_at, done_at, po_state, po_note, cancel_mail_state, cancelled_at, cancel_wa_state, refund_state, refund_amount, refund_error")
         .neq("status", "failed").order("id", { ascending: false }).limit(200);
       // the supplier orders the CRM made for each web order (crm_po.shop_order_id)
       const ids = (data || []).filter((o: any) => o.po_state).map((o: any) => o.id);
@@ -266,11 +266,32 @@ Deno.serve(async (req: Request) => {
     }
     if (action === "admin_order") {
       const id = Number(body.id), patch: Record<string, unknown> = {};
-      const { data: o } = await admin.from("shop_orders").select("id, status, cancel_mail_state, cancel_wa_state").eq("id", id).maybeSingle();
+      const { data: o } = await admin.from("shop_orders").select("id, status, test, charged, total, cancel_mail_state, cancel_wa_state, refund_state").eq("id", id).maybeSingle();
       if (!o) return json(req, { ok: false, error: "ההזמנה לא נמצאה" }, 404);
       if (body.status !== undefined) {
         const to = String(body.status), ok: Record<string, string[]> = { paid: ["sent", "cancelled"], sent: ["done", "paid", "cancelled"], done: ["sent"], cancelled: ["paid"] };
         if (!(ok[o.status] || []).includes(to)) return json(req, { ok: false, error: "אי אפשר לשנות את הסטטוס הזה" }, 409);
+        if (to === "paid" && o.status === "cancelled" && o.refund_state === "done") return json(req, { ok: false, error: "הכסף כבר הוחזר ללקוח, אי אפשר לשחזר. לפתוח הזמנה חדשה" }, 409);
+        // Aviv 18.11: cancelling = refunding the card. The refund runs first through crm-refund (the CRM's refund rules,
+        // with this staff member's own sign-in); the order turns cancelled only once the money is back. no_refund is for
+        // an order already refunded another way (till, cash) and is written to the audit.
+        if (to === "cancelled" && body.no_refund !== true && o.refund_state !== "done") {
+          if (o.refund_state === "unknown") return json(req, { ok: false, error: "יש זיכוי שלא ברור אם עבר. לבדוק במסוף טרנזילה קודם (נפתחה משימה ב-CRM)" }, 409);
+          const reason = clean(body.reason, 200) || "ביטול הזמנה " + id + " מהחנות";
+          let r: Record<string, any> = {};
+          try {
+            const res = await fetch(Deno.env.get("SUPABASE_URL") + "/functions/v1/crm-refund", { method: "POST", headers: { authorization: req.headers.get("authorization") || "", "content-type": "application/json", origin: ORIGINS[0] }, body: JSON.stringify({ action: "refund_shop", shop_order_id: id, reason }), signal: AbortSignal.timeout(40000) });
+            r = await res.json().catch(() => ({}));
+          } catch (_) { r = { ok: false, unknown: true, error: "לא התקבלה תשובה ממנגנון הזיכוי. לא לנסות שוב: לבדוק במסוף טרנזילה" }; }
+          if (!r.ok) {
+            const st = r.unknown ? "unknown" : (r.error === "action לא מוכר" ? null : "failed");
+            if (st) await admin.from("shop_orders").update({ refund_state: st, refund_error: String(r.error || "").slice(0, 300) }).eq("id", id);
+            await audit("shop_refund_" + (st || "unavailable"), { id, error: r.error || null });
+            return json(req, { ok: false, error: st ? (r.error || "הזיכוי נכשל. ההזמנה לא בוטלה") : "ההחזר האוטומטי עוד לא פעיל. אפשר לזכות בקופה ואז לבטל עם \"בוטל, הכסף כבר הוחזר\"" }, 502);
+          }
+          patch.refund_state = "done"; patch.refund_id = r.id ?? null; patch.refund_amount = r.amount ?? null; patch.refund_at = now; patch.refund_error = null;
+        }
+        if (to === "cancelled" && body.no_refund === true && o.refund_state !== "done") patch.refund_state = "elsewhere";
         patch.status = to;
         if (to === "sent") patch.sent_at = now;
         if (to === "done") patch.done_at = now;

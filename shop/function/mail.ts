@@ -85,7 +85,10 @@ export function renderCancelMail(o: Order) {
   const day = new Date(o.created_at).toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" });
   const sum = Number(o.test ? o.charged : o.total) || 0;
   const subject = `זיסו קרמיקה - ביטול הזמנה ${o.id}${o.test ? " (בדיקה)" : ""}`;
-  const money = `הסכום ששולם, ${ils(sum)}, יוחזר לכרטיס האשראי שבו שילמתם, לא יאוחר מ-14 ימים. הזיכוי מופיע בדרך כלל בחיוב הקרוב או בזה שאחריו, לפי חברת האשראי.`;
+  const money = o.refund_state === "done"
+    ? `החזרנו היום ${ils(Number(o.refund_amount) || sum)} לכרטיס האשראי שבו שילמתם. הזיכוי יופיע בחיוב הקרוב או בזה שאחריו, לפי חברת האשראי.`
+    : o.refund_state === "elsewhere" ? `הסכום ששולם, ${ils(sum)}, הוחזר אליכם.`
+    : `הסכום ששולם, ${ils(sum)}, יוחזר לכרטיס האשראי שבו שילמתם, לא יאוחר מ-14 ימים. הזיכוי מופיע בדרך כלל בחיוב הקרוב או בזה שאחריו, לפי חברת האשראי.`;
   const c = { bg: "#f6f4ef", card: "#ffffff", line: "#ddd6c8", ink: "#1e1b17", mute: "#5f5a52", brass: "#8a6a35", soft: "#efeae0" };
   const serif = `'Times New Roman',Georgia,serif`, sans = `Assistant,'Segoe UI',Arial,sans-serif`;
   const td = `padding:10px 0;border-bottom:1px solid ${c.line};font-family:${sans};font-size:15px;color:${c.ink};vertical-align:top`;
