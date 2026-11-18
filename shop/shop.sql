@@ -36,6 +36,9 @@ create table if not exists public.shop_orders (
 -- order confirmation mail to the customer (shop/function/mail.ts): queued when paid, sent by the Gmail bridge
 alter table public.shop_orders add column if not exists mail_state text, add column if not exists mail_claimed_at timestamptz,
   add column if not exists mail_sent_at timestamptz, add column if not exists mail_msg_id text, add column if not exists mail_error text;
+-- cancellation mail to the customer (Aviv 18.11: "כשאני מבטל הזמנה למישהו - הוא מקבל מייל"): queued once when staff cancel the order
+alter table public.shop_orders add column if not exists cancel_mail_state text, add column if not exists cancel_mail_claimed_at timestamptz,
+  add column if not exists cancel_mail_sent_at timestamptz, add column if not exists cancel_mail_error text, add column if not exists cancelled_at timestamptz;
 -- supplier purchase orders for a paid web order (Aviv 18.11: sent automatically where the supplier has an order contact, and followed
 -- until confirmed). Created by the CRM's own purchase-order mechanism (crm-po), which claims paid, non-test orders with po_state null:
 -- creating -> done (crm_po rows carry shop_order_id) / manual (a supplier without an order contact: staff task).

@@ -257,7 +257,7 @@ Deno.serve(async (req: Request) => {
     const owner = staff === OWNER, now = new Date().toISOString();
     const audit = (what: string, detail: unknown) => admin.from("crm_audit").insert({ who: staff, action: what, detail });
     if (action === "admin_orders") {
-      const { data } = await admin.from("shop_orders").select("id, created_at, name, phone, email, delivery, address, city, notes, items, items_total, delivery_fee, total, charged, test, status, mail_state, tracking, courier, staff_note, sent_at, done_at, po_state, po_note")
+      const { data } = await admin.from("shop_orders").select("id, created_at, name, phone, email, delivery, address, city, notes, items, items_total, delivery_fee, total, charged, test, status, mail_state, tracking, courier, staff_note, sent_at, done_at, po_state, po_note, cancel_mail_state, cancelled_at")
         .neq("status", "failed").order("id", { ascending: false }).limit(200);
       // the supplier orders the CRM made for each web order (crm_po.shop_order_id)
       const ids = (data || []).filter((o: any) => o.po_state).map((o: any) => o.id);
@@ -266,7 +266,7 @@ Deno.serve(async (req: Request) => {
     }
     if (action === "admin_order") {
       const id = Number(body.id), patch: Record<string, unknown> = {};
-      const { data: o } = await admin.from("shop_orders").select("id, status").eq("id", id).maybeSingle();
+      const { data: o } = await admin.from("shop_orders").select("id, status, cancel_mail_state").eq("id", id).maybeSingle();
       if (!o) return json(req, { ok: false, error: "ההזמנה לא נמצאה" }, 404);
       if (body.status !== undefined) {
         const to = String(body.status), ok: Record<string, string[]> = { paid: ["sent", "cancelled"], sent: ["done", "paid", "cancelled"], done: ["sent"], cancelled: ["paid"] };
@@ -274,6 +274,8 @@ Deno.serve(async (req: Request) => {
         patch.status = to;
         if (to === "sent") patch.sent_at = now;
         if (to === "done") patch.done_at = now;
+        // the customer hears about a cancellation by mail, once (a reopened and cancelled again order is not mailed twice)
+        if (to === "cancelled") { patch.cancelled_at = now; if (!o.cancel_mail_state) patch.cancel_mail_state = "queued"; }
       }
       if (body.tracking !== undefined) patch.tracking = clean(body.tracking, 60) || null;
       if (body.courier !== undefined) patch.courier = clean(body.courier, 40) || null;

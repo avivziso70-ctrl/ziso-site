@@ -92,6 +92,7 @@ function say(text, bad) { var m = $('msg'); m.textContent = text; m.className = 
 var ST = { new: ['grey', 'לא שולם'], paid: ['yellow', 'שולם · לטיפול'], sent: ['blue', 'נשלח / מוכן לאיסוף'], done: ['green', 'נמסר'], cancelled: ['red', 'בוטל'] };
 var PO = { queued: ['grey', 'בתור'], sending: ['grey', 'נשלחת'], sent: ['yellow', 'מחכה לאישור הספק'], confirmed: ['green', 'הספק אישר'], attention: ['red', 'דורש טיפול'], failed: ['red', 'השליחה נכשלה'], cancelled: ['grey', 'בוטלה'] };
 var MAIL = { queued: 'מייל אישור בתור', sending: 'מייל אישור נשלח עכשיו', sent: 'מייל אישור נשלח', failed: 'מייל האישור נכשל', unknown: 'לא ברור אם מייל האישור נשלח' };
+var CMAIL = { queued: 'מייל ביטול ללקוח בתור', sending: 'מייל ביטול נשלח עכשיו', sent: 'מייל ביטול נשלח ללקוח', failed: 'מייל הביטול נכשל, להתקשר ללקוח', unknown: 'לא ברור אם מייל הביטול נשלח' };
 function loadOrders() {
   $('orders').innerHTML = '<p class="mute">טוען…</p>';
   call({ action: 'admin_orders' }).then(function (r) {
@@ -115,7 +116,7 @@ function orderCard(o) {
   var st = ST[o.status] || ['grey', o.status], ship = o.delivery === 'delivery';
   var tel = '0' + String(o.phone).replace(/^972/, '').replace(/^0/, '');
   var h = '<div class="card oc ' + st[0] + '" data-o="' + o.id + '"><div class="row"><b class="grow">הזמנה ' + o.id + ' · ' + esc(o.name) + '</b><span class="st ' + st[0] + '">' + st[1] + '</span></div>' +
-    '<div class="mute">' + when(o.created_at) + ' · ' + (o.test ? 'בדיקה, חויב ' + money(o.charged) : money(o.total)) + (o.mail_state ? ' · ' + (MAIL[o.mail_state] || '') : '') + '</div>' +
+    '<div class="mute">' + when(o.created_at) + ' · ' + (o.test ? 'בדיקה, חויב ' + money(o.charged) : money(o.total)) + (o.mail_state ? ' · ' + (MAIL[o.mail_state] || '') : '') + (o.cancel_mail_state ? ' · ' + (CMAIL[o.cancel_mail_state] || '') : '') + '</div>' +
     '<div style="margin:6px 0"><a class="ltr" href="tel:' + esc(tel) + '">' + esc(tel) + '</a> · <a href="mailto:' + esc(o.email) + '">' + esc(o.email) + '</a></div>' +
     '<div>' + (ship ? '<b>משלוח:</b> ' + esc([o.address, o.city].filter(Boolean).join(', ')) : '<b>איסוף עצמי</b> מאולם התצוגה') + '</div>' +
     (o.notes ? '<div class="mute">הערת הלקוח: ' + esc(o.notes) + '</div>' : '') +
@@ -146,7 +147,7 @@ $('orders').addEventListener('click', function (e) {
   var body = { action: 'admin_order', id: id };
   card.querySelectorAll('[data-k]').forEach(function (i) { body[i.dataset.k] = i.value; });
   if (b.dataset.st) {
-    if (b.dataset.st === 'cancelled' && b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'בטוח? לחיצה נוספת מבטלת'; return; }
+    if (b.dataset.st === 'cancelled' && b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'בטוח? לחיצה נוספת מבטלת ושולחת ללקוח מייל ביטול'; return; }
     body.status = b.dataset.st;
   }
   b.disabled = true;
