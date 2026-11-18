@@ -154,9 +154,11 @@ Deno.serve(async (req: Request) => {
     await admin.from("crm_audit").insert({ who: email, action: "pay_request", tail9, detail: { id: row!.id, amount, test, methods: pr.payment_methods, payments, payments_asked: asked, instalments_error: instErr } });
     // page_link = the same request on our own payment page (/pay/). Given only once in-page payment is switched on
     // (crm_settings.pay_frame_on); the till and the customer card then use it instead of Tranzila's link.
+    // Single payments only for now: the frame was proven with a real charge on 18.11.2026 for one payment; a request
+    // with instalments keeps Tranzila's link until the frame's instalment mode (cred_type 8) was seen working.
     const { data: set } = await admin.from("crm_settings").select("pay_frame_on").eq("id", 1).maybeSingle();
     return json(req, { ok: true, pr_link: x.j.pr_link, pr_id: x.j.pr_id, amount, payments, payments_asked: asked, id: row!.id, pay_token: row!.pay_token,
-      ...(set?.pay_frame_on ? { page_link: SITE + "/pay/?t=" + row!.pay_token } : {}) });
+      ...(set?.pay_frame_on && payments === 1 ? { page_link: SITE + "/pay/?t=" + row!.pay_token } : {}) });
   }
   return json(req, { ok: false, error: "action לא מוכר" }, 400);
 });

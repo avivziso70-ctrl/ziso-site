@@ -116,7 +116,7 @@ begin
     end if;
   end if;
   v_money := v_money || jsonb_build_object(
-    'to_pay', (select coalesce(jsonb_agg(jsonb_build_object('amount', q.amount, 'what', q.description, 'link', q.pr_link, 'token', case when (select s.pay_frame_on from crm_settings s where s.id = 1) then q.pay_token end) order by q.id desc), '[]'::jsonb)
+    'to_pay', (select coalesce(jsonb_agg(jsonb_build_object('amount', q.amount, 'what', q.description, 'link', q.pr_link, 'token', case when q.payments = 1 and (select s.pay_frame_on from crm_settings s where s.id = 1) then q.pay_token end) order by q.id desc), '[]'::jsonb)
       from crm_pay_requests q where q.tail9 = d.customer_tail9 and q.status = 'created' and not coalesce(q.test, false) and q.pr_link is not null and q.created_at > now() - interval '30 days'),
     'paid', (select coalesce(jsonb_agg(jsonb_build_object('amount', coalesce(q.paid_sum, q.amount), 'what', q.description, 'at', q.paid_at) order by q.paid_at desc), '[]'::jsonb)
       from crm_pay_requests q where q.tail9 = d.customer_tail9 and q.status = 'paid' and not coalesce(q.test, false) and q.paid_at > now() - interval '180 days'));
