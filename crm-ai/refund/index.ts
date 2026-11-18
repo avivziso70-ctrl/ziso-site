@@ -9,6 +9,7 @@
 //       staff cancel the order. The order and its payment are read here, never taken from the caller; the charge is found in
 //       Tranzila's list by the approval number and amount our payment check stored. Answers { ok, id, amount }, or
 //       { ok, already: true, id, amount } when the charge was already refunded in full (nothing is sent to Tranzila again).
+//       Off for staff until crm_settings.shop_refunds_on = true; while off only Aviv can run it (his own first real test).
 //   { action: "secret", tranzila_pw, credit_pass }      -> Aviv only: saves the two terminal passwords a refund needs
 // Rules: a refund exists only against a charge that Tranzila itself lists (never trusted from the page), up to what is
 // left of it after earlier refunds, with a reason; one open refund per charge at a time; every refund is written to
@@ -168,7 +169,7 @@ Deno.serve(async (req: Request) => {
   const action = String(body.action || "");
   const owner = email === OWNER;
 
-  const { data: st } = await admin.from("crm_settings").select("refunds_on").eq("id", 1).maybeSingle();
+  const { data: st } = await admin.from("crm_settings").select("refunds_on, shop_refunds_on").eq("id", 1).maybeSingle();
   const sec = await secrets();
   const ready = !!(sec.tranzila_pw && sec.tranzila_credit_pass);
   const on = !!st?.refunds_on;
@@ -250,6 +251,8 @@ Deno.serve(async (req: Request) => {
 
   if (action === "refund_shop") {
     if (!on && !owner) return json(req, { ok: false, error: "החזרים עוד לא הופעלו. אביב צריך לאשר" }, 403);
+    // until Aviv's own first real test of this path passed, only he can run it (crm_settings.shop_refunds_on)
+    if (!st?.shop_refunds_on && !owner) return json(req, { ok: false, error: "ההחזר האוטומטי בביטול הזמנת חנות עוד לא הופעל: אביב צריך לבדוק אותו פעם אחת. בינתיים אפשר לזכות בקופה" }, 403);
     if (!ready) return json(req, { ok: false, error: "חסרות סיסמאות המסוף לזיכוי. אביב צריך להזין אותן פעם אחת" }, 503);
     const oid = Number(body.shop_order_id), reason = String(body.reason || "").trim().slice(0, 300);
     if (!Number.isInteger(oid) || oid <= 0) return json(req, { ok: false, error: "הזמנה לא תקינה" }, 400);

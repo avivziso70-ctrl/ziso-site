@@ -41,6 +41,8 @@ alter table public.crm_settings add column if not exists refunds_on boolean not 
 -- החשבונאיות הנגזרות"). The store is booked apart from the showroom, so the office task and the open loop name the store order.
 alter table public.crm_refunds add column if not exists shop_order_id bigint;
 create index if not exists crm_refunds_shop_order on public.crm_refunds (shop_order_id) where shop_order_id is not null;
+-- the switch for refund_shop: off until Aviv's own first real test of a store-order refund passed; while off only he can run it
+alter table public.crm_settings add column if not exists shop_refunds_on boolean not null default false;
 
 -- a refund that went through opens an urgent task for the office (credit invoice in Priority) and pushes to all phones;
 -- a refund whose result is unknown opens a task to check it in Tranzila.
