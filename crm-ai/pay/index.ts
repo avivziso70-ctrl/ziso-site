@@ -2,7 +2,7 @@
 // POST with the signed-in staff user's Supabase JWT:
 //   { action: "status" }                     -> { configured, auth }
 //   { action: "check" }   (Aviv only)        -> read-only auth test on /v1/transactions, remembers scheme A/B
-//   { action: "create", tail9, amount, description?, payments?, test? } -> { pr_link, pr_id, payments }
+//   { action: "create", tail9, amount, description?, payments?, test? } -> { pr_link, pr_id, payments, id, pay_token, page_link? }
 // Keys come only from TRANZILA_APP_KEY / TRANZILA_SECRET (edge secrets). Nothing customer-related is logged.
 // A payment request only creates a link; nobody is charged until the customer pays. Tranzila's copy email goes to
 // our own mailbox; the link comes back to the CRM and staff send it on WhatsApp. test=true: ₪5 (issuers decline ₪1) to Aviv's own email, Aviv only.
@@ -65,10 +65,13 @@ export function frameUrl(row: { id: number; pay_token: string; amount: number | 
 async function publicAction(req: Request, body: Record<string, unknown>) {
   const t = String(body.t || "").toLowerCase();
   if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(t)) return json(req, { ok: false, error: "קישור התשלום לא תקין" }, 400);
-  const { data: row } = await admin.from("crm_pay_requests").select("id, pay_token, amount, description, status, payments").eq("pay_token", t).maybeSingle();
+  const { data: row } = await admin.from("crm_pay_requests").select("id, pay_token, amount, description, status, payments, pr_link, paid_code, paid_sum, paid_at").eq("pay_token", t).maybeSingle();
   if (!row) return json(req, { ok: false, error: "בקשת התשלום לא נמצאה" }, 404);
-  if (body.action === "pay_state") return json(req, { ok: true, status: row.status });
-  return json(req, { ok: true, status: row.status, amount: Number(row.amount), description: row.description, ...(row.status === "created" ? { frame_url: frameUrl(row) } : {}) });
+  // code = the approval number the card company gave; it is what the payer sees on our confirmation screen
+  const paid = row.status === "paid" ? { code: row.paid_code || null, paid_at: row.paid_at } : {};
+  if (body.action === "pay_state") return json(req, { ok: true, status: row.status, ...paid });
+  return json(req, { ok: true, status: row.status, amount: Number(row.status === "paid" && row.paid_sum ? row.paid_sum : row.amount), description: row.description, ...paid,
+    ...(row.status === "created" ? { frame_url: frameUrl(row), link: row.pr_link || null } : {}) });
 }
 
 Deno.serve(async (req: Request) => {
@@ -149,7 +152,11 @@ Deno.serve(async (req: Request) => {
     await admin.from("crm_settings").update({ tranzila_auth: scheme }).eq("id", 1).is("tranzila_auth", null);
     await admin.from("crm_pay_requests").update({ pr_id: String(x.j.pr_id ?? ""), pr_link: String(x.j.pr_link), payments }).eq("id", row!.id);
     await admin.from("crm_audit").insert({ who: email, action: "pay_request", tail9, detail: { id: row!.id, amount, test, methods: pr.payment_methods, payments, payments_asked: asked, instalments_error: instErr } });
-    return json(req, { ok: true, pr_link: x.j.pr_link, pr_id: x.j.pr_id, amount, payments, payments_asked: asked, id: row!.id, pay_token: row!.pay_token });
+    // page_link = the same request on our own payment page (/pay/). Given only once in-page payment is switched on
+    // (crm_settings.pay_frame_on); the till and the customer card then use it instead of Tranzila's link.
+    const { data: set } = await admin.from("crm_settings").select("pay_frame_on").eq("id", 1).maybeSingle();
+    return json(req, { ok: true, pr_link: x.j.pr_link, pr_id: x.j.pr_id, amount, payments, payments_asked: asked, id: row!.id, pay_token: row!.pay_token,
+      ...(set?.pay_frame_on ? { page_link: SITE + "/pay/?t=" + row!.pay_token } : {}) });
   }
   return json(req, { ok: false, error: "action לא מוכר" }, 400);
 });

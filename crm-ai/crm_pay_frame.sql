@@ -6,3 +6,8 @@ alter table public.crm_pay_requests add column if not exists pay_token uuid not 
 create unique index if not exists crm_pay_requests_token_uq on public.crm_pay_requests (pay_token);
 alter table public.crm_pay_requests add column if not exists paid_code text;
 alter table public.crm_pay_requests add column if not exists payments int not null default 1;
+
+-- The switch for in-page payment on the CRM side (customer page, /pay/ page, till, customer card). Off until one real
+-- payment through the frame was confirmed by crm-pay-notify. While off, everything keeps using Tranzila's link.
+-- crm_my (crm_my_priority.sql) gives the pay token of each open request only when it is on.
+alter table crm_settings add column if not exists pay_frame_on boolean not null default false;

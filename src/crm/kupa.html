@@ -58,6 +58,7 @@ input:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{
 .go[disabled]{opacity:.6}
 .go.line{background:transparent;color:var(--ink);border:2px solid var(--line);font-size:20px;min-height:64px}
 a.go{display:flex;align-items:center;justify-content:center;text-decoration:none}
+.payform{--zp-ink:var(--ink);--zp-mute:var(--mute);--zp-line:var(--line);--zp-accent:var(--brass);--zp-surface:var(--surface);text-align:start;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px}
 .done{text-align:center;display:grid;gap:14px}
 .done .big{font-size:64px;line-height:1}
 .state{font-weight:700;font-size:20px;padding:12px;border-radius:12px;background:var(--amber-soft);color:var(--amber);border:2px solid var(--amber)}
@@ -176,9 +177,11 @@ a.go{display:flex;align-items:center;justify-content:center;text-decoration:none
     <p id="aText" class="muted"></p>
     <div id="aPay" class="hidden" style="display:grid;gap:12px">
       <div class="state" id="aState" role="status">● ממתין לתשלום</div>
+      <button class="go hidden" id="aHere" type="button">להקליד כרטיס כאן במסך</button>
+      <div id="aForm" class="payform hidden"></div>
       <a class="go" id="aOpen" target="_blank" rel="noopener">לפתוח דף תשלום ולהקליד כרטיס</a>
       <a class="go line" id="aWa" target="_blank" rel="noopener">לשלוח את הלינק ללקוח בוואטסאפ</a>
-      <p class="muted small">פרטי הכרטיס מוקלדים רק בדף המאובטח של טרנזילה. לא לצלם כרטיס ולא לרשום את המספר בשום מקום.</p>
+      <p class="muted small">פרטי הכרטיס מוקלדים רק בטופס המאובטח של טרנזילה. לא לצלם כרטיס ולא לרשום את המספר בשום מקום.</p>
     </div>
     <button class="go line" id="again" type="button">תשלום חדש</button>
   </section>
@@ -242,7 +245,8 @@ a.go{display:flex;align-items:center;justify-content:center;text-decoration:none
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
-<script src="piggy.js"></script>
+<script src="piggy.js?v=1811"></script>
+<script src="../pay/pay.js?v=1811b"></script>
 <script>
 (function () {
 'use strict';
@@ -372,9 +376,13 @@ function finish(v, link) {
     $('aIcon').textContent = '💳'; $('aTitle').textContent = 'נרשם. עכשיו לחייב ' + money(v.amount) + (got > 1 ? ' בעד ' + got + ' תשלומים' : '');
     $('aText').textContent = (v.payments > 1 && got === 1 ? 'שימו לב: טרנזילה לא אישרה תשלומים בלינק, אז הלינק הוא לתשלום אחד. ' : got > 1 ? 'את מספר התשלומים בוחרים בדף התשלום. ' : '') + 'כשהתשלום יאושר זה יהפוך לירוק, תגיע התראה, והמשרד יקבל משימה להוציא קבלה ל' + v.payer_name + '.';
     $('aState').className = 'state'; $('aState').textContent = '● ממתין לתשלום. הלקוח עוד לא שילם.';
-    $('aOpen').classList.remove('hidden'); $('aWa').classList.remove('hidden');
-    $('aOpen').href = link.pr_link;
-    $('aWa').href = 'https://wa.me/972' + v.tail9 + '?text=' + encodeURIComponent('שלום ' + v.payer_name + ', כאן זיסו קרמיקה. לתשלום מאובטח של ' + money(v.amount) + ' בכרטיס אשראי, דרך טרנזילה:\n' + link.pr_link);
+    // page_link comes only when in-page payment is switched on: then the card is typed here in the till screen and the
+    // customer's WhatsApp link opens our own payment page. Without it, everything is Tranzila's link as before.
+    var here = !!(link.page_link && link.pay_token && window.ZisoPay);
+    payHere(null);
+    $('aHere').classList.toggle('hidden', !here); $('aOpen').classList.toggle('hidden', here); $('aWa').classList.remove('hidden');
+    $('aOpen').href = link.pr_link; $('aHere').onclick = function () { payHere(link); };
+    $('aWa').href = 'https://wa.me/972' + v.tail9 + '?text=' + encodeURIComponent('שלום ' + v.payer_name + ', כאן זיסו קרמיקה. לתשלום מאובטח של ' + money(v.amount) + ' בכרטיס אשראי, דרך טרנזילה:\n' + (link.page_link || link.pr_link));
     poll(String(link.pr_id));
   } else {
     $('aIcon').textContent = '✓'; $('aTitle').textContent = 'נשמר: ' + money(v.amount) + ' ' + METHOD[v.method] + (v.payments > 1 ? ', ' + v.payments + ' תשלומים' : '');
@@ -383,14 +391,26 @@ function finish(v, link) {
   $('aTitle').focus(); say($('aTitle').textContent);
   if (window.zisoPiggy) zisoPiggy();
 }
+var payH = null;  // the open card form (ZisoPay), if any
+function payHere(link) {
+  if (payH) { payH.destroy(); payH = null; }
+  $('aForm').classList.toggle('hidden', !link);
+  if (!link) return;
+  $('aHere').classList.add('hidden');
+  payH = ZisoPay.mount($('aForm'), { pay: link.pay_token,
+    onPaid: function () { if (pollTick) pollTick(); },
+    onError: function (msg) { payHere(null); $('aOpen').classList.remove('hidden'); $('aState').textContent = '● ' + (msg || 'הטופס לא נפתח.') + ' אפשר לשלם בדף של טרנזילה.'; } });
+  $('aForm').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+var pollTick = null;
 function poll(prId) {
   clearInterval(pollT); var n = 0;
-  var tick = function () {
+  var tick = pollTick = function () {
     if (++n > 240) return clearInterval(pollT);
     sb.from('crm_pay_requests').select('status').eq('pr_id', prId).maybeSingle().then(function (r) {
       if (r.data && r.data.status === 'paid') {
         clearInterval(pollT); $('aState').className = 'state ok'; $('aState').textContent = '● שולם ✓ התשלום אושר בטרנזילה';
-        $('aOpen').classList.add('hidden'); $('aWa').classList.add('hidden'); $('aIcon').textContent = '✓'; say('התשלום עבר');
+        payHere(null); $('aHere').classList.add('hidden'); $('aOpen').classList.add('hidden'); $('aWa').classList.add('hidden'); $('aIcon').textContent = '✓'; say('התשלום עבר');
         if (navigator.vibrate) navigator.vibrate(200);
         if (window.zisoPiggy) zisoPiggy();
       }
@@ -402,7 +422,7 @@ document.addEventListener('visibilitychange', function () { if (!document.hidden
 setInterval(function () { if (!document.hidden && me && !$('form').classList.contains('hidden')) loadMine(); }, 20000); // yellow turns green by itself
 $('aWa').addEventListener('click', function () { if (window.zisoPiggy) zisoPiggy(); });
 $('again').addEventListener('click', function () {
-  clearInterval(pollT); method = null; goods = null; cardHow = 'card_link'; pays = 1; press('[data-pays]', 'data-pays', '1');
+  payHere(null); clearInterval(pollT); method = null; goods = null; cardHow = 'card_link'; pays = 1; press('[data-pays]', 'data-pays', '1');
   ['amount', 'payer', 'phone', 'reason', 'goods'].forEach(function (id) { $(id).value = ''; });
   press('[data-method]', 'data-method', ''); press('[data-goods]', 'data-goods', ''); press('[data-card]', 'data-card', 'card_link');
   $('cardHow').classList.add('hidden'); $('goodsWrap').classList.add('hidden'); phoneRule();
