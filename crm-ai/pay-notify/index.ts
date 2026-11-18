@@ -181,9 +181,22 @@ Deno.serve(async (req: Request) => {
   const resp = (f.get("Response") || "").trim(), sum = Number(f.get("sum"));
   if ((!byFrame && !/^\d{1,12}$/.test(prId)) || !(resp === "000" || resp === "0") || !/^[0-9A-Za-z]{1,20}$/.test(code) || !(sum > 0)) return ok();
 
-  const q = admin.from("crm_pay_requests").select("id, tail9, amount, status, pr_id");
+  const q = admin.from("crm_pay_requests").select("id, tail9, amount, status, pr_id, paid_code");
   const { data: row } = await (byFrame ? q.eq("id", Number(zpay)).eq("pay_token", zk) : q.eq("pr_id", prId)).maybeSingle();
-  if (!row || row.status === "paid" || Math.abs(Number(row.amount) - sum) >= 0.005) return ok();
+  if (!row || Math.abs(Number(row.amount) - sum) >= 0.005) return ok();
+  if (row.status === "paid") {
+    // A second, different charge on a request that is already paid (a request can be paid in the form on our page and
+    // also on Tranzila's link): once it is found in Tranzila's list, the office is told, one task per request.
+    if (row.paid_code && !sameCode(String(row.paid_code), code)) {
+      const { data: seen } = await admin.from("crm_audit").select("id").eq("action", "pay_notify_second").eq("detail->>id", String(row.id)).limit(1);
+      if (!seen?.length && (await verify(code, sum)).ok) {
+        await admin.from("crm_tasks").insert({ tail9: row.tail9, due: new Date().toISOString(), by: "טרנזילה",
+          text: "ייתכן חיוב כפול: בקשת תשלום על ₪" + sum.toLocaleString("en-US", { maximumFractionDigits: 2 }) + " שכבר שולמה חויבה שוב, עם מספר אישור אחר. לבדוק בטרנזילה, ואם הלקוח שילם פעמיים להחזיר לו את החיוב השני." });
+        await admin.from("crm_audit").insert({ who: "tranzila", action: "pay_notify_second", tail9: row.tail9, detail: { id: row.id, sum } });
+      }
+    }
+    return ok();
+  }
 
   let v = await verify(code, sum);
   if (!v.ok) { await sleep(3000); v = await verify(code, sum); } // the list can be a moment behind the notify
