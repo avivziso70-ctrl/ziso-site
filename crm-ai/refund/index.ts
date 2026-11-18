@@ -4,6 +4,11 @@
 //   { action: "list", day: "YYYY-MM-DD" }               -> today's (or that day's) card charges from Tranzila's own list
 //   { action: "recent", days }                          -> all card charges of the last days (30), newest first, with payer name/phone
 //   { action: "refund", day, index, amount, reason }    -> refunds part or all of ONE existing charge
+//   { action: "refund_shop", shop_order_id, reason }    -> refunds what is left of the card charge that paid ONE online store
+//       order (Aviv 18.11.2026: "ביטול הזמנה = החזרת הכסף"). Called by the store's function with the staff user's own JWT when
+//       staff cancel the order. The order and its payment are read here, never taken from the caller; the charge is found in
+//       Tranzila's list by the approval number and amount our payment check stored. Answers { ok, id, amount }, or
+//       { ok, already: true, id, amount } when the charge was already refunded in full (nothing is sent to Tranzila again).
 //   { action: "secret", tranzila_pw, credit_pass }      -> Aviv only: saves the two terminal passwords a refund needs
 // Rules: a refund exists only against a charge that Tranzila itself lists (never trusted from the page), up to what is
 // left of it after earlier refunds, with a reason; one open refund per charge at a time; every refund is written to
@@ -76,6 +81,15 @@ const isCharge = (t: Tx) => String(t.processor_response_code ?? "") === "000" &&
 const shekels = (t: Tx) => Math.round(Number(t.amount)) / 100;
 const ilDay = (d = new Date()) => d.toLocaleDateString("en-CA", { timeZone: "Asia/Jerusalem" });
 const r2 = (n: number) => Math.round(n * 100) / 100;
+const shiftDay = (day: string, n: number) => new Date(new Date(day + "T12:00:00Z").getTime() + n * 864e5).toISOString().slice(0, 10);
+// Same approval number? Exact, or the same digits with different leading zeros. At least 3 real digits (as in crm-pay-notify).
+function sameCode(v: string, code: string) {
+  const a = v.trim().toLowerCase(), b = code.trim().toLowerCase();
+  if (a === b) return a.length > 0;
+  if (!/^\d+$/.test(a) || !/^\d+$/.test(b)) return false;
+  const x = a.replace(/^0+/, ""), y = b.replace(/^0+/, "");
+  return x.length >= 3 && x === y;
+}
 
 async function refundedSoFar(index: string) {
   const { data } = await admin.from("crm_refunds").select("amount, status").eq("tz_index", index).in("status", ["pending", "done", "unknown"]);
@@ -102,6 +116,43 @@ function nameFor(t: Tx, day: string, m: { amount: number; at: string; name: stri
   const at = time ? new Date(day + "T" + time + "+02:00").getTime() : NaN;
   const hit = m.find((x) => Math.abs(x.amount - shekels(t)) < 0.005 && (!Number.isFinite(at) || Math.abs(new Date(x.at).getTime() - at) < 20 * 60e3 || Math.abs(new Date(x.at).getTime() - at - 3600e3) < 20 * 60e3));
   return hit || null;
+}
+
+// One refund against one charge that Tranzila's list showed us. Used by the till ("refund") and by a cancelled store order
+// ("refund_shop"). The caller already checked the amount against what is left of the charge.
+type Who = { name: string | null; tail9: string | null } | null;
+async function refundCharge(req: Request, o: { email: string; sec: Record<string, string>; t: Tx; day: string; index: string; orig: number; amount: number; left: number; reason: string; who: Who; shopOrderId?: number }) {
+  const { email, sec, t, day, index, orig, amount, left, reason, who } = o;
+  const shop = o.shopOrderId ? { shop_order: o.shopOrderId } : {};
+  const token = String(t.credit_card_token || ""), mm = String(t.expiration_month || "").padStart(2, "0"), yy = String(t.expiration_year || "").slice(-2);
+  if (!token || !/^\d{2}$/.test(mm) || !/^\d{2}$/.test(yy)) return json(req, { ok: false, error: "חסרים פרטי כרטיס בעסקה אצל טרנזילה. לזכות דרך המסוף" }, 422);
+  // write first: if the answer is lost, the row stays and becomes "unknown" (never a silent second refund)
+  const ins = await admin.from("crm_refunds").insert({ "by": email, tz_index: index, tz_day: day, orig_amount: orig, amount, reason, payer_name: who?.name || null, tail9: who?.tail9 || null, ...(o.shopOrderId ? { shop_order_id: o.shopOrderId } : {}) }).select("id").single();
+  if (ins.error || !ins.data) return json(req, { ok: false, error: "יש כבר זיכוי פתוח על העסקה הזו" }, 409);
+  const id = ins.data.id;
+  const form = new URLSearchParams({ supplier: TERMINAL, TranzilaPW: sec.tranzila_pw, CreditPass: sec.tranzila_credit_pass, tranmode: "C" + index,
+    authnr: String(t.authorization_number || ""), sum: amount.toFixed(2), currency: "1", cred_type: "1", TranzilaTK: token, expdate: mm + yy });
+  let text = "";
+  try {
+    const r = await fetch(REFUND_URL, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: form.toString(), signal: AbortSignal.timeout(25000) });
+    text = await r.text();
+  } catch (_) {
+    await admin.from("crm_refunds").update({ status: "unknown", error: "no answer from Tranzila" }).eq("id", id);
+    await admin.from("crm_audit").insert({ who: email, action: "refund_unknown", tail9: who?.tail9 || null, detail: { id, index, amount, ...shop } });
+    return json(req, { ok: false, unknown: true, error: "לא התקבלה תשובה מטרנזילה. לא לנסות שוב: לבדוק במסוף אם הזיכוי עבר. נפתחה משימה" }, 504);
+  }
+  // the answer is a query string; only these fields are kept (it also echoes the token, which is dropped)
+  const a = new URLSearchParams(text.trim().replace(/^[^A-Za-z]*/, ""));
+  const code = (a.get("Response") || "").trim();
+  if (code === "000") {
+    await admin.from("crm_refunds").update({ status: "done", response_code: code, refund_index: a.get("index"), refund_auth: a.get("ConfirmationCode") }).eq("id", id);
+    await admin.from("crm_audit").insert({ who: email, action: "refund_done", tail9: who?.tail9 || null, detail: { id, index, amount, ...shop } });
+    return json(req, { ok: true, id, amount, left: r2(left - amount), name: who?.name || null });
+  }
+  const err = code ? "Tranzila code " + code : "unreadable answer";
+  await admin.from("crm_refunds").update({ status: code ? "failed" : "unknown", response_code: code || null, error: err }).eq("id", id);
+  await admin.from("crm_audit").insert({ who: email, action: code ? "refund_failed" : "refund_unknown", tail9: who?.tail9 || null, detail: { id, index, amount, code, ...shop } });
+  return json(req, { ok: false, unknown: !code, code, error: code ? "טרנזילה סירבה לזיכוי (קוד " + code + "). הכסף לא הוחזר" : "התשובה מטרנזילה לא ברורה. לא לנסות שוב: לבדוק במסוף. נפתחה משימה" }, 502);
 }
 
 Deno.serve(async (req: Request) => {
@@ -194,36 +245,43 @@ Deno.serve(async (req: Request) => {
     if (so.open) return json(req, { ok: false, error: "יש כבר זיכוי פתוח על העסקה הזו. לבדוק אותו קודם" }, 409);
     const left = r2(orig - so.sum);
     if (amount > left + 0.001) return json(req, { ok: false, error: left > 0 ? "אפשר להחזיר עד " + left.toLocaleString("he-IL") + " ₪ על העסקה הזו" : "העסקה הזו כבר הוחזרה במלואה" }, 400);
-    const token = String(t.credit_card_token || ""), mm = String(t.expiration_month || "").padStart(2, "0"), yy = String(t.expiration_year || "").slice(-2);
-    if (!token || !/^\d{2}$/.test(mm) || !/^\d{2}$/.test(yy)) return json(req, { ok: false, error: "חסרים פרטי כרטיס בעסקה אצל טרנזילה. לזכות דרך המסוף" }, 422);
-    const who = nameFor(t, day, await crmMatches(day));
-    // write first: if the answer is lost, the row stays and becomes "unknown" (never a silent second refund)
-    const ins = await admin.from("crm_refunds").insert({ "by": email, tz_index: index, tz_day: day, orig_amount: orig, amount, reason, payer_name: who?.name || null, tail9: who?.tail9 || null }).select("id").single();
-    if (ins.error || !ins.data) return json(req, { ok: false, error: "יש כבר זיכוי פתוח על העסקה הזו" }, 409);
-    const id = ins.data.id;
-    const form = new URLSearchParams({ supplier: TERMINAL, TranzilaPW: sec.tranzila_pw, CreditPass: sec.tranzila_credit_pass, tranmode: "C" + index,
-      authnr: String(t.authorization_number || ""), sum: amount.toFixed(2), currency: "1", cred_type: "1", TranzilaTK: token, expdate: mm + yy });
-    let text = "";
-    try {
-      const r = await fetch(REFUND_URL, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: form.toString(), signal: AbortSignal.timeout(25000) });
-      text = await r.text();
-    } catch (_) {
-      await admin.from("crm_refunds").update({ status: "unknown", error: "no answer from Tranzila" }).eq("id", id);
-      await admin.from("crm_audit").insert({ who: email, action: "refund_unknown", tail9: who?.tail9 || null, detail: { id, index, amount } });
-      return json(req, { ok: false, unknown: true, error: "לא התקבלה תשובה מטרנזילה. לא לנסות שוב: לבדוק במסוף אם הזיכוי עבר. נפתחה משימה" }, 504);
+    return refundCharge(req, { email, sec, t, day, index, orig, amount, left, reason, who: nameFor(t, day, await crmMatches(day)) });
+  }
+
+  if (action === "refund_shop") {
+    if (!on && !owner) return json(req, { ok: false, error: "החזרים עוד לא הופעלו. אביב צריך לאשר" }, 403);
+    if (!ready) return json(req, { ok: false, error: "חסרות סיסמאות המסוף לזיכוי. אביב צריך להזין אותן פעם אחת" }, 503);
+    const oid = Number(body.shop_order_id), reason = String(body.reason || "").trim().slice(0, 300);
+    if (!Number.isInteger(oid) || oid <= 0) return json(req, { ok: false, error: "הזמנה לא תקינה" }, 400);
+    if (reason.length < 3) return json(req, { ok: false, error: "צריך לכתוב למה מחזירים" }, 400);
+    const { data: o } = await admin.from("shop_orders").select("id, name, phone, status, pay_request_id").eq("id", oid).maybeSingle();
+    if (!o) return json(req, { ok: false, error: "ההזמנה לא נמצאה" }, 404);
+    if (!["paid", "sent", "done", "cancelled"].includes(String(o.status)) || !o.pay_request_id) return json(req, { ok: false, error: "ההזמנה הזו לא שולמה בכרטיס" }, 400);
+    const { data: pr } = await admin.from("crm_pay_requests").select("id, status, paid_code, paid_sum, paid_at").eq("id", o.pay_request_id).maybeSingle();
+    const paid = r2(Number(pr?.paid_sum));
+    if (!pr || pr.status !== "paid" || !pr.paid_at || !String(pr.paid_code || "").trim() || !(paid > 0)) return json(req, { ok: false, error: "לא נמצא תשלום מאומת בכרטיס על ההזמנה הזו. לזכות מהקופה" }, 400);
+    const day0 = ilDay(new Date(pr.paid_at as string));
+    if ((Date.now() - new Date(day0 + "T12:00:00+02:00").getTime()) / 864e5 > 60) return json(req, { ok: false, error: "אפשר להחזיר רק על עסקה מ-60 הימים האחרונים" }, 400);
+    // the charge: the paid day in Tranzila's list, and the days next to it in case the clocks disagree around midnight
+    let t: Tx | null = null, day = day0;
+    for (const d of [day0, shiftDay(day0, -1), shiftDay(day0, 1)]) {
+      const l = await dayList(d);
+      if (!l) { if (d === day0) return json(req, { ok: false, error: "טרנזילה לא ענתה. לא בוצע זיכוי. לנסות שוב בעוד דקה" }, 502); continue; }
+      const hits = l.filter((x) => isCharge(x) && sameCode(String(x.authorization_number ?? ""), String(pr.paid_code)) && Math.abs(shekels(x) - paid) < 0.005);
+      if (hits.length > 1) return json(req, { ok: false, error: "יותר מעסקה אחת מתאימה לתשלום הזה אצל טרנזילה. לזכות מהקופה" }, 409);
+      if (hits.length) { t = hits[0]; day = d; break; }
     }
-    // the answer is a query string; only these fields are kept (it also echoes the token, which is dropped)
-    const a = new URLSearchParams(text.trim().replace(/^[^A-Za-z]*/, ""));
-    const code = (a.get("Response") || "").trim();
-    if (code === "000") {
-      await admin.from("crm_refunds").update({ status: "done", response_code: code, refund_index: a.get("index"), refund_auth: a.get("ConfirmationCode") }).eq("id", id);
-      await admin.from("crm_audit").insert({ who: email, action: "refund_done", tail9: who?.tail9 || null, detail: { id, index, amount } });
-      return json(req, { ok: true, id, amount, left: r2(left - amount), name: who?.name || null });
+    if (!t) return json(req, { ok: false, error: "העסקה של ההזמנה לא נמצאה אצל טרנזילה. לזכות מהקופה" }, 404);
+    const index = String(t.index), orig = shekels(t), so = await refundedSoFar(index);
+    if (so.open) return json(req, { ok: false, error: "יש כבר זיכוי פתוח על העסקה הזו. לבדוק אותו קודם" }, 409);
+    const left = r2(orig - so.sum);
+    if (left < 0.005) { // already refunded in full (from the till, or an earlier press): nothing more goes to Tranzila
+      const { data: last } = await admin.from("crm_refunds").select("id").eq("tz_index", index).eq("status", "done").order("id", { ascending: false }).limit(1).maybeSingle();
+      return json(req, { ok: true, already: true, id: last?.id ?? null, amount: so.sum });
     }
-    const err = code ? "Tranzila code " + code : "unreadable answer";
-    await admin.from("crm_refunds").update({ status: code ? "failed" : "unknown", response_code: code || null, error: err }).eq("id", id);
-    await admin.from("crm_audit").insert({ who: email, action: code ? "refund_failed" : "refund_unknown", tail9: who?.tail9 || null, detail: { id, index, amount, code } });
-    return json(req, { ok: false, unknown: !code, code, error: code ? "טרנזילה סירבה לזיכוי (קוד " + code + "). הכסף לא הוחזר" : "התשובה מטרנזילה לא ברורה. לא לנסות שוב: לבדוק במסוף. נפתחה משימה" }, 502);
+    if (left < 1) return json(req, { ok: false, error: "נשאר פחות משקל אחד להחזר על העסקה הזו" }, 400);
+    const tail9 = String(o.phone || "").replace(/\D/g, "").slice(-9);
+    return refundCharge(req, { email, sec, t, day, index, orig, amount: left, left, reason, who: { name: (o.name as string) || null, tail9: tail9.length === 9 ? tail9 : null }, shopOrderId: oid });
   }
   return json(req, { ok: false, error: "action לא מוכר" }, 400);
 });

@@ -65,7 +65,7 @@ language sql stable security definer set search_path to 'public' as $$
            coalesce(t.paid_at, t.at), coalesce(t.paid_at, t.at) + interval '24 hours', coalesce(t.paid_at, t.at) + interval '24 hours' < now(), t.tail9, 'kupa'
     from crm_takings t where t.closed_at is null and t.cancelled_at is null and (t.method <> 'card_link' or t.paid_at is not null)
     union all
-    select 'credit', 'החזר ← חשבונית זיכוי', 'refund:' || r.id, 'זיכוי בפריוריטי: החזר ' || coalesce(nullif(trim(r.payer_name), ''), 'לקוח'), r.amount, 'משרד',
+    select 'credit', 'החזר ← חשבונית זיכוי', 'refund:' || r.id, case when r.shop_order_id is not null then 'חנות אונליין · הזמנה ' || r.shop_order_id || ' · ' else '' end || 'זיכוי בפריוריטי: החזר ' || coalesce(nullif(trim(r.payer_name), ''), 'לקוח'), r.amount, 'משרד',
            r.at, r.at + interval '24 hours', r.at + interval '24 hours' < now(), r.tail9, 'kupa'
     from crm_refunds r where r.status = 'done' and r.resolved_at is null
     union all
