@@ -8,6 +8,14 @@
 // our own mailbox; the link comes back to the CRM and staff send it on WhatsApp. test=true: ₪5 (issuers decline ₪1) to Aviv's own email, Aviv only.
 // payments (1-12, default 1): instalments on the link. If Tranzila refuses the instalment request the link is
 // created for a single payment and the answer says so (payments: 1, payments_asked: n), so the page can warn.
+// Payment inside our own pages (Aviv 18.11.2026: "תשתול את המסוף בתוך האתר שלנו... תחיל את זה על כל מערכות העסק. גם בקופה").
+// Every request has a pay_token. Whoever holds it (the customer's page, the WhatsApp link, the till, the store) may ask,
+// with no sign-in:
+//   { action: "pay_info", t }  -> { ok, status, amount, description, frame_url }   frame_url only while it waits for payment
+//   { action: "pay_state", t } -> { ok, status }                                    polled by /pay/pay.js every few seconds
+// frame_url is Tranzila's own iframe page for our terminal: the card fields live only there, nothing of the card reaches
+// our pages or functions. It carries zpay (the request id) and zk (the token), which Tranzila echoes to crm-pay-notify;
+// "paid" is decided only there, after the charge is found in Tranzila's own list. "create" also returns id and pay_token.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const url = Deno.env.get("SUPABASE_URL")!, service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -45,16 +53,35 @@ async function getScheme(): Promise<"A" | "B" | null> {
 }
 const ilDate = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jerusalem" });
 
+const SITE = "https://www.zisoceramics.com";
+// Tranzila's iframe page, in our colours. cred_type 1 = regular charge; 8 + maxpay = the customer may choose instalments.
+export function frameUrl(row: { id: number; pay_token: string; amount: number | string; description?: string | null; payments?: number | null }) {
+  const n = Math.min(12, Math.max(1, Math.round(Number(row.payments) || 1)));
+  const q = new URLSearchParams({ sum: Number(row.amount).toFixed(2), currency: "1", cred_type: n > 1 ? "8" : "1", ...(n > 1 ? { maxpay: String(n) } : {}), lang: "il", nologo: "1",
+    trBgColor: "ffffff", trTextColor: "1e1b17", trButtonColor: "8a6a35", pdesc: String(row.description || "תשלום לזיסו קרמיקה").slice(0, 80),
+    zpay: String(row.id), zk: row.pay_token, success_url_address: SITE + "/pay/done.html", fail_url_address: SITE + "/pay/done.html?fail=1" });
+  return `https://direct.tranzila.com/${TERMINAL}/iframenew.php?` + q.toString();
+}
+async function publicAction(req: Request, body: Record<string, unknown>) {
+  const t = String(body.t || "").toLowerCase();
+  if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(t)) return json(req, { ok: false, error: "קישור התשלום לא תקין" }, 400);
+  const { data: row } = await admin.from("crm_pay_requests").select("id, pay_token, amount, description, status, payments").eq("pay_token", t).maybeSingle();
+  if (!row) return json(req, { ok: false, error: "בקשת התשלום לא נמצאה" }, 404);
+  if (body.action === "pay_state") return json(req, { ok: true, status: row.status });
+  return json(req, { ok: true, status: row.status, amount: Number(row.amount), description: row.description, ...(row.status === "created" ? { frame_url: frameUrl(row) } : {}) });
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors(req) });
   if (req.method !== "POST") return json(req, { ok: false, error: "POST only" }, 405);
+  const body = await req.json().catch(() => ({}));
+  if (body?.action === "pay_info" || body?.action === "pay_state") return await publicAction(req, body);
   const jwt = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   const { data: u } = await admin.auth.getUser(jwt);
   const email = u?.user?.email?.toLowerCase();
   if (!email) return json(req, { ok: false, error: "לא מחובר" }, 401);
   const { data: staff } = await admin.from("crm_staff").select("email").eq("active", true).ilike("email", email).maybeSingle();
   if (!staff) return json(req, { ok: false, error: "לא מורשה" }, 403);
-  const body = await req.json().catch(() => ({}));
   const configured = !!(Deno.env.get("TRANZILA_APP_KEY") && Deno.env.get("TRANZILA_SECRET"));
   const action = String(body.action || "");
 
@@ -101,7 +128,7 @@ Deno.serve(async (req: Request) => {
       send_email: { sender_name: "זיסו קרמיקה", sender_email: BIZ_EMAIL },
       items: [{ name: desc, unit_price: amount, units_number: 1, type: "I", price_type: "G", currency_code: "ILS" }],
     };
-    const { data: row } = await admin.from("crm_pay_requests").insert({ tail9, amount, description: desc, test, created_by: email }).select("id").single();
+    const { data: row } = await admin.from("crm_pay_requests").insert({ tail9, amount, description: desc, test, created_by: email, payments: asked }).select("id, pay_token").single();
     let scheme = await getScheme(), x = await call("/v1/pr/create", pr, scheme || "A");
     if (!scheme && authFailed(x)) { scheme = "B"; x = await call("/v1/pr/create", pr, "B"); } else if (!scheme) scheme = "A";
     if (Number(x.j.error_code) === 20403) { pr.payment_methods = [1]; x = await call("/v1/pr/create", pr, scheme!); }
@@ -120,9 +147,9 @@ Deno.serve(async (req: Request) => {
       return json(req, { ok: false, error: "טרנזילה לא יצרו לינק (" + err + ")" }, 502);
     }
     await admin.from("crm_settings").update({ tranzila_auth: scheme }).eq("id", 1).is("tranzila_auth", null);
-    await admin.from("crm_pay_requests").update({ pr_id: String(x.j.pr_id ?? ""), pr_link: String(x.j.pr_link) }).eq("id", row!.id);
+    await admin.from("crm_pay_requests").update({ pr_id: String(x.j.pr_id ?? ""), pr_link: String(x.j.pr_link), payments }).eq("id", row!.id);
     await admin.from("crm_audit").insert({ who: email, action: "pay_request", tail9, detail: { id: row!.id, amount, test, methods: pr.payment_methods, payments, payments_asked: asked, instalments_error: instErr } });
-    return json(req, { ok: true, pr_link: x.j.pr_link, pr_id: x.j.pr_id, amount, payments, payments_asked: asked });
+    return json(req, { ok: true, pr_link: x.j.pr_link, pr_id: x.j.pr_id, amount, payments, payments_asked: asked, id: row!.id, pay_token: row!.pay_token });
   }
   return json(req, { ok: false, error: "action לא מוכר" }, 400);
 });
