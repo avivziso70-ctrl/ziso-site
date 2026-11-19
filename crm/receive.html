@@ -29,14 +29,21 @@ main{max-width:640px;margin:0 auto;padding:0 16px 48px}
 .file{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
 .file:focus-visible + label{outline:3px solid var(--ink);outline-offset:3px}
 :focus-visible{outline:2px solid var(--brass);outline-offset:2px}
-select{font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:48px;width:100%}
+select,input[type=text],input[type=date],textarea{font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:48px;width:100%}
+nav.seg{display:flex;gap:6px;margin-top:10px}
+nav.seg button{flex:1;font:inherit;color:var(--ink);min-height:44px;padding:0 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-weight:600;cursor:pointer}
+nav.seg button[aria-pressed=true]{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
+nav.seg .n{display:inline-block;min-width:24px;padding:0 6px;border-radius:999px;background:var(--red);color:#fff;font-size:14px;margin-inline-start:4px}
+.f{display:block;margin:12px 0 0;font-weight:600;font-size:16px}.f small{font-weight:400;color:var(--mute)}.f>*:not(small){margin-top:4px}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sum{font-size:22px;font-weight:700}
 .mute{color:var(--mute);font-size:16px}.err{color:var(--red)}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0}
 .hidden{display:none!important}
 @media (pointer:coarse),(max-width:700px){.btn.small{min-height:44px;padding:0 16px}nav.seg button{min-height:48px}}
 .st{display:inline-block;padding:2px 10px;border-radius:999px;font-size:15px;font-weight:700;white-space:nowrap}
 .st.yellow{background:#f3d36b;color:#2a2205}.st.green{background:#7fcf97;color:#0d2a17}.st.orange{background:#f0a35e;color:#2b1503}.st.red{background:var(--red);color:#fff}.st.grey{background:var(--line);color:var(--ink)}
-#result{scroll-margin-top:76px}
+#result,#invForm{scroll-margin-top:136px}
 .rc{border-inline-start:6px solid var(--line)}.rc.yellow{border-inline-start-color:#f3d36b}.rc.green{border-inline-start-color:#7fcf97}.rc.orange{border-inline-start-color:#f0a35e}.rc.red{border-inline-start-color:var(--red)}
 .pages{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
 .pg{position:relative;width:84px;height:110px;border-radius:10px;border:1px solid var(--line);background:var(--graphite) center/cover no-repeat;display:flex;align-items:flex-end;justify-content:center;font-size:14px;font-weight:700}
@@ -54,10 +61,15 @@ details summary{cursor:pointer;min-height:44px;display:flex;align-items:center;c
 <body>
 <header>
   <div class="row"><h1 class="grow">קבלת סחורה</h1><a class="btn small" href="./">חזרה ל-CRM</a></div>
+  <nav class="seg hidden" id="seg" aria-label="מעבר בין קבלת סחורה לחשבוניות ספק">
+    <button type="button" data-view="goods" aria-pressed="true">קבלת סחורה</button>
+    <button type="button" data-view="inv" aria-pressed="false">חשבוניות ספק<span id="invN" class="n hidden"></span></button>
+  </nav>
 </header>
 <main>
   <div id="needLogin" class="card hidden" role="alert">צריך להתחבר קודם. <a href="./">כניסה ל-CRM</a> ואז לחזור לכאן.</div>
   <div id="app" class="hidden">
+   <div id="vGoods">
     <div id="poBox" class="card hidden"></div>
     <input class="file" type="file" id="cam" accept="image/*" capture="environment">
     <label class="shoot" for="cam" id="camLbl">
@@ -76,6 +88,18 @@ details summary{cursor:pointer;min-height:44px;display:flex;align-items:center;c
     <div id="result"></div>
     <h2>מסמכים אחרונים</h2>
     <div id="list"><p class="mute">טוען...</p></div>
+   </div>
+   <div id="vInv" class="hidden">
+    <p class="mute" style="margin:14px 0 10px">חשבונית שצולמה בקבלת סחורה מגיעה לכאן לבד. בודקים את המספרים מול הדף, וההנהלה מאשרת.</p>
+    <button class="btn" id="invNew" type="button" style="width:100%">להקליד חשבונית בלי צילום</button>
+    <div id="invForm" class="card hidden"></div>
+    <p id="invMsg" role="status" aria-live="polite"></p>
+    <div id="invTodoBox" class="hidden"><h2>צולמו ועוד לא הועברו</h2><div id="invTodo"></div></div>
+    <h2>ממתינות לאישור</h2>
+    <div id="invWait"><p class="mute">טוען...</p></div>
+    <h2>אחרונות</h2>
+    <div id="invDone"></div>
+   </div>
   </div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
@@ -137,7 +161,7 @@ function cardHtml(r, open) {
   var stuck = r.status === 'reading' && Date.now() - new Date(r.updated_at || r.created_at).getTime() > 3 * 60e3;
   if (r.status === 'failed' || stuck) acts += '<button class="btn small brass" data-act="retry" data-id="' + r.id + '">לנסות לקרוא שוב</button>';
   if (r.status !== 'reading' && r.status !== 'failed' && !r.po_id && !r.dup_of && r.supplier_id) acts += '<button class="btn small" data-act="link" data-id="' + r.id + '" data-sup="' + esc(r.supplier_id) + '">לשייך להזמנה</button>';
-  return h + '<div class="row" style="margin-top:8px">' + acts + '</div><div data-slot="' + r.id + '"></div></div>';
+  return h + '<div class="row" style="margin-top:8px">' + acts + '</div><div data-slot="' + r.id + '"></div><div data-islot="' + r.id + '"></div></div>';
 }
 
 function call(body) {
@@ -230,6 +254,7 @@ function showResult(r) {
   $('result').innerHTML = cardHtml(r, r.status !== 'ok');
   $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
   loadList(); if (poId) loadPo();
+  autoDraft(r);
 }
 
 /* ---------- actions on a document ---------- */
@@ -269,6 +294,239 @@ function onSel(e) {
 }
 ['result', 'list'].forEach(function (k) { $(k).addEventListener('click', onAct); $(k).addEventListener('change', onSel); });
 
+/* ---------- supplier invoices ----------
+   The rows live in the ledger's table acc_supplier_invoices and are written only through its functions
+   (acc_supinv_save / approve / reject). This page never writes that table directly and keeps no accounting data of its own. */
+var VAT = 0.18, sups = [], supName = {}, staffName = {}, canApprove = false, invById = {}, rcById = {}, form = null, invBusy = false;
+var INV_ST = { draft: ['yellow', 'ממתינה לאישור'], approved: ['green', 'אושרה'], posted: ['green', 'נרשמה בספרים'], rejected: ['red', 'נדחתה'] };
+var DOC_HE = { invoice: 'חשבונית מס', invoice_receipt: 'חשבונית מס קבלה', credit: 'חשבונית זיכוי' };
+var DOC_MAP = { tax_invoice: 'invoice', invoice_receipt: 'invoice_receipt', credit_note: 'credit' };
+function r2(n) { return Math.round(Number(n) * 100) / 100; }
+function numOr(v) { if (v == null || v === '') return null; var n = Number(String(v).replace(/[,₪\s]/g, '')); return isFinite(n) ? Math.abs(n) : null; }
+function fmtDay(d) { var p = String(d || '').slice(0, 10).split('-'); return p.length === 3 ? Number(p[2]) + '.' + Number(p[1]) + '.' + p[0].slice(2) : ''; }
+function today() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+/* the same rule the ledger enforces on approval: a tax invoice needs an allocation number from ₪10,000 before VAT (2026), ₪5,000 from 1.6.2026 */
+function allocNeeded(type, day, net) { if (type === 'credit' || !day || net == null) return false; return Number(net) >= (day >= '2026-06-01' ? 5000 : day >= '2026-01-01' ? 10000 : Infinity); }
+function sumsOk(f) { return f.net != null && f.vat != null && f.total != null && Math.abs(f.net + f.vat - f.total) < 0.05; }
+function invSay(t, cls) { $('invMsg').textContent = t || ''; $('invMsg').className = cls || ''; }
+function rpcErr(e) {
+  var m = (e && e.message) || '', d;
+  if (/missing allocation/.test(m)) return 'חסר מספר הקצאה. בלי המספר אי אפשר לקזז את המע"מ, ולכן אי אפשר לאשר. לבקש אותו מהספק ולהקליד.';
+  if ((d = /possible duplicate of invoice (\d+)/.exec(m))) return 'נראה שהחשבונית הזו כבר אושרה פעם (רשומה ' + d[1] + '). היא לא אושרה שוב.';
+  if (/duplicate key|inv_no_doc_type/.test(m)) return 'כבר קיימת חשבונית עם המספר הזה לספק הזה.';
+  if (/not allowed|not staff/.test(m)) return 'אין הרשאה לפעולה הזו.';
+  if (/only drafts| is (approved|posted|rejected)/.test(m)) return 'החשבונית כבר לא ממתינה לאישור, ואי אפשר לשנות אותה.';
+  if (/_check|violates check/.test(m)) return 'הסכומים לא מסתדרים: לפני מע"מ ועוד מע"מ צריך לצאת הסכום הכולל.';
+  return 'לא נשמר. לבדוק חיבור לאינטרנט ולנסות שוב.';
+}
+/* what the photographed paper says, as invoice fields. complete = every field was printed and the sums agree, so it can go in as a draft without typing */
+function fromReceipt(r) {
+  var d = r.doc || {}, net = numOr(d.subtotal), vat = numOr(d.vat), total = numOr(d.total != null ? d.total : r.doc_total);
+  var printed = net != null && vat != null && total != null;
+  if (total != null && net != null && vat == null) vat = r2(total - net);
+  else if (total != null && vat != null && net == null) net = r2(total - vat);
+  else if (total == null && net != null && vat != null) total = r2(net + vat);
+  var f = { receipt_id: r.id, rc_no: r.rc_no, supplier_id: r.supplier_id || '', inv_no: r.doc_no || '', doc_type: DOC_MAP[r.doc_type] || 'invoice', inv_date: r.doc_date || '',
+    net: net, vat: vat, total: total, allocation_no: d.allocation_no || '', po_id: r.po_id || null, po_no: r.po_id && r.result && r.result.po_no || null,
+    file_path: r.files && r.files[0] && r.files[0].orig || null };
+  f.complete = !!(printed && f.supplier_id && f.inv_no && f.inv_date && f.inv_date <= today() && sumsOk(f));
+  return f;
+}
+function payload(f) {
+  var p = { supplier_id: f.supplier_id, inv_no: f.inv_no, doc_type: f.doc_type, inv_date: f.inv_date, due_date: f.due_date || null, net: f.net, vat: f.vat || 0, total: f.total,
+    allocation_no: f.allocation_no || '', po_id: f.po_id || null, po_no: f.po_no || null, note: f.note || null };
+  if (f.id) p.id = f.id; else if (f.receipt_id) p.receipt_id = f.receipt_id;
+  if (f.file_path) p.file_path = f.file_path;
+  return p;
+}
+function isInvDoc(r) { return !!DOC_MAP[r.doc_type] && !r.dup_of && ['ok', 'gap', 'check'].indexOf(r.status) >= 0; }
+/* right after a photo is read: a clean invoice becomes a draft by itself; anything unclear waits for a person to complete it */
+function autoDraft(r) {
+  var slot = document.querySelector('#result [data-islot="' + r.id + '"]'); if (!slot || !isInvDoc(r)) return;
+  rcById[r.id] = r;
+  var f = fromReceipt(r), fill = '<button class="btn small brass" type="button" data-iact="fill" data-rc="' + r.id + '">להשלים ולהעביר</button>';
+  if (!f.complete) { slot.innerHTML = '<p style="margin:10px 0 6px"><b>זו ' + DOC_HE[f.doc_type] + '.</b> כדי להעביר אותה להנהלת החשבונות צריך להשלים כמה פרטים.</p>' + fill; return; }
+  sb.rpc('acc_supinv_save', { p: payload(f) }).then(function (x) {
+    slot.innerHTML = x.error ? '<p class="err" style="margin:10px 0 6px">' + rpcErr(x.error) + '</p>' + fill
+      : '<p style="margin:10px 0 6px"><b>החשבונית עברה להנהלת החשבונות</b> וממתינה לאישור.</p><button class="btn small" type="button" data-iact="go">לחשבוניות ספק</button>';
+    loadInv();
+  });
+}
+function invCard(v) {
+  var s = INV_ST[v.status] || ['grey', v.status], rc = v.receipt_id && rcById[v.receipt_id], mine = session && session.user && String(v.entered_by).toLowerCase() === String(session.user.email || '').toLowerCase();
+  var need = v.status === 'draft' && allocNeeded(v.doc_type, v.inv_date, v.net) && !v.allocation_no;
+  var h = '<div class="card rc ' + s[0] + '"><div class="row"><b class="grow">' + esc(supName[v.supplier_id] || 'ספק לא מזוהה') + '</b><span class="st ' + s[0] + '">' + s[1] + '</span></div>' +
+    '<p style="margin:6px 0"><span class="sum">' + money(v.total) + '</span> · ' + (DOC_HE[v.doc_type] || 'חשבונית') + ' <span class="ltr">' + esc(v.inv_no) + '</span> · ' + fmtDay(v.inv_date) + '</p>' +
+    '<p class="mute" style="margin:0">לפני מע"מ ' + money(v.net) + ' · מע"מ ' + money(v.vat) + (v.po_no ? ' · הזמנה <span class="ltr">' + esc(v.po_no) + '</span>' : '') + (v.allocation_no ? ' · הקצאה <span class="ltr">' + esc(v.allocation_no) + '</span>' : '') + '</p>' +
+    (need ? '<p class="err" style="margin:6px 0 0">חסר מספר הקצאה. בלי המספר אי אפשר לאשר את החשבונית.</p>' : '') +
+    (v.status === 'rejected' && v.reject_reason ? '<p class="err" style="margin:6px 0 0">נדחתה: ' + esc(v.reject_reason) + '</p>' : '') +
+    (v.note ? '<p class="mute" style="margin:6px 0 0">הערה: ' + esc(v.note) + '</p>' : '') +
+    '<p class="mute" style="margin:6px 0 0">' + (rc ? esc(rc.rc_no) + ' · ' : '') + 'נכנסה ' + fmtTime(v.entered_at) + (staffName[String(v.entered_by).toLowerCase()] ? ' · ' + esc(staffName[String(v.entered_by).toLowerCase()]) : '') + '</p>';
+  var a = '<button class="btn small" type="button" data-iact="view" data-id="' + v.id + '">לראות את הצילום</button>';
+  if (v.status === 'draft') a += '<button class="btn small" type="button" data-iact="edit" data-id="' + v.id + '">לתקן</button>';
+  if (v.status === 'draft' && canApprove) a += '<button class="btn small brass" type="button" data-iact="ok" data-id="' + v.id + '">לאשר</button>';
+  if ((canApprove && (v.status === 'draft' || v.status === 'approved')) || (mine && v.status === 'draft')) a += '<button class="btn small red" type="button" data-iact="no" data-id="' + v.id + '">לדחות</button>';
+  return h + '<div class="row" style="margin-top:8px">' + a + '</div><div data-vslot="' + v.id + '"></div></div>';
+}
+function todoCard(r) {
+  var f = fromReceipt(r);
+  return '<div class="card rc orange"><div class="row"><b class="grow">' + esc(r.supplier_name || 'ספק לא מזוהה') + '</b><span class="st orange">לא הועברה</span></div>' +
+    '<p style="margin:6px 0">' + (f.total != null ? '<span class="sum">' + money(f.total) + '</span> · ' : '') + DOC_HE[f.doc_type] + (f.inv_no ? ' <span class="ltr">' + esc(f.inv_no) + '</span>' : '') + (f.inv_date ? ' · ' + fmtDay(f.inv_date) : '') + '</p>' +
+    '<p class="mute" style="margin:0">' + esc(r.rc_no || '') + ' · צולמה ' + fmtTime(r.created_at) + (r.by_name ? ' · ' + esc(r.by_name) : '') + '</p>' +
+    '<div class="row" style="margin-top:8px"><button class="btn small brass" type="button" data-iact="fill" data-rc="' + r.id + '">לבדוק ולהעביר</button></div></div>';
+}
+function loadInv() {
+  return Promise.all([
+    sb.from('acc_supplier_invoices').select('*').order('entered_at', { ascending: false }).limit(80),
+    sb.from('crm_receipts').select('id,rc_no,supplier_id,supplier_name,po_id,doc,doc_type,doc_no,doc_date,doc_total,files,status,dup_of,result,created_at,by_name')
+      .in('doc_type', Object.keys(DOC_MAP)).in('status', ['ok', 'gap', 'check']).is('dup_of', null).order('created_at', { ascending: false }).limit(80)
+  ]).then(function (rs) {
+    if (rs[0].error || rs[1].error) { $('invWait').innerHTML = '<p class="err">הרשימה לא נטענה. לבדוק חיבור לאינטרנט ולרענן.</p>'; return; }
+    var inv = rs[0].data || [], rcs = (rs[1].data || []).filter(isInvDoc), ids = rcs.map(function (r) { return r.id; });
+    invById = {}; inv.forEach(function (v) { invById[v.id] = v; }); rcs.forEach(function (r) { rcById[r.id] = r; });
+    return (ids.length ? sb.from('acc_supplier_invoices').select('receipt_id').in('receipt_id', ids) : Promise.resolve({ data: [] })).then(function (x) {
+      var has = {}; (x.data || []).forEach(function (v) { has[v.receipt_id] = 1; });
+      var todo = rcs.filter(function (r) { return !has[r.id]; }), wait = inv.filter(function (v) { return v.status === 'draft'; }), done = inv.filter(function (v) { return v.status !== 'draft'; }).slice(0, 20);
+      $('invTodoBox').classList.toggle('hidden', !todo.length); $('invTodo').innerHTML = todo.map(todoCard).join('');
+      $('invWait').innerHTML = wait.map(invCard).join('') || '<p class="mute">אין חשבוניות שממתינות לאישור.</p>';
+      $('invDone').innerHTML = done.map(invCard).join('') || '<p class="mute">עוד לא אושרו חשבוניות.</p>';
+      var n = wait.length + todo.length; $('invN').textContent = n; $('invN').classList.toggle('hidden', !n);
+    });
+  });
+}
+
+/* the form: a new typed invoice, a photographed one to complete, or a correction of a draft */
+function fld(label, inner, hint) { return '<label class="f">' + label + (hint ? ' <small>' + hint + '</small>' : '') + inner + '</label>'; }
+function inp(id, val, more) { return '<input type="text" id="' + id + '" value="' + esc(val == null ? '' : val) + '" autocomplete="off" ' + (more || '') + '>'; }
+function openForm(f) {
+  form = f; invSay('');
+  var title = f.id ? 'תיקון חשבונית' : f.receipt_id ? 'חשבונית שצולמה: לבדוק מול הדף ולשמור' : 'הקלדת חשבונית';
+  var num = 'inputmode="decimal" dir="ltr" style="text-align:right"';
+  $('invForm').innerHTML = '<b>' + title + '</b>' +
+    (f.receipt_id ? '<div class="row" style="margin-top:8px"><button class="btn small" type="button" data-iact="fview" data-rc="' + f.receipt_id + '">לראות את הצילום</button><span id="fPics" class="row"></span></div>' : '') +
+    fld('ספק', '<select id="fSup"><option value="">לבחור ספק</option>' + sups.map(function (s) { return '<option value="' + esc(s.id) + '"' + (s.id === f.supplier_id ? ' selected' : '') + '>' + esc(s.name) + '</option>'; }).join('') + '</select>') +
+    fld('סוג המסמך', '<select id="fType">' + Object.keys(DOC_HE).map(function (k) { return '<option value="' + k + '"' + (k === f.doc_type ? ' selected' : '') + '>' + DOC_HE[k] + '</option>'; }).join('') + '</select>') +
+    '<div class="f2">' + fld('מספר החשבונית', inp('fNo', f.inv_no, 'dir="ltr" style="text-align:right" maxlength="40"')) + fld('תאריך החשבונית', '<input type="date" id="fDate" value="' + esc(f.inv_date || '') + '" max="' + today() + '">') + '</div>' +
+    '<div class="f2">' + fld('לפני מע"מ', inp('fNet', f.net, num)) + fld('מע"מ', inp('fVat', f.vat, num)) + '</div>' +
+    fld('סה"כ כולל מע"מ', inp('fTotal', f.total, num)) +
+    '<p id="fSum" class="mute" style="margin:6px 0 0" role="status"></p>' +
+    fld('מספר הקצאה', inp('fAlloc', f.allocation_no, 'inputmode="numeric" dir="ltr" style="text-align:right" maxlength="20"'), 'מודפס על חשבונית מעל ₪5,000 לפני מע"מ') +
+    fld('שייכת להזמנה', '<select id="fPo"><option value="">בלי הזמנה</option></select>', 'לא חובה') +
+    fld('לתשלום עד', '<input type="date" id="fDue" value="' + esc(f.due_date || '') + '">', 'לא חובה') +
+    fld('הערה', inp('fNote', f.note, 'maxlength="300"'), 'לא חובה') +
+    (!f.receipt_id && !f.file_path ? '<label class="f">צילום או PDF של החשבונית <small>מומלץ, כדי שהמקור יישמר</small><input type="file" id="fFile" accept="image/*,application/pdf" style="display:block;margin-top:6px;font:inherit;color:inherit"></label>' : '') +
+    '<p id="fErr" class="err" role="alert" style="margin:10px 0 0"></p>' +
+    '<div class="row" style="margin-top:12px"><button class="btn brass grow" type="button" id="fSave">לשמור ולהעביר לאישור</button><button class="btn" type="button" id="fCancel">ביטול</button></div>';
+  $('invForm').classList.remove('hidden');
+  ['fNet', 'fVat', 'fTotal', 'fType', 'fDate', 'fAlloc'].forEach(function (k) { $(k).addEventListener('input', function () { calc(k); }); });
+  $('fSup').addEventListener('change', function () { loadPos(this.value, null); });
+  $('fSave').addEventListener('click', saveForm);
+  $('fCancel').addEventListener('click', closeForm);
+  loadPos(f.supplier_id, f.po_id); calc('');
+  $('invForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function closeForm() { form = null; $('invForm').classList.add('hidden'); $('invForm').innerHTML = ''; }
+function loadPos(sup, pick) {
+  var sel = $('fPo'); if (!sel) return;
+  sel.innerHTML = '<option value="">בלי הזמנה</option>'; if (!sup) return;
+  sb.from('crm_po').select('id,po_no,supplier_id,created_at,total_cost,status').eq('supplier_id', sup).order('created_at', { ascending: false }).limit(20).then(function (r) {
+    if (!$('fPo') || $('fSup').value !== sup) return;
+    $('fPo').innerHTML = '<option value="">בלי הזמנה</option>' + (r.data || []).filter(function (o) { return o.status !== 'cancelled' && o.status !== 'queued'; }).map(function (o) {
+      return '<option value="' + o.id + '" data-no="' + esc(o.po_no) + '"' + (Number(pick) === o.id ? ' selected' : '') + '>' + esc(o.po_no) + ' · ' + fmtTime(o.created_at) + ' · ' + money(o.total_cost) + '</option>'; }).join('');
+  });
+}
+/* typing the amount before VAT fills the VAT and the total; typing only the total splits it. A typed VAT is never overwritten */
+function calc(src) {
+  var net = numOr($('fNet').value), vat = numOr($('fVat').value), total = numOr($('fTotal').value);
+  if (src === 'fVat') form.vatTyped = $('fVat').value !== '';
+  if (src === 'fNet' && net != null) { if (!form.vatTyped) { vat = r2(net * VAT); $('fVat').value = vat; } $('fTotal').value = total = r2(net + (vat || 0)); }
+  if (src === 'fVat' && net != null && vat != null) $('fTotal').value = total = r2(net + vat);
+  if (src === 'fTotal' && total != null && $('fNet').value === '') { net = r2(total / (1 + VAT)); vat = r2(total - net); $('fNet').value = net; $('fVat').value = vat; }
+  var ok = net != null && total != null && Math.abs(net + (vat || 0) - total) < 0.05, el = $('fSum');
+  el.className = net == null || total == null || ok ? 'mute' : 'err';
+  el.textContent = net == null || total == null ? '' : ok ? 'הסכומים מסתדרים.' : 'הסכומים לא מסתדרים: ' + money(net) + ' ועוד ' + money(vat || 0) + ' הם ' + money(r2(net + (vat || 0))) + ', ולא ' + money(total) + '.';
+  if (ok && allocNeeded($('fType').value, $('fDate').value, net) && !$('fAlloc').value.trim()) { el.className = 'err'; el.textContent = 'בחשבונית בסכום כזה חייב להיות מספר הקצאה. אפשר לשמור בלעדיו, אבל אי אפשר יהיה לאשר.'; }
+}
+function saveForm() {
+  if (invBusy || !form) return;
+  var po = $('fPo').selectedOptions[0], f = { id: form.id, receipt_id: form.receipt_id, file_path: form.file_path, supplier_id: $('fSup').value, doc_type: $('fType').value, inv_no: $('fNo').value.trim(),
+    inv_date: $('fDate').value, due_date: $('fDue').value, net: numOr($('fNet').value), vat: numOr($('fVat').value) || 0, total: numOr($('fTotal').value), allocation_no: $('fAlloc').value.trim(),
+    po_id: po && po.value ? Number(po.value) : null, po_no: po && po.value ? po.dataset.no : null, note: $('fNote').value.trim() };
+  var bad = !f.supplier_id ? 'לבחור ספק.' : !f.inv_no ? 'להקליד את מספר החשבונית.' : !f.inv_date ? 'לבחור את תאריך החשבונית.' : f.inv_date > today() ? 'תאריך החשבונית בעתיד. לבדוק מול הדף.'
+    : f.net == null || f.total == null ? 'להקליד את הסכום לפני מע"מ ואת הסכום הכולל.' : !sumsOk(f) ? 'הסכומים לא מסתדרים: לפני מע"מ ועוד מע"מ צריך לצאת הסכום הכולל.'
+    : f.due_date && f.due_date < f.inv_date ? 'מועד התשלום מוקדם מתאריך החשבונית.' : '';
+  if (bad) { $('fErr').textContent = bad; return; }
+  invBusy = true; $('fErr').textContent = ''; $('fSave').disabled = true; $('fSave').innerHTML = '<span class="spin" aria-hidden="true"></span> שומר...';
+  var file = $('fFile') && $('fFile').files[0], up = Promise.resolve();
+  if (file) {
+    if (file.size > 24 * 1024 * 1024 || !(file.type === 'application/pdf' || file.type.indexOf('image/') === 0)) { invBusy = false; $('fSave').disabled = false; $('fSave').textContent = 'לשמור ולהעביר לאישור'; $('fErr').textContent = 'אפשר לצרף תמונה או PDF עד 24MB.'; return; }
+    var d = new Date(), path = 'orig/' + d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '/' + uid() + '.' + (EXT[file.type] || 'jpg');
+    up = sb.storage.from(BUCKET).upload(path, file, { contentType: file.type, upsert: false }).then(function (r) { if (r.error) throw new Error('upload'); f.file_path = path; });
+  }
+  up.then(function () { return sb.rpc('acc_supinv_save', { p: payload(f) }); }).then(function (x) {
+    invBusy = false;
+    if (x.error) { $('fSave').disabled = false; $('fSave').textContent = 'לשמור ולהעביר לאישור'; $('fErr').textContent = rpcErr(x.error); return; }
+    closeForm(); invSay('נשמר. החשבונית ממתינה לאישור.'); loadInv();
+  }, function (e) {
+    invBusy = false; if (!$('fSave')) return;
+    $('fSave').disabled = false; $('fSave').textContent = 'לשמור ולהעביר לאישור'; $('fErr').textContent = e && e.message === 'upload' ? 'הצילום לא עלה. לבדוק חיבור לאינטרנט ולנסות שוב.' : 'לא נשמר. לבדוק חיבור לאינטרנט ולנסות שוב.';
+  });
+}
+function signed(paths) {
+  return Promise.all(paths.map(function (p) { return sb.storage.from(BUCKET).createSignedUrl(p, 600); })).then(function (rs) {
+    return rs.filter(function (x) { return x.data && x.data.signedUrl; }).map(function (x, i) { return '<a class="btn small" target="_blank" rel="noopener" href="' + esc(x.data.signedUrl) + '">דף ' + (i + 1) + '</a>'; }).join('');
+  });
+}
+function rcPaths(id) { return sb.from('crm_receipts').select('files').eq('id', id).maybeSingle().then(function (r) { return ((r.data && r.data.files) || []).map(function (f) { return f.orig; }); }); }
+function onInv(e) {
+  var b = e.target.closest('[data-iact]'); if (!b) return;
+  var a = b.dataset.iact, id = Number(b.dataset.id), v = invById[id], slot = id ? document.querySelector('[data-vslot="' + id + '"]') : null;
+  if (a === 'go') { show('inv'); return; }
+  if (a === 'fill') { var r = rcById[Number(b.dataset.rc)]; if (!r) return; show('inv'); openForm(fromReceipt(r)); return; }
+  if (a === 'fview') { b.disabled = true; rcPaths(Number(b.dataset.rc)).then(signed).then(function (h) { b.disabled = false; $('fPics').innerHTML = h || '<span class="err">לא הצלחתי לפתוח את הצילום</span>'; }); return; }
+  if (!v || !slot) return;
+  if (a === 'view') {
+    b.disabled = true;
+    (v.receipt_id ? rcPaths(v.receipt_id) : Promise.resolve(v.file_path ? [v.file_path] : [])).then(signed).then(function (h) {
+      b.disabled = false; slot.innerHTML = '<div class="row" style="margin-top:8px">' + (h || '<span class="mute">לחשבונית הזו לא צורף צילום.</span>') + '</div>';
+    });
+    return;
+  }
+  if (a === 'edit') { openForm({ id: v.id, receipt_id: v.receipt_id, file_path: v.file_path, supplier_id: v.supplier_id, doc_type: v.doc_type, inv_no: v.inv_no, inv_date: v.inv_date, due_date: v.due_date, net: v.net, vat: v.vat, total: v.total, allocation_no: v.allocation_no, po_id: v.po_id, note: v.note, vatTyped: true }); return; }
+  if (a === 'ok') { slot.innerHTML = '<p style="margin:10px 0 6px">לאשר את החשבונית על ' + money(v.total) + '? אחרי האישור אי אפשר לתקן אותה, רק לדחות.</p><div class="row"><button class="btn small brass" type="button" data-iact="ok2" data-id="' + id + '">כן, לאשר</button><button class="btn small" type="button" data-iact="x" data-id="' + id + '">ביטול</button></div>'; return; }
+  if (a === 'no') { slot.innerHTML = '<label class="f">למה דוחים את החשבונית?<input type="text" id="why' + id + '" maxlength="200" autocomplete="off"></label><div class="row" style="margin-top:8px"><button class="btn small red" type="button" data-iact="no2" data-id="' + id + '">לדחות</button><button class="btn small" type="button" data-iact="x" data-id="' + id + '">ביטול</button></div><p class="err" id="whyE' + id + '" role="alert" style="margin:6px 0 0"></p>'; $('why' + id).focus(); return; }
+  if (a === 'x') { slot.innerHTML = ''; return; }
+  if (a === 'ok2' || a === 'no2') {
+    var why = a === 'no2' ? $('why' + id).value.trim() : '';
+    if (a === 'no2' && why.length < 3) { $('whyE' + id).textContent = 'לכתוב בקצרה את הסיבה.'; return; }
+    if (invBusy) return; invBusy = true; b.disabled = true;
+    (a === 'ok2' ? sb.rpc('acc_supinv_approve', { p_id: id }) : sb.rpc('acc_supinv_reject', { p_id: id, p_reason: why })).then(function (x) {
+      invBusy = false;
+      if (x.error) { b.disabled = false; slot.insertAdjacentHTML('beforeend', '<p class="err" role="alert" style="margin:6px 0 0">' + rpcErr(x.error) + '</p>'); return; }
+      invSay(a === 'ok2' ? 'החשבונית אושרה.' : 'החשבונית נדחתה.'); loadInv();
+    }, function () { invBusy = false; b.disabled = false; });
+  }
+}
+function show(view) {
+  var inv = view === 'inv';
+  $('vGoods').classList.toggle('hidden', inv); $('vInv').classList.toggle('hidden', !inv);
+  Array.prototype.forEach.call($('seg').querySelectorAll('button'), function (b) { b.setAttribute('aria-pressed', String((b.dataset.view === 'inv') === inv)); });
+  try { history.replaceState(null, '', location.pathname + location.search + (inv ? '#invoices' : '')); } catch (e) {}
+  if (inv) loadInv(); else window.scrollTo(0, 0);
+}
+$('seg').addEventListener('click', function (e) { var b = e.target.closest('[data-view]'); if (b) show(b.dataset.view); });
+$('invNew').addEventListener('click', function () { openForm({ doc_type: 'invoice', inv_date: today() }); });
+$('vInv').addEventListener('click', onInv); $('result').addEventListener('click', onInv);
+function startInv() {
+  $('seg').classList.remove('hidden');
+  return Promise.all([sb.from('sp_suppliers').select('id,name').order('name'), sb.from('crm_staff').select('email,name'), sb.rpc('acc_can_approve')]).then(function (rs) {
+    sups = rs[0].data || []; sups.forEach(function (s) { supName[s.id] = s.name; });
+    (rs[1].data || []).forEach(function (s) { staffName[String(s.email).toLowerCase()] = s.name; });
+    canApprove = rs[2].data === true;
+    if (location.hash === '#invoices') show('inv'); else loadInv();
+  });
+}
+
 function loadPo() {
   if (!poId) return;
   sb.from('crm_po').select('id,po_no,supplier_name,lines,receive_state,receive_summary,customer_name').eq('id', poId).maybeSingle().then(function (r) {
@@ -283,7 +541,7 @@ sb.auth.getSession().then(function (r) {
   session = r.data.session;
   if (!session) { $('needLogin').classList.remove('hidden'); return; }
   sb.auth.onAuthStateChange(function (_e, s) { if (s) session = s; });
-  $('app').classList.remove('hidden'); loadPo(); loadList(); drawDraft();
+  $('app').classList.remove('hidden'); loadPo(); loadList(); drawDraft(); startInv();
 });
 })();
 </script>
