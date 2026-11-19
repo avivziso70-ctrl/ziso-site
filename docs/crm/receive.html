@@ -335,8 +335,10 @@ function fromReceipt(r) {
 }
 function payload(f) {
   var p = { supplier_id: f.supplier_id, inv_no: f.inv_no, doc_type: f.doc_type, inv_date: f.inv_date, due_date: f.due_date || null, net: f.net, vat: f.vat || 0, total: f.total,
-    allocation_no: f.allocation_no || '', po_id: f.po_id || null, po_no: f.po_no || null, note: f.note || null };
+    allocation_no: f.allocation_no || '', po_id: f.po_id || null, po_no: f.po_no || null };
   if (f.id) p.id = f.id; else if (f.receipt_id) p.receipt_id = f.receipt_id;
+  /* an empty note is sent only when correcting a draft (so a note can be cleared); on a new save it is left out, so the ledger's own note on a reopened invoice stays */
+  if (f.id || f.note) p.note = f.note || null;
   if (f.file_path) p.file_path = f.file_path;
   return p;
 }
