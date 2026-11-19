@@ -2,6 +2,9 @@
 -- Owner: the full picture of the latest cash_snapshot (the finance thread keeps that table).
 -- Staff marked sees_bank: balance, daily forecast closes and supplier cheques only
 -- (no day items, alerts, loans or card, because those carry salary and owners lines).
+-- priority_supplier_checks also holds cheques that are not to suppliers (owners' account 300-x, private-loan repayment 202-x):
+-- their private names never leave the database; the owner sees a short label, sees_bank staff a neutral one.
+-- supplier_due of the snapshot is not returned (the finance thread says it is only partly up to date).
 -- No REVOKE here: the guard is inside the function (a caller with no staff email gets 42501).
 create or replace function public.crm_money()
 returns jsonb language plpgsql stable security definer set search_path to 'public' as $$
@@ -18,14 +21,16 @@ begin
     'full', own, 'as_of', c.as_of, 'updated_at', c.updated_at, 'source', c.source,
     'balance', c.balance, 'credit_limit', c.credit_limit,
     'receipts_mtd', c.receipts_mtd, 'receipts_per_workday', c.receipts_per_workday, 'receipts_prev', c.receipts_prev_month_per_workday,
-    'supplier_due', coalesce(c.supplier_due, '[]'::jsonb),
     'days', coalesce((
         select jsonb_agg(case when own then d else jsonb_build_object('date', d -> 'date', 'close', d -> 'close') end order by d ->> 'date')
           from jsonb_array_elements(coalesce(c.calendar, '[]'::jsonb)) d
          where (d ->> 'date')::date >= current_date - 1), '[]'::jsonb),
     'cheques', coalesce((
-        select jsonb_agg(x order by x.due, x.net desc) from (
-          select check_due as due, max(sup_name) as sup, round(sum(net)) as net, check_no as no
+        select jsonb_agg(jsonb_build_object('due', x.due, 'net', x.net, 'sup',
+                 case when not x.priv then x.sup when not own then 'תשלום אחר' when x.loan then 'החזר הלוואה פרטית' else 'בעלים' end)
+               order by x.due, x.net desc) from (
+          select check_due as due, max(sup_name) as sup, round(sum(net)) as net,
+                 bool_or(sup like '202-%' or sup like '300-%' or sup_name like '%חו"ז%') as priv, bool_or(sup like '202-%') as loan
             from public.priority_supplier_checks
            where check_due between current_date and current_date + 200
            group by check_no, check_due) x), '[]'::jsonb));
