@@ -340,7 +340,7 @@ V.cards = function () {
 };
 
 var ctSt = { from: daysAgo(30), to: iso(new Date()), st: 'todo', q: '' };
-var CST = { both: ['ok', 'עסקה וקבלה'], term: ['bad', 'נסלק, אין קבלה'], books: ['warn', 'קבלה, לא נסלק'] };
+var CST = { both: ['ok', 'עסקה וקבלה'], term: ['bad', 'נסלק, אין קבלה'], books: ['warn', 'קבלה, לא נסלק'], void: ['', 'קבלה שבוטלה'] };
 V.cardtx = function () {
   return sb.rpc('books_cards_tx', { p_from: ctSt.from, p_to: ctSt.to }).then(function (r) {
     if (r.error) throw r.error; var d = r.data, S = {};
@@ -348,16 +348,16 @@ V.cardtx = function () {
     var g = function (k) { return S[k] || { n: 0, total: 0 }; };
     var cols = [{ k: 'st', t: 'מצב', f: function (r) { var m = CST[r.st] || ['', r.st]; return '<span class="tag ' + m[0] + '">' + m[1] + '</span>'; }, raw: function (r) { return (CST[r.st] || ['', r.st])[1]; } },
       { k: 'd', t: 'תאריך', f: 'date' }, { k: 'tx_time', t: 'שעה' }, { k: 'amount', t: 'סכום', f: 'money', n: 1, sum: 1 }, { k: 'payments', t: 'תשלומים', f: 'num', n: 1 },
-      { k: 'doc', t: 'קבלה' }, { k: 'cust_name', t: 'לקוח' }, { k: 'method', t: 'אמצעי תשלום' }];
+      { k: 'doc', t: 'קבלה' }, { k: 'cust_name', t: 'לקוח' }, { k: 'method', t: 'אמצעי תשלום' }, { k: 'note', t: 'הערה' }];
     var h = head('סליקה: עסקה מול קבלה', 'כל עסקה שאושרה במסוף טרנזילה מול הקבלה באשראי שנרשמה בפריוריטי, לפי סכום זהה ותאריך קרוב (עד יומיים). עסקה בלי קבלה פירושה שחסרה קבלה. קבלה בלי עסקה יכולה להיות קבלה שבוטלה, תשלום מעורב או הקלדה שגויה.');
     h += '<div class="tiles">' + tile('עסקה וקבלה', num(g('both').n), money(g('both').total, 1)) + tile('נסלק, אין קבלה', num(g('term').n), money(g('term').total, 1)) +
       tile('קבלה, לא נסלק', num(g('books').n), money(g('books').total, 1)) + tile('עדכון אחרון מהמסוף', d.last_fetch ? when(d.last_fetch) : '', d.first_day ? 'נתונים מ־' + day(d.first_day) : '') + '</div>';
     h += '<div class="bar"><label class="f">מתאריך<input type="date" id="cFrom" value="' + ctSt.from + '"></label><label class="f">עד תאריך<input type="date" id="cTo" value="' + ctSt.to + '"></label><button class="btn small" type="button" id="cGo">הצגה</button><span class="chips" role="group" aria-label="סינון">' +
-      [['todo', 'לטיפול'], ['term', 'נסלק, אין קבלה'], ['books', 'קבלה, לא נסלק'], ['both', 'מותאמות'], ['all', 'הכול']].map(function (c) { return '<button class="chip" type="button" data-st="' + c[0] + '" aria-pressed="' + (ctSt.st === c[0]) + '">' + c[1] + '</button>'; }).join('') + '</span>' +
+      [['todo', 'לטיפול'], ['term', 'נסלק, אין קבלה'], ['books', 'קבלה, לא נסלק'], ['both', 'מותאמות'], ['void', 'בוטלו'], ['all', 'הכול']].map(function (c) { return '<button class="chip" type="button" data-st="' + c[0] + '" aria-pressed="' + (ctSt.st === c[0]) + '">' + c[1] + '</button>'; }).join('') + '</span>' +
       '<label class="f">חיפוש<input type="search" id="cQ" value="' + esc(ctSt.q) + '" placeholder="לקוח, קבלה, סכום"></label><button class="btn small" type="button" id="cCsv">הורדה לאקסל</button></div><div id="cT"></div>';
     main.innerHTML = h;
     var view = function () {
-      var rows = d.rows.filter(function (r) { return ctSt.st === 'all' || (ctSt.st === 'todo' ? r.st !== 'both' : r.st === ctSt.st); });
+      var rows = d.rows.filter(function (r) { return ctSt.st === 'all' || (ctSt.st === 'todo' ? r.st === 'term' || r.st === 'books' : r.st === ctSt.st); });
       rows = filt(rows, ctSt.q, ['cust_name', 'doc', 'amount']);
       $('cT').innerHTML = table(cols, rows, { empty: 'אין שורות במצב הזה בטווח שנבחר' }); return rows;
     };
