@@ -156,7 +156,7 @@ var KIND = { supplier_cheque: 'שיק לספק', receipts: 'תקבול', card_se
   discount_in: 'ניכיון שיקים', card_bill: 'חיוב כרטיס אשראי', card_purchase: 'רכישה בכרטיס החברה' };
 var KINDA = { asset: 'נכסים', liability: 'התחייבויות', equity: 'הון', income: 'הכנסות', cogs: 'עלות המכירות', expense: 'הוצאות' };
 var SCREENS = [
-  ['overview', 'סקירה וסגירת חודש'], ['bank', 'התאמת בנק'], ['cards', 'התאמת כרטיסי אשראי'], null,
+  ['overview', 'סקירה וסגירת חודש'], ['find', 'חיפוש כללי'], ['bank', 'התאמת בנק'], ['cards', 'התאמת כרטיסי אשראי'], null,
   ['customers', 'לקוחות'], ['suppliers', 'ספקים'], ['cheques', 'שיקים לפירעון'], ['docs', 'חשבוניות וקבלות'], ['supinv', 'חשבוניות ספק'], null,
   ['vat', 'מע"מ ומוסדות'], ['owners', 'חו"ז בעלים'], ['missing', 'תנועות שדורשות מסמך'], null,
   ['journal', 'יומן ומאזן בוחן'], ['accounts', 'אינדקס חשבונות'], null, ['sandbox', 'תרגול (לא משפיע על הספרים)'], ['readers', 'הרשאות ורישום גישה', true]
@@ -465,6 +465,36 @@ V.readers = function () {
   });
 };
 
+var findQ = '';
+V.find = function () {
+  var h = head('חיפוש כללי', 'חיפוש אחד בכל הנתונים: לקוחות, ספקים, חשבוניות, קבלות, מסמכי ספק, שיקים, תנועות בנק, דף הבנק שהוקלד ואינדקס החשבונות. אפשר לחפש שם, מספר מסמך, מספר שיק או סכום.') +
+    '<form id="ff" class="bar"><label class="f" style="flex:1;min-width:220px">מה לחפש<input type="search" id="fq" value="' + esc(findQ) + '" placeholder="לדוגמה: שם לקוח, IN2600123, 1180"></label><button class="btn brass small" type="submit">חיפוש</button></form><div id="fr" aria-live="polite"></div>';
+  main.innerHTML = h;
+  var run = function () {
+    findQ = $('fq').value.trim(); if (findQ.length < 2) { $('fr').innerHTML = '<div class="tw"><div class="empty">הקלידו לפחות שני תווים</div></div>'; return Promise.resolve(); }
+    $('fr').innerHTML = '<div class="empty" role="status">מחפש…</div>';
+    return sb.rpc('books_find_log', { p_q: findQ }).then(function (r) {
+      if (r.error) throw r.error; var d = r.data, o = '', n = 0;
+      var sec = function (t, cols, rows, cls) { if (!rows || !rows.length) return; n += rows.length; o += '<h3>' + esc(t) + ' (' + rows.length + (rows.length === 40 ? ', 40 הראשונות' : '') + ')</h3><div class="' + (cls || '') + '">' + table(cols, rows, cls ? { click: 1 } : null) + '</div>'; };
+      sec('לקוחות', [{ k: 'cust_no', t: 'כרטיס' }, { k: 'name', t: 'שם' }, { k: 'total', t: 'יתרה', f: 'money', n: 1 }], d.customers, 'fC');
+      sec('ספקים', [{ k: 'sup', t: 'כרטיס' }, { k: 'name', t: 'ספק' }, { k: 'n', t: 'מסמכים', f: 'num', n: 1 }, { k: 'open', t: 'חוב פתוח', f: 'money', n: 1 }], d.suppliers, 'fS');
+      sec('חשבוניות', [{ k: 'doc', t: 'מספר' }, { k: 'date', t: 'תאריך', f: 'date' }, { k: 'cust_no', t: 'כרטיס' }, { k: 'cust_name', t: 'לקוח' }, { k: 'amount', t: 'סכום לפני מע"מ', f: 'money', n: 1 }], d.invoices);
+      sec('קבלות', [{ k: 'doc', t: 'מספר' }, { k: 'date', t: 'תאריך', f: 'date' }, { k: 'cust_no', t: 'כרטיס' }, { k: 'cust_name', t: 'לקוח' }, { k: 'method', t: 'אמצעי תשלום' }, { k: 'amount', t: 'סכום', f: 'money', n: 1 }], d.receipts);
+      sec('מסמכי ספק פתוחים', [{ k: 'doc', t: 'מסמך' }, { k: 'sup_doc', t: 'מספר אצל הספק' }, { k: 'name', t: 'ספק' }, { k: 'doc_date', t: 'תאריך', f: 'date' }, { k: 'due', t: 'לתשלום עד', f: 'date' }, { k: 'doc_amount', t: 'סכום', f: 'money', n: 1 }, { k: 'open', t: 'פתוח', f: 'money', n: 1 }], d.supdocs);
+      sec('שיקים לספקים', [{ k: 'check_no', t: 'מספר שיק' }, { k: 'check_due', t: 'מועד פירעון', f: 'date' }, { k: 'name', t: 'למי' }, { k: 'net', t: 'סכום', f: 'money', n: 1 }], d.cheques);
+      sec('תנועות בבנק ובכרטיס החברה', [{ k: 'tx_date', t: 'תאריך', f: 'date' }, { k: 'account', t: 'מקור', f: function (r) { return r.account === 'checking' ? 'עו"ש' : 'כרטיס החברה'; } }, { k: 'kind', t: 'סוג', f: function (r) { return esc(KIND[r.kind] || r.kind || ''); } }, { k: 'description', t: 'פרטים' }, { k: 'check_no', t: 'שיק' }, { k: 'amount', t: 'סכום', f: 'money', n: 1 }], d.bank);
+      sec('דף הבנק שהוקלד בפריוריטי', [{ k: 'date', t: 'תאריך', f: 'date' }, { k: 'ref', t: 'אסמכתא' }, { k: 'details', t: 'פרטים' }, { k: 'amount', t: 'סכום', f: 'money', n: 1 }], d.books);
+      sec('אינדקס חשבונות', [{ k: 'code', t: 'מספר' }, { k: 'name', t: 'שם החשבון' }, { k: 'section', t: 'סעיף' }], d.accounts);
+      $('fr').innerHTML = n ? o : '<div class="tw"><div class="empty">לא נמצא דבר עבור "' + esc(findQ) + '"</div></div>';
+      var hook = function (cls, rows, fn) { var box = $('fr').querySelector('.' + cls); if (!box) return; box.querySelectorAll('tr.click').forEach(function (tr) { var go = function () { fn(rows[Number(tr.dataset.i)]); }; tr.onclick = go; tr.onkeydown = function (e) { if (e.key === 'Enter') go(); }; }); };
+      hook('fC', d.customers, function (r) { show('customers', r); }); hook('fS', d.suppliers, function (r) { show('suppliers', r); });
+    }).catch(function () { $('fr').innerHTML = '<div class="note" role="alert">החיפוש לא הצליח. נסו שוב.</div>'; });
+  };
+  $('ff').onsubmit = function (e) { e.preventDefault(); run(); };
+  setTimeout(function () { $('fq').focus(); }, 0);
+  return findQ ? run() : Promise.resolve();
+};
+
 /* ---------- practice area ---------- */
 var TERR = { bad_account: 'אחד ממספרי החשבון לא קיים באינדקס.', bad_amount: 'בכל שורה צריך סכום חיובי בחובה או בזכות, לא בשניהם.', need_two_lines: 'פקודת יומן צריכה לפחות שתי שורות.',
   not_balanced: 'הפקודה לא מאוזנת: סך החובה צריך להיות שווה לסך הזכות.', bad_lines: 'השורות לא נקראו. נסו שוב.', practice_full: 'הגעתם ל־500 רישומי תרגול. אפסו את התרגול כדי להמשיך.', need_both: 'בחרו שורה אחת מהבנק ושורה אחת מהספרים.' };
@@ -582,6 +612,7 @@ function idle() { // sign out after 30 minutes without use
   var reset = function () { clearTimeout(idleT); idleT = setTimeout(out, 30 * 60 * 1000); };
   ['click', 'keydown', 'touchstart', 'scroll'].forEach(function (ev) { window.addEventListener(ev, reset, { passive: true }); }); reset();
 }
+window.addEventListener('hashchange', function () { var n = (location.hash || '').slice(1); if (me && n && n !== cur && V[n]) show(n); });
 $('outBtn').onclick = out;
 $('loginF').onsubmit = function (e) {
   e.preventDefault(); var btn = e.target.querySelector('button'); btn.disabled = true; $('loginErr').textContent = '';
