@@ -156,7 +156,7 @@ var KIND = { supplier_cheque: 'שיק לספק', receipts: 'תקבול', card_se
   discount_in: 'ניכיון שיקים', card_bill: 'חיוב כרטיס אשראי', card_purchase: 'רכישה בכרטיס החברה' };
 var KINDA = { asset: 'נכסים', liability: 'התחייבויות', equity: 'הון', income: 'הכנסות', cogs: 'עלות המכירות', expense: 'הוצאות' };
 var SCREENS = [
-  ['overview', 'סקירה וסגירת חודש'], ['find', 'חיפוש כללי'], ['bank', 'התאמת בנק'], ['cards', 'התאמת כרטיסי אשראי'], null,
+  ['overview', 'סקירה וסגירת חודש'], ['find', 'חיפוש כללי'], ['bank', 'התאמת בנק'], ['match', 'בנק מול מסמכים'], ['cards', 'התאמת כרטיסי אשראי'], null,
   ['customers', 'לקוחות'], ['suppliers', 'ספקים'], ['cheques', 'שיקים לפירעון'], ['docs', 'חשבוניות וקבלות'], ['supinv', 'חשבוניות ספק'], null,
   ['vat', 'מע"מ ומוסדות'], ['owners', 'חו"ז בעלים'], ['missing', 'תנועות שדורשות מסמך'], null,
   ['journal', 'יומן ומאזן בוחן'], ['accounts', 'אינדקס חשבונות'], null, ['sandbox', 'תרגול (לא משפיע על הספרים)'], ['readers', 'הרשאות ורישום גישה', true]
@@ -286,6 +286,38 @@ V.bank = function () {
     $('bQ').oninput = function () { bankSt.q = this.value; view(); };
     $('bGo').onclick = function () { bankSt.from = $('bFrom').value || bankSt.from; bankSt.to = $('bTo').value || bankSt.to; show('bank'); };
     $('bCsv').onclick = function () { csv('bank-recon', cols, view()); };
+  });
+};
+
+var matSt = { from: daysAgo(60), to: iso(new Date()), st: 'todo', q: '' };
+var MST = { doc: ['ok', 'הותאם למסמך'], rule: ['', 'סווג לפי כלל'], suggest: ['warn', 'הצעה לבדיקה'], open: ['bad', 'חסר מסמך'] };
+V.match = function () {
+  return sb.rpc('books_match', { p_from: matSt.from, p_to: matSt.to }).then(function (r) {
+    if (r.error) throw r.error; var d = r.data, S = {};
+    (d.sum || []).forEach(function (x) { S[x.st] = x; });
+    var g = function (k) { return S[k] || { n: 0, total: 0 }; }, all = d.rows.length || 1;
+    var cols = [{ k: 'st', t: 'מצב', f: function (r) { var m = MST[r.st] || ['', r.st]; return '<span class="tag ' + m[0] + '">' + m[1] + '</span>'; }, raw: function (r) { return (MST[r.st] || ['', r.st])[1]; } },
+      { k: 'tx_date', t: 'תאריך בבנק', f: 'date' }, { k: 'kind', t: 'סוג', f: function (r) { return esc(KIND[r.kind] || r.kind || ''); }, raw: function (r) { return KIND[r.kind] || r.kind || ''; } },
+      { k: 'description', t: 'פרטים בבנק' }, { k: 'amount', t: 'סכום', f: 'money', n: 1, sum: 1 }, { k: 'doc_type', t: 'מסמך' }, { k: 'doc_ref', t: 'מספר' }, { k: 'party', t: 'מי' }, { k: 'doc_date', t: 'תאריך המסמך', f: 'date' }];
+    var h = head('בנק מול מסמכים', 'התאמה אוטומטית של כל תנועה בחשבון הבנק למסמך שמסביר אותה: שיק לספק, קבלה מלקוח או תשלום מחברת הסליקה. תנועות כמו עמלות, ריבית, הלוואות, מסים ומשיכות מסווגות לפי כלל. מה שנשאר הוא תור העבודה. ההתאמה לא רושמת דבר בספרים.');
+    h += '<div class="tiles">' + tile('הותאמו למסמך', num(g('doc').n), Math.round(g('doc').n / all * 100) + '% מהתנועות') + tile('סווגו לפי כלל', num(g('rule').n), 'עמלות, ריבית, הלוואות, מסים, משיכות') +
+      tile('הצעות לבדיקה', num(g('suggest').n), 'יש כמה מסמכים אפשריים') + tile('חסר מסמך', num(g('open').n), 'נטו ' + money(g('open').total, 1)) + '</div>';
+    h += '<div class="bar"><label class="f">מתאריך<input type="date" id="aFrom" value="' + matSt.from + '"></label><label class="f">עד תאריך<input type="date" id="aTo" value="' + matSt.to + '"></label><button class="btn small" type="button" id="aGo">הצגה</button><span class="chips" role="group" aria-label="סינון">' +
+      [['todo', 'תור העבודה'], ['open', 'חסר מסמך'], ['suggest', 'הצעות'], ['doc', 'הותאמו'], ['rule', 'לפי כלל'], ['all', 'הכול']].map(function (c) { return '<button class="chip" type="button" data-st="' + c[0] + '" aria-pressed="' + (matSt.st === c[0]) + '">' + c[1] + '</button>'; }).join('') + '</span>' +
+      '<label class="f">חיפוש<input type="search" id="aQ" value="' + esc(matSt.q) + '" placeholder="פרטים, סכום, מספר מסמך"></label><button class="btn small" type="button" id="aCsv">הורדה לאקסל</button></div><div id="aT"></div>';
+    h += '<h3>לפי סוג תנועה</h3>' + table([{ k: 'kind', t: 'סוג', f: function (r) { return esc(KIND[r.kind] || r.kind || ''); } }, { k: 'n', t: 'תנועות', f: 'num', n: 1 }, { k: 'doc_n', t: 'הותאמו', f: 'num', n: 1 }, { k: 'rule_n', t: 'לפי כלל', f: 'num', n: 1 },
+      { k: 'suggest_n', t: 'הצעות', f: 'num', n: 1 }, { k: 'open_n', t: 'חסר מסמך', f: 'num', n: 1 }, { k: 'open_sum', t: 'סכום פתוח', f: 'money', n: 1 }], d.kinds);
+    main.innerHTML = h;
+    var view = function () {
+      var rows = d.rows.filter(function (r) { return matSt.st === 'all' || (matSt.st === 'todo' ? r.st === 'open' || r.st === 'suggest' : r.st === matSt.st); });
+      rows = filt(rows, matSt.q, ['description', 'amount', 'doc_ref', 'party']);
+      $('aT').innerHTML = table(cols, rows, { empty: 'אין תנועות במצב הזה בטווח שנבחר' }); return rows;
+    };
+    view();
+    main.querySelectorAll('[data-st]').forEach(function (b) { b.onclick = function () { matSt.st = b.dataset.st; main.querySelectorAll('[data-st]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); view(); }; });
+    $('aQ').oninput = function () { matSt.q = this.value; view(); };
+    $('aGo').onclick = function () { matSt.from = $('aFrom').value || matSt.from; matSt.to = $('aTo').value || matSt.to; show('match'); };
+    $('aCsv').onclick = function () { csv('bank-documents', cols, view()); };
   });
 };
 
