@@ -298,7 +298,7 @@ V.match = function () {
     var g = function (k) { return S[k] || { n: 0, total: 0 }; }, all = d.rows.length || 1;
     var cols = [{ k: 'st', t: 'מצב', f: function (r) { var m = MST[r.st] || ['', r.st]; return '<span class="tag ' + m[0] + '">' + m[1] + '</span>'; }, raw: function (r) { return (MST[r.st] || ['', r.st])[1]; } },
       { k: 'tx_date', t: 'תאריך בבנק', f: 'date' }, { k: 'kind', t: 'סוג', f: function (r) { return esc(KIND[r.kind] || r.kind || ''); }, raw: function (r) { return KIND[r.kind] || r.kind || ''; } },
-      { k: 'description', t: 'פרטים בבנק' }, { k: 'amount', t: 'סכום', f: 'money', n: 1, sum: 1 }, { k: 'doc_type', t: 'מסמך' }, { k: 'doc_ref', t: 'מספר' }, { k: 'party', t: 'מי' }, { k: 'doc_date', t: 'תאריך המסמך', f: 'date' }];
+      { k: 'description', t: 'פרטים בבנק' }, { k: 'amount', t: 'סכום', f: 'money', n: 1, sum: 1 }, { k: 'doc_type', t: 'מסמך' }, { k: 'doc_ref', t: 'מספר' }, { k: 'party', t: 'מי' }, { k: 'doc_date', t: 'תאריך המסמך', f: 'date' }, { k: 'note', t: 'הערה' }];
     var h = head('בנק מול מסמכים', 'התאמה אוטומטית של כל תנועה בחשבון הבנק למסמך שמסביר אותה: שיק לספק, קבלה מלקוח או תשלום מחברת הסליקה. תנועות כמו עמלות, ריבית, הלוואות, מסים ומשיכות מסווגות לפי כלל. מה שנשאר הוא תור העבודה. ההתאמה לא רושמת דבר בספרים.');
     h += '<div class="tiles">' + tile('הותאמו למסמך', num(g('doc').n), Math.round(g('doc').n / all * 100) + '% מהתנועות') + tile('סווגו לפי כלל', num(g('rule').n), 'עמלות, ריבית, הלוואות, מסים, משיכות') +
       tile('הצעות לבדיקה', num(g('suggest').n), 'יש כמה מסמכים אפשריים') + tile('חסר מסמך', num(g('open').n), 'נטו ' + money(g('open').total, 1)) + '</div>';
