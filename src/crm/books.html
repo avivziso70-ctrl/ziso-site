@@ -156,7 +156,7 @@ var KIND = { supplier_cheque: 'שיק לספק', receipts: 'תקבול', card_se
   discount_in: 'ניכיון שיקים', card_bill: 'חיוב כרטיס אשראי', card_purchase: 'רכישה בכרטיס החברה' };
 var KINDA = { asset: 'נכסים', liability: 'התחייבויות', equity: 'הון', income: 'הכנסות', cogs: 'עלות המכירות', expense: 'הוצאות' };
 var SCREENS = [
-  ['overview', 'סקירה וסגירת חודש'], ['find', 'חיפוש כללי'], ['bank', 'התאמת בנק'], ['match', 'בנק מול מסמכים'], ['cards', 'התאמת כרטיסי אשראי'], null,
+  ['overview', 'סקירה וסגירת חודש'], ['find', 'חיפוש כללי'], ['bank', 'התאמת בנק'], ['match', 'בנק מול מסמכים'], ['cards', 'התאמת כרטיסי אשראי'], ['cardtx', 'סליקה: עסקה מול קבלה'], null,
   ['customers', 'לקוחות'], ['suppliers', 'ספקים'], ['cheques', 'שיקים לפירעון'], ['docs', 'חשבוניות וקבלות'], ['supinv', 'חשבוניות ספק'], null,
   ['vat', 'מע"מ ומוסדות'], ['owners', 'חו"ז בעלים'], ['missing', 'תנועות שדורשות מסמך'], null,
   ['journal', 'יומן ומאזן בוחן'], ['accounts', 'אינדקס חשבונות'], null, ['sandbox', 'תרגול (לא משפיע על הספרים)'], ['readers', 'הרשאות ורישום גישה', true]
@@ -336,6 +336,36 @@ V.cards = function () {
     h += '<h3>כרטיס האשראי של החברה (2626), 60 הימים האחרונים</h3><p class="mute small">כל רכישה כאן צריכה חשבונית.</p>' +
       table([{ k: 'tx_date', t: 'תאריך', f: 'date' }, { k: 'bill_date', t: 'מועד חיוב', f: 'date' }, { k: 'description', t: 'בית עסק' }, { k: 'amount', t: 'סכום', f: 'money', n: 1, sum: 1 }], d.company_card);
     main.innerHTML = h;
+  });
+};
+
+var ctSt = { from: daysAgo(30), to: iso(new Date()), st: 'todo', q: '' };
+var CST = { both: ['ok', 'עסקה וקבלה'], term: ['bad', 'נסלק, אין קבלה'], books: ['warn', 'קבלה, לא נסלק'] };
+V.cardtx = function () {
+  return sb.rpc('books_cards_tx', { p_from: ctSt.from, p_to: ctSt.to }).then(function (r) {
+    if (r.error) throw r.error; var d = r.data, S = {};
+    (d.sum || []).forEach(function (x) { S[x.st] = x; });
+    var g = function (k) { return S[k] || { n: 0, total: 0 }; };
+    var cols = [{ k: 'st', t: 'מצב', f: function (r) { var m = CST[r.st] || ['', r.st]; return '<span class="tag ' + m[0] + '">' + m[1] + '</span>'; }, raw: function (r) { return (CST[r.st] || ['', r.st])[1]; } },
+      { k: 'd', t: 'תאריך', f: 'date' }, { k: 'tx_time', t: 'שעה' }, { k: 'amount', t: 'סכום', f: 'money', n: 1, sum: 1 }, { k: 'payments', t: 'תשלומים', f: 'num', n: 1 },
+      { k: 'doc', t: 'קבלה' }, { k: 'cust_name', t: 'לקוח' }, { k: 'method', t: 'אמצעי תשלום' }];
+    var h = head('סליקה: עסקה מול קבלה', 'כל עסקה שאושרה במסוף טרנזילה מול הקבלה באשראי שנרשמה בפריוריטי, לפי סכום זהה ותאריך קרוב (עד יומיים). עסקה בלי קבלה פירושה שחסרה קבלה. קבלה בלי עסקה יכולה להיות קבלה שבוטלה, תשלום מעורב או הקלדה שגויה.');
+    h += '<div class="tiles">' + tile('עסקה וקבלה', num(g('both').n), money(g('both').total, 1)) + tile('נסלק, אין קבלה', num(g('term').n), money(g('term').total, 1)) +
+      tile('קבלה, לא נסלק', num(g('books').n), money(g('books').total, 1)) + tile('עדכון אחרון מהמסוף', d.last_fetch ? when(d.last_fetch) : '', d.first_day ? 'נתונים מ־' + day(d.first_day) : '') + '</div>';
+    h += '<div class="bar"><label class="f">מתאריך<input type="date" id="cFrom" value="' + ctSt.from + '"></label><label class="f">עד תאריך<input type="date" id="cTo" value="' + ctSt.to + '"></label><button class="btn small" type="button" id="cGo">הצגה</button><span class="chips" role="group" aria-label="סינון">' +
+      [['todo', 'לטיפול'], ['term', 'נסלק, אין קבלה'], ['books', 'קבלה, לא נסלק'], ['both', 'מותאמות'], ['all', 'הכול']].map(function (c) { return '<button class="chip" type="button" data-st="' + c[0] + '" aria-pressed="' + (ctSt.st === c[0]) + '">' + c[1] + '</button>'; }).join('') + '</span>' +
+      '<label class="f">חיפוש<input type="search" id="cQ" value="' + esc(ctSt.q) + '" placeholder="לקוח, קבלה, סכום"></label><button class="btn small" type="button" id="cCsv">הורדה לאקסל</button></div><div id="cT"></div>';
+    main.innerHTML = h;
+    var view = function () {
+      var rows = d.rows.filter(function (r) { return ctSt.st === 'all' || (ctSt.st === 'todo' ? r.st !== 'both' : r.st === ctSt.st); });
+      rows = filt(rows, ctSt.q, ['cust_name', 'doc', 'amount']);
+      $('cT').innerHTML = table(cols, rows, { empty: 'אין שורות במצב הזה בטווח שנבחר' }); return rows;
+    };
+    view();
+    main.querySelectorAll('[data-st]').forEach(function (b) { b.onclick = function () { ctSt.st = b.dataset.st; main.querySelectorAll('[data-st]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); view(); }; });
+    $('cQ').oninput = function () { ctSt.q = this.value; view(); };
+    $('cGo').onclick = function () { ctSt.from = $('cFrom').value || ctSt.from; ctSt.to = $('cTo').value || ctSt.to; show('cardtx'); };
+    $('cCsv').onclick = function () { csv('card-transactions', cols, view()); };
   });
 };
 
