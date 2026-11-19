@@ -683,7 +683,7 @@ function openMoney() {
 }
 function drawMoney() {
   $('mBody').classList.remove('hidden');
-  var up = M.updated_at ? new Date(M.updated_at) : null, old = M.as_of && (Date.now() - dt(M.as_of).getTime()) > 2.5 * 864e5;
+  var up = M.updated_at ? new Date(M.updated_at) : null, old = M.as_of && (Date.now() - dt(M.as_of).getTime()) > 2.8 * 864e5; /* the snapshot is written every morning except Saturday: old only after two missed runs */
   $('mAsOf').textContent = 'נכון ל-' + dm(M.as_of) + (up ? ' · עודכן ' + (isToday(up) ? 'היום' : 'ב-' + dm(isoOf(up))) + ' ב-' + timeOf(up) : '');
   mNote(old ? 'הנתונים לא התעדכנו מאז ' + dm(M.as_of) + '. המספרים כאן ישנים.' : '');
   var a = mAll(); if (!mSel || !a.some(function (d) { return d.date === mSel; })) mSel = a.length ? a[0].date : null;
@@ -804,13 +804,12 @@ function crow(c) { return '<div class="crow"><span class="d ltr">' + dm(c.due) +
 function drawCheques() {
   var cs = M.cheques || [], t = new Date(); t.setHours(12, 0, 0, 0);
   if (!cs.length) { $('mChq').innerHTML = '<div class="empty">אין צ׳קים עתידיים לספקים.</div>'; return; }
-  var wk = cs.filter(function (c) { return (dt(c.due) - t) / 864e5 < 6.5; }), by = {}, open = {};
+  var wk = cs.filter(function (c) { return (dt(c.due) - t) / 864e5 < 6.5; }), by = {};
   cs.forEach(function (c) { var m = String(c.due).slice(0, 7); (by[m] = by[m] || []).push(c); });
-  (M.supplier_due || []).forEach(function (x) { open[x.month] = Number(x.open_invoices) || 0; });
   var ms = Object.keys(by).sort(), tot = function (m) { return sum(by[m], function (c) { return c.net; }); }, max = Math.max.apply(null, ms.map(tot)) || 1, now = isoOf(new Date()).slice(0, 7);
   $('mChq').innerHTML = '<div class="sub2">ב-7 הימים הקרובים</div>' + (wk.length ? '<div class="inn0">' + wk.map(crow).join('') + '</div>' : '<div class="empty">אין צ׳קים שיורדים השבוע.</div>')
     + '<div class="sub2">לפי חודש</div>' + ms.map(function (m) {
-      return '<details class="mo fold"><summary><span><span class="t">' + esc(monthName(m)) + (m === now ? ', מה שנשאר' : '') + '</span><span class="s">' + cnt(by[m].length, 'צ׳ק אחד', 'צ׳קים') + (open[m] ? ' · ועוד ' + amt(open[m]) + ' בחשבוניות פתוחות' : '') + '</span></span><span class="a">' + amt(tot(m)) + '</span>' + ic('chev')
+      return '<details class="mo fold"><summary><span><span class="t">' + esc(monthName(m)) + (m === now ? ', מה שנשאר' : '') + '</span><span class="s">' + cnt(by[m].length, 'צ׳ק אחד', 'צ׳קים') + '</span></span><span class="a">' + amt(tot(m)) + '</span>' + ic('chev')
         + '<span class="bar"><i style="width:' + Math.max(2, Math.round(tot(m) / max * 100)) + '%"></i></span></summary><div class="inn">' + by[m].map(crow).join('') + '</div></details>'; }).join('');
 }
 function drawRec() {
