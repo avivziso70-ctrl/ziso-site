@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0f1113">
+<title>הנהלת חשבונות | זיסו</title>
+<link rel="icon" href="../img/logo.jpg">
+<link rel="stylesheet" href="../fonts.css">
+<style>
+:root{--wall:#0f1113;--surface:#1d2024;--graphite:#22262a;--line:#3a3f45;--ink:#f2efe8;--mute:#b9b3a7;--brass:#cfae74;--brass-ink:#1a1610;--brass-soft:#2d271d;
+  --red:#e07a6a;--green:#8fc9a0;--amber:#e3b86a;--display:"Bellefair","Times New Roman",serif;--body:"Assistant","Segoe UI",Arial,sans-serif}
+@media (prefers-color-scheme: light){:root{--wall:#f3f2ef;--surface:#fff;--graphite:#ecebe7;--line:#d2cec5;--ink:#1e1b17;--mute:#5f5d58;--brass:#7a5c2c;--brass-ink:#fff;--brass-soft:#efe7da;--red:#b8432f;--green:#2e7d4f;--amber:#8c6200}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--wall);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45}
+.hidden{display:none!important}
+h1,h2,h3{font-family:var(--display);font-weight:400;margin:0}
+h1{font-size:24px}h2{font-size:26px;margin:0 0 4px}h3{font-size:20px;margin:28px 0 8px}
+p{margin:0 0 12px}.mute{color:var(--mute)}.small{font-size:14px}
+a{color:var(--brass)}
+header{position:sticky;top:0;z-index:5;background:var(--wall);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;gap:12px;align-items:center}
+header .grow{flex:1}
+.ro{font-size:13px;font-weight:700;border:1px solid var(--line);border-radius:999px;padding:2px 10px;color:var(--mute);white-space:nowrap}
+.btn{font:inherit;color:inherit;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:600;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;white-space:nowrap}
+.btn.brass{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
+.btn.small{min-height:36px;padding:0 12px;font-size:14px}
+.btn[disabled]{opacity:.5;cursor:default}
+.btn:focus-visible,input:focus-visible,select:focus-visible,nav button:focus-visible,tr[tabindex]:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.shell{display:flex;min-height:calc(100vh - 65px)}
+nav{flex:0 0 212px;border-inline-end:1px solid var(--line);padding:12px 8px;position:sticky;top:65px;align-self:flex-start;max-height:calc(100vh - 65px);overflow:auto}
+nav button{display:block;width:100%;text-align:start;font:inherit;color:var(--ink);background:none;border:0;border-radius:10px;padding:9px 12px;cursor:pointer}
+nav button:hover{background:var(--graphite)}
+nav button[aria-current="page"]{background:var(--brass-soft);color:var(--brass);font-weight:700}
+nav .sep{height:1px;background:var(--line);margin:8px 6px}
+main{flex:1;min-width:0;padding:20px 24px 64px;max-width:1280px}
+main:focus{outline:none}
+.lead{color:var(--mute);max-width:70ch;margin-bottom:16px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:12px 0 8px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.tile .k{font-size:14px;color:var(--mute)}.tile .v{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;direction:ltr;text-align:right}
+.tile .s{font-size:13px;color:var(--mute)}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin:12px 0}
+label.f{display:flex;flex-direction:column;font-size:13px;color:var(--mute);gap:2px}
+input,select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;min-height:40px;padding:0 10px}
+input[type=search]{min-width:200px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font:inherit;font-size:14px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;min-height:36px;padding:0 12px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--brass-soft);border-color:var(--brass);color:var(--brass);font-weight:700}
+.tw{overflow:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface);max-height:70vh}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{padding:8px 10px;text-align:start;border-bottom:1px solid var(--line);vertical-align:top}
+th{position:sticky;top:0;background:var(--graphite);font-weight:700;font-size:14px;white-space:nowrap;z-index:1}
+tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:left;font-variant-numeric:tabular-nums;white-space:nowrap;direction:ltr}
+td.d{white-space:nowrap;font-variant-numeric:tabular-nums}
+tr.click{cursor:pointer}tr.click:hover td{background:var(--graphite)}
+tfoot td{font-weight:700;background:var(--graphite);position:sticky;bottom:0}
+.neg{color:var(--red)}.pos{color:var(--green)}
+.tag{display:inline-block;font-size:13px;border-radius:999px;padding:1px 9px;border:1px solid var(--line);white-space:nowrap}
+.tag.ok{color:var(--green);border-color:var(--green)}.tag.warn{color:var(--amber);border-color:var(--amber)}.tag.bad{color:var(--red);border-color:var(--red)}
+.check{list-style:none;margin:8px 0;padding:0;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.check li{display:flex;gap:10px;align-items:baseline;padding:10px 14px;border-bottom:1px solid var(--line)}
+.check li:last-child{border-bottom:0}.check .t{flex:1}.check .t b{display:block}
+.note{border:1px solid var(--line);border-inline-start:3px solid var(--amber);border-radius:10px;padding:10px 14px;background:var(--surface);margin:12px 0;max-width:80ch}
+.empty{padding:28px 16px;text-align:center;color:var(--mute)}
+.card{max-width:420px;margin:8vh auto;padding:24px;background:var(--surface);border:1px solid var(--line);border-radius:18px}
+.card label{display:block;margin:12px 0 4px;font-weight:600}.card input{width:100%;min-height:48px}
+.card .btn{width:100%;margin-top:16px;min-height:48px}
+.err{color:var(--red);min-height:1.4em;margin-top:8px}
+.back{margin-bottom:10px}
+#navSel{display:none}
+@media (max-width:1023px){
+  nav{display:none}
+  body.in #navSel{display:block;flex:1 1 170px;min-width:150px;max-width:280px;font-weight:700}
+  body.in header h1,#who,body.in header .grow{display:none}
+  .card{margin:6vh 12px}
+  header{gap:8px;padding:10px 12px}
+  main{padding:14px 12px 56px}
+  h2{font-size:23px}
+  .tile .v{font-size:20px}
+  table{font-size:14px}th,td{padding:7px 8px}
+}
+@media print{header,nav,.bar,.btn{display:none!important}.tw{max-height:none;overflow:visible;border:0}body{background:#fff;color:#000}}
+</style>
+</head>
+<body>
+<header>
+  <h1>הנהלת חשבונות</h1>
+  <select id="navSel" aria-label="מסך"></select>
+  <span class="ro" id="roTag">קריאה בלבד</span>
+  <span class="grow"></span>
+  <span class="mute small hidden" id="who"></span>
+  <button class="btn small hidden" id="outBtn" type="button">יציאה</button>
+</header>
+
+<section id="login" class="card hidden" aria-labelledby="loginH">
+  <h2 id="loginH">כניסה</h2>
+  <p class="mute">עמדת העבודה של הנהלת החשבונות של זיסו קרמיקה. הכניסה למורשים בלבד, וכל כניסה נרשמת.</p>
+  <form id="loginF">
+    <label for="lEmail">אימייל</label><input id="lEmail" name="email" type="email" autocomplete="username" required dir="ltr">
+    <label for="lPw">סיסמה</label><input id="lPw" name="password" type="password" autocomplete="current-password" required dir="ltr">
+    <button class="btn brass" type="submit">כניסה</button>
+    <div class="err" id="loginErr" role="alert"></div>
+  </form>
+</section>
+
+<section id="newPw" class="card hidden" aria-labelledby="pwH">
+  <h2 id="pwH">בחירת סיסמה חדשה</h2>
+  <p class="mute">זו הכניסה הראשונה. צריך להחליף את הסיסמה הזמנית בסיסמה שרק את/ה יודע/ת. לפחות 10 תווים.</p>
+  <form id="pwF">
+    <label for="p1">סיסמה חדשה</label><input id="p1" type="password" autocomplete="new-password" minlength="10" required dir="ltr">
+    <label for="p2">שוב, לאימות</label><input id="p2" type="password" autocomplete="new-password" minlength="10" required dir="ltr">
+    <button class="btn brass" type="submit">שמירה וכניסה</button>
+    <div class="err" id="pwErr" role="alert"></div>
+  </form>
+</section>
+
+<div class="shell hidden" id="app">
+  <nav id="nav" aria-label="מסכים"></nav>
+  <main id="main" tabindex="-1"></main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+<script>
+(function () {
+'use strict';
+var SB_URL = 'https://ppnjosyraosrdephsksu.supabase.co';
+var sb = supabase.createClient(SB_URL, 'sb_publishable_yjpTHQkvH5-l4v-HCcEj4w_ofAYpQmV', { auth: { persistSession: true, autoRefreshToken: true } });
+var $ = function (id) { return document.getElementById(id); };
+var main = $('main'), me = null, cur = 'overview', session = null;
+try { history.scrollRestoration = 'manual'; } catch (e) {}
+
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function num(n, dec) { return Number(n || 0).toLocaleString('he-IL', { minimumFractionDigits: dec ? 2 : 0, maximumFractionDigits: dec ? 2 : 0 }); }
+function money(n, plain) {
+  if (n == null || n === '') return '';
+  var v = Number(n), s = (v < 0 ? '-' : '') + '₪' + num(Math.abs(v), Math.abs(v) < 100000 && v % 1 !== 0);
+  return plain ? s : '<span class="' + (v < 0 ? 'neg' : '') + '">' + s + '</span>';
+}
+function day(d) { if (!d) return ''; var p = String(d).slice(0, 10).split('-'); return p[2] + '/' + p[1] + '/' + p[0].slice(2); }
+function when(t) { if (!t) return ''; var d = new Date(t); return d.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' }) + ' ' + d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }); }
+function month(m) { var p = String(m).split('-'); return p[1] + '/' + p[0]; }
+function iso(d) { return d.toISOString().slice(0, 10); }
+function daysAgo(n) { var d = new Date(); d.setDate(d.getDate() - n); return iso(d); }
+
+var KIND = { supplier_cheque: 'שיק לספק', receipts: 'תקבול', card_settlement: 'סליקת אשראי', loan: 'החזר הלוואה', loan_in: 'קבלת הלוואה', owners: 'משיכת בעלים',
+  owners_in: 'הפקדת בעלים', payroll: 'שכר', tax: 'מסים ומוסדות', fees: 'עמלות', interest: 'ריבית', services: 'שירותים', other: 'אחר', returned: 'שיק חוזר',
+  discount_in: 'ניכיון שיקים', card_bill: 'חיוב כרטיס אשראי', card_purchase: 'רכישה בכרטיס החברה' };
+var KINDA = { asset: 'נכסים', liability: 'התחייבויות', equity: 'הון', income: 'הכנסות', cogs: 'עלות המכירות', expense: 'הוצאות' };
+var SCREENS = [
+  ['overview', 'סקירה וסגירת חודש'], ['bank', 'התאמת בנק'], ['cards', 'התאמת כרטיסי אשראי'], null,
+  ['customers', 'לקוחות'], ['suppliers', 'ספקים'], ['cheques', 'שיקים לפירעון'], ['docs', 'חשבוניות וקבלות'], ['supinv', 'חשבוניות ספק'], null,
+  ['vat', 'מע"מ ומוסדות'], ['owners', 'חו"ז בעלים'], ['missing', 'תנועות שדורשות מסמך'], null,
+  ['journal', 'יומן ומאזן בוחן'], ['accounts', 'אינדקס חשבונות'], ['readers', 'הרשאות ורישום גישה', true]
+];
+
+/* ---------- table helper ---------- */
+// cols: [{k, t, f: 'money'|'date'|'num'|function(row), n: numeric align, sum: true}]
+function cell(c, r) {
+  var v = r[c.k];
+  if (typeof c.f === 'function') return c.f(r);
+  if (c.f === 'money') return money(v);
+  if (c.f === 'date') return day(v);
+  if (c.f === 'num') return v == null ? '' : num(v);
+  return esc(v);
+}
+function table(cols, rows, opt) {
+  opt = opt || {};
+  if (!rows || !rows.length) return '<div class="tw"><div class="empty">' + esc(opt.empty || 'אין נתונים להצגה') + '</div></div>';
+  var h = '<div class="tw"><table><thead><tr>' + cols.map(function (c) { return '<th scope="col"' + (c.n ? ' class="n"' : '') + '>' + esc(c.t) + '</th>'; }).join('') + '</tr></thead><tbody>';
+  rows.forEach(function (r, i) {
+    h += '<tr' + (opt.click ? ' class="click" tabindex="0" data-i="' + i + '"' : '') + '>' + cols.map(function (c) {
+      return '<td class="' + (c.n ? 'n' : c.f === 'date' ? 'd' : '') + '">' + cell(c, r) + '</td>';
+    }).join('') + '</tr>';
+  });
+  h += '</tbody>';
+  if (cols.some(function (c) { return c.sum; })) {
+    h += '<tfoot><tr>' + cols.map(function (c, i) {
+      if (!c.sum) return '<td>' + (i === 0 ? 'סה"כ (' + num(rows.length) + ')' : '') + '</td>';
+      return '<td class="n">' + money(rows.reduce(function (a, r) { return a + Number(r[c.k] || 0); }, 0)) + '</td>';
+    }).join('') + '</tr></tfoot>';
+  }
+  return h + '</table></div>';
+}
+function csv(name, cols, rows) {
+  var q = function (v) { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  var out = [cols.map(function (c) { return q(c.t); }).join(',')].concat(rows.map(function (r) { return cols.map(function (c) { return q(typeof c.f === 'function' ? (c.raw ? c.raw(r) : r[c.k]) : r[c.k]); }).join(','); }));
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + out.join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+  a.download = name + '-' + iso(new Date()) + '.csv'; document.body.appendChild(a); a.click(); a.remove();
+}
+function tile(k, v, s) { return '<div class="tile"><div class="k">' + esc(k) + '</div><div class="v">' + v + '</div>' + (s ? '<div class="s">' + s + '</div>' : '') + '</div>'; }
+function head(title, lead) { return '<h2>' + esc(title) + '</h2><p class="lead">' + lead + '</p>'; }
+function filt(rows, q, keys) {
+  q = (q || '').trim().toLowerCase(); if (!q) return rows;
+  return rows.filter(function (r) { return keys.some(function (k) { return String(r[k] == null ? '' : r[k]).toLowerCase().indexOf(q) >= 0; }); });
+}
+function get(screen, args) {
+  return sb.rpc('books_get', { p_screen: screen, p_args: args || {} }).then(function (r) {
+    if (r.error) throw r.error; return r.data;
+  });
+}
+function busy(t) { main.innerHTML = '<div class="empty" role="status">' + esc(t || 'טוען…') + '</div>'; }
+function fail(e) {
+  var no = e && (e.code === '42501' || /no access/.test(e.message || ''));
+  main.innerHTML = '<div class="note" role="alert">' + (no ? 'אין לחשבון הזה הרשאה לעמדה. פנו לאביב.' : 'הנתונים לא נטענו. בדקו את החיבור לאינטרנט ונסו שוב.') +
+    '</div><button class="btn" type="button" id="retry">ניסיון נוסף</button>';
+  $('retry').onclick = function () { show(cur); };
+}
+function onRow(rows, fn) {
+  main.querySelectorAll('tr.click').forEach(function (tr) {
+    var go = function () { fn(rows[Number(tr.dataset.i)]); };
+    tr.onclick = go; tr.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
+  });
+}
+
+/* ---------- screens ---------- */
+var V = {};
+
+V.overview = function () {
+  return get('overview').then(function (d) {
+    var u = d.unmatched || {}, cm = d.card_month || {}, lag = d.typed_through && d.bank_last_tx ? Math.round((new Date(d.bank_last_tx) - new Date(d.typed_through)) / 864e5) : null;
+    var li = function (st, t, s, go) { return '<li><span class="tag ' + st[0] + '">' + st[1] + '</span><span class="t"><b>' + t + '</b><span class="mute small">' + s + '</span></span>' +
+      (go ? '<button class="btn small" type="button" data-go="' + go + '">פתיחה</button>' : '') + '</li>'; };
+    var OK = ['ok', 'תקין'], W = ['warn', 'לטיפול'], B = ['bad', 'פתוח'];
+    var h = head('סקירה וסגירת חודש', 'מצב הספרים ברגע זה. כל המספרים נמשכים חי ממסד הנתונים: הבנק דרך חיבור הבנק, המסמכים והיתרות מפריוריטי.');
+    h += '<div class="tiles">' +
+      tile('יתרת עו"ש בבנק', money(d.bank && d.bank.balance), d.bank ? 'נכון ל־' + day(d.bank.as_of) + ' · מסגרת ' + money(d.bank.credit_limit, 1) : '') +
+      tile('לקוחות, יתרה כוללת', money(d.customers.total), num(d.customers.n) + ' כרטיסים עם יתרה') +
+      tile('ספקים, חוב פתוח', money(d.suppliers.open), 'מזה בפיגור ' + money(d.suppliers.late, 1)) +
+      tile('שיקים עתידיים לספקים', money(d.cheques.sum), num(d.cheques.n) + ' שיקים שטרם הגיע מועדם') + '</div>';
+    h += '<h3>רשימת סגירה</h3><ul class="check">' +
+      li(lag != null && lag <= 7 ? OK : B, 'דפי בנק הוקלדו עד ' + day(d.typed_through), 'התנועה האחרונה בבנק: ' + day(d.bank_last_tx) + (lag > 7 ? '. פער של ' + lag + ' ימים' : ''), 'bank') +
+      li(!u.bank_n && !u.books_n ? OK : W, 'התאמת בנק מתחילת השנה', num(u.both_n) + ' תנועות מותאמות · ' + num(u.bank_n) + ' בבנק שלא הוקלדו (' + money(u.bank_sum, 1) + ') · ' + num(u.books_n) + ' הוקלדו ולא נמצאו בבנק (' + money(u.books_sum, 1) + ')', 'bank') +
+      li(Math.abs(cm.receipts - cm.settled) < 1 ? OK : W, 'כרטיסי אשראי החודש', 'קבלות באשראי ' + money(cm.receipts, 1) + ' · נכנס לבנק מסליקה ' + money(cm.settled, 1) + '. הפער כולל עמלות ועסקאות שעוד לא זוכו', 'cards') +
+      li(Number(d.suppliers.late) > 0 ? W : OK, 'ספקים בפיגור', money(d.suppliers.late, 1) + ' מתוך ' + money(d.suppliers.open, 1), 'suppliers') +
+      li(d.supinv.waiting ? W : OK, 'חשבוניות ספק שממתינות לאישור', num(d.supinv.waiting) + ' מתוך ' + num(d.supinv.n) + ' שהוקלדו במערכת', 'supinv') +
+      li(d.journal.n ? OK : ['warn', 'בהקמה'], 'יומן במערכת החדשה', d.journal.n ? num(d.journal.n) + ' פקודות, אחרונה ' + day(d.journal.last) : 'עוד אין פקודות. הספרים הרשמיים מנוהלים בפריוריטי עד 31.12.2026', 'journal') +
+      '</ul>';
+    h += '<h3>עדכניות הנתונים</h3>' + table([{ k: 'key', t: 'מקור', f: function (r) { return esc(SRC[r.key] || r.key); } }, { k: 'rows', t: 'שורות', f: 'num', n: 1 }, { k: 'at', t: 'עודכן', f: function (r) { return when(r.at); } }],
+      [{ key: 'fin', rows: null, at: d.fin_sync }].concat(d.sync || []));
+    main.innerHTML = h;
+    main.querySelectorAll('[data-go]').forEach(function (b) { b.onclick = function () { show(b.dataset.go); }; });
+  });
+};
+var SRC = { fin: 'בנק וכרטיס החברה (חיבור בנק)', aging: 'יתרות לקוחות', bank: 'דפי בנק בפריוריטי', customer_aging: 'גיול לקוחות', customers: 'כרטיסי לקוחות', invoices: 'חשבוניות', orders: 'הזמנות פתוחות',
+  orders_all: 'כל ההזמנות', quotes: 'הצעות מחיר', receipts: 'קבלות', stock: 'מלאי', supplier_aging: 'גיול ספקים', supplier_checks: 'שיקים לספקים', supplier_orders: 'הזמנות רכש', suppliers: 'כרטיסי ספקים', till: 'קופה' };
+
+var bankSt = { from: daysAgo(75), to: iso(new Date()), side: 'open', q: '' };
+V.bank = function () {
+  return get('bank', { from: bankSt.from, to: bankSt.to, all: '1' }).then(function (d) {
+    var s = d.sum, cols = [
+      { k: 'side', t: 'מצב', f: function (r) { return r.side === 'both' ? '<span class="tag ok">מותאם</span>' : r.side === 'bank' ? '<span class="tag warn">בבנק, לא הוקלד</span>' : '<span class="tag bad">הוקלד, לא בבנק</span>'; }, raw: function (r) { return r.side; } },
+      { k: 'bank_date', t: 'תאריך בבנק', f: 'date' }, { k: 'books_date', t: 'תאריך בספרים', f: 'date' },
+      { k: 'descr', t: 'פרטים' }, { k: 'kind', t: 'סוג', f: function (r) { return esc(KIND[r.kind] || r.kind || ''); }, raw: function (r) { return KIND[r.kind] || r.kind || ''; } },
+      { k: 'ref', t: 'אסמכתא' }, { k: 'amount', t: 'סכום', f: 'money', n: 1, sum: 1 }];
+    var h = head('התאמת בנק', 'דף הבנק האמיתי (חשבון דיסקונט 209808669) מול דף הבנק שהוקלד בפריוריטי. תנועות מזווגות לפי סכום זהה ותאריך קרוב (עד 10 ימים).');
+    h += '<div class="tiles">' + tile('מותאמות', num(s.both_n), 'בטווח התאריכים שנבחר') +
+      tile('בבנק ולא הוקלדו', num(s.bank_n), 'נטו ' + money(s.bank_sum, 1)) +
+      tile('הוקלדו ולא נמצאו בבנק', num(s.books_n), 'נטו ' + money(s.books_sum, 1)) +
+      tile('הוקלד עד', day(d.typed_through), d.typed_last ? 'יתרה בדף שהוקלד ' + money(d.typed_last.balance, 1) + (d.bank_same_day != null ? ' · בבנק באותו יום ' + money(d.bank_same_day, 1) : '') : '') + '</div>';
+    h += '<div class="bar"><label class="f">מתאריך<input type="date" id="bFrom" value="' + bankSt.from + '"></label><label class="f">עד תאריך<input type="date" id="bTo" value="' + bankSt.to + '"></label>' +
+      '<button class="btn small" type="button" id="bGo">הצגה</button><span class="chips" role="group" aria-label="סינון">' +
+      [['open', 'לא מותאמות'], ['bank', 'בבנק, לא הוקלד'], ['books', 'הוקלד, לא בבנק'], ['both', 'מותאמות'], ['all', 'הכול']].map(function (c) {
+        return '<button class="chip" type="button" data-side="' + c[0] + '" aria-pressed="' + (bankSt.side === c[0]) + '">' + c[1] + '</button>'; }).join('') + '</span>' +
+      '<label class="f">חיפוש<input type="search" id="bQ" value="' + esc(bankSt.q) + '" placeholder="פרטים, סכום, אסמכתא"></label><button class="btn small" type="button" id="bCsv">הורדה לאקסל</button></div><div id="bT"></div>';
+    h += '<h3>לפי חודש, מתחילת השנה</h3>' + table([{ k: 'm', t: 'חודש', f: function (r) { return month(r.m); } }, { k: 'both_n', t: 'מותאמות', f: 'num', n: 1 }, { k: 'bank_n', t: 'בבנק, לא הוקלדו', f: 'num', n: 1 },
+      { k: 'bank_sum', t: 'סכום', f: 'money', n: 1 }, { k: 'books_n', t: 'הוקלדו, לא בבנק', f: 'num', n: 1 }, { k: 'books_sum', t: 'סכום', f: 'money', n: 1 }], d.months);
+    main.innerHTML = h;
+    var view = function () {
+      var rows = d.rows.filter(function (r) { return bankSt.side === 'all' || (bankSt.side === 'open' ? r.side !== 'both' : r.side === bankSt.side); });
+      rows = filt(rows, bankSt.q, ['descr', 'amount', 'ref']);
+      $('bT').innerHTML = table(cols, rows, { empty: 'אין תנועות במצב הזה בטווח שנבחר' });
+      return rows;
+    };
+    view();
+    main.querySelectorAll('[data-side]').forEach(function (b) { b.onclick = function () { bankSt.side = b.dataset.side; main.querySelectorAll('[data-side]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); view(); }; });
+    $('bQ').oninput = function () { bankSt.q = this.value; view(); };
+    $('bGo').onclick = function () { bankSt.from = $('bFrom').value || bankSt.from; bankSt.to = $('bTo').value || bankSt.to; show('bank'); };
+    $('bCsv').onclick = function () { csv('bank-recon', cols, view()); };
+  });
+};
+
+V.cards = function () {
+  return get('cards', { from: daysAgo(60), to: iso(new Date()) }).then(function (d) {
+    var h = head('התאמת כרטיסי אשראי', 'שלושה שלבים: מה נסלק בקופה (טרנזילה), מה נרשם בקבלות בפריוריטי, ומה נכנס בפועל לבנק מחברת הסליקה (יציל). הפער בין קבלות לכניסות לבנק הוא עמלות, קיזוזים ועסקאות שטרם זוכו.');
+    h += '<h3>לפי חודש</h3>' + table([{ k: 'm', t: 'חודש', f: function (r) { return month(r.m); } }, { k: 'receipts_n', t: 'קבלות באשראי', f: 'num', n: 1 }, { k: 'receipts', t: 'סכום קבלות', f: 'money', n: 1, sum: 1 },
+      { k: 'settled_n', t: 'זיכויים בבנק', f: 'num', n: 1 }, { k: 'settled', t: 'נכנס לבנק', f: 'money', n: 1, sum: 1 },
+      { k: 'gap', t: 'פער', f: function (r) { return money(r.receipts - r.settled); }, n: 1 }], d.months);
+    h += '<h3>יום מול יום, 45 הימים האחרונים</h3><p class="mute small">נסלק = סכום העסקאות במסוף. קבלות = קבלות באשראי שנרשמו באותו יום. הפרש ביום בודד יכול לנבוע מקבלה שנרשמה למחרת.</p>' +
+      table([{ k: 'd', t: 'תאריך', f: 'date' }, { k: 'clearing', t: 'נסלק (דוח יומי)', f: 'money', n: 1 }, { k: 'live', t: 'נסלק (חי)', f: 'money', n: 1 }, { k: 'receipts', t: 'קבלות באשראי', f: 'money', n: 1 },
+        { k: 'x', t: 'הפרש', n: 1, f: function (r) { var c = r.clearing != null ? r.clearing : r.live; if (c == null) return ''; var g = c - r.receipts; return Math.abs(g) < 1 ? '<span class="tag ok">תואם</span>' : money(g); } }], d.days);
+    h += '<h3>תשלומים מחברת הסליקה</h3>' + table([{ k: 'pay_date', t: 'תאריך תשלום', f: 'date' }, { k: 'w', t: 'עבור התקופה', f: function (r) { return r.week_from ? day(r.week_from) + ' עד ' + day(r.week_to) : ''; } },
+      { k: 'gross', t: 'ברוטו', f: 'money', n: 1 }, { k: 'fees', t: 'עמלות', f: 'money', n: 1 }, { k: 'offsets', t: 'קיזוזים', f: 'money', n: 1 }, { k: 'net', t: 'נטו', f: 'money', n: 1 },
+      { k: 'in_bank', t: 'בבנק', f: function (r) { return r.in_bank ? '<span class="tag ok">נמצא</span>' : '<span class="tag warn">לא נמצא</span>'; } }], d.payouts);
+    h += '<h3>כרטיס האשראי של החברה (2626), 60 הימים האחרונים</h3><p class="mute small">כל רכישה כאן צריכה חשבונית.</p>' +
+      table([{ k: 'tx_date', t: 'תאריך', f: 'date' }, { k: 'bill_date', t: 'מועד חיוב', f: 'date' }, { k: 'description', t: 'בית עסק' }, { k: 'amount', t: 'סכום', f: 'money', n: 1, sum: 1 }], d.company_card);
+    main.innerHTML = h;
+  });
+};
+
+V.customers = function (sub) {
+  if (sub) return get('customer', { id: sub.cust_no }).then(function (d) {
+    main.innerHTML = '<button class="btn small back" type="button" id="bk">חזרה לרשימת הלקוחות</button>' + head(sub.name + ' · ' + sub.cust_no, 'פירוט המסמכים הפתוחים בכרטיס, לפי פריוריטי.') +
+      table([{ k: 'doc', t: 'מסמך' }, { k: 'type', t: 'סוג' }, { k: 'doc_date', t: 'תאריך', f: 'date' }, { k: 'due', t: 'לתשלום עד', f: 'date' }, { k: 'days_late', t: 'ימי פיגור', f: 'num', n: 1 }, { k: 'details', t: 'פרטים' }, { k: 'amount', t: 'סכום', f: 'money', n: 1, sum: 1 }], d.rows);
+    $('bk').onclick = function () { show('customers'); };
+  });
+  return get('customers').then(function (d) {
+    var cols = [{ k: 'cust_no', t: 'כרטיס' }, { k: 'name', t: 'שם' }, { k: 'total', t: 'יתרה', f: 'money', n: 1, sum: 1 }, { k: 'future', t: 'עתידי', f: 'money', n: 1 }, { k: 'd30', t: 'עד 30', f: 'money', n: 1 }, { k: 'd60', t: '31 עד 60', f: 'money', n: 1 }, { k: 'd90', t: '61 עד 90', f: 'money', n: 1 }, { k: 'd90p', t: 'מעל 90', f: 'money', n: 1 }];
+    main.innerHTML = head('לקוחות', 'יתרות כרטיסי הלקוחות וגיול, כפי שהן בפריוריטי. יתרה במינוס פירושה שהלקוח ביתרת זכות (מקדמה או תשלום ביתר). לחיצה על שורה פותחת את פירוט המסמכים.') +
+      '<div class="bar"><label class="f">חיפוש<input type="search" id="q" placeholder="שם או מספר כרטיס"></label><button class="btn small" type="button" id="x">הורדה לאקסל</button></div><div id="t"></div>';
+    var rows, view = function () { rows = filt(d.rows, $('q').value, ['name', 'cust_no']); $('t').innerHTML = table(cols, rows, { click: 1 }); onRow(rows, function (r) { show('customers', r); }); };
+    view(); $('q').oninput = view; $('x').onclick = function () { csv('customers', cols, rows); };
+  });
+};
+
+V.suppliers = function (sub) {
+  if (sub) return get('supplier', { id: sub.sup }).then(function (d) {
+    main.innerHTML = '<button class="btn small back" type="button" id="bk">חזרה לרשימת הספקים</button>' + head(sub.name + ' · ' + sub.sup, 'מסמכים פתוחים ושיקים שניתנו לספק.') +
+      '<h3>מסמכים פתוחים</h3>' + table([{ k: 'doc', t: 'מסמך' }, { k: 'sup_doc', t: 'מספר אצל הספק' }, { k: 'type', t: 'סוג' }, { k: 'doc_date', t: 'תאריך', f: 'date' }, { k: 'due', t: 'לתשלום עד', f: 'date' }, { k: 'days_late', t: 'ימי פיגור', f: 'num', n: 1 },
+        { k: 'doc_amount', t: 'סכום המסמך', f: 'money', n: 1 }, { k: 'open', t: 'פתוח', f: 'money', n: 1, sum: 1 }], d.rows) +
+      '<h3>שיקים, מ־90 הימים האחרונים והלאה</h3>' + table([{ k: 'check_no', t: 'מספר שיק' }, { k: 'check_due', t: 'מועד פירעון', f: 'date' }, { k: 'net', t: 'סכום', f: 'money', n: 1, sum: 1 }], d.cheques);
+    $('bk').onclick = function () { show('suppliers'); };
+  });
+  return get('suppliers').then(function (d) {
+    var cols = [{ k: 'sup', t: 'כרטיס' }, { k: 'name', t: 'ספק' }, { k: 'n', t: 'מסמכים', f: 'num', n: 1 }, { k: 'first_due', t: 'המועד המוקדם', f: 'date' }, { k: 'late', t: 'בפיגור', f: 'money', n: 1, sum: 1 }, { k: 'open', t: 'חוב פתוח', f: 'money', n: 1, sum: 1 }];
+    main.innerHTML = head('ספקים', 'החוב הפתוח לכל ספק לפי פריוריטי. לחיצה על שורה פותחת את המסמכים והשיקים של הספק.') +
+      '<div class="bar"><label class="f">חיפוש<input type="search" id="q" placeholder="שם ספק או מספר כרטיס"></label><button class="btn small" type="button" id="x">הורדה לאקסל</button></div><div id="t"></div>';
+    var rows, view = function () { rows = filt(d.rows, $('q').value, ['name', 'sup']); $('t').innerHTML = table(cols, rows, { click: 1 }); onRow(rows, function (r) { show('suppliers', r); }); };
+    view(); $('q').oninput = view; $('x').onclick = function () { csv('suppliers', cols, rows); };
+  });
+};
+
+V.cheques = function () {
+  return get('cheques').then(function (d) {
+    var today = iso(new Date()), cols = [{ k: 'check_no', t: 'מספר שיק' }, { k: 'check_due', t: 'מועד פירעון', f: 'date' }, { k: 'name', t: 'למי' }, { k: 'net', t: 'סכום', f: 'money', n: 1, sum: 1 },
+      { k: 'cleared', t: 'מצב', f: function (r) { return r.cleared ? '<span class="tag ok">נפרע ' + day(r.cleared) + '</span>' : r.check_due > today ? '<span class="tag">עתידי</span>' : '<span class="tag warn">עבר המועד, לא נמצא בבנק</span>'; },
+        raw: function (r) { return r.cleared ? 'נפרע ' + r.cleared : r.check_due > today ? 'עתידי' : 'לא נמצא בבנק'; } }];
+    main.innerHTML = head('שיקים לפירעון', 'שיקים שניתנו לספקים: 60 הימים האחרונים וכל העתידיים. "נפרע" נקבע לפי מספר השיק בדף הבנק.') +
+      '<h3>עתידיים לפי חודש</h3>' + table([{ k: 'm', t: 'חודש', f: function (r) { return month(r.m); } }, { k: 'n', t: 'שיקים', f: 'num', n: 1 }, { k: 'total', t: 'סכום', f: 'money', n: 1, sum: 1 }], d.months) +
+      '<h3>כל השיקים</h3><div class="bar"><label class="f">חיפוש<input type="search" id="q" placeholder="מספר שיק או שם"></label><button class="btn small" type="button" id="x">הורדה לאקסל</button></div><div id="t"></div>';
+    var rows, view = function () { rows = filt(d.rows, $('q').value, ['name', 'check_no']); $('t').innerHTML = table(cols, rows); };
+    view(); $('q').oninput = view; $('x').onclick = function () { csv('cheques', cols, rows); };
+  });
+};
+
+var docsMonth = '';
+V.docs = function () {
+  return get('docs', { month: docsMonth }).then(function (d) {
+    var ic = [{ k: 'doc', t: 'מספר' }, { k: 'date', t: 'תאריך', f: 'date' }, { k: 'cust_no', t: 'כרטיס' }, { k: 'cust_name', t: 'לקוח' }, { k: 'amount', t: 'סכום לפני מע"מ', f: 'money', n: 1, sum: 1 }];
+    var rc = [{ k: 'doc', t: 'מספר' }, { k: 'date', t: 'תאריך', f: 'date' }, { k: 'cust_no', t: 'כרטיס' }, { k: 'cust_name', t: 'לקוח' }, { k: 'method', t: 'אמצעי תשלום' }, { k: 'register', t: 'קופה' }, { k: 'amount', t: 'סכום', f: 'money', n: 1, sum: 1 }];
+    var h = head('חשבוניות וקבלות', 'מסמכי המכירה כפי שהופקו בפריוריטי. חשבוניות מסוג IK הן חשבוניות זיכוי.');
+    h += '<h3>לפי חודש</h3>' + table([{ k: 'm', t: 'חודש', f: function (r) { return month(r.m); } }, { k: 'invoices_n', t: 'חשבוניות', f: 'num', n: 1 }, { k: 'invoices', t: 'סכום חשבוניות', f: 'money', n: 1, sum: 1 }, { k: 'credits', t: 'זיכויים', f: 'money', n: 1, sum: 1 },
+      { k: 'receipts_n', t: 'קבלות', f: 'num', n: 1 }, { k: 'receipts', t: 'סכום קבלות', f: 'money', n: 1, sum: 1 }], d.months, { click: 1 });
+    h += '<h3>חשבוניות בחודש ' + month(String(d.month).slice(0, 7)) + '</h3><div class="bar"><label class="f">חיפוש<input type="search" id="q" placeholder="לקוח, מספר מסמך, סכום"></label><button class="btn small" type="button" id="x1">חשבוניות לאקסל</button><button class="btn small" type="button" id="x2">קבלות לאקסל</button></div><div id="t1"></div><h3>קבלות באותו חודש</h3><div id="t2"></div>';
+    main.innerHTML = h;
+    onRow(d.months, function (r) { docsMonth = r.m + '-01'; show('docs'); });
+    var a, b, view = function () { a = filt(d.invoices, $('q').value, ['doc', 'cust_name', 'cust_no', 'amount']); b = filt(d.receipts, $('q').value, ['doc', 'cust_name', 'cust_no', 'amount', 'method']); $('t1').innerHTML = table(ic, a); $('t2').innerHTML = table(rc, b); };
+    view(); $('q').oninput = view; $('x1').onclick = function () { csv('invoices', ic, a); }; $('x2').onclick = function () { csv('receipts', rc, b); };
+  });
+};
+
+var ST = { draft: 'טיוטה', pending: 'ממתינה לאישור', approved: 'אושרה', rejected: 'נדחתה', posted: 'נרשמה' };
+V.supinv = function () {
+  return get('supinv').then(function (d) {
+    main.innerHTML = head('חשבוניות ספק', 'חשבוניות ספק שהוקלדו במערכת החדשה (מסך קבלת סחורה ב־CRM). כל חשבונית עוברת אישור לפני שהיא נרשמת ביומן.') +
+      table([{ k: 'inv_no', t: 'מספר חשבונית' }, { k: 'supplier_id', t: 'ספק' }, { k: 'inv_date', t: 'תאריך', f: 'date' }, { k: 'due_date', t: 'לתשלום עד', f: 'date' }, { k: 'net', t: 'לפני מע"מ', f: 'money', n: 1, sum: 1 }, { k: 'vat', t: 'מע"מ', f: 'money', n: 1, sum: 1 },
+        { k: 'total', t: 'סה"כ', f: 'money', n: 1, sum: 1 }, { k: 'allocation_no', t: 'מספר הקצאה' }, { k: 'expense_account', t: 'חשבון' }, { k: 'status', t: 'מצב', f: function (r) { return esc(ST[r.status] || r.status); } }, { k: 'entered_by', t: 'הוקלד על ידי' }],
+        d.rows, { empty: 'עוד לא הוקלדו חשבוניות ספק במערכת החדשה' });
+  });
+};
+
+V.vat = function () {
+  return get('vat').then(function (d) {
+    main.innerHTML = head('מע"מ ומוסדות', 'טבלת הכנה לדיווח החודשי. המכירות לפני מע"מ מחושבות מהחשבוניות והזיכויים בפריוריטי. מע"מ עסקאות מוצג כאומדן של 18%. הדוח המחייב הוא זה שמופק מפריוריטי.') +
+      '<div class="note">תשומות: המערכת החדשה מציגה רק חשבוניות ספק שהוקלדו ואושרו בה. עד שהקלדת חשבוניות הספק תעבור לכאן במלואה, מע"מ התשומות נלקח מפריוריטי.</div>' +
+      table([{ k: 'm', t: 'חודש', f: function (r) { return month(r.m); } }, { k: 'sales_net', t: 'מכירות לפני מע"מ', f: 'money', n: 1, sum: 1 }, { k: 'v', t: 'מע"מ עסקאות (אומדן)', n: 1, f: function (r) { return money(Math.round(r.sales_net * 0.18)); } },
+        { k: 'buy_net', t: 'תשומות שהוקלדו כאן', f: 'money', n: 1, sum: 1 }, { k: 'buy_vat', t: 'מע"מ תשומות', f: 'money', n: 1, sum: 1 }, { k: 'tax_paid', t: 'שולם למוסדות מהבנק', f: 'money', n: 1, sum: 1 }], d.months) +
+      '<h3>תשלומים למוסדות מהבנק, מתחילת השנה</h3><p class="mute small">מע"מ, מס הכנסה, ביטוח לאומי ורשויות, כפי שירדו מחשבון הבנק.</p>' +
+      table([{ k: 'tx_date', t: 'תאריך', f: 'date' }, { k: 'description', t: 'פרטים' }, { k: 'amount', t: 'סכום', f: 'money', n: 1, sum: 1 }], d.tax_rows);
+  });
+};
+
+V.owners = function () {
+  return get('owners').then(function (d) {
+    main.innerHTML = head('חו"ז בעלים', 'תנועות בין חשבון הבנק של החברה לבין הבעלים, מתחילת השנה, כפי שזוהו בדף הבנק. כל תנועה כאן צריכה להירשם בכרטיס חו"ז הבעלים המתאים.') +
+      '<p class="mute small">חשבונות חו"ז באינדקס: ' + (d.accounts || []).map(function (a) { return esc(a.code + ' ' + a.name); }).join(' · ') + '</p>' +
+      '<h3>לפי חודש</h3>' + table([{ k: 'm', t: 'חודש', f: function (r) { return month(r.m); } }, { k: 'n', t: 'תנועות', f: 'num', n: 1 }, { k: 'paid_out', t: 'יצא לבעלים', f: 'money', n: 1, sum: 1 }, { k: 'paid_in', t: 'נכנס מבעלים', f: 'money', n: 1, sum: 1 }], d.months) +
+      '<h3>כל התנועות</h3>' + table([{ k: 'tx_date', t: 'תאריך', f: 'date' }, { k: 'description', t: 'פרטים' }, { k: 'amount', t: 'סכום', f: 'money', n: 1, sum: 1 }], d.rows);
+  });
+};
+
+var misSt = { from: daysAgo(60), to: iso(new Date()), kind: '' };
+V.missing = function () {
+  return get('missing', { from: misSt.from, to: misSt.to }).then(function (d) {
+    var cols = [{ k: 'tx_date', t: 'תאריך', f: 'date' }, { k: 'account', t: 'מקור', f: function (r) { return r.account === 'checking' ? 'עו"ש' : 'כרטיס החברה'; }, raw: function (r) { return r.account; } },
+      { k: 'kind', t: 'סוג', f: function (r) { return esc(KIND[r.kind] || r.kind); }, raw: function (r) { return KIND[r.kind] || r.kind; } }, { k: 'description', t: 'פרטים' }, { k: 'amount', t: 'סכום', f: 'money', n: 1, sum: 1 }];
+    main.innerHTML = head('תנועות שדורשות מסמך', 'כל היציאות מהבנק ומכרטיס החברה שאינן שיק לספק, שכר או משיכת בעלים. לכל אחת צריך להיות מסמך: חשבונית, אישור תשלום או לוח סילוקין. זו רשימת העבודה ל"מה לא הבאנו".') +
+      '<div class="bar"><label class="f">מתאריך<input type="date" id="mFrom" value="' + misSt.from + '"></label><label class="f">עד תאריך<input type="date" id="mTo" value="' + misSt.to + '"></label><button class="btn small" type="button" id="mGo">הצגה</button>' +
+      '<label class="f">סוג<select id="mK"><option value="">הכול</option>' + ['card_purchase', 'services', 'other', 'tax', 'loan', 'interest', 'fees', 'card_bill'].map(function (k) { return '<option value="' + k + '"' + (misSt.kind === k ? ' selected' : '') + '>' + KIND[k] + '</option>'; }).join('') + '</select></label>' +
+      '<label class="f">חיפוש<input type="search" id="q" placeholder="פרטים או סכום"></label><button class="btn small" type="button" id="x">הורדה לאקסל</button></div><div id="t"></div>' +
+      '<h3>כל היציאות בתקופה, לפי סוג</h3>' + table([{ k: 'kind', t: 'סוג', f: function (r) { return esc(KIND[r.kind] || r.kind); } }, { k: 'n', t: 'תנועות', f: 'num', n: 1 }, { k: 'total', t: 'סכום', f: 'money', n: 1, sum: 1 }], d.kinds);
+    var rows, view = function () { rows = filt(d.rows.filter(function (r) { return !misSt.kind || r.kind === misSt.kind; }), $('q').value, ['description', 'amount']); $('t').innerHTML = table(cols, rows); };
+    view(); $('q').oninput = view; $('mK').onchange = function () { misSt.kind = this.value; view(); };
+    $('mGo').onclick = function () { misSt.from = $('mFrom').value || misSt.from; misSt.to = $('mTo').value || misSt.to; show('missing'); };
+    $('x').onclick = function () { csv('needs-document', cols, rows); };
+  });
+};
+
+V.journal = function () {
+  return get('journal').then(function (d) {
+    var h = head('יומן ומאזן בוחן', 'פקודות היומן במערכת החדשה, בהנהלת חשבונות כפולה: בכל פקודה סך החובה שווה לסך הזכות.');
+    if (!d.rows.length) h += '<div class="note">היומן עדיין ריק. עד 31.12.2026 הספרים הרשמיים מנוהלים בפריוריטי, ומ־1.1.2027 כל מסמך (חשבונית, קבלה, חשבונית ספק, תנועת בנק) יירשם כאן אוטומטית. היומן של 2026 מפריוריטי מועתק בימים אלה לארכיון.</div>';
+    h += '<h3>מאזן בוחן</h3>' + (d.tb.length ? table(Object.keys(d.tb[0]).map(function (k) { return { k: k, t: k, n: typeof d.tb[0][k] === 'number', f: typeof d.tb[0][k] === 'number' ? 'money' : null }; }), d.tb) : table([], [], { empty: 'אין עדיין יתרות' }));
+    h += '<h3>פקודות יומן</h3>';
+    if (!d.rows.length) h += table([], [], { empty: 'אין עדיין פקודות' });
+    d.rows.forEach(function (j) {
+      h += '<p style="margin:14px 0 4px"><b>' + esc(j.je_no || j.id) + '</b> · ' + day(j.je_date) + ' · ' + esc(j.memo || '') + ' <span class="tag">' + esc(j.status) + '</span></p>' +
+        table([{ k: 'a', t: 'חשבון' }, { k: 'n', t: 'שם' }, { k: 'm', t: 'פרטים' }, { k: 'd', t: 'חובה', f: 'money', n: 1, sum: 1 }, { k: 'c', t: 'זכות', f: 'money', n: 1, sum: 1 }], j.lines);
+    });
+    main.innerHTML = h;
+  });
+};
+
+V.accounts = function () {
+  return get('accounts').then(function (d) {
+    var cols = [{ k: 'code', t: 'מספר' }, { k: 'name', t: 'שם החשבון' }, { k: 'section', t: 'סעיף במאזן הבוחן' }, { k: 'kind', t: 'סוג', f: function (r) { return KINDA[r.kind] || r.kind; }, raw: function (r) { return KINDA[r.kind] || r.kind; } }];
+    main.innerHTML = head('אינדקס חשבונות', num(d.rows.length) + ' חשבונות הנהלת חשבונות, זהים אחד לאחד לאינדקס בפריוריטי, עם אותם מספרים. כרטיסי הלקוחות והספקים מופיעים במסכים שלהם.') +
+      '<div class="bar"><label class="f">חיפוש<input type="search" id="q" placeholder="מספר או שם"></label><button class="btn small" type="button" id="x">הורדה לאקסל</button></div><div id="t"></div>';
+    var rows, view = function () { rows = filt(d.rows, $('q').value, ['code', 'name', 'section']); $('t').innerHTML = table(cols, rows); };
+    view(); $('q').oninput = view; $('x').onclick = function () { csv('accounts', cols, rows); };
+  });
+};
+
+var ERR = { owner_only: 'רק הבעלים יכול להוסיף משתמשים.', bad_email: 'כתובת האימייל לא תקינה.', short_password: 'הסיסמה הזמנית צריכה לפחות 10 תווים.', create_failed: 'המשתמש לא נוצר. נסו שוב.', update_failed: 'המשתמש לא עודכן. נסו שוב.', save_failed: 'ההרשאה לא נשמרה. נסו שוב.' };
+V.readers = function () {
+  return get('readers').then(function (d) {
+    var h = head('הרשאות ורישום גישה', 'מי רשאי לפתוח את העמדה, ומה נפתח בה. משתמש שנוסף כאן רואה את העמדה הזו בלבד, בקריאה בלבד: אין לו גישה ל־CRM, ללקוחות, לשכר או לכל מסך אחר.');
+    h += '<h3>הוספת משתמש קריאה</h3><form id="rf" class="bar"><label class="f">שם<input id="rName" required autocomplete="off"></label><label class="f">אימייל<input id="rEmail" type="email" required dir="ltr" autocomplete="off"></label>' +
+      '<label class="f">סיסמה זמנית (10 תווים לפחות)<input id="rPw" type="password" minlength="10" required dir="ltr" autocomplete="new-password"></label><button class="btn brass small" type="submit">הוספה</button></form>' +
+      '<p class="mute small">את הסיסמה הזמנית מוסרים למשתמש בטלפון. בכניסה הראשונה הוא יתבקש להחליף אותה. הסיסמה לא נשמרת בשום מקום שאפשר לקרוא ממנו.</p><div class="err" id="rErr" role="alert"></div>';
+    h += '<h3>משתמשי קריאה</h3>' + table([{ k: 'name', t: 'שם' }, { k: 'email', t: 'אימייל' }, { k: 'added_at', t: 'נוסף', f: function (r) { return when(r.added_at); } }, { k: 'last_seen', t: 'כניסה אחרונה', f: function (r) { return r.last_seen ? when(r.last_seen) : 'עוד לא נכנס'; } },
+      { k: 'active', t: 'מצב', f: function (r) { return r.active ? '<span class="tag ok">פעיל</span>' : '<span class="tag bad">חסום</span>'; } },
+      { k: 'x', t: '', f: function (r) { return '<button class="btn small" type="button" data-em="' + esc(r.email) + '" data-nm="' + esc(r.name || '') + '" data-on="' + (r.active ? '0' : '1') + '">' + (r.active ? 'חסימה' : 'הפעלה מחדש') + '</button>'; } }], d.readers, { empty: 'עוד לא נוסף משתמש קריאה' });
+    h += '<h3>רישום גישה, 150 הפעולות האחרונות</h3>' + table([{ k: 'at', t: 'מתי', f: function (r) { return when(r.at); } }, { k: 'email', t: 'מי' }, { k: 'screen', t: 'מסך', f: function (r) { var s = SCREENS.filter(function (x) { return x && x[0] === r.screen; })[0]; return esc(s ? s[1] : r.screen); } }], d.log);
+    main.innerHTML = h;
+    $('rf').onsubmit = function (e) {
+      e.preventDefault(); var btn = e.target.querySelector('button'); btn.disabled = true; $('rErr').textContent = '';
+      fetch(SB_URL + '/functions/v1/books-reader', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + session.access_token },
+        body: JSON.stringify({ email: $('rEmail').value, name: $('rName').value, password: $('rPw').value }) })
+        .then(function (r) { return r.json(); }).then(function (j) { if (!j.ok) throw new Error(j.error); show('readers'); })
+        .catch(function (er) { btn.disabled = false; $('rErr').textContent = ERR[er.message] || 'לא נשמר. נסו שוב.'; });
+    };
+    main.querySelectorAll('[data-em]').forEach(function (b) {
+      b.onclick = function () { b.disabled = true; sb.rpc('books_reader_set', { p_email: b.dataset.em, p_name: b.dataset.nm, p_active: b.dataset.on === '1' }).then(function () { show('readers'); }); };
+    });
+  });
+};
+
+/* ---------- shell ---------- */
+function buildNav() {
+  var nav = $('nav'), sel = $('navSel'); nav.innerHTML = ''; sel.innerHTML = '';
+  SCREENS.forEach(function (s) {
+    if (!s) { var d = document.createElement('div'); d.className = 'sep'; nav.appendChild(d); return; }
+    if (s[2] && !me.owner) return;
+    var b = document.createElement('button'); b.type = 'button'; b.textContent = s[1]; b.dataset.s = s[0]; b.onclick = function () { show(s[0]); }; nav.appendChild(b);
+    var o = document.createElement('option'); o.value = s[0]; o.textContent = s[1]; sel.appendChild(o);
+  });
+  sel.onchange = function () { show(sel.value); };
+}
+function show(name, sub) {
+  if (!V[name]) name = 'overview';
+  cur = name; $('navSel').value = name;
+  $('nav').querySelectorAll('button').forEach(function (b) { if (b.dataset.s === name) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  if (location.hash !== '#' + name) history.replaceState(null, '', '#' + name);
+  busy();
+  V[name](sub).then(function () { window.scrollTo(0, 0); main.focus({ preventScroll: true }); }).catch(fail);
+}
+function start() {
+  $('login').classList.add('hidden'); $('newPw').classList.add('hidden');
+  if (session.user && session.user.user_metadata && session.user.user_metadata.must_change_pw) { $('newPw').classList.remove('hidden'); $('p1').focus(); return; }
+  get('me').then(function (m) {
+    me = m; $('who').textContent = m.name || m.email; $('who').classList.remove('hidden'); $('outBtn').classList.remove('hidden');
+    $('roTag').textContent = m.owner ? 'בעלים' : 'קריאה בלבד';
+    document.body.classList.add('in'); $('app').classList.remove('hidden'); buildNav(); show((location.hash || '').slice(1) || 'overview'); idle();
+  }).catch(function () {
+    sb.auth.signOut().then(function () { session = null; $('login').classList.remove('hidden'); $('loginErr').textContent = 'אין לחשבון הזה הרשאה לעמדה. פנו לאביב.'; });
+  });
+}
+function out() { sb.auth.signOut().then(function () { location.reload(); }); }
+var idleT;
+function idle() { // sign out after 30 minutes without use
+  var reset = function () { clearTimeout(idleT); idleT = setTimeout(out, 30 * 60 * 1000); };
+  ['click', 'keydown', 'touchstart', 'scroll'].forEach(function (ev) { window.addEventListener(ev, reset, { passive: true }); }); reset();
+}
+$('outBtn').onclick = out;
+$('loginF').onsubmit = function (e) {
+  e.preventDefault(); var btn = e.target.querySelector('button'); btn.disabled = true; $('loginErr').textContent = '';
+  sb.auth.signInWithPassword({ email: $('lEmail').value.trim(), password: $('lPw').value }).then(function (r) {
+    btn.disabled = false;
+    if (r.error) { $('loginErr').textContent = 'האימייל או הסיסמה לא נכונים. נסו שוב.'; return; }
+    session = r.data.session; start();
+  });
+};
+$('pwF').onsubmit = function (e) {
+  e.preventDefault(); $('pwErr').textContent = '';
+  if ($('p1').value !== $('p2').value) { $('pwErr').textContent = 'שתי הסיסמאות לא זהות.'; return; }
+  var btn = e.target.querySelector('button'); btn.disabled = true;
+  sb.auth.updateUser({ password: $('p1').value, data: { must_change_pw: false, pw_changed_at: new Date().toISOString() } }).then(function (r) {
+    btn.disabled = false;
+    if (r.error) { $('pwErr').textContent = 'הסיסמה לא נשמרה. בחרו סיסמה אחרת, באורך 10 תווים לפחות.'; return; }
+    session.user = r.data.user; start();
+  });
+};
+sb.auth.getSession().then(function (r) {
+  session = r.data.session;
+  sb.auth.onAuthStateChange(function (_e, s) { if (s) session = s; });
+  if (!session) { $('login').classList.remove('hidden'); return; }
+  start();
+});
+})();
+</script>
+</body>
+</html>
