@@ -238,6 +238,15 @@ details.sec>.bd{padding:0 16px 16px}
       <p class="mute small">כל תשלום פותח למשרד משימה להוציא קבלה בפריוריטי. תשלום בלינק אשראי נרשם רק אחרי שטרנזילה אישרה.</p>
     </div></details>
 
+    <details class="sec" id="secDoc"><summary>מסמכים ללקוח <span class="mute small" id="docSum"></span></summary><div class="bd">
+      <p class="mute" style="margin-top:0">מכינים כאן טיוטה בסאמיט מתוך ההזמנה, כדי לראות איך המסמך ייראה. <b>טיוטה היא לא מסמך חוקי</b> ולא נשלחת ללקוח. עד המעבר לסאמיט, חשבוניות וקבלות ממשיכות לצאת מפריוריטי.</p>
+      <div id="docList" class="paylist"><p class="mute">עוד לא הוכן מסמך להזמנה הזו.</p></div>
+      <div class="row" style="margin-top:10px"><select id="docKind" aria-label="סוג המסמך" style="width:auto;flex:1;min-width:150px">
+        <option value="invoice">חשבונית מס</option><option value="invoice_receipt">חשבונית מס קבלה</option><option value="proforma">חשבון עסקה</option><option value="quote">הצעת מחיר</option>
+      </select><button class="btn brass" id="docGo" type="button">להכין טיוטה</button></div>
+      <p id="docMsg" role="status" aria-live="polite" style="margin:8px 0 0"></p>
+    </div></details>
+
     <details class="sec" id="secSh"><summary>הדף של הלקוח <span class="mute small" id="shSum"></span></summary><div class="bd">
       <p class="mute" style="margin-top:0">קישור אישי ללקוח: מצב כל מוצר, מועדים, תשלומים ומסמכים, מתעדכן לבד. הלקוח לא רואה עלות, רווח או שם ספק. בכניסה הוא מקליד את 4 הספרות האחרונות של הטלפון שלו.</p>
       <div id="shOff"><button class="btn brass" id="shMake" type="button">יצירת קישור ללקוח</button> <span class="err" id="shErr" role="status"></span></div>
@@ -396,7 +405,7 @@ function setDeal(d) {
   history.replaceState(null, '', '?d=' + d.id);
   $('title').textContent = 'הזמנה ' + d.deal_no;
   $('mk').value = d.markup == null ? 40 : d.markup; $('q').value = ''; last = []; sres = null; fsup = null; sKey = ''; drawResults();
-  loadCust(); drawDv(); drawNotes(); draw(); loadPicPaths(); loadPos(); drawShare(); loadNotes(); loadCases(); loadPa(); loadPays(); loadStock(deal.lines.map(function (l) { return l.sku; }));
+  loadCust(); drawDv(); drawNotes(); draw(); loadPicPaths(); loadPos(); drawShare(); loadNotes(); loadCases(); loadPa(); loadPays(); loadDocs(); loadStock(deal.lines.map(function (l) { return l.sku; }));
 }
 
 /* ---------- save (debounced) ---------- */
@@ -1069,6 +1078,67 @@ function payDone(amt, method, payments, link) {
   }
   $('pDone').setAttribute('tabindex', '-1'); $('pDone').focus();
 }
+
+/* ---------- documents for the customer: SUMIT, through the ledger's function sumit-docs ----------
+   Drafts only. A draft has no number and no legal effect, and nothing is sent to the customer. This page never asks for a final document:
+   until the move from Priority every invoice and receipt is issued there, and the final path is added here only then. */
+var DOC_FN = SB_URL + '/functions/v1/sumit-docs', docs = [], docBusy = false;
+var DOC_KIND = { invoice: 'חשבונית מס', invoice_receipt: 'חשבונית מס קבלה', proforma: 'חשבון עסקה', quote: 'הצעת מחיר', receipt: 'קבלה', credit_invoice: 'חשבונית זיכוי', credit_invoice_receipt: 'חשבונית מס קבלה זיכוי', credit_receipt: 'קבלת זיכוי' };
+var PAY_TO = { cash: 'cash', cheque: 'cheque', transfer: 'transfer', card_link: 'card', card_terminal: 'card' };
+function docHash(t) { var h = 5381; for (var i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) >>> 0; return h.toString(36); }
+function docSay(t, cls) { $('docMsg').textContent = t || ''; $('docMsg').className = cls || ''; }
+function docErr(e) {
+  e = String(e || '');
+  if (/customer not found/i.test(e)) return 'הלקוח לא שמור בכרטיס לקוח. לוחצים "עריכת פרטים" ושומרים.';
+  if (/not staff/.test(e)) return 'צריך להתחבר מחדש ל-CRM.';
+  var m = /SUMIT [^:]+:\s*(.+)$/.exec(e);
+  return 'הטיוטה לא נוצרה.' + (m && /[א-ת]/.test(m[1]) ? ' סאמיט: ' + m[1].slice(0, 200) : ' לנסות שוב בעוד רגע.');
+}
+function loadDocs() {
+  if (!deal) return; var id = deal.id;
+  docs = []; drawDocs(); docSay('');
+  if (!deal.deal_no) return;
+  sb.from('acc_sales_docs').select('id,our_ref,kind,is_draft,total,sumit_document_number,download_url,status,created_at').like('our_ref', 'deal:' + deal.deal_no + ':%').order('created_at', { ascending: false }).limit(20).then(function (r) {
+    if (!deal || deal.id !== id || r.error) return;
+    docs = (r.data || []).filter(function (d) { return d.status === 'created'; }); drawDocs();
+  });
+}
+function drawDocs() {
+  var drafts = docs.filter(function (d) { return d.is_draft; }).length, finals = docs.length - drafts;
+  $('docList').innerHTML = docs.length ? docs.map(function (d) {
+    return '<p><b>' + (DOC_KIND[d.kind] || 'מסמך') + '</b> <span class="num">' + money(d.total) + '</span> <span class="mute">· ' + fmtTime(d.created_at) + '</span> ' +
+      (d.is_draft ? '<span class="st yellow">טיוטה</span>' : '<span class="st green">מספר ' + esc(d.sumit_document_number || '') + '</span>') +
+      (/^https:\/\//.test(d.download_url || '') ? ' <a href="' + esc(d.download_url) + '" target="_blank" rel="noopener">לפתוח</a>' : '') + '</p>';
+  }).join('') : '<p class="mute">עוד לא הוכן מסמך להזמנה הזו.</p>';
+  $('docSum').textContent = finals ? '· ' + (finals === 1 ? 'מסמך אחד' : finals + ' מסמכים') : drafts ? '· ' + (drafts === 1 ? 'טיוטה אחת' : drafts + ' טיוטות') : '';
+}
+$('docGo').addEventListener('click', function () {
+  if (docBusy || !deal) return;
+  var kind = $('docKind').value, t9 = deal.customer_tail9, b = $('docGo'), id = deal.id;
+  var lines = deal.lines.filter(function (l) { return (Number(l.qty) || 0) > 0; });
+  var err = !t9 || !(cust && cust.exists) ? 'קודם בוחרים לקוח מכרטיס לקוח ושומרים את הפרטים שלו ("עריכת פרטים").' : !lines.length ? 'אין מוצרים בהזמנה.'
+    : lines.some(function (l) { return !(Number(l.sell) > 0); }) ? 'יש מוצר בלי מחיר. משלימים מחיר או מסירים את השורה.' : '';
+  /* the customer's document carries the product's name only: no supplier code, cost or supplier name */
+  var items = lines.map(function (l) { return { name: ((l.desc || 'מוצר') + (l.size ? ' ' + l.size : '')).slice(0, 200), qty: Number(l.qty), unit_price: r2(Number(l.sell)) }; });
+  var total = r2(items.reduce(function (s, i) { return s + i.qty * i.unit_price; }, 0)), pays = [];
+  if (!err && kind === 'invoice_receipt') {
+    pays = takings.filter(function (t) { return !t.cancelled_at && (t.method !== 'card_link' || t.paid_at); }).map(function (t) { return { method: PAY_TO[t.method] || 'other', amount: Number(t.amount), installments: Number(t.payments) || 1 }; });
+    var paid = r2(pays.reduce(function (s, x) { return s + x.amount; }, 0));
+    if (Math.abs(paid - total) > 0.01) err = 'חשבונית מס קבלה מכינים כשההזמנה שולמה במלואה. שולם ' + money(paid) + ' מתוך ' + money(total) + '. אפשר להכין חשבונית מס.';
+  }
+  if (err) { docSay(err, 'err'); return; }
+  /* the same content gives the same reference, so a second press returns the same draft; a changed order gives a new one */
+  var body = { action: 'create', kind: kind, our_ref: 'deal:' + deal.deal_no + ':' + kind + ':draft:' + docHash(JSON.stringify([t9, items, pays])), customer_tail9: t9, items: items, description: 'הזמנה ' + deal.deal_no };
+  if (pays.length) body.payments = pays;
+  docBusy = true; b.disabled = true; b.textContent = 'מכין…'; docSay('');
+  flush().then(function () { return sb.auth.getSession(); }).then(function (x) {
+    return fetch(DOC_FN, { method: 'POST', headers: { authorization: 'Bearer ' + x.data.session.access_token, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  }).then(function (r) { return r.json(); }).then(function (j) {
+    if (!j.ok) throw new Error(j.error || '');
+    if (deal && deal.id === id) { loadDocs(); docSay(j.existing ? 'כבר יש טיוטה זהה להזמנה הזו.' : 'הטיוטה מוכנה. היא לא מסמך חוקי ולא נשלחה ללקוח.', 'ok'); }
+  }).catch(function (e) { docSay(docErr(e && e.message), 'err'); })
+    .then(function () { docBusy = false; b.disabled = false; b.textContent = 'להכין טיוטה'; });
+});
 
 /* ---------- the customer's page ---------- */
 var MY = 'https://www.zisoceramics.com/my/#';
