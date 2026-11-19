@@ -315,6 +315,7 @@ function rpcErr(e) {
   if ((d = /possible duplicate of invoice (\d+)/.exec(m))) return 'נראה שהחשבונית הזו כבר אושרה פעם (רשומה ' + d[1] + '). היא לא אושרה שוב.';
   if (/duplicate key|inv_no_doc_type/.test(m)) return 'כבר קיימת חשבונית עם המספר הזה לספק הזה.';
   if (/not allowed|not staff/.test(m)) return 'אין הרשאה לפעולה הזו.';
+  if (/only rejected/.test(m)) return 'החשבונית כבר לא במצב נדחתה. לרענן את הדף.';
   if (/only drafts| is (approved|posted|rejected)/.test(m)) return 'החשבונית כבר לא ממתינה לאישור, ואי אפשר לשנות אותה.';
   if (/_check|violates check/.test(m)) return 'הסכומים לא מסתדרים: לפני מע"מ ועוד מע"מ צריך לצאת הסכום הכולל.';
   return 'לא נשמר. לבדוק חיבור לאינטרנט ולנסות שוב.';
@@ -345,11 +346,18 @@ function autoDraft(r) {
   var slot = document.querySelector('#result [data-islot="' + r.id + '"]'); if (!slot || !isInvDoc(r)) return;
   rcById[r.id] = r;
   var f = fromReceipt(r), fill = '<button class="btn small brass" type="button" data-iact="fill" data-rc="' + r.id + '">להשלים ולהעביר</button>';
-  if (!f.complete) { slot.innerHTML = '<p style="margin:10px 0 6px"><b>זו ' + DOC_HE[f.doc_type] + '.</b> כדי להעביר אותה להנהלת החשבונות צריך להשלים כמה פרטים.</p>' + fill; return; }
-  sb.rpc('acc_supinv_save', { p: payload(f) }).then(function (x) {
-    slot.innerHTML = x.error ? '<p class="err" style="margin:10px 0 6px">' + rpcErr(x.error) + '</p>' + fill
-      : '<p style="margin:10px 0 6px"><b>החשבונית עברה להנהלת החשבונות</b> וממתינה לאישור.</p><button class="btn small" type="button" data-iact="go">לחשבוניות ספק</button>';
-    loadInv();
+  var go = '<button class="btn small" type="button" data-iact="go">לחשבוניות ספק</button>';
+  /* a paper that already has an invoice is left alone: saving it again would reopen an invoice that was rejected on purpose */
+  sb.from('acc_supplier_invoices').select('id,status').eq('receipt_id', r.id).limit(1).then(function (x) {
+    var old = x.data && x.data[0];
+    if (x.error) return;
+    if (old) { slot.innerHTML = '<p style="margin:10px 0 6px">' + (old.status === 'rejected' ? 'החשבונית הזו נדחתה בהנהלת החשבונות. אפשר לפתוח אותה מחדש שם.' : 'החשבונית הזו כבר נמצאת בהנהלת החשבונות.') + '</p>' + go; return; }
+    if (!f.complete) { slot.innerHTML = '<p style="margin:10px 0 6px"><b>זו ' + DOC_HE[f.doc_type] + '.</b> כדי להעביר אותה להנהלת החשבונות צריך להשלים כמה פרטים.</p>' + fill; return; }
+    sb.rpc('acc_supinv_save', { p: payload(f) }).then(function (y) {
+      slot.innerHTML = y.error ? '<p class="err" style="margin:10px 0 6px">' + rpcErr(y.error) + '</p>' + fill
+        : '<p style="margin:10px 0 6px"><b>החשבונית עברה להנהלת החשבונות</b> וממתינה לאישור.</p>' + go;
+      loadInv();
+    });
   });
 }
 function invCard(v) {
@@ -366,6 +374,7 @@ function invCard(v) {
   if (v.status === 'draft') a += '<button class="btn small" type="button" data-iact="edit" data-id="' + v.id + '">לתקן</button>';
   if (v.status === 'draft' && canApprove) a += '<button class="btn small brass" type="button" data-iact="ok" data-id="' + v.id + '">לאשר</button>';
   if ((canApprove && (v.status === 'draft' || v.status === 'approved')) || (mine && v.status === 'draft')) a += '<button class="btn small red" type="button" data-iact="no" data-id="' + v.id + '">לדחות</button>';
+  if (v.status === 'rejected') a += '<button class="btn small" type="button" data-iact="re" data-id="' + v.id + '">לפתוח מחדש</button>';
   return h + '<div class="row" style="margin-top:8px">' + a + '</div><div data-vslot="' + v.id + '"></div></div>';
 }
 function todoCard(r) {
@@ -496,6 +505,15 @@ function onInv(e) {
   if (a === 'ok') { slot.innerHTML = '<p style="margin:10px 0 6px">לאשר את החשבונית על ' + money(v.total) + '? אחרי האישור אי אפשר לתקן אותה, רק לדחות.</p><div class="row"><button class="btn small brass" type="button" data-iact="ok2" data-id="' + id + '">כן, לאשר</button><button class="btn small" type="button" data-iact="x" data-id="' + id + '">ביטול</button></div>'; return; }
   if (a === 'no') { slot.innerHTML = '<label class="f">למה דוחים את החשבונית?<input type="text" id="why' + id + '" maxlength="200" autocomplete="off"></label><div class="row" style="margin-top:8px"><button class="btn small red" type="button" data-iact="no2" data-id="' + id + '">לדחות</button><button class="btn small" type="button" data-iact="x" data-id="' + id + '">ביטול</button></div><p class="err" id="whyE' + id + '" role="alert" style="margin:6px 0 0"></p>'; $('why' + id).focus(); return; }
   if (a === 'x') { slot.innerHTML = ''; return; }
+  if (a === 're') {
+    if (invBusy) return; invBusy = true; b.disabled = true;
+    sb.rpc('acc_supinv_reopen', { p_id: id }).then(function (x) {
+      invBusy = false;
+      if (x.error) { b.disabled = false; slot.innerHTML = '<p class="err" role="alert" style="margin:6px 0 0">' + rpcErr(x.error) + '</p>'; return; }
+      invSay('החשבונית נפתחה מחדש וממתינה לאישור. אפשר לתקן אותה.'); loadInv();
+    }, function () { invBusy = false; b.disabled = false; });
+    return;
+  }
   if (a === 'ok2' || a === 'no2') {
     var why = a === 'no2' ? $('why' + id).value.trim() : '';
     if (a === 'no2' && why.length < 3) { $('whyE' + id).textContent = 'לכתוב בקצרה את הסיבה.'; return; }
