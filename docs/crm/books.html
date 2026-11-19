@@ -70,7 +70,7 @@ tfoot td{font-weight:700;background:var(--graphite);position:sticky;bottom:0}
 .two .tw{margin-top:6px}
 @media (max-width:800px){.two{grid-template-columns:1fr}}
 form table input{min-height:38px}
-@media (max-width:640px){#jl .ja{width:92px!important}#jl .jm{min-width:84px!important}#jl .jd,#jl .jc{width:78px!important}#jl th,#jl td{padding:6px 4px}}
+@media (max-width:640px){#jl .ja,#rl .ja{width:92px!important}#jl .jm,#rl .jm{min-width:84px!important}#jl .jd,#jl .jc,#rl .jd,#rl .jc{width:78px!important}#jl th,#jl td,#rl th,#rl td{padding:6px 4px}}
 .card{max-width:420px;margin:8vh auto;padding:24px;background:var(--surface);border:1px solid var(--line);border-radius:18px}
 .card label{display:block;margin:12px 0 4px;font-weight:600}.card input{width:100%;min-height:48px}
 .card .btn{width:100%;margin-top:16px;min-height:48px}
@@ -478,17 +478,19 @@ V.missing = function () {
 };
 
 V.journal = function () {
-  return get('journal').then(function (d) {
+  return Promise.all([get('journal'), postDo('state')]).then(function (rs) {
+    var d = rs[0], P = rs[1]; d.rows = d.rows.filter(function (j) { return j.status === 'posted'; });
     var h = head('יומן ומאזן בוחן', 'פקודות היומן במערכת החדשה, בהנהלת חשבונות כפולה: בכל פקודה סך החובה שווה לסך הזכות.');
     if (!d.rows.length) h += '<div class="note">היומן עדיין ריק. עד 31.12.2026 הספרים הרשמיים מנוהלים בפריוריטי, ומ־1.1.2027 כל מסמך (חשבונית, קבלה, חשבונית ספק, תנועת בנק) יירשם כאן אוטומטית. היומן של 2026 מפריוריטי מועתק בימים אלה לארכיון.</div>';
     h += '<h3>מאזן בוחן</h3>' + (d.tb.length ? table(Object.keys(d.tb[0]).map(function (k) { return { k: k, t: k, n: typeof d.tb[0][k] === 'number', f: typeof d.tb[0][k] === 'number' ? 'money' : null }; }), d.tb) : table([], [], { empty: 'אין עדיין יתרות' }));
-    h += '<h3>פקודות יומן</h3>';
-    if (!d.rows.length) h += table([], [], { empty: 'אין עדיין פקודות' });
+    h += '<div id="jw"></div><h3>פקודות יומן שנרשמו</h3>';
+    if (!d.rows.length) h += table([], [], { empty: 'אין עדיין פקודות רשומות' });
     d.rows.forEach(function (j) {
       h += '<p style="margin:14px 0 4px"><b>' + esc(j.je_no || j.id) + '</b> · ' + day(j.je_date) + ' · ' + esc(j.memo || '') + ' <span class="tag">' + esc(j.status) + '</span></p>' +
         table([{ k: 'a', t: 'חשבון' }, { k: 'n', t: 'שם' }, { k: 'm', t: 'פרטים' }, { k: 'd', t: 'חובה', f: 'money', n: 1, sum: 1 }, { k: 'c', t: 'זכות', f: 'money', n: 1, sum: 1 }], j.lines);
     });
     main.innerHTML = h;
+    drawPost(P);
   });
 };
 
@@ -504,13 +506,15 @@ V.accounts = function () {
 
 var ERR = { owner_only: 'רק הבעלים יכול להוסיף משתמשים.', bad_email: 'כתובת האימייל לא תקינה.', short_password: 'הסיסמה הזמנית צריכה לפחות 10 תווים.', create_failed: 'המשתמש לא נוצר. נסו שוב.', update_failed: 'המשתמש לא עודכן. נסו שוב.', save_failed: 'ההרשאה לא נשמרה. נסו שוב.' };
 V.readers = function () {
-  return get('readers').then(function (d) {
+  return Promise.all([get('readers'), postDo('state')]).then(function (rs) {
+    var d = rs[0], W = rs[1].writers || [];
     var h = head('הרשאות ורישום גישה', 'מי רשאי לפתוח את העמדה, ומה נפתח בה. משתמש שנוסף כאן רואה את העמדה הזו בלבד, בקריאה בלבד: אין לו גישה ל־CRM, ללקוחות, לשכר או לכל מסך אחר.');
     h += '<h3>הוספת משתמש קריאה</h3><form id="rf" class="bar"><label class="f">שם<input id="rName" required autocomplete="off"></label><label class="f">אימייל<input id="rEmail" type="email" required dir="ltr" autocomplete="off"></label>' +
       '<label class="f">סיסמה זמנית (10 תווים לפחות)<input id="rPw" type="password" minlength="10" required dir="ltr" autocomplete="new-password"></label><button class="btn brass small" type="submit">הוספה</button></form>' +
       '<p class="mute small">את הסיסמה הזמנית מוסרים למשתמש בטלפון. בכניסה הראשונה הוא יתבקש להחליף אותה. הסיסמה לא נשמרת בשום מקום שאפשר לקרוא ממנו.</p><div class="err" id="rErr" role="alert"></div>';
     h += '<h3>משתמשי קריאה</h3>' + table([{ k: 'name', t: 'שם' }, { k: 'email', t: 'אימייל' }, { k: 'added_at', t: 'נוסף', f: function (r) { return when(r.added_at); } }, { k: 'last_seen', t: 'כניסה אחרונה', f: function (r) { return r.last_seen ? when(r.last_seen) : 'עוד לא נכנס'; } },
       { k: 'active', t: 'מצב', f: function (r) { return r.active ? '<span class="tag ok">פעיל</span>' : '<span class="tag bad">חסום</span>'; } },
+      { k: 'w', t: 'הקלדת טיוטות', f: function (r) { var on = W.indexOf(r.email) >= 0; return (on ? '<span class="tag warn">פתוחה</span> ' : '<span class="tag">סגורה</span> ') + '<button class="btn small" type="button" data-wem="' + esc(r.email) + '" data-won="' + (on ? '0' : '1') + '">' + (on ? 'סגירה' : 'פתיחה') + '</button>'; } },
       { k: 'x', t: '', f: function (r) { return '<button class="btn small" type="button" data-em="' + esc(r.email) + '" data-nm="' + esc(r.name || '') + '" data-on="' + (r.active ? '0' : '1') + '">' + (r.active ? 'חסימה' : 'הפעלה מחדש') + '</button>'; } }], d.readers, { empty: 'עוד לא נוסף משתמש קריאה' });
     h += '<h3>רישום גישה, 150 הפעולות האחרונות</h3>' + table([{ k: 'at', t: 'מתי', f: function (r) { return when(r.at); } }, { k: 'email', t: 'מי' }, { k: 'screen', t: 'מסך', f: function (r) { var s = SCREENS.filter(function (x) { return x && x[0] === r.screen; })[0]; return esc(s ? s[1] : r.screen); } }], d.log);
     main.innerHTML = h;
@@ -521,6 +525,8 @@ V.readers = function () {
         .then(function (r) { return r.json(); }).then(function (j) { if (!j.ok) throw new Error(j.error); show('readers'); })
         .catch(function (er) { btn.disabled = false; $('rErr').textContent = ERR[er.message] || 'לא נשמר. נסו שוב.'; });
     };
+    main.querySelectorAll('[data-wem]').forEach(function (b) { var armed = b.dataset.won === '0';
+      b.onclick = function () { if (!armed) { armed = true; b.textContent = 'לחצו שוב לפתיחת הקלדה'; return; } b.disabled = true; postDo('set_write', { email: b.dataset.wem, on: b.dataset.won === '1' }).then(function () { show('readers'); }); }; });
     main.querySelectorAll('[data-em]').forEach(function (b) {
       b.onclick = function () { b.disabled = true; sb.rpc('books_reader_set', { p_email: b.dataset.em, p_name: b.dataset.nm, p_active: b.dataset.on === '1' }).then(function () { show('readers'); }); };
     });
@@ -556,6 +562,49 @@ V.find = function () {
   setTimeout(function () { $('fq').focus(); }, 0);
   return findQ ? run() : Promise.resolve();
 };
+
+/* ---------- real entry: drafts and approval ---------- */
+var PERR = { write_closed: 'ההקלדה סגורה למשתמש הזה.', period_locked: 'החודש הזה נעול.', bad_date: 'התאריך לא תקין.', approver_only: 'רק מורשה אישור יכול לרשום פקודה.', voided: 'הטיוטה בוטלה.', already_posted: 'הפקודה כבר נרשמה.', not_yours: 'אפשר לבטל רק טיוטה שלך.', not_found: 'הפקודה לא נמצאה.' };
+function postDo(action, args) { return sb.rpc('books_post', { p_action: action, p_args: args || {} }).then(function (r) { if (r.error) throw r.error; return r.data; }); }
+function postMsg(e) { var m = (e && e.message) || '', k; for (k in PERR) if (m.indexOf(k) >= 0) return PERR[k]; for (k in TERR) if (m.indexOf(k) >= 0) return TERR[k]; return 'לא נשמר. נסו שוב.'; }
+function drawPost(P) {
+  var box = $('jw'); if (!box) return; var h = '';
+  if (P.can_write) {
+    h += '<h3>פקודת יומן חדשה (טיוטה)</h3><p class="mute small">הפקודה נשמרת כטיוטה ואינה משפיעה על הספרים עד שמורשה מאשר ורושם אותה. פקודה שנרשמה לא ניתנת לשינוי, רק לביטול בפקודה הפוכה.</p>' +
+      '<form id="rf2"><div class="bar"><label class="f">תאריך<input type="date" id="rDate" value="' + iso(new Date()) + '"></label><label class="f" style="flex:1;min-width:200px">פרטים<input id="rMemo" maxlength="300"></label></div>' +
+      '<div class="tw"><table id="rl"><thead><tr><th scope="col">חשבון</th><th scope="col">פרטי שורה</th><th scope="col" class="n">חובה</th><th scope="col" class="n">זכות</th></tr></thead><tbody></tbody>' +
+      '<tfoot><tr><td colspan="2" id="rState"></td><td class="n" id="rD"></td><td class="n" id="rC"></td></tr></tfoot></table></div>' +
+      '<datalist id="accR">' + (P.accounts || []).map(function (a) { return '<option value="' + esc(a.code) + '">' + esc(a.name) + '</option>'; }).join('') + '</datalist>' +
+      '<div class="bar"><button class="btn small" type="button" id="rAdd">שורה נוספת</button><button class="btn brass small" type="submit">שמירת טיוטה</button></div></form>';
+  }
+  if (P.can_write || P.can_approve || P.drafts.length) {
+    h += '<h3>טיוטות שממתינות לאישור</h3><div class="err" id="rErr" role="alert"></div>';
+    if (!P.drafts.length) h += table([], [], { empty: 'אין טיוטות פתוחות' });
+    P.drafts.forEach(function (j) {
+      h += '<p style="margin:14px 0 4px"><span class="tag warn">טיוטה</span> <b>' + esc(j.je_no) + '</b> · ' + day(j.je_date) + ' · ' + esc(j.memo || 'בלי פרטים') + ' · <span class="mute small">' + esc(j.created_by) + '</span> ' +
+        (P.can_approve ? '<button class="btn brass small" type="button" data-rpost="' + j.id + '">אישור ורישום</button> ' : '') + (P.owner || j.created_by === me.email ? '<button class="btn small" type="button" data-rvoid="' + j.id + '">ביטול טיוטה</button>' : '') + '</p>' +
+        table([{ k: 'a', t: 'חשבון' }, { k: 'n', t: 'שם' }, { k: 'm', t: 'פרטים' }, { k: 'd', t: 'חובה', f: function (r) { return Number(r.d) ? money(r.d) : ''; }, n: 1 }, { k: 'c', t: 'זכות', f: function (r) { return Number(r.c) ? money(r.c) : ''; }, n: 1 }], j.lines || []);
+    });
+  }
+  box.innerHTML = h;
+  var after = function (p) { return p.then(function () { show('journal'); }).catch(function (e) { var el = $('rErr'); if (el) el.textContent = postMsg(e); }); };
+  box.querySelectorAll('[data-rvoid]').forEach(function (b) { b.onclick = function () { b.disabled = true; after(postDo('draft_void', { id: b.dataset.rvoid })); }; });
+  box.querySelectorAll('[data-rpost]').forEach(function (b) { var armed = false; b.onclick = function () {
+    if (!armed) { armed = true; b.textContent = 'לחצו שוב לרישום סופי בספרים'; return; } b.disabled = true; after(postDo('post', { id: b.dataset.rpost })); }; });
+  if (!P.can_write) return;
+  var tb = $('rl').tBodies[0];
+  var addLine = function () { var tr = document.createElement('tr');
+    tr.innerHTML = '<td><input list="accR" class="ja" aria-label="מספר חשבון" placeholder="מספר חשבון" dir="ltr" style="width:130px"></td><td><input class="jm" aria-label="פרטי שורה" maxlength="200" style="width:100%;min-width:140px"></td>' +
+      '<td class="n"><input class="jd" aria-label="חובה" inputmode="decimal" dir="ltr" style="width:110px"></td><td class="n"><input class="jc" aria-label="זכות" inputmode="decimal" dir="ltr" style="width:110px"></td>'; tb.appendChild(tr); };
+  var val = function (el) { var v = parseFloat(String(el.value).replace(/,/g, '')); return isFinite(v) ? v : 0; };
+  var lines = function () { return [].map.call(tb.rows, function (tr) { return { a: tr.querySelector('.ja').value.trim(), m: tr.querySelector('.jm').value, d: val(tr.querySelector('.jd')), c: val(tr.querySelector('.jc')) }; }); };
+  var totals = function () { var l = lines(), dd = l.reduce(function (s, x) { return s + x.d; }, 0), cc = l.reduce(function (s, x) { return s + x.c; }, 0), ok = dd > 0 && Math.abs(dd - cc) < 0.005;
+    $('rD').innerHTML = money(dd); $('rC').innerHTML = money(cc); $('rState').innerHTML = ok ? '<span class="tag ok">מאוזן</span>' : dd || cc ? '<span class="tag warn">לא מאוזן, הפרש ' + money(Math.abs(dd - cc), 1) + '</span>' : ''; };
+  addLine(); addLine(); totals();
+  tb.addEventListener('input', function () { $('rErr').textContent = ''; totals(); });
+  $('rAdd').onclick = addLine;
+  $('rf2').onsubmit = function (e) { e.preventDefault(); $('rErr').textContent = ''; after(postDo('draft_add', { date: $('rDate').value, memo: $('rMemo').value, lines: lines() })); };
+}
 
 /* ---------- practice area ---------- */
 var TERR = { bad_account: 'אחד ממספרי החשבון לא קיים באינדקס.', bad_amount: 'בכל שורה צריך סכום חיובי בחובה או בזכות, לא בשניהם.', need_two_lines: 'פקודת יומן צריכה לפחות שתי שורות.',
