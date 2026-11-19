@@ -772,6 +772,8 @@ function route() {
   else if (v === 'today') { setView('today'); loadToday(); }
   else if (v === 'home') { setView('home'); loadHome(); }
   else if (v === 'search') { setView('search'); setTimeout(function () { $('q2').focus(); }, 50); }
+  /* the new home page (home.html) opens "תשאלו את קלוד" with index.html#ask */
+  else if (v === 'ask') { history.replaceState(null, '', location.pathname + location.search); route(); askOpen(); }
   else setView('chats');
 }
 window.addEventListener('hashchange', route);
