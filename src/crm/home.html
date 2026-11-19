@@ -7,6 +7,7 @@
 <meta name="theme-color" content="#17191c">
 <meta name="color-scheme" content="light">
 <title>זיסו · בית</title>
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="../img/logo.jpg">
 <link rel="icon" href="../img/logo.jpg">
 <link rel="preconnect" href="https://ppnjosyraosrdephsksu.supabase.co" crossorigin>
@@ -254,7 +255,6 @@ footer button.lnk{background:none;border:0;padding:0;min-height:44px;color:var(-
     <footer>
       <div class="as hidden" id="as"><span>לראות את הבית של</span><div class="seg" role="group" aria-label="לראות את הבית של" id="asSeg"></div></div>
       <div class="line"><span id="upd"></span><button class="lnk" type="button" id="who">יציאה מהחשבון</button></div>
-      <div class="line"><span>תצוגה מוקדמת של מסך הבית החדש. המסכים עצמם עובדים כרגיל.</span></div>
     </footer>
   </div>
 </main>
@@ -369,7 +369,7 @@ function drawNeed() {
   if (!rows.length) { box.innerHTML = '<div class="calm"><span class="num ok">' + ic('check') + '</span><div><div class="t">הכול מטופל</div><div class="s">אין כרגע משהו שמחכה לך.</div></div></div>'; return; }
   box.innerHTML = rows.slice(0, 4).map(function (x) {
     return '<a class="rowlink" href="' + x.href + '" aria-label="' + esc(x.say + (x.s ? '. ' + x.s : '')) + '"><span class="num ' + x.cls + '">' + (x.n > 99 ? '99+' : x.n) + '</span><span><span class="t">' + esc(x.t) + '</span>' + (x.s ? '<span class="s">' + esc(x.s) + '</span>' : '') + '</span><span class="go">' + ic('go') + '</span></a>';
-  }).join('') + (rows.length > 4 ? '<a class="morelink" href="index.html#home">עוד ' + cnt(rows.length - 4, 'דבר אחד', 'דברים') + ' במסך היום המלא</a>' : '');
+  }).join('') + (rows.length > 4 ? '<a class="morelink" href="index.html#home">עוד ' + cnt(rows.length - 4, 'דבר אחד', 'דברים') + ' במסך "היום שלי"</a>' : '');
 }
 
 /* ---------- the screens ---------- */
@@ -459,7 +459,7 @@ function signedOut() {
 function start(user) {
   me = user; me.email = (me.email || '').toLowerCase();
   /* the first sign-in chooses a personal password; that step lives in the CRM page */
-  if (!(me.user_metadata && me.user_metadata.pw_changed_at)) { location.replace('index.html'); return; }
+  if (!(me.user_metadata && me.user_metadata.pw_changed_at)) { location.replace('index.html#chats'); return; }
   soft(sb.from('crm_staff').select('email,name,role')).then(function (st) {
     mine = (st || []).filter(function (x) { return String(x.email).toLowerCase() === me.email; })[0];
     if (!mine) { signedOut(); $('loginErr').textContent = 'החשבון הזה לא מורשה למסך הזה. פנו לאביב.'; sb.auth.signOut(); return; }

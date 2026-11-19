@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#0f1113">
+<meta name="theme-color" content="#eceff0">
 <title>קופה · זיסו</title>
 <link rel="manifest" href="kupa.webmanifest">
 <link rel="apple-touch-icon" href="../img/logo.jpg">
@@ -20,11 +20,12 @@
   --red:#e07a6a;--red-soft:#3a1f1b;--green:#8fc9a0;--green-soft:#1d2e22;--amber:#e3b86a;--amber-soft:#3a2f17;
   --display:"Bellefair","Times New Roman",serif;--body:"Assistant","Segoe UI",Arial,sans-serif;--r:14px;
 }
-@media (prefers-color-scheme: light){:root{
-  --wall:#f3f2ef;--surface:#ffffff;--graphite:#ecebe7;--line:#d2cec5;
-  --ink:#1e1b17;--mute:#66645f;--brass:#8a6a35;--brass-ink:#fff;--brass-soft:#efe7da;
-  --red:#b8432f;--red-soft:#fbe9e5;--green:#2e7d4f;--green-soft:#e3f2e8;--amber:#8c6200;--amber-soft:#fbefc9;
-}}
+/* Light is the look of the whole system since 19.11.2026 (home.html); it no longer follows the device. */
+:root{
+  --wall:#eceff0;--surface:#ffffff;--graphite:#e6eaec;--line:#cdd3d6;
+  --ink:#1b1d1f;--mute:#555b60;--brass:#7a5c2c;--brass-ink:#fff;--brass-soft:#efe7da;
+  --red:#b8432f;--red-soft:#fbe9e5;--green:#2e7d4f;--green-soft:#e3f2e8;--amber:#8c6200;--amber-soft:#fbefc9;color-scheme:light;
+}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--wall);color:var(--ink);font-family:var(--body);font-size:19px;line-height:1.45;padding:0 16px calc(32px + env(safe-area-inset-bottom));-webkit-tap-highlight-color:transparent}
@@ -38,6 +39,9 @@ p{margin:0}
 header{display:flex;align-items:center;gap:12px;padding:calc(14px + env(safe-area-inset-top)) 0 4px;max-width:520px;margin:0 auto}
 header img{width:44px;height:44px;border-radius:10px}
 header .who{margin-inline-start:auto;font-size:16px;color:var(--mute)}
+header .hm{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:600;font-size:16px;text-decoration:none}
+/* the colour of this area, the same as its tile on the home page */
+body{border-top:4px solid #47734a}
 .box{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}
 .box.bad{border-color:var(--red);box-shadow:0 0 0 2px var(--red-soft)}
 label{display:block;font-weight:600;margin-bottom:6px}
@@ -80,7 +84,7 @@ a.go{display:flex;align-items:center;justify-content:center;text-decoration:none
 </head>
 <body>
 <div class="sr" id="live" role="status" aria-live="polite"></div>
-<header><img src="../img/logo.jpg" alt=""><h1>קופה</h1><span class="who" id="who"></span></header>
+<header><img src="../img/logo.jpg" alt=""><h1>קופה</h1><span class="who" id="who"></span><a class="hm" href="home.html">בית</a></header>
 
 <main id="login" class="hidden">
   <form id="loginForm" class="box" autocomplete="on">

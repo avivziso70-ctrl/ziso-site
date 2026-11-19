@@ -4,17 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#0f1113">
+<meta name="theme-color" content="#eceff0">
 <title>ניהול החנות | זיסו צוות</title>
 <link rel="icon" href="../img/logo.jpg">
 <link rel="stylesheet" href="../fonts.css">
 <style>
 :root{--wall:#0f1113;--surface:#1d2024;--graphite:#22262a;--line:#3a3f45;--ink:#f2efe8;--mute:#b9b3a7;--brass:#cfae74;--brass-ink:#1a1610;--brass-soft:#2d271d;
   --red:#e07a6a;--green:#8fc9a0;--amber:#e3b86a;--display:"Bellefair","Times New Roman",serif;--body:"Assistant","Segoe UI",Arial,sans-serif}
-@media (prefers-color-scheme: light){:root{--wall:#f3f2ef;--surface:#fff;--graphite:#ecebe7;--line:#d2cec5;--ink:#1e1b17;--mute:#5f5d58;--brass:#8a6a35;--brass-ink:#fff;--brass-soft:#efe7da;--red:#b8432f;--green:#2e7d4f;--amber:#8c6200}}
+/* Light is the look of the whole system since 19.11.2026 (home.html); it no longer follows the device. */
+:root{--wall:#eceff0;--surface:#fff;--graphite:#e6eaec;--line:#cdd3d6;--ink:#1b1d1f;--mute:#555b60;--brass:#7a5c2c;--brass-ink:#fff;--brass-soft:#efe7da;--red:#b8432f;--green:#2e7d4f;--amber:#8c6200;color-scheme:light}
 *{box-sizing:border-box}
 body{margin:0;background:var(--wall);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.45}
 header{position:sticky;top:0;z-index:3;background:var(--wall);border-bottom:1px solid var(--line);padding:10px 16px 0}
+/* the colour of this area, the same as its tile on the home page */
+header{border-top:4px solid #94466a}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.grow{flex:1;min-width:0}
 h1,h2{font-family:var(--display);font-weight:400;margin:0}h1{font-size:26px}h2{font-size:22px;margin:22px 0 8px}
 a{color:var(--brass)}
@@ -50,11 +53,11 @@ table.m{width:100%;border-collapse:collapse}table.m td{padding:6px 0;border-top:
 </head>
 <body>
 <header>
-  <div class="row"><h1 class="grow">ניהול החנות</h1><a class="btn" href="../shop/" target="_blank" rel="noopener">לחנות</a><a class="btn" href="./">CRM</a></div>
+  <div class="row"><h1 class="grow">ניהול החנות</h1><a class="btn" href="../shop/" target="_blank" rel="noopener">לחנות</a><a class="btn" href="home.html">בית</a></div>
   <nav class="seg" role="tablist"><button role="tab" data-tab="orders" aria-selected="true">הזמנות</button><button role="tab" data-tab="products" aria-selected="false">מוצרים ומחירים</button><button role="tab" data-tab="settings" aria-selected="false">הגדרות</button></nav>
 </header>
 <main>
-  <div id="needLogin" class="card hidden" role="alert">צריך להתחבר קודם. <a href="./">כניסה ל-CRM</a> ואז לחזור לכאן.</div>
+  <div id="needLogin" class="card hidden" role="alert">צריך להתחבר קודם. <a href="home.html">כניסה למערכת</a> ואז לחזור לכאן.</div>
   <div id="msg" class="card hidden" role="status" aria-live="polite"></div>
   <section id="t-orders" class="hidden">
     <div class="stats" id="stats"></div>
