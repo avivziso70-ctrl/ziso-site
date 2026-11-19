@@ -2205,7 +2205,7 @@ function loadHome(force) {
 }
 /* open loops (Aviv 17.11.2026): every payment, refund, supplier order and deal must close. crm_open_loops() lists what is still open,
    with its age and owner; the hourly job closes loops by itself when the document shows up and opens one task when one is stuck. */
-var LOOP_GO = { kupa: 'kupa.html', prices: 'prices.html#orders', receive: 'receive.html', deal: 'order.html' };
+var LOOP_GO = { kupa: 'kupa.html', prices: 'prices.html#orders', receive: 'receive.html', invoices: 'receive.html#invoices', deal: 'order.html' };
 function loopsSect(L, row) {
   L = L || []; var st = L.filter(function (l) { return l.stuck; });
   var age = function (t) { var h = Math.max(0, (Date.now() - new Date(t).getTime()) / 3600000); return h < 1 ? 'פחות משעה' : h < 48 ? Math.round(h) + ' שעות' : Math.round(h / 24) + ' ימים'; };
