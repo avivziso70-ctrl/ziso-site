@@ -92,6 +92,8 @@ dialog#dlg::backdrop{background:rgba(0,0,0,.45)}
   .tile .v{font-size:20px}
   table{font-size:14px}th,td{padding:7px 8px}
 }
+#stmt{display:none}
+@media print{body.pstmt>*:not(#stmt){display:none!important}body.pstmt #stmt{display:block;color:#000;background:#fff;font-size:12px;padding:0 4mm}#stmt h1,#stmt h2{font-family:inherit}#stmt h1{font-size:18px;margin:0 0 2px}#stmt h2{font-size:15px;margin:14px 0 6px}#stmt table{width:100%;border-collapse:collapse;margin-top:8px}#stmt th,#stmt td{border-bottom:1px solid #999;padding:4px 6px;text-align:right}#stmt .n{text-align:left;direction:ltr;white-space:nowrap}#stmt tfoot td{font-weight:700;border-top:2px solid #000}#stmt .ft{margin-top:14px;font-size:11px;color:#333}}
 @media print{header,nav,.bar,.btn{display:none!important}.tw{max-height:none;overflow:visible;border:0}body{background:#fff;color:#000}}
 </style>
 </head>
@@ -132,6 +134,7 @@ dialog#dlg::backdrop{background:rgba(0,0,0,.45)}
   <main id="main" tabindex="-1"></main>
 <dialog id="dlg" aria-label="פרטי מסמך"></dialog>
 </div>
+<div id="stmt" aria-hidden="true"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
 <script>
@@ -162,7 +165,7 @@ var KIND = { supplier_cheque: 'שיק לספק', receipts: 'תקבול', card_se
 var KINDA = { asset: 'נכסים', liability: 'התחייבויות', equity: 'הון', income: 'הכנסות', cogs: 'עלות המכירות', expense: 'הוצאות' };
 var SCREENS = [
   ['overview', 'סקירה וסגירת חודש'], ['find', 'חיפוש כללי'], ['bank', 'התאמת בנק'], ['match', 'בנק מול מסמכים'], ['cards', 'התאמת כרטיסי אשראי'], ['cardtx', 'סליקה: עסקה מול קבלה'], null,
-  ['customers', 'לקוחות'], ['suppliers', 'ספקים'], ['cheques', 'שיקים לפירעון'], ['docs', 'חשבוניות וקבלות'], ['supinv', 'חשבוניות ספק'], null,
+  ['customers', 'לקוחות'], ['collect', 'גבייה'], ['suppliers', 'ספקים'], ['payplan', 'תשלומים לספקים'], ['cheques', 'שיקים לפירעון'], ['docs', 'חשבוניות וקבלות'], ['supinv', 'חשבוניות ספק'], null,
   ['vat', 'מע"מ ומוסדות'], ['owners', 'חו"ז בעלים'], ['missing', 'תנועות שדורשות מסמך'], null,
   ['journal', 'יומן ומאזן בוחן'], ['accounts', 'אינדקס חשבונות'], null, ['sandbox', 'תרגול (לא משפיע על הספרים)'], ['readers', 'הרשאות ורישום גישה', true]
 ];
@@ -396,6 +399,65 @@ V.suppliers = function (sub) {
   });
 };
 
+/* ---------- collection work list ---------- */
+V.collect = function () {
+  return sb.rpc('books_collect').then(function (r) {
+    if (r.error) throw r.error; var d = r.data, all = d.rows || [], cr = d.credit || {};
+    var sum = function (k) { return all.reduce(function (a, x) { return a + Number(x[k] || 0); }, 0); };
+    var cols = [{ k: 'cust_no', t: 'כרטיס' }, { k: 'name', t: 'לקוח' }, { k: 'total', t: 'יתרת חוב', f: 'money', n: 1, sum: 1 }, { k: 'late', t: 'מזה עבר מועד', f: 'money', n: 1, sum: 1 }, { k: 'd90p', t: 'מעל 90 יום', f: 'money', n: 1, sum: 1 },
+      { k: 'max_late', t: 'ימי פיגור', f: function (x) { return x.max_late > 0 ? num(x.max_late) : ''; }, raw: function (x) { return x.max_late; }, n: 1 }, { k: 'oldest', t: 'המסמך הישן', f: 'date' }, { k: 'last_receipt', t: 'תקבול אחרון', f: 'date' }, { k: 'open_orders', t: 'הזמנות', f: 'num', n: 1 }];
+    main.innerHTML = head('גבייה', 'כל הלקוחות שחייבים לנו כסף, מהפיגור הגדול לקטן. לחיצה על שורה פותחת את כרטיס הלקוח, ומשם אפשר להדפיס דף חשבון. המסך לקריאה בלבד: שום הודעה לא נשלחת ללקוח מכאן.') +
+      '<div class="tiles">' + tile('חוב לקוחות פתוח', money(sum('total')), num(all.length) + ' לקוחות') + tile('מזה עבר מועד', money(sum('late')), 'מעל 90 יום ' + money(sum('d90p'), 1)) +
+      tile('לקוחות ביתרת זכות', money(cr.total || 0), num(cr.n || 0) + ' לקוחות, מקדמות ותשלום ביתר') + tile('נכון ל', esc(when(d.as_of)), 'לפי הגיול בפריוריטי') + '</div>' +
+      '<div class="bar"><label class="f">חיפוש<input type="search" id="q" placeholder="שם או מספר כרטיס"></label><span role="group" aria-label="סינון"><button class="chip" type="button" data-cf="late" aria-pressed="true">עבר מועד</button><button class="chip" type="button" data-cf="all" aria-pressed="false">כל החייבים</button></span><button class="btn small" type="button" id="x">הורדה לאקסל</button></div><div id="t"></div>';
+    var rows, f = 'late', view = function () {
+      rows = filt(all.filter(function (x) { return f === 'all' || Number(x.late) > 0.5; }), $('q').value, ['name', 'cust_no']);
+      $('t').innerHTML = table(cols, rows, { click: 1, empty: 'אין לקוחות בפיגור' }); onRow(rows, function (x) { show('customers', x); });
+    };
+    view(); $('q').oninput = view; $('x').onclick = function () { csv('collection', cols, rows); };
+    main.querySelectorAll('[data-cf]').forEach(function (b) { b.onclick = function () { f = b.dataset.cf; main.querySelectorAll('[data-cf]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); view(); }; });
+  });
+};
+
+/* ---------- supplier payments: what leaves the bank and what is still owed ---------- */
+V.payplan = function () {
+  return sb.rpc('books_payplan').then(function (r) {
+    if (r.error) throw r.error; var d = r.data, bank = d.bank || {}, bal = Number(bank.balance || 0), lim = Number(bank.credit_limit || 0), run = bal;
+    var weeks = (d.weeks || []).map(function (w) { run -= Number(w.total || 0); var e = new Date(w.w + 'T00:00:00Z'); e.setUTCDate(e.getUTCDate() + 6); return { w: w.w, to: e.toISOString().slice(0, 10), n: w.n, suppliers: w.suppliers, total: w.total, after: run, over: run < -lim }; });
+    var un = d.unpaid || [], unSum = un.reduce(function (a, x) { return a + Number(x.open || 0); }, 0), unLate = un.reduce(function (a, x) { return a + Number(x.late || 0); }, 0);
+    var chSum = (d.cheques || []).reduce(function (a, x) { return a + Number(x.net || 0); }, 0), w0 = weeks[0] || {};
+    var wc = [{ k: 'w', t: 'שבוע מיום', f: 'date' }, { k: 'to', t: 'עד יום', f: 'date' }, { k: 'n', t: 'שיקים', f: 'num', n: 1 }, { k: 'suppliers', t: 'ספקים', f: 'num', n: 1 }, { k: 'total', t: 'יוצא מהבנק', f: 'money', n: 1, sum: 1 },
+      { k: 'after', t: 'יתרה בלי תקבולים', f: function (x) { return money(x.after) + (x.over ? ' <span class="tag bad">מעבר למסגרת</span>' : ''); }, raw: function (x) { return x.after; }, n: 1 }];
+    var cc = [{ k: 'check_due', t: 'מועד פירעון', f: 'date' }, { k: 'check_no', t: 'מספר שיק' }, { k: 'name', t: 'ספק' }, { k: 'net', t: 'סכום', f: 'money', n: 1, sum: 1 }];
+    var uc = [{ k: 'sup', t: 'כרטיס' }, { k: 'name', t: 'ספק' }, { k: 'n', t: 'מסמכים', f: 'num', n: 1 }, { k: 'first_due', t: 'המועד המוקדם', f: 'date' }, { k: 'max_late', t: 'ימי פיגור', f: function (x) { return x.max_late > 0 ? num(x.max_late) : ''; }, raw: function (x) { return x.max_late; }, n: 1 },
+      { k: 'late', t: 'עבר מועד', f: 'money', n: 1, sum: 1 }, { k: 'open', t: 'חוב פתוח', f: 'money', n: 1, sum: 1 }, { k: 'future_cheques', t: 'שיקים שכבר ניתנו', f: 'money', n: 1, sum: 1 }];
+    main.innerHTML = head('תשלומים לספקים', 'מה יוצא מהבנק בשבועות הקרובים בשיקים שכבר ניתנו, ומה עוד פתוח מול ספקים. המסך לקריאה בלבד: לא נרשם ולא נשלח מכאן שום תשלום. העמודה "יתרה בלי תקבולים" מראה את הבנק אם לא ייכנס שקל, כדי לראות כמה תקבולים צריך בכל שבוע.') +
+      '<div class="tiles">' + tile('יתרת הבנק', money(bal), 'מסגרת ' + money(lim, 1) + (bank.as_of ? ' · ' + day(bank.as_of) : '')) + tile('שיקים בשבוע הקרוב', money(w0.total || 0), num(w0.n || 0) + ' שיקים') +
+      tile('שיקים ב־120 הימים הקרובים', money(chSum), num((d.cheques || []).length) + ' שיקים') + tile('חוב פתוח לספקים', money(unSum), 'מזה עבר מועד ' + money(unLate, 1)) + '</div>' +
+      '<h3>לפי שבוע</h3>' + table(wc, weeks, { empty: 'אין שיקים עתידיים' }) +
+      '<h3>חוב פתוח לפי ספק</h3><p class="mute small">החוב הפתוח הוא לפי כרטיס הספק בפריוריטי. שיקים דחויים שכבר ניתנו מופיעים בעמודה האחרונה. לחיצה על שורה פותחת את כרטיס הספק.</p><div class="bar"><label class="f">חיפוש<input type="search" id="q" placeholder="שם ספק או מספר כרטיס"></label><button class="btn small" type="button" id="x">הורדה לאקסל</button></div><div id="t"></div>' +
+      '<h3>כל השיקים העתידיים</h3><div class="bar"><button class="btn small" type="button" id="x2">הורדה לאקסל</button></div>' + table(cc, d.cheques, { empty: 'אין שיקים עתידיים' });
+    var rows, view = function () { rows = filt(un, $('q').value, ['name', 'sup']); $('t').innerHTML = table(uc, rows, { click: 1, empty: 'אין חוב פתוח' }); onRow(rows, function (x) { show('suppliers', x); }); };
+    view(); $('q').oninput = view; $('x').onclick = function () { csv('suppliers-open', uc, rows); }; $('x2').onclick = function () { csv('future-cheques', cc, d.cheques); };
+  });
+};
+
+/* ---------- printable customer statement (open items). Nothing is sent from here. ---------- */
+function printStatement(id, nm, rows, a) {
+  var h = '<h1>זיסו קרמיקה בע"מ</h1><div>ח.פ. 517079661 · טירת כרמל · טלפון 050-4770040 · info@zisoceramics.com</div>' +
+    '<h2>דף חשבון ללקוח: ' + esc(nm) + ' · כרטיס <span dir="ltr">' + esc(id) + '</span></h2><div>נכון ליום ' + day(iso(new Date())) + '. מוצגות התנועות הפתוחות בחשבון.</div>' +
+    '<table><thead><tr><th>תאריך</th><th>מסמך</th><th>סוג</th><th>פרטים</th><th>לתשלום עד</th><th class="n">סכום</th><th class="n">יתרה</th></tr></thead><tbody>';
+  rows.forEach(function (r) {
+    h += '<tr><td>' + day(r.doc_date) + '</td><td dir="ltr">' + esc(r.doc) + '</td><td>' + esc(DOCT[r.type] || r.type || '') + '</td><td>' + esc(r.details) + '</td><td>' + day(r.due) + '</td><td class="n">' + money(r.amount, 1) + '</td><td class="n">' + money(r.bal, 1) + '</td></tr>';
+  });
+  var tot = rows.length ? rows[rows.length - 1].bal : 0;
+  h += '</tbody><tfoot><tr><td colspan="6">' + (tot < 0 ? 'יתרת זכות לטובת הלקוח' : 'יתרה לתשלום') + ', כולל מע"מ</td><td class="n">' + money(Math.abs(tot), 1) + '</td></tr></tfoot></table>' +
+    '<div class="ft">הדף הופק מנתוני הנהלת החשבונות לצורך בירור יתרה בלבד ואינו חשבונית מס או קבלה. נמצאה אי התאמה? נשמח לבדוק: 050-4770040.</div>';
+  $('stmt').innerHTML = h; document.body.classList.add('pstmt');
+  var done = function () { document.body.classList.remove('pstmt'); window.removeEventListener('afterprint', done); };
+  window.addEventListener('afterprint', done); window.print();
+}
+
 /* ---------- account card: one customer or one supplier ---------- */
 var DOCT = { 'חל': 'חשבונית', 'ק': 'קבלה', 'חלז': 'חשבונית זיכוי', 'הת': 'התאמה', 'בטל': 'ביטול', 'תשצ': 'תשלום', 'פ': 'פקודה', 'העב': 'העברה' };
 function running(rows, key) { var b = 0; return rows.map(function (r) { b += Number(r[key] || 0); var o = {}; for (var k in r) o[k] = r[k]; o.bal = b; return o; }); }
@@ -410,7 +472,7 @@ function card(kind, id, name) {
       h += '<p class="lead">חשבון הלקוח כפי שהוא בפריוריטי' + (d.info && d.info.city ? ' · ' + esc(d.info.city) : '') + (d.info && d.info.agent ? ' · סוכן: ' + esc(d.info.agent) : '') + '. יתרה בפלוס פירושה שהלקוח חייב לנו. יתרה במינוס פירושה מקדמה או תשלום ביתר.</p>';
       h += '<div class="tiles">' + tile('יתרת חשבון', money(a.total || 0), a.updated_at ? 'עודכן ' + when(a.updated_at) : 'אין יתרה פתוחה') + tile('בפיגור מעל 30 יום', money(Number(a.d60 || 0) + Number(a.d90 || 0) + Number(a.d90p || 0)), 'מזה מעל 90 יום ' + money(a.d90p || 0, 1)) +
         tile('חשבוניות השנה, לפני מע"מ', money(y.invoiced_net || 0), num(d.invoices.length) + ' חשבוניות') + tile('תקבולים השנה', money(y.received || 0), num(d.receipts.length) + ' קבלות') + '</div>';
-      h += '<div class="bar"><button class="btn small" type="button" id="xOpen">כרטיס החשבון לאקסל</button></div>';
+      h += '<div class="bar"><button class="btn small" type="button" id="xOpen">כרטיס החשבון לאקסל</button><button class="btn small" type="button" id="pStmt">דף חשבון להדפסה</button></div>';
       h += '<h3>תנועות פתוחות בחשבון, עם יתרה מצטברת</h3><p class="mute small">כל מסמך שעוד לא נסגר מול תשלום או חשבונית. חשבוניות בפלוס, קבלות וזיכויים במינוס. השורה האחרונה היא יתרת החשבון.</p><div id="cOpen"></div>';
       h += '<h3>הזמנות</h3>' + table([{ k: 'so', t: 'הזמנה', f: function (r) { return docBtn(r.so); } }, { k: 'date', t: 'תאריך', f: 'date' }, { k: 'status', t: 'מצב' }, { k: 'details', t: 'פרטים' }, { k: 'amount', t: 'סכום ההזמנה', f: 'money', n: 1, sum: 1 }, { k: 'debit', t: 'חויב', f: 'money', n: 1, sum: 1 }, { k: 'credit', t: 'שולם', f: 'money', n: 1, sum: 1 }], d.orders, { empty: 'אין הזמנות מ־2025 והלאה' });
       h += '<h3>חשבוניות השנה</h3>' + table([{ k: 'doc', t: 'מספר', f: function (r) { return docBtn(r.doc); } }, { k: 'date', t: 'תאריך', f: 'date' }, { k: 'amount', t: 'סכום לפני מע"מ', f: 'money', n: 1, sum: 1 }], d.invoices, { empty: 'אין חשבוניות השנה' });
@@ -421,6 +483,7 @@ function card(kind, id, name) {
         { k: 'details', t: 'פרטים' }, { k: 'due', t: 'לתשלום עד', f: 'date' }, { k: 'days_late', t: 'ימי פיגור', f: function (r) { return r.days_late > 0 ? num(r.days_late) : ''; }, raw: function (r) { return r.days_late; }, n: 1 }, { k: 'amount', t: 'סכום', f: 'money', n: 1, sum: 1 }, { k: 'bal', t: 'יתרה', f: 'money', n: 1 }];
       $('cOpen').innerHTML = table(oc, open, { empty: 'החשבון מאוזן, אין תנועות פתוחות' });
       $('xOpen').onclick = function () { csv('customer-' + id, oc, open); };
+      $('pStmt').onclick = function () { printStatement(id, nm, open, a); };
       $('bk').onclick = function () { show('customers'); };
     } else {
       var su = d.sum || {}, cq = d.cheq || {}, sopen = running(d.open, 'open');
