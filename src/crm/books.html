@@ -65,6 +65,12 @@ tfoot td{font-weight:700;background:var(--graphite);position:sticky;bottom:0}
 .check li:last-child{border-bottom:0}.check .t{flex:1}.check .t b{display:block}
 .note{border:1px solid var(--line);border-inline-start:3px solid var(--amber);border-radius:10px;padding:10px 14px;background:var(--surface);margin:12px 0;max-width:80ch}
 .empty{padding:28px 16px;text-align:center;color:var(--mute)}
+.note.practice{border-color:var(--amber);border-inline-start-width:6px;background:var(--brass-soft)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0}
+.two .tw{margin-top:6px}
+@media (max-width:800px){.two{grid-template-columns:1fr}}
+form table input{min-height:38px}
+@media (max-width:640px){#jl .ja{width:92px!important}#jl .jm{min-width:84px!important}#jl .jd,#jl .jc{width:78px!important}#jl th,#jl td{padding:6px 4px}}
 .card{max-width:420px;margin:8vh auto;padding:24px;background:var(--surface);border:1px solid var(--line);border-radius:18px}
 .card label{display:block;margin:12px 0 4px;font-weight:600}.card input{width:100%;min-height:48px}
 .card .btn{width:100%;margin-top:16px;min-height:48px}
@@ -153,7 +159,7 @@ var SCREENS = [
   ['overview', 'סקירה וסגירת חודש'], ['bank', 'התאמת בנק'], ['cards', 'התאמת כרטיסי אשראי'], null,
   ['customers', 'לקוחות'], ['suppliers', 'ספקים'], ['cheques', 'שיקים לפירעון'], ['docs', 'חשבוניות וקבלות'], ['supinv', 'חשבוניות ספק'], null,
   ['vat', 'מע"מ ומוסדות'], ['owners', 'חו"ז בעלים'], ['missing', 'תנועות שדורשות מסמך'], null,
-  ['journal', 'יומן ומאזן בוחן'], ['accounts', 'אינדקס חשבונות'], ['readers', 'הרשאות ורישום גישה', true]
+  ['journal', 'יומן ומאזן בוחן'], ['accounts', 'אינדקס חשבונות'], null, ['sandbox', 'תרגול (לא משפיע על הספרים)'], ['readers', 'הרשאות ורישום גישה', true]
 ];
 
 /* ---------- table helper ---------- */
@@ -456,6 +462,87 @@ V.readers = function () {
     main.querySelectorAll('[data-em]').forEach(function (b) {
       b.onclick = function () { b.disabled = true; sb.rpc('books_reader_set', { p_email: b.dataset.em, p_name: b.dataset.nm, p_active: b.dataset.on === '1' }).then(function () { show('readers'); }); };
     });
+  });
+};
+
+/* ---------- practice area ---------- */
+var TERR = { bad_account: 'אחד ממספרי החשבון לא קיים באינדקס.', bad_amount: 'בכל שורה צריך סכום חיובי בחובה או בזכות, לא בשניהם.', need_two_lines: 'פקודת יומן צריכה לפחות שתי שורות.',
+  not_balanced: 'הפקודה לא מאוזנת: סך החובה צריך להיות שווה לסך הזכות.', bad_lines: 'השורות לא נקראו. נסו שוב.', practice_full: 'הגעתם ל־500 רישומי תרגול. אפסו את התרגול כדי להמשיך.', need_both: 'בחרו שורה אחת מהבנק ושורה אחת מהספרים.' };
+function tryDo(action, args) {
+  return sb.rpc('books_try', { p_action: action, p_args: args || {} }).then(function (r) { if (r.error) throw r.error; return r.data; });
+}
+function tryMsg(e) { var m = (e && e.message) || ''; for (var k in TERR) if (m.indexOf(k) >= 0) return TERR[k]; return 'לא נשמר. נסו שוב.'; }
+V.sandbox = function () {
+  return Promise.all([tryDo('list'), get('bank', { from: daysAgo(75), to: iso(new Date()) })]).then(function (rs) {
+    var d = rs[0], bank = rs[1].rows.filter(function (r) { return r.side === 'bank'; }).slice(0, 60), books = rs[1].rows.filter(function (r) { return r.side === 'books'; }).slice(0, 60);
+    var pickA = -1, pickB = -1;
+    var draw = function (d) {
+      var h = '<h2>תרגול</h2><div class="note practice" role="note"><b>מצב תרגול.</b> כל מה שנרשם במסך הזה נשמר בנפרד, רק אצלך. הוא לא נכנס לספרים, לדוחות, למע"מ, ל־CRM, לפריוריטי או לסאמיט, ואף אחד אחר לא רואה אותו. אפשר לנסות, לטעות ולמחוק.</div>';
+      h += '<h3>פקודת יומן לתרגול</h3><p class="mute small">בהנהלת חשבונות כפולה כל פקודה מאוזנת: סך החובה שווה לסך הזכות. בחרו חשבון מהאינדקס ורשמו סכום בחובה או בזכות.</p>' +
+        '<form id="jf"><div class="bar"><label class="f">תאריך<input type="date" id="jDate" value="' + iso(new Date()) + '"></label><label class="f" style="flex:1;min-width:200px">פרטים<input id="jMemo" maxlength="300" placeholder="לדוגמה: חשבונית ספק לתרגול"></label></div>' +
+        '<div class="tw"><table id="jl"><thead><tr><th scope="col">חשבון</th><th scope="col">פרטי שורה</th><th scope="col" class="n">חובה</th><th scope="col" class="n">זכות</th></tr></thead><tbody></tbody>' +
+        '<tfoot><tr><td colspan="2" id="jState"></td><td class="n" id="jD"></td><td class="n" id="jC"></td></tr></tfoot></table></div>' +
+        '<datalist id="accL">' + d.accounts.map(function (a) { return '<option value="' + esc(a.code) + '">' + esc(a.name) + '</option>'; }).join('') + '</datalist>' +
+        '<div class="bar"><button class="btn small" type="button" id="jAdd">שורה נוספת</button><button class="btn brass small" type="submit">שמירת פקודת תרגול</button></div><div class="err" id="jErr" role="alert"></div></form>';
+      h += '<h3>פקודות התרגול שלי</h3>';
+      if (!d.journal.length) h += table([], [], { empty: 'עוד לא נרשמו פקודות תרגול' });
+      d.journal.forEach(function (j) {
+        h += '<p style="margin:14px 0 4px"><span class="tag warn">תרגול</span> <b>' + day(j.date) + '</b> · ' + esc(j.memo || 'בלי פרטים') + ' <button class="btn small" type="button" data-jdel="' + j.id + '">מחיקה</button></p>' +
+          table([{ k: 'a', t: 'חשבון' }, { k: 'n', t: 'שם', f: function (r) { var a = d.accounts.filter(function (x) { return x.code === r.a; })[0]; return esc(a ? a.name : ''); } }, { k: 'm', t: 'פרטים' },
+            { k: 'd', t: 'חובה', f: function (r) { return Number(r.d) ? money(r.d) : ''; }, n: 1 }, { k: 'c', t: 'זכות', f: function (r) { return Number(r.c) ? money(r.c) : ''; }, n: 1 }], j.lines);
+      });
+      h += '<h3>מאזן בוחן של התרגול</h3>' + table([{ k: 'code', t: 'חשבון' }, { k: 'name', t: 'שם' }, { k: 'debit', t: 'חובה', f: 'money', n: 1, sum: 1 }, { k: 'credit', t: 'זכות', f: 'money', n: 1, sum: 1 },
+        { k: 'b', t: 'יתרה', n: 1, f: function (r) { return money(r.debit - r.credit); } }], d.tb, { empty: 'המאזן יתמלא אחרי הפקודה הראשונה' });
+      h += '<h3>התאמת בנק לתרגול</h3><p class="mute small">בחרו תנועה אחת מהבנק ותנועה אחת מהספרים וסמנו אותן כזוג. הסימון נשמר כאן בלבד, ומסך התאמת הבנק האמיתי לא משתנה.</p>' +
+        '<div class="two"><div><b>בבנק, לא הוקלד</b><div id="mA"></div></div><div><b>הוקלד, לא נמצא בבנק</b><div id="mB"></div></div></div>' +
+        '<div class="bar"><label class="f" style="flex:1;min-width:200px">הערה<input id="mNote" maxlength="300" placeholder="למה אלה אותה תנועה"></label><button class="btn brass small" type="button" id="mAdd">סימון כזוג (תרגול)</button></div><div class="err" id="mErr" role="alert"></div>' +
+        '<h3>זוגות שסימנתי בתרגול</h3>' + table([{ k: 'b1', t: 'בבנק', f: function (r) { return day(r.bank.bank_date) + ' · ' + esc(r.bank.descr || '') + ' · ' + money(r.bank.amount); } },
+          { k: 'b2', t: 'בספרים', f: function (r) { return day(r.books.books_date) + ' · ' + esc(r.books.descr || '') + ' · ' + money(r.books.amount); } }, { k: 'note', t: 'הערה' },
+          { k: 'x', t: '', f: function (r) { return '<button class="btn small" type="button" data-mdel="' + r.id + '">מחיקה</button>'; } }], d.matches, { empty: 'עוד לא סומנו זוגות' });
+      h += '<h3>איפוס</h3><p class="mute small">מוחק את כל פקודות התרגול והזוגות שלך ומתחיל מחדש. הנתונים האמיתיים לא מושפעים.</p><button class="btn" type="button" id="tReset">איפוס כל התרגול שלי</button>';
+      main.innerHTML = h;
+
+      var tb = $('jl').tBodies[0];
+      var addLine = function () {
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td><input list="accL" class="ja" aria-label="מספר חשבון" placeholder="מספר חשבון" dir="ltr" style="width:130px"></td><td><input class="jm" aria-label="פרטי שורה" maxlength="200" style="width:100%;min-width:140px"></td>' +
+          '<td class="n"><input class="jd" aria-label="חובה" inputmode="decimal" dir="ltr" style="width:110px"></td><td class="n"><input class="jc" aria-label="זכות" inputmode="decimal" dir="ltr" style="width:110px"></td>';
+        tb.appendChild(tr);
+      };
+      var val = function (el) { var v = parseFloat(String(el.value).replace(/,/g, '')); return isFinite(v) ? v : 0; };
+      var lines = function () { return [].map.call(tb.rows, function (tr) { return { a: tr.querySelector('.ja').value.trim(), m: tr.querySelector('.jm').value, d: val(tr.querySelector('.jd')), c: val(tr.querySelector('.jc')) }; }); };
+      var totals = function () {
+        var l = lines(), dd = l.reduce(function (s, x) { return s + x.d; }, 0), cc = l.reduce(function (s, x) { return s + x.c; }, 0), ok = dd > 0 && Math.abs(dd - cc) < 0.005;
+        $('jD').innerHTML = money(dd); $('jC').innerHTML = money(cc);
+        $('jState').innerHTML = ok ? '<span class="tag ok">מאוזן</span>' : dd || cc ? '<span class="tag warn">לא מאוזן, הפרש ' + money(Math.abs(dd - cc), 1) + '</span>' : '';
+      };
+      addLine(); addLine(); totals();
+      tb.addEventListener('input', function () { $('jErr').textContent = ''; totals(); });
+      $('jAdd').onclick = addLine;
+      var after = function (p, errEl) { return p.then(function (nd) { draw(nd); }).catch(function (e) { $(errEl).textContent = tryMsg(e); }); };
+      $('jf').onsubmit = function (e) { e.preventDefault(); $('jErr').textContent = ''; after(tryDo('je_add', { date: $('jDate').value, memo: $('jMemo').value, lines: lines() }), 'jErr'); };
+      main.querySelectorAll('[data-jdel]').forEach(function (b) { b.onclick = function () { b.disabled = true; after(tryDo('je_del', { id: b.dataset.jdel }), 'jErr'); }; });
+      main.querySelectorAll('[data-mdel]').forEach(function (b) { b.onclick = function () { b.disabled = true; after(tryDo('match_del', { id: b.dataset.mdel }), 'mErr'); }; });
+
+      var pickList = function (el, rows, dk, name) {
+        $(el).innerHTML = rows.length ? '<div class="tw" style="max-height:300px"><table><tbody>' + rows.map(function (r, i) {
+          return '<tr><td><input type="radio" name="' + name + '" value="' + i + '" id="' + name + i + '"></td><td class="d"><label for="' + name + i + '">' + day(r[dk]) + '</label></td><td>' + esc(r.descr || '') + '</td><td class="n">' + money(r.amount) + '</td></tr>'; }).join('') + '</tbody></table></div>'
+          : '<div class="tw"><div class="empty">אין תנועות פתוחות בצד הזה</div></div>';
+      };
+      pickList('mA', bank, 'bank_date', 'pa'); pickList('mB', books, 'books_date', 'pb'); pickA = pickB = -1;
+      $('mA').onchange = function (e) { pickA = Number(e.target.value); }; $('mB').onchange = function (e) { pickB = Number(e.target.value); };
+      $('mAdd').onclick = function () {
+        $('mErr').textContent = '';
+        if (pickA < 0 || pickB < 0) { $('mErr').textContent = TERR.need_both; return; }
+        after(tryDo('match_add', { bank: bank[pickA], books: books[pickB], note: $('mNote').value }), 'mErr');
+      };
+      var armed = false;
+      $('tReset').onclick = function () {
+        if (!armed) { armed = true; this.textContent = 'לחצו שוב כדי למחוק את כל התרגול'; this.classList.add('brass'); return; }
+        this.disabled = true; after(tryDo('reset'), 'mErr');
+      };
+    };
+    draw(d);
   });
 };
 
