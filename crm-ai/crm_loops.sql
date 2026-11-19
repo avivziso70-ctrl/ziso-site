@@ -92,6 +92,12 @@ language sql stable security definer set search_path to 'public' as $$
     from crm_po o where o.received_at is not null and o.cancelled_at is null
       and not exists (select 1 from crm_receipts c where c.po_id = o.id and c.doc_type in ('tax_invoice', 'invoice_receipt') and c.status in ('ok', 'gap', 'check'))
     union all
+    -- a supplier invoice entered in the CRM (the ledger's acc_supplier_invoices) waits for the management's approval
+    select 'supinv', 'חשבונית ספק ← אישור', 'supinv:' || v.id, coalesce(sp.name, 'ספק') || ' · חשבונית ' || v.inv_no || ' ממתינה לאישור', v.total, 'הנהלה',
+           v.entered_at, v.entered_at + interval '48 hours', v.entered_at + interval '48 hours' < now(), null::text, 'invoices'
+    from acc_supplier_invoices v left join sp_suppliers sp on sp.id::text = v.supplier_id
+    where v.status = 'draft'
+    union all
     select 'deal_invoice', 'עסקה ← חשבונית', 'deal:' || d.id, d.deal_no || ' · ' || coalesce(d.customer_name, 'לקוח') || ': אין עדיין חשבונית בפריוריטי', d.total_sell, coalesce(d.by_name, 'משרד'),
            d.updated_at, d.updated_at + interval '30 days', d.updated_at + interval '30 days' < now(), d.customer_tail9, 'deal'
     from crm_deals d where d.status = 'ordered'
