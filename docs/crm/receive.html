@@ -4,17 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#0f1113">
+<meta name="theme-color" content="#eceff0">
 <title>קבלת סחורה | זיסו צוות</title>
 <link rel="icon" href="../img/logo.jpg">
 <link rel="stylesheet" href="../fonts.css">
 <style>
 :root{--wall:#0f1113;--surface:#1d2024;--graphite:#22262a;--line:#3a3f45;--ink:#f2efe8;--mute:#b9b3a7;--brass:#cfae74;--brass-ink:#1a1610;--brass-soft:#2d271d;
   --red:#e07a6a;--green:#8fc9a0;--amber:#e3b86a;--display:"Bellefair","Times New Roman",serif;--body:"Assistant","Segoe UI",Arial,sans-serif}
-@media (prefers-color-scheme: light){:root{--wall:#f3f2ef;--surface:#fff;--graphite:#ecebe7;--line:#d2cec5;--ink:#1e1b17;--mute:#5f5d58;--brass:#8a6a35;--brass-ink:#fff;--brass-soft:#efe7da;--red:#b8432f;--green:#2e7d4f;--amber:#8c6200}}
+/* Light is the look of the whole system since 19.11.2026 (home.html); it no longer follows the device. */
+:root{--wall:#eceff0;--surface:#fff;--graphite:#e6eaec;--line:#cdd3d6;--ink:#1b1d1f;--mute:#555b60;--brass:#7a5c2c;--brass-ink:#fff;--brass-soft:#efe7da;--red:#b8432f;--green:#2e7d4f;--amber:#8c6200;color-scheme:light}
 *{box-sizing:border-box}
 body{margin:0;background:var(--wall);color:var(--ink);font-family:var(--body);font-size:18px;line-height:1.45}
 header{position:sticky;top:0;z-index:2;background:var(--wall);border-bottom:1px solid var(--line);padding:12px 16px}
+/* the colour of this area, the same as its tile on the home page */
+header{border-top:4px solid #96691a}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.grow{flex:1}
 h1,h2{font-family:var(--display);font-weight:400;margin:0}h1{font-size:26px}h2{font-size:22px;margin:24px 0 8px}
 a{color:var(--brass)}
@@ -60,14 +63,14 @@ details summary{cursor:pointer;min-height:44px;display:flex;align-items:center;c
 </head>
 <body>
 <header>
-  <div class="row"><h1 class="grow">קבלת סחורה</h1><a class="btn small" href="./">חזרה ל-CRM</a></div>
+  <div class="row"><h1 class="grow">קבלת סחורה</h1><a class="btn small" href="home.html">בית</a></div>
   <nav class="seg hidden" id="seg" aria-label="מעבר בין קבלת סחורה לחשבוניות ספק">
     <button type="button" data-view="goods" aria-pressed="true">קבלת סחורה</button>
     <button type="button" data-view="inv" aria-pressed="false">חשבוניות ספק<span id="invN" class="n hidden"></span></button>
   </nav>
 </header>
 <main>
-  <div id="needLogin" class="card hidden" role="alert">צריך להתחבר קודם. <a href="./">כניסה ל-CRM</a> ואז לחזור לכאן.</div>
+  <div id="needLogin" class="card hidden" role="alert">צריך להתחבר קודם. <a href="home.html">כניסה למערכת</a> ואז לחזור לכאן.</div>
   <div id="app" class="hidden">
    <div id="vGoods">
     <div id="poBox" class="card hidden"></div>

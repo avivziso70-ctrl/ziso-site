@@ -1,13 +1,13 @@
 {
   "name": "זיסו צוות",
   "short_name": "זיסו צוות",
-  "description": "שיחות וואטסאפ וכרטיסי לקוח של זיסו קרמיקה, לצוות בלבד",
+  "description": "המערכת של זיסו קרמיקה: לקוחות, הזמנות, קופה, סחורה וספקים. לצוות בלבד",
   "lang": "he",
   "dir": "rtl",
-  "start_url": "./",
+  "start_url": "home.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0f1113",
-  "theme_color": "#0f1113",
+  "background_color": "#eceff0",
+  "theme_color": "#17191c",
   "icons": [{ "src": "../img/logo.jpg", "sizes": "512x512", "type": "image/jpeg", "purpose": "any" }]
 }
