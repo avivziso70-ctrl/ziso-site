@@ -23,6 +23,7 @@
   --red:#a83422;--red-soft:#f8e4df;--green:#2a7048;--green-soft:#e2f0e6;--amber-soft:#f3e8d2;
   --g-crm:#2c6975;--g-deal:#a8503a;--g-kupa:#47734a;--g-recv:#96691a;--g-price:#56497f;--g-shop:#94466a;--g-inv:#8a5a2b;--g-books:#3a4047;--g-money:#2f5d8a;
   --display:"Bellefair","Times New Roman",serif;--body:"Assistant","Segoe UI",Arial,sans-serif;
+  --pos:#2a62a6;--hair:#e3e7e9;
   --r:14px;--gut:16px;
 }
 *{box-sizing:border-box}
@@ -137,6 +138,123 @@ footer button.lnk{background:none;border:0;padding:0;min-height:44px;color:var(-
 .as{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .as .seg{margin:0}
 
+/* ---------- money and bank: one screen inside the home. Every detail opens in place, nothing jumps to another page ---------- */
+.mband{display:none;margin-top:8px}
+body[data-view="money"] .hello,body[data-view="money"] .find{display:none !important}
+body[data-view="money"] .mband{display:block}
+body[data-view="money"] .band{box-shadow:inset 0 -4px 0 var(--g-money)}
+body[data-view="money"] #as{display:none}
+.mnav{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid #4a5056;background:transparent;color:var(--band-ink);font-weight:600;font-size:16px;cursor:pointer;transition:background .16s}
+.pill:hover{background:var(--band-2)}
+.pill:focus-visible{border-radius:999px}
+.pill .ic{width:20px;height:20px}
+.mband h1{font-size:36px;line-height:1.1;margin-top:14px}
+.mband h1:focus{outline:0}
+.mband p{margin:6px 0 0;color:var(--band-mute);font-size:16px}
+.mnote{padding:18px 16px;background:var(--tile);border:1px solid var(--grout);border-radius:var(--r);font-size:17px}
+.mnote button{margin-inline-start:8px;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid var(--grout);background:var(--tile-2);font-weight:600;cursor:pointer}
+.mblur{filter:blur(16px);pointer-events:none;user-select:none}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--grout);border:1px solid var(--grout);border-radius:var(--r);overflow:hidden}
+.stat{background:var(--tile);padding:16px;text-align:start;border:0;display:flex;flex-direction:column;gap:4px;min-height:112px;min-width:0}
+button.stat{cursor:pointer;transition:background .16s}
+button.stat:hover{background:var(--tile-2)}
+button.stat:active{background:#eaeeef}
+button.stat:focus-visible{outline-offset:-4px;border-radius:12px}
+.stat.big{grid-column:1/-1;padding:20px 16px 18px}
+.stat .lb{color:var(--mute);font-size:15px;font-weight:600;line-height:1.3}
+.stat .fig{font-weight:700;font-size:24px;line-height:1.15}
+.stat.big .lb{font-size:16px}
+.stat.big .fig{font-size:52px;line-height:1.05;letter-spacing:-.01em}
+.stat .sub{color:var(--mute);font-size:15px;line-height:1.35}
+.meter{height:12px;border-radius:999px;background:var(--hair);overflow:hidden;margin-top:12px}
+.meter i{display:block;height:100%;border-radius:999px;background:var(--pos)}
+.meter.over i{background:var(--red)}
+.mscale{display:flex;justify-content:space-between;gap:12px;color:var(--mute);font-size:14px;margin:4px 0 6px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-weight:700;font-size:15px;background:var(--amber-soft);color:var(--deep)}
+.chip.red{background:var(--red-soft);color:var(--red)}
+.chip.ok{background:var(--green-soft);color:var(--green)}
+.chip .ic{width:18px;height:18px}
+.num.quiet{background:#e6eaec;color:var(--mute)}
+.al{display:grid;grid-template-columns:auto 1fr;gap:14px;padding:14px 16px;border-top:1px solid var(--grout);align-items:start}
+.al:first-child{border-top:0}
+.al .lv{display:block;font-weight:700;font-size:14px;color:var(--mute)}
+.al.red .lv{color:var(--red)}
+.al .tx{display:block;font-size:17px;line-height:1.4}
+.pad{padding:16px}
+.pad > .seg{margin:0}
+.chart{position:relative;margin-top:12px;border-radius:10px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.chart svg{display:block;width:100%;height:auto;direction:ltr}
+.chart text{font-family:var(--body);font-size:12px;fill:var(--mute)}
+.tip{position:absolute;pointer-events:none;background:var(--band);color:var(--band-ink);border-radius:10px;padding:6px 10px;font-size:14px;line-height:1.3;white-space:nowrap;transform:translateX(-50%);z-index:2;text-align:center}
+.tip b{display:block;font-size:16px}
+.limlab{position:absolute;font-size:13px;line-height:18px;color:var(--mute);background:rgba(255,255,255,.88);padding:0 5px;border-radius:4px;pointer-events:none}
+.cap{margin:8px 0 0;color:var(--mute);font-size:15px;display:flex;flex-wrap:wrap;gap:4px 18px}
+.cap .k{display:inline-flex;align-items:center;gap:8px}
+.cap .dot{width:9px;height:9px;border-radius:50%;background:var(--c,var(--pos));box-shadow:0 0 0 2px #fff,0 0 0 3px var(--c,var(--pos));margin-inline:3px}
+.cap .ln{width:18px;border-top:2px solid var(--red)}
+.day{margin-top:14px;border-top:1px solid var(--grout);padding-top:12px}
+.dayh{display:grid;grid-template-columns:44px 1fr 44px;gap:8px;align-items:center;direction:ltr}
+.dayh > div{direction:rtl;text-align:center;min-width:0}
+.dayh .t{font-weight:700;font-size:18px;line-height:1.25}
+.dayh .s{color:var(--mute);font-size:16px}
+.dayh .s b{color:var(--ink)}
+.nav{width:44px;height:44px;border-radius:50%;border:1px solid var(--grout);background:var(--tile);display:grid;place-items:center;cursor:pointer;color:var(--ink);padding:0}
+.nav:hover:not(:disabled){background:var(--tile-2)}
+.nav:disabled{opacity:.35;cursor:default}
+.nav .ic{width:22px;height:22px}
+.dchip{margin:10px 0 0;text-align:center}
+.items{list-style:none;margin:8px 0 0;padding:0}
+.items li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:10px 0;border-top:1px solid var(--hair);font-size:16px;line-height:1.35;align-items:baseline}
+.items li.grp{border-top:0;padding:12px 0 2px;color:var(--mute);font-size:14px;font-weight:700}
+.items li.grp + li{border-top:0}
+.items .a{font-weight:700;white-space:nowrap}
+.est{display:inline-block;margin-inline-start:8px;padding:0 8px;border-radius:999px;background:var(--tile-2);border:1px solid var(--grout);color:var(--mute);font-size:13px;font-weight:600}
+.day .empty{padding:14px 0 2px;text-align:center}
+details.fold > summary{list-style:none;cursor:pointer}
+details.fold > summary::-webkit-details-marker{display:none}
+details.tbl{margin-top:12px}
+details.tbl > summary{display:inline-flex;align-items:center;gap:6px;min-height:44px;color:var(--deep);font-weight:600;font-size:16px;text-decoration:underline;text-underline-offset:3px}
+.tscroll{max-height:340px;overflow:auto;border:1px solid var(--grout);border-radius:10px}
+table.t{width:100%;border-collapse:collapse;font-size:15px}
+table.t th,table.t td{padding:8px 10px;text-align:start;border-top:1px solid var(--hair);white-space:nowrap}
+table.t thead th{position:sticky;top:0;background:var(--tile-2);border-top:0;color:var(--mute);font-weight:700}
+.sub2{padding:12px 16px 4px;color:var(--mute);font-size:14px;font-weight:700}
+.sub2 + .mo{border-top:0}
+.inn0{padding:0 16px 6px}
+.mo{border-top:1px solid var(--grout)}
+.mo > summary{display:grid;grid-template-columns:minmax(0,1fr) auto 20px;gap:6px 10px;align-items:center;min-height:68px;padding:12px 16px;transition:background .16s}
+.mo > summary:hover{background:var(--tile-2)}
+.mo > summary:focus-visible{outline-offset:-3px;border-radius:10px}
+.mo .t,.mrow .t{display:block;font-weight:600;font-size:18px;line-height:1.3}
+.mo .s,.mrow .s{display:block;color:var(--mute);font-size:15px}
+.mo .a{font-weight:700;font-size:18px}
+.mo > summary .ic{width:20px;height:20px;color:#7d8388;transition:transform .16s}
+.mo[open] > summary .ic{transform:rotate(180deg)}
+.bar{grid-column:1/-1;height:6px;border-radius:999px;background:var(--hair);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:999px;background:var(--pos)}
+.inn{padding:2px 16px 10px;background:var(--tile-2);border-top:1px solid var(--hair)}
+.crow{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:10px;padding:10px 0;border-top:1px solid var(--hair);font-size:16px;line-height:1.35;align-items:baseline}
+.crow:first-child{border-top:0}
+.crow .d{color:var(--mute)}
+.crow .a{font-weight:700;white-space:nowrap}
+.loan{padding:12px 0;border-top:1px solid var(--hair)}
+.loan:first-child{border-top:0}
+.loan .top{display:flex;justify-content:space-between;gap:12px;font-size:16px;font-weight:600}
+.loan .s{color:var(--mute);font-size:15px;margin:2px 0 8px}
+.loan .bar{background:#dfe4e6}
+.mrow{display:flex;justify-content:space-between;gap:12px;align-items:center;min-height:60px;padding:10px 16px;border-top:1px solid var(--grout)}
+.mrow .a{font-weight:700;font-size:18px;white-space:nowrap}
+.rec .lb{color:var(--mute);font-size:15px;font-weight:600}
+.rec .fig2{font-weight:700;font-size:24px;line-height:1.2;margin-bottom:12px}
+.pace{position:relative;height:12px;border-radius:999px;background:var(--hair);margin:10px 0 30px}
+.pace i{position:absolute;inset-block:0;inset-inline-start:0;border-radius:999px;background:var(--pos)}
+.pace b{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--ink)}
+.pace b::after{content:"היעד";position:absolute;top:24px;left:50%;transform:translateX(-50%);font-size:13px;font-weight:600;color:var(--mute)}
+.rec p{margin:10px 0 0;color:var(--mute);font-size:15px;line-height:1.4}
+.src{color:var(--mute);font-size:14px;margin:20px 2px 0}
+::view-transition-old(root),::view-transition-new(root){animation-duration:.2s}
+
 @media (min-width:700px){
   .hello h1{font-size:44px}
   .find{grid-template-columns:1fr auto;max-width:720px}
@@ -163,6 +281,13 @@ footer button.lnk{background:none;border:0;padding:0;min-height:44px;color:var(-
   .doors[data-r3="1"] .door:first-child .nm,.doors[data-r3="2"] .door:first-child .nm{font-size:24px}
   .doors[data-r3="1"] .door:first-child .glaze,.doors[data-r3="2"] .door:first-child .glaze{width:60px;height:60px;border-radius:16px}
   .doors[data-r3="1"] .door:first-child .glaze .ic,.doors[data-r3="2"] .door:first-child .glaze .ic{width:32px;height:32px}
+  .mcols{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:32px;align-items:start}
+  .stats{grid-template-columns:repeat(4,1fr)}
+  .stat.big{padding:24px 20px 20px}
+  .stat.big .fig{font-size:64px}
+  .stat{padding:18px 20px}
+  .pad{padding:20px}
+  .mband h1{font-size:44px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none !important}.sk{animation:none}}
 </style>
@@ -172,6 +297,10 @@ footer button.lnk{background:none;border:0;padding:0;min-height:44px;color:var(-
 <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
 <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16v4M17 18h4"/></symbol>
 <symbol id="i-go" viewBox="0 0 24 24"><path d="M14 6l-6 6 6 6"/></symbol>
+<symbol id="i-fwd" viewBox="0 0 24 24"><path d="M10 6l6 6-6 6"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4.5M12 17.2h.01"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/></symbol>
 <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
 <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
 <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12.5h5"/></symbol>
@@ -194,6 +323,14 @@ footer button.lnk{background:none;border:0;padding:0;min-height:44px;color:var(-
       <img src="../img/logo.jpg" alt="">
       <b>זיסו</b>
     </div>
+      <div class="mband" id="mband">
+        <div class="mnav">
+          <a class="pill" href="home.html" id="mBack"><svg class="ic" aria-hidden="true"><use href="#i-fwd"/></svg>בית</a>
+          <button class="pill" type="button" id="mHide" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg><span>להסתיר סכומים</span></button>
+        </div>
+        <h1 id="mH" tabindex="-1">כסף ובנק</h1>
+        <p id="mAsOf"></p>
+      </div>
     <div class="bandgrid">
       <div class="hello">
         <h1 id="greet">שלום</h1>
@@ -220,6 +357,7 @@ footer button.lnk{background:none;border:0;padding:0;min-height:44px;color:var(-
   </form>
 
   <div id="app" class="hidden">
+    <div id="homeView">
     <section id="results" class="hidden" aria-live="polite">
       <div class="h"><h2>תוצאות</h2><span class="n" id="resN"></span></div>
       <div class="slab" id="resList"></div>
@@ -251,6 +389,54 @@ footer button.lnk{background:none;border:0;padding:0;min-height:44px;color:var(-
         </section>
       </aside>
     </div>
+    </div>
+
+    <div id="money" class="hidden">
+      <div class="mnote hidden" id="mNote" role="status"></div>
+      <div id="mBody" class="hidden">
+        <div class="mcols">
+          <div>
+            <section aria-labelledby="mhNow">
+              <h2 class="sr" id="mhNow">המצב עכשיו</h2>
+              <div class="stats" id="mStats"></div>
+            </section>
+            <section id="mAlSec" class="hidden" aria-labelledby="mhAl">
+              <div class="h"><h2 id="mhAl">צריך לדעת</h2></div>
+              <div class="slab" id="mAlerts"></div>
+            </section>
+            <section id="mFcSec" aria-labelledby="mhFc">
+              <div class="h"><h2 id="mhFc">לאן היתרה הולכת</h2></div>
+              <div class="slab pad">
+                <div class="seg" role="group" aria-label="כמה זמן קדימה" id="mRange">
+                  <button type="button" data-rng="14" aria-pressed="false">שבועיים</button>
+                  <button type="button" data-rng="30" aria-pressed="true">חודש</button>
+                  <button type="button" data-rng="0" aria-pressed="false">כל הצפי</button>
+                </div>
+                <div class="chart" id="mChart" tabindex="0" role="group" aria-label="גרף צפי היתרה בבנק לפי ימים. החיצים במקלדת עוברים מיום ליום, והפירוט של היום מופיע מתחת לגרף."></div>
+                <p class="cap" id="mCap"></p>
+                <div class="day" id="mDay"></div>
+                <details class="tbl fold"><summary>לראות את הצפי כטבלה</summary><div class="tscroll" id="mTable" tabindex="0" role="region" aria-label="טבלת הצפי"></div></details>
+              </div>
+            </section>
+          </div>
+          <aside>
+            <section id="mChqSec" aria-labelledby="mhChq">
+              <div class="h"><h2 id="mhChq">צ׳קים לספקים</h2></div>
+              <div class="slab" id="mChq"></div>
+            </section>
+            <section id="mRecSec" aria-labelledby="mhRec">
+              <div class="h"><h2 id="mhRec">קבלות מלקוחות</h2></div>
+              <div class="slab pad rec" id="mRec"></div>
+            </section>
+            <section id="mLoanSec" class="hidden" aria-labelledby="mhLoan">
+              <div class="h"><h2 id="mhLoan">הלוואות וכרטיס</h2></div>
+              <div class="slab" id="mLoans"></div>
+            </section>
+          </aside>
+        </div>
+        <p class="src" id="mSrc"></p>
+      </div>
+    </div>
 
     <footer>
       <div class="as hidden" id="as"><span>לראות את הבית של</span><div class="seg" role="group" aria-label="לראות את הבית של" id="asSeg"></div></div>
@@ -279,7 +465,7 @@ var DOORS = {
   price: { nm: 'מחירון ורכש', href: 'prices.html', icon: 'list', g: '--g-price', ln: 'מחירי ספקים והזמנות רכש' },
   shop:  { nm: 'החנות באתר', href: 'shop.html', icon: 'bag', g: '--g-shop', ln: 'הזמנות ומוצרים באתר' },
   inv:   { nm: 'חשבוניות ספק', href: 'receive.html#invoices', icon: 'inv', g: '--g-inv', ln: 'להקליד, לצלם ולאשר' },
-  money: { nm: 'כסף ובנק', href: 'index.html#home', icon: 'bank', g: '--g-money', ln: 'יתרה, צ׳קים ותשלומים לספקים' },
+  money: { nm: 'כסף ובנק', href: '#money', icon: 'bank', g: '--g-money', ln: 'יתרה, צ׳קים ותשלומים לספקים' },
   books: { nm: 'ספרים', href: 'books.html', icon: 'book', g: '--g-books', ln: 'התאמות, כרטסות ומע״מ' }
 };
 /* few big choices for each person; the rest waits under "עוד מסכים". An odd number, so the first tile is laid wide on a phone. */
@@ -358,7 +544,7 @@ function needRows() {
   add(stuck.length, 'late', 'דבר תקוע שצריך לסגור', 'דברים תקועים שצריך לסגור', stuck.length ? stuck[0].title : '', 'index.html#home', 85);
   if (r === 'moshe' && D.money && D.money.cheques) {
     var soon = D.money.cheques.filter(function (c) { var a = new Date(); a.setHours(0, 0, 0, 0); return (new Date(c.due) - a) / 86400000 <= 1; });
-    add(soon.length, 'late', 'צ׳ק לספק יורד היום או מחר', 'צ׳קים לספקים יורדים היום ומחר', 'הפירוט במסך כסף ובנק', 'index.html#home', 95);
+    add(soon.length, 'late', 'צ׳ק לספק יורד היום או מחר', 'צ׳קים לספקים יורדים היום ומחר', 'הפירוט במסך כסף ובנק', '#money', 95);
   }
   if (r !== 'moshe') add(D.late.length, '', 'משימה באיחור', 'משימות באיחור', D.late.length ? String(D.late[0].text || '').replace(/\s*\(מתוך שיחה[^)]*\)\s*$/, '').slice(0, 70) : '', 'index.html#today', 50);
   return rows.sort(function (a, b) { return b.w - a.w; });
@@ -442,6 +628,218 @@ function search() {
   });
 }
 
+/* ---------- money and bank: one screen inside the home; every detail opens in place ---------- */
+var M = null, mAt = 0, mRange = 30, mSel = null, mW = 0, G = null, cur = 'home', homeY = 0;
+var TARGET = 16800, MIN = '−', POS = '#2a62a6', RED = '#a83422';
+function sh(n) { n = Math.round(Number(n) || 0); return (n < 0 ? MIN : '') + '₪' + Math.abs(n).toLocaleString('en-US'); }
+function amt(n) { return '<span class="ltr">' + sh(n) + '</span>'; }
+function kf(n) { return (n < 0 ? MIN : '') + (Math.round(Math.abs(n) / 100) / 10) + 'K'; }
+function dt(iso) { return new Date(String(iso).slice(0, 10) + 'T12:00:00'); }
+function isoOf(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+function dm(iso) { return Number(String(iso).slice(8, 10)) + '.' + Number(String(iso).slice(5, 7)); }
+function dayLong(iso) { return new Intl.DateTimeFormat('he-IL', { weekday: 'long', day: 'numeric', month: 'long' }).format(dt(iso)); }
+function dayShort(iso) { return new Intl.DateTimeFormat('he-IL', { weekday: 'long' }).format(dt(iso)) + ' ' + dm(iso); }
+function monthName(ym) { var d = dt(ym + '-01'); return new Intl.DateTimeFormat('he-IL', d.getFullYear() === new Date().getFullYear() ? { month: 'long' } : { month: 'long', year: 'numeric' }).format(d); }
+function sum(a, f) { return a.reduce(function (s, x) { return s + (Number(f(x)) || 0); }, 0); }
+function calm() { return !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); }
+function mAll() { var t = isoOf(new Date()), a = (M.days || []).filter(function (d) { return d.date >= t; }); return a.length > 1 ? a : (M.days || []); }
+function mDays() { var a = mAll(); return mRange ? a.slice(0, mRange + 1) : a; }
+function limit() { return Math.abs(Number(M.credit_limit) || 0); }
+
+function wantView() { return location.hash === '#money' ? 'money' : 'home'; }
+function route() {
+  if (!mine) return;
+  var v = wantView(); if (v === cur) return;
+  if (v === 'money') homeY = window.scrollY;
+  cur = v;
+  var swap = function () {
+    document.body.dataset.view = v;
+    $('homeView').classList.toggle('hidden', v !== 'home'); $('money').classList.toggle('hidden', v !== 'money');
+    document.title = v === 'money' ? 'זיסו · כסף ובנק' : 'זיסו · בית';
+    window.scrollTo(0, v === 'money' ? 0 : homeY);
+    if (v === 'money') { openMoney(); $('mH').focus({ preventScroll: true }); $('live').textContent = 'נפתח המסך כסף ובנק'; }
+    else $('live').textContent = 'חזרה לבית';
+  };
+  if (document.startViewTransition && !calm()) { var vt = document.startViewTransition(swap), no = function () {}; if (vt && vt.ready) { vt.ready.catch(no); vt.finished.catch(no); } } else swap();
+}
+window.addEventListener('hashchange', route);
+window.addEventListener('popstate', route);
+$('mBack').addEventListener('click', function (e) { e.preventDefault(); history.pushState(null, '', location.pathname + location.search); route(); });
+$('mHide').addEventListener('click', function () {
+  var on = $('mHide').getAttribute('aria-pressed') !== 'true';
+  $('mHide').setAttribute('aria-pressed', on ? 'true' : 'false'); $('mHide').querySelector('span').textContent = on ? 'להציג סכומים' : 'להסתיר סכומים';
+  $('mBody').classList.toggle('mblur', on); if (on) $('mBody').setAttribute('aria-hidden', 'true'); else $('mBody').removeAttribute('aria-hidden');
+});
+function mNote(html) { $('mNote').innerHTML = html; $('mNote').classList.toggle('hidden', !html); }
+function openMoney() {
+  if (M && Date.now() - mAt < 300000) { drawMoney(); return; }
+  if (!M) { $('mBody').classList.add('hidden'); mNote('טוענים את הנתונים…'); $('mAsOf').textContent = ''; }
+  var bad = function (denied) { if (M) return; mNote(denied ? 'המסך הזה פתוח רק למי שמורשה לראות את הבנק.' : 'הנתונים לא נטענו. <button type="button" id="mRetry">לנסות שוב</button>'); };
+  Promise.resolve(sb.rpc('crm_money')).then(function (r) {
+    if (!r || r.error || !r.data) { bad(!!(r && r.error && (r.error.code === '42501' || /not allowed/.test(r.error.message || '')))); return; }
+    if (r.data.empty) { M = null; mNote('עוד אין נתוני בנק להציג.'); return; }
+    M = r.data; mAt = Date.now(); mNote(''); if (cur === 'money') drawMoney();
+  }, function () { bad(false); });
+}
+function drawMoney() {
+  $('mBody').classList.remove('hidden');
+  var up = M.updated_at ? new Date(M.updated_at) : null, old = M.as_of && (Date.now() - dt(M.as_of).getTime()) > 2.5 * 864e5;
+  $('mAsOf').textContent = 'נכון ל-' + dm(M.as_of) + (up ? ' · עודכן ' + (isToday(up) ? 'היום' : 'ב-' + dm(isoOf(up))) + ' ב-' + timeOf(up) : '');
+  mNote(old ? 'הנתונים לא התעדכנו מאז ' + dm(M.as_of) + '. המספרים כאן ישנים.' : '');
+  var a = mAll(); if (!mSel || !a.some(function (d) { return d.date === mSel; })) mSel = a.length ? a[0].date : null;
+  drawStats(); drawAlerts(); drawChart(); drawDay(); drawTable(); drawCheques(); drawRec(); drawLoans();
+  $('mSrc').textContent = 'המקור: ' + (M.source || 'נתוני הבנק') + '. צפי הוא הערכה, לא התחייבות.';
+}
+function drawStats() {
+  var bal = Number(M.balance) || 0, lim = limit(), used = bal < 0 ? -bal : 0, over = lim > 0 && used > lim, pct = lim ? Math.min(100, Math.round(used / lim * 100)) : 0;
+  var h = '<div class="stat big"><span class="lb">היתרה בבנק</span><span class="fig"><span aria-hidden="true">' + amt(bal) + '</span><span class="sr">' + (bal < 0 ? 'מינוס ' : '') + Math.abs(Math.round(bal)).toLocaleString('en-US') + ' שקלים</span></span>';
+  if (lim && bal < 0) h += '<div class="meter' + (over ? ' over' : '') + '" role="img" aria-label="מנוצלים ' + pct + ' אחוזים מהמסגרת"><i style="width:' + pct + '%"></i></div><div class="mscale"><span>0</span><span>המסגרת ' + amt(lim) + '</span></div>';
+  h += '<span class="sub">' + (over ? '<span class="chip red">' + ic('alert') + 'מעבר למסגרת ב-' + amt(used - lim) + '</span>' : bal < 0 ? (lim ? 'נשארו ' + amt(lim - used) + ' עד קצה המסגרת' : 'החשבון במינוס') : 'החשבון בפלוס') + '</span></div>';
+  var two = mAll().slice(0, 15), low = null; two.forEach(function (d) { if (!low || Number(d.close) < Number(low.close)) low = d; });
+  if (low) { var lo = Number(low.close), lover = lim > 0 && lo < -lim;
+    h += '<button class="stat" type="button" data-go="mFcSec"><span class="lb">הנקודה הנמוכה בשבועיים הקרובים</span><span class="fig">' + amt(lo) + '</span><span class="sub">' + esc(dayShort(low.date)) + (lover ? ' · <span class="chip red">' + ic('alert') + 'מעבר למסגרת</span>' : '') + '</span></button>'; }
+  var t = new Date(); t.setHours(12, 0, 0, 0);
+  var wk = (M.cheques || []).filter(function (c) { return (dt(c.due) - t) / 864e5 < 6.5; });
+  h += '<button class="stat" type="button" data-go="mChqSec"><span class="lb">צ׳קים לספקים ב-7 הימים הקרובים</span><span class="fig">' + amt(sum(wk, function (c) { return c.net; })) + '</span><span class="sub">' + (wk.length ? cnt(wk.length, 'צ׳ק אחד', 'צ׳קים') : 'אין צ׳קים השבוע') + '</span></button>';
+  var rp = Number(M.receipts_per_workday) || 0;
+  h += '<button class="stat" type="button" data-go="mRecSec"><span class="lb">קבלות ליום עבודה, החודש</span><span class="fig">' + amt(rp) + '</span><span class="sub">' + (rp >= TARGET ? 'מעל היעד של ' : 'מתחת ליעד של ') + amt(TARGET) + '</span></button>';
+  if (M.full) h += '<button class="stat" type="button" data-go="mLoanSec"><span class="lb">נשאר להחזיר בהלוואות</span><span class="fig">' + amt(M.loans_total) + '</span><span class="sub">' + cnt((M.loans || []).length, 'הלוואה אחת', 'הלוואות') + '</span></button>';
+  else h += '<button class="stat" type="button" data-go="mRecSec"><span class="lb">קבלות מתחילת החודש</span><span class="fig">' + amt(M.receipts_mtd) + '</span><span class="sub">כל אמצעי התשלום</span></button>';
+  $('mStats').innerHTML = h;
+}
+var LV = { red: ['דחוף', 'late', 'alert'], orange: ['לשים לב', '', 'alert'], yellow: ['לידיעה', 'quiet', 'info'] };
+function drawAlerts() {
+  var al = M.full ? (M.alerts || []) : [];
+  $('mAlSec').classList.toggle('hidden', !al.length);
+  $('mAlerts').innerHTML = al.map(function (a) { var l = LV[a.level] || LV.yellow;
+    return '<div class="al ' + (a.level === 'red' ? 'red' : '') + '"><span class="num ' + l[1] + '">' + ic(l[2]) + '</span><span><span class="lv">' + l[0] + '</span><span class="tx" dir="auto">' + esc(a.text) + '</span></span></div>'; }).join('');
+}
+function niceStep(raw) { var p = Math.pow(10, Math.floor(Math.log(raw) / Math.LN10)), f = raw / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p; }
+function drawChart() {
+  var box = $('mChart'), ds = mDays();
+  document.querySelectorAll('#mRange [data-rng]').forEach(function (b) { b.setAttribute('aria-pressed', Number(b.dataset.rng) === mRange ? 'true' : 'false'); });
+  if (ds.length < 2) { box.innerHTML = '<div class="empty">עוד אין צפי להציג.</div>'; $('mCap').innerHTML = ''; G = null; return; }
+  var W = Math.max(280, Math.floor(box.clientWidth)), H = W < 560 ? 240 : 300, pl = 46, pr = 12, pt = 14, pb = 26; mW = W;
+  var lim = -limit(), vals = ds.map(function (d) { return Number(d.close) || 0; });
+  var lo = Math.min.apply(null, vals.concat(lim ? [lim, 0] : [0])), hi = Math.max.apply(null, vals.concat([0]));
+  var step = niceStep(((hi - lo) || 1) / 4); lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step; if (hi === lo) hi = lo + step;
+  var t0 = +dt(ds[0].date), t1 = +dt(ds[ds.length - 1].date);
+  var X = function (iso) { return pl + (W - pl - pr) * ((+dt(iso) - t0) / (t1 - t0)); };
+  var Y = function (v) { return pt + (H - pt - pb) * (1 - (v - lo) / (hi - lo)); };
+  var f = function (n) { return (Math.round(n * 10) / 10); };
+  var pts = ds.map(function (d, i) { return [X(d.date), Y(vals[i])]; });
+  var line = pts.map(function (p, i) { return (i ? 'L' : 'M') + f(p[0]) + ' ' + f(p[1]); }).join('');
+  var area = line + 'L' + f(pts[pts.length - 1][0]) + ' ' + f(Y(0)) + 'L' + f(pts[0][0]) + ' ' + f(Y(0)) + 'Z';
+  var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" aria-hidden="true" focusable="false">';
+  for (var v = lo; v <= hi + step / 2; v += step) s += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + f(Y(v)) + '" y2="' + f(Y(v)) + '" stroke="' + (Math.abs(v) < 1 ? '#a3abb0' : '#e3e7e9') + '"/><text x="' + (pl - 8) + '" y="' + f(Y(v) + 4) + '" text-anchor="end">' + (Math.abs(v) < 1 ? '0' : kf(v)) + '</text>';
+  var n = Math.min(ds.length, W < 560 ? 4 : 7), seen = {};
+  for (var k = 0; k < n; k++) { var i = Math.round(k * (ds.length - 1) / (n - 1)); if (seen[i]) continue; seen[i] = 1;
+    s += '<text x="' + f(pts[i][0]) + '" y="' + (H - 6) + '" text-anchor="' + (k === 0 ? 'start' : k === n - 1 ? 'end' : 'middle') + '">' + dm(ds[i].date) + '</text>'; }
+  var yl = Y(lim), below = lim && vals.some(function (x) { return x < lim; });
+  s += '<path d="' + area + '" fill="' + POS + '" fill-opacity=".1"/>';
+  if (lim) s += '<defs><clipPath id="mcA"><rect x="0" y="0" width="' + W + '" height="' + f(yl) + '"/></clipPath><clipPath id="mcB"><rect x="0" y="' + f(yl) + '" width="' + W + '" height="' + f(H - yl) + '"/></clipPath></defs>'
+    + '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + f(yl) + '" y2="' + f(yl) + '" stroke="' + RED + '"/>';
+  var stroke = ' fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"';
+  s += '<path d="' + line + '"' + stroke + ' stroke="' + POS + '"' + (lim ? ' clip-path="url(#mcA)"' : '') + '/>';
+  if (lim) s += '<path d="' + line + '"' + stroke + ' stroke="' + RED + '" clip-path="url(#mcB)"/>';
+  var li = 0; vals.forEach(function (x, j) { if (x < vals[li]) li = j; });
+  var lowRed = lim && vals[li] < lim;
+  s += '<circle cx="' + f(pts[li][0]) + '" cy="' + f(pts[li][1]) + '" r="5" fill="' + (lowRed ? RED : POS) + '" stroke="#fff" stroke-width="2"/>';
+  var si = 0; ds.forEach(function (d, j) { if (d.date === mSel) si = j; });
+  s += '<line x1="' + f(pts[si][0]) + '" x2="' + f(pts[si][0]) + '" y1="' + pt + '" y2="' + (H - pb) + '" stroke="#1b1d1f" stroke-opacity=".45"/>'
+    + '<circle cx="' + f(pts[si][0]) + '" cy="' + f(pts[si][1]) + '" r="5.5" fill="#1b1d1f" stroke="#fff" stroke-width="2"/>'
+    + '<line id="mHov" x1="0" x2="0" y1="' + pt + '" y2="' + (H - pb) + '" stroke="#1b1d1f" stroke-opacity=".25" visibility="hidden"/></svg>';
+  if (lim) { /* the label sits above the line, on the side where the balance line is farther from it */
+    var gap = function (a, b) { var m = 1e9; pts.forEach(function (p) { if (p[0] >= a && p[0] <= b) m = Math.min(m, Math.abs(p[1] - (yl - 12))); }); return m; };
+    var left = gap(pl, pl + 100) >= gap(W - pr - 100, W - pr);
+    s += '<span class="limlab" style="' + (left ? 'left:' + (pl + 6) : 'right:' + (pr + 6)) + 'px;top:' + Math.round(yl - 21) + 'px">קצה המסגרת</span>'; }
+  s += '<div class="tip hidden" id="mTip"></div>';
+  box.innerHTML = s;
+  G = { ds: ds, pts: pts, vals: vals, W: W };
+  $('mCap').innerHTML = '<span class="k"><i class="dot" style="--c:' + (lowRed ? RED : POS) + '"></i><span>הנקודה הנמוכה: ' + amt(vals[li]) + ', ' + esc(dayShort(ds[li].date)) + '</span></span>' + (below ? '<span class="k"><i class="ln"></i>הקו האדום: מעבר למסגרת</span>' : '') + '<span class="k">נגיעה בגרף בוחרת יום</span>';
+}
+function nearest(clientX) { var r = $('mChart').getBoundingClientRect(), x = (clientX - r.left) * (G.W / r.width), best = 0, bd = 1e9; G.pts.forEach(function (p, i) { var d = Math.abs(p[0] - x); if (d < bd) { bd = d; best = i; } }); return best; }
+function hover(i) {
+  var tip = $('mTip'), hv = $('mHov'); if (!tip || !hv) return;
+  if (i < 0) { tip.classList.add('hidden'); hv.setAttribute('visibility', 'hidden'); return; }
+  var p = G.pts[i]; hv.setAttribute('x1', p[0]); hv.setAttribute('x2', p[0]); hv.setAttribute('visibility', 'visible');
+  tip.innerHTML = esc(dayShort(G.ds[i].date)) + '<b class="ltr">' + sh(G.vals[i]) + '</b>'; tip.classList.remove('hidden');
+  tip.style.left = Math.max(64, Math.min(G.W - 64, p[0])) + 'px'; tip.style.top = (p[1] > 86 ? p[1] - 64 : p[1] + 16) + 'px';
+}
+function pick(iso, quiet) {
+  mSel = iso; drawChart(); drawDay();
+  if (!quiet) { var d = mDays().filter(function (x) { return x.date === iso; })[0]; if (d) $('live').textContent = dayLong(iso) + ', בסוף היום ' + (Number(d.close) < 0 ? 'מינוס ' : '') + Math.abs(Math.round(Number(d.close))).toLocaleString('en-US') + ' שקלים'; }
+}
+function stepDay(n) { var ds = mDays(), i = 0; ds.forEach(function (d, j) { if (d.date === mSel) i = j; }); i = Math.max(0, Math.min(ds.length - 1, i + n)); if (ds[i]) pick(ds[i].date); }
+$('mChart').addEventListener('pointermove', function (e) { if (G && e.pointerType !== 'touch') hover(nearest(e.clientX)); });
+$('mChart').addEventListener('pointerleave', function () { if (G) hover(-1); });
+$('mChart').addEventListener('click', function (e) { if (G) pick(G.ds[nearest(e.clientX)].date); });
+$('mChart').addEventListener('keydown', function (e) {
+  var k = e.key; if (!G || ['ArrowLeft', 'ArrowRight', 'Home', 'End'].indexOf(k) < 0) return;
+  e.preventDefault(); stepDay(k === 'ArrowLeft' ? -1 : k === 'ArrowRight' ? 1 : k === 'Home' ? -999 : 999);
+});
+if (window.ResizeObserver) new ResizeObserver(function () { if (cur === 'money' && M && Math.abs($('mChart').clientWidth - mW) > 4) drawChart(); }).observe($('mChart'));
+function drawDay() {
+  var ds = mDays(), i = 0; ds.forEach(function (d, j) { if (d.date === mSel) i = j; });
+  var d = ds[i]; if (!d) { $('mDay').innerHTML = ''; return; }
+  var lim = limit(), c = Number(d.close) || 0, over = lim > 0 && c < -lim;
+  var its = M.full ? (d.items || []) : (M.cheques || []).filter(function (x) { return x.due === d.date; }).map(function (x) { return { label: x.sup, amount: -Number(x.net) }; });
+  var inn = its.filter(function (a) { return Number(a.amount) > 0; }).sort(function (a, b) { return b.amount - a.amount; }), out = its.filter(function (a) { return Number(a.amount) < 0; }).sort(function (a, b) { return a.amount - b.amount; }), notes = its.filter(function (a) { return !Number(a.amount); });
+  var li = function (a) { return '<li><span>' + esc(a.label) + (a.est ? '<span class="est">הערכה</span>' : '') + '</span>' + (Number(a.amount) ? '<span class="a ltr">' + (a.amount > 0 ? '+' : MIN) + '₪' + Math.abs(Math.round(a.amount)).toLocaleString('en-US') + '</span>' : '<span></span>') + '</li>'; };
+  var grp = function (t, a) { return a.length ? '<li class="grp"><span>' + t + '</span><span class="ltr">' + sh(Math.abs(sum(a, function (x) { return x.amount; }))) + '</span></li>' + a.map(li).join('') : ''; };
+  var list = grp('נכנס', inn) + grp(M.full ? 'יוצא' : 'צ׳קים לספקים', out) + notes.map(li).join('');
+  $('mDay').innerHTML = '<div class="dayh"><button class="nav" type="button" data-step="-1" aria-label="היום הקודם"' + (i === 0 ? ' disabled' : '') + '>' + ic('go') + '</button>'
+    + '<div><div class="t">' + (d.date === isoOf(new Date()) ? 'היום, ' : '') + esc(dayLong(d.date)) + '</div><div class="s">בסוף היום <b>' + amt(c) + '</b></div></div>'
+    + '<button class="nav" type="button" data-step="1" aria-label="היום הבא"' + (i === ds.length - 1 ? ' disabled' : '') + '>' + ic('fwd') + '</button></div>'
+    + (over ? '<p class="dchip"><span class="chip red">' + ic('alert') + 'מעבר למסגרת ב-' + amt(-c - lim) + '</span></p>' : '')
+    + (list ? '<ul class="items">' + list + '</ul>' : '<div class="empty">' + (M.full ? 'אין תנועות צפויות ביום הזה.' : 'אין צ׳קים לספקים ביום הזה.') + '</div>');
+}
+function drawTable() {
+  var ds = mDays(), full = M.full;
+  $('mTable').innerHTML = '<table class="t"><thead><tr><th scope="col">יום</th>' + (full ? '<th scope="col">נכנס</th><th scope="col">יוצא</th>' : '') + '<th scope="col">בסוף היום</th></tr></thead><tbody>' + ds.map(function (d) {
+    var its = d.items || [], a = sum(its.filter(function (x) { return x.amount > 0; }), function (x) { return x.amount; }), b = sum(its.filter(function (x) { return x.amount < 0; }), function (x) { return x.amount; });
+    return '<tr><th scope="row">' + esc(dayShort(d.date)) + '</th>' + (full ? '<td>' + (a ? amt(a) : '') + '</td><td>' + (b ? amt(b) : '') + '</td>' : '') + '<td>' + amt(d.close) + '</td></tr>'; }).join('') + '</tbody></table>';
+}
+function crow(c) { return '<div class="crow"><span class="d ltr">' + dm(c.due) + '</span><span>' + esc(c.sup || 'צ׳ק לספק') + '</span><span class="a">' + amt(c.net) + '</span></div>'; }
+function drawCheques() {
+  var cs = M.cheques || [], t = new Date(); t.setHours(12, 0, 0, 0);
+  if (!cs.length) { $('mChq').innerHTML = '<div class="empty">אין צ׳קים עתידיים לספקים.</div>'; return; }
+  var wk = cs.filter(function (c) { return (dt(c.due) - t) / 864e5 < 6.5; }), by = {}, open = {};
+  cs.forEach(function (c) { var m = String(c.due).slice(0, 7); (by[m] = by[m] || []).push(c); });
+  (M.supplier_due || []).forEach(function (x) { open[x.month] = Number(x.open_invoices) || 0; });
+  var ms = Object.keys(by).sort(), tot = function (m) { return sum(by[m], function (c) { return c.net; }); }, max = Math.max.apply(null, ms.map(tot)) || 1, now = isoOf(new Date()).slice(0, 7);
+  $('mChq').innerHTML = '<div class="sub2">ב-7 הימים הקרובים</div>' + (wk.length ? '<div class="inn0">' + wk.map(crow).join('') + '</div>' : '<div class="empty">אין צ׳קים שיורדים השבוע.</div>')
+    + '<div class="sub2">לפי חודש</div>' + ms.map(function (m) {
+      return '<details class="mo fold"><summary><span><span class="t">' + esc(monthName(m)) + (m === now ? ', מה שנשאר' : '') + '</span><span class="s">' + cnt(by[m].length, 'צ׳ק אחד', 'צ׳קים') + (open[m] ? ' · ועוד ' + amt(open[m]) + ' בחשבוניות פתוחות' : '') + '</span></span><span class="a">' + amt(tot(m)) + '</span>' + ic('chev')
+        + '<span class="bar"><i style="width:' + Math.max(2, Math.round(tot(m) / max * 100)) + '%"></i></span></summary><div class="inn">' + by[m].map(crow).join('') + '</div></details>'; }).join('');
+}
+function drawRec() {
+  var c = Number(M.receipts_per_workday) || 0, prev = Number(M.receipts_prev) || 0, max = Math.max(c, prev, TARGET) * 1.08;
+  $('mRec').innerHTML = '<div class="lb">מתחילת החודש</div><div class="fig2">' + amt(M.receipts_mtd) + '</div>'
+    + '<div class="lb">הקצב ליום עבודה</div><div class="fig2" style="margin-bottom:0">' + amt(c) + '</div>'
+    + '<div class="pace" role="img" aria-label="הקצב הוא ' + Math.round(c / TARGET * 100) + ' אחוזים מהיעד"><i style="width:' + Math.round(c / max * 100) + '%"></i><b style="inset-inline-start:' + Math.round(TARGET / max * 100) + '%"></b></div>'
+    + (c >= TARGET ? '<span class="chip ok">' + ic('check') + 'מעל היעד</span>' : '<span class="chip">' + ic('info') + 'חסרים ' + amt(TARGET - c) + ' ליום כדי להגיע ליעד</span>')
+    + '<p>היעד הוא ' + amt(TARGET) + ' ליום עבודה.' + (prev ? ' בחודש שעבר הקצב היה ' + amt(prev) + '.' : '') + '</p>';
+}
+function drawLoans() {
+  $('mLoanSec').classList.toggle('hidden', !M.full); if (!M.full) return;
+  var ls = M.loans || [], h = '';
+  if (ls.length) h += '<details class="mo fold" style="border-top:0"><summary><span><span class="t">הלוואות</span><span class="s">' + cnt(ls.length, 'הלוואה אחת', 'הלוואות') + ' · ' + amt(sum(ls, function (l) { return l.monthly; })) + ' בחודש</span></span><span class="a">' + amt(M.loans_total) + '</span>' + ic('chev') + '</summary><div class="inn">'
+    + ls.map(function (l) { var paid = l.original ? Math.max(0, Math.min(100, Math.round((1 - l.balance / l.original) * 100))) : 0, e = String(l.ends || '');
+      return '<div class="loan"><div class="top"><span>' + esc(l.label) + '</span><span>' + amt(l.balance) + '</span></div><div class="s">' + amt(l.monthly) + ' בחודש' + (l.pay_day ? ', ב-' + l.pay_day + ' לחודש' : '') + (e ? ' · עד <span class="ltr">' + Number(e.slice(5, 7)) + '.' + e.slice(0, 4) + '</span>' : '') + '</div>'
+        + '<div class="bar" role="img" aria-label="הוחזרו ' + paid + ' אחוזים"><i style="width:' + Math.max(2, paid) + '%"></i></div><div class="s" style="margin:6px 0 0">הוחזרו ' + paid + '% מתוך ' + amt(l.original) + '</div></div>'; }).join('') + '</div></details>';
+  if (Number(M.card_next_bill)) h += '<div class="mrow"><span><span class="t">החיוב הבא בכרטיס</span>' + (M.card_next_bill_date ? '<span class="s">ב-<span class="ltr">' + dm(M.card_next_bill_date) + '</span></span>' : '') + '</span><span class="a">' + amt(M.card_next_bill) + '</span></div>';
+  if (Number(M.discounted_cheques_total)) h += '<div class="mrow"><span><span class="t">צ׳קים של לקוחות בניכיון</span><span class="s">כסף שכבר התקבל מהבנק</span></span><span class="a">' + amt(M.discounted_cheques_total) + '</span></div>';
+  $('mLoans').innerHTML = h || '<div class="empty">אין הלוואות פתוחות.</div>';
+}
+$('money').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-rng],[data-step],[data-go],#mRetry'); if (!b) return;
+  if (b.id === 'mRetry') { openMoney(); return; }
+  if (b.dataset.rng != null) { mRange = Number(b.dataset.rng); var ds = mDays(); if (!ds.some(function (d) { return d.date === mSel; })) mSel = ds.length ? ds[0].date : null; drawChart(); drawDay(); drawTable(); return; }
+  if (b.dataset.step) { stepDay(Number(b.dataset.step)); var nb = document.querySelector('#mDay [data-step="' + b.dataset.step + '"]'); if (nb && !nb.disabled) nb.focus(); return; }
+  if (b.dataset.go) { var el = $(b.dataset.go); if (el && !el.classList.contains('hidden')) { if (b.dataset.go === 'mLoanSec') { var dl = el.querySelector('details'); if (dl) dl.open = true; } el.scrollIntoView({ behavior: calm() ? 'auto' : 'smooth', block: 'start' }); } }
+});
+
 /* ---------- sign-in ---------- */
 $('login').addEventListener('submit', function (e) {
   e.preventDefault(); $('loginErr').textContent = '';
@@ -452,7 +850,8 @@ $('who').addEventListener('click', function () {
   $('who').dataset.sure = '1'; $('who').textContent = 'ללחוץ שוב כדי לצאת'; setTimeout(function () { delete $('who').dataset.sure; $('who').textContent = 'יציאה מהחשבון'; }, 4000);
 });
 function signedOut() {
-  me = null; mine = null; D = null; if (timer) clearInterval(timer);
+  me = null; mine = null; D = null; M = null; if (timer) clearInterval(timer);
+  cur = 'home'; document.body.dataset.view = 'home'; $('homeView').classList.remove('hidden'); $('money').classList.add('hidden');
   $('app').classList.add('hidden'); $('find').classList.add('hidden'); $('login').classList.remove('hidden');
   $('greet').textContent = 'זיסו קרמיקה'; $('day').textContent = 'הכניסה לצוות בלבד';
 }
@@ -465,7 +864,7 @@ function start(user) {
     if (!mine) { signedOut(); $('loginErr').textContent = 'החשבון הזה לא מורשה למסך הזה. פנו לאביב.'; sb.auth.signOut(); return; }
     $('login').classList.add('hidden'); $('app').classList.remove('hidden'); $('find').classList.remove('hidden');
     $('greet').textContent = greet() + ', ' + (mine.name || ''); $('day').textContent = dayLine();
-    load();
+    load(); route();
     if (timer) clearInterval(timer);
     timer = setInterval(function () { if (document.visibilityState === 'visible' && $('q').value.trim().length < 2) load(); }, 60000);
   });
@@ -474,7 +873,10 @@ sb.auth.onAuthStateChange(function (_e, s) {
   if (s && s.user) { if (!me || me.email !== (s.user.email || '').toLowerCase()) start(s.user); }
   else signedOut();
 });
-document.addEventListener('visibilitychange', function () { if (me && D && document.visibilityState === 'visible' && Date.now() - D.at > 60000) load(); });
+document.addEventListener('visibilitychange', function () {
+  if (me && D && document.visibilityState === 'visible' && Date.now() - D.at > 60000) load();
+  if (me && cur === 'money' && document.visibilityState === 'visible' && Date.now() - mAt > 300000) openMoney();
+});
 })();
 </script>
 </body>
