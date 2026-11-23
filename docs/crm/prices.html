@@ -194,6 +194,7 @@ ul.pick{list-style:none;margin:6px 0 0;padding:0;border:1px solid var(--line);bo
 <div id="cartBar" class="hidden" role="region" aria-label="הזמנה לספק"><span class="grow" id="barTxt"></span><button class="btn brass small" id="barGo">להזמנה</button></div>
 <dialog id="zoom" aria-label="תמונת המוצר"><button type="button" class="zx" aria-label="סגירת התמונה"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg></button><img alt=""><p class="zt"></p><p class="zm"></p></dialog>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+<script src="account.js?v=1911"></script>
 <script>
 (function () {
 'use strict';
@@ -460,7 +461,7 @@ function drawSuppliers() {
     var cs = contacts.filter(function (c) { return c.supplier_id === s.id && c.kind !== 'service'; });
     return '<div class="card" data-sid="' + s.id + '"><div class="row"><strong class="grow">' + esc(s.name) + '</strong>' + (s.active ? '' : '<span class="badge">מושבת</span>') + '</div>' +
       '<p class="mute">' + (s.contact_phone ? esc(s.contact_phone) + ' · ' : '') + (s.last_upload_at ? 'העלאה אחרונה ' + fmtDate(s.last_upload_at) : 'עוד לא העלה') + '</p>' + scHtml(s, cs) +
-      '<div class="row"><button class="btn small" data-a="copy">העתקת קישור</button>' +
+      '<div class="row">' + (s.priority_sup ? '<button class="btn small" data-a="acct">כרטיס חשבון</button>' : '') + '<button class="btn small" data-a="copy">העתקת קישור</button>' +
       '<label class="btn small">העלאה בשם הספק<input type="file" data-a="up" class="hidden" accept=".xlsx,.xlsm,.xls,.csv,.pdf,.jpg,.jpeg,.png,.webp"></label>' +
       '<button class="btn small" data-a="new">קישור חדש</button><button class="btn small red" data-a="toggle">' + (s.active ? 'השבתה' : 'הפעלה') + '</button></div></div>';
   }).join('') : (q ? '' : '<p class="mute">עוד אין ספקים בפורטל.</p>');
@@ -477,6 +478,7 @@ $('supQ').addEventListener('input', drawSuppliers);
 $('supList').addEventListener('click', function (e) {
   var b = e.target.closest('button[data-a]'); if (!b) return;
   var s = suppliers[b.closest('[data-sid]').dataset.sid];
+  if (b.dataset.a === 'acct') { if (window.ZisoAccount) ZisoAccount.open(sb, 'supplier', s.priority_sup, { name: s.name }); return; }
   if (b.dataset.a === 'copy') { navigator.clipboard.writeText(LINK + s.token).then(function () { b.textContent = 'הועתק ✓'; }); }
   if (b.dataset.a === 'new' && confirm('הקישור הישן יפסיק לעבוד. להמשיך?')) sb.rpc('sp_set_supplier', { p_id: s.id, p_active: true, p_new_link: true }).then(loadSuppliers);
   if (b.dataset.a === 'toggle') sb.rpc('sp_set_supplier', { p_id: s.id, p_active: !s.active, p_new_link: false }).then(loadSuppliers);

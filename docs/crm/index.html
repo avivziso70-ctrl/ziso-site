@@ -626,6 +626,7 @@ nav.tabs .badge{top:3px;inset-inline-start:calc(50% + 6px);box-shadow:0 0 0 2px 
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
 <script src="piggy.js?v=1811"></script>
+<script src="account.js?v=1911"></script>
 <script>
 (function () {
 'use strict';
@@ -1358,7 +1359,8 @@ function renderCard() {
   else h += '<table class="t"><tr><th>הזמנה</th><th>תאריך</th><th>סטטוס</th><th class="num">פתוח</th></tr>' + c.orders.slice(0, 12).map(function (o) {
     return '<tr><td><details><summary>' + esc(o.so) + '</summary><table class="t">' + (o.lines || []).map(function (l) { return '<tr><td>' + esc(l.desc || l.item) + '</td><td class="num">' + esc(l.bal != null ? l.bal + '/' + l.qty : l.qty) + ' ' + esc(l.unit || '') + '</td><td class="num">' + (l.total != null ? money(l.total) : '') + '</td></tr>'; }).join('') + '</table><button class="btn small" type="button" data-doc="order" data-so="' + esc(o.so) + '">פירוט הזמנה כ-PDF</button></details></td><td>' + esc(fmtDate(o.date)) + '</td><td>' + esc(o.status || 'פתוחה') + '</td><td class="num">' + (o.open_total ? money(o.open_total) : '') + '</td></tr>';
   }).join('') + '</table>';
-  h += '<div class="row">' + (c.orders.length || c.aging.length ? '<button class="btn small" type="button" data-doc="balance">דף יתרה כ-PDF</button>' : '') + '<button class="btn small" type="button" id="payBtn">לינק לתשלום</button></div>';
+  h += '<div class="row">' + (c.orders.length || c.aging.length ? '<button class="btn small" type="button" data-doc="balance">דף יתרה כ-PDF</button>' : '') + '<button class="btn small" type="button" id="payBtn">לינק לתשלום</button>' +
+    pr.map(function (p) { return '<button class="btn small" type="button" data-acct="' + esc(p.cust_no) + '" data-name="' + esc(p.name || name) + '">כרטיס חשבון' + (pr.length > 1 ? ' ' + esc(p.cust_no) : '') + '</button>'; }).join('') + '</div>';
   h += '<div id="payList"></div>';
   if (c.aging.length) h += '<div class="small">יתרת חוב: ' + c.aging.map(function (a) { return amt(a.total) + (a.d90p ? ' (מעל 90 יום: ' + amt(a.d90p) + ')' : ''); }).join(', ') + '</div>';
   if (c.invoices.length || c.receipts.length) h += '<details><summary>קבלות וחשבוניות השנה · שליחת העתק בוואטסאפ</summary><table class="t">' + c.receipts.slice(0, 10).map(function (i) { return '<tr><td>קבלה ' + esc(i.doc) + (i.method ? ' · ' + esc(i.method) : '') + '</td><td>' + esc(fmtDate(i.date)) + '</td><td class="num">' + money(i.amount) + '</td><td><button class="btn small" type="button" data-pdoc="' + esc(i.doc) + '" data-pkind="receipt">שליחה</button></td></tr>'; }).join('') + c.invoices.slice(0, 10).map(function (i) { return '<tr><td>חשבונית ' + esc(i.doc) + '</td><td>' + esc(fmtDate(i.date)) + '</td><td class="num">' + money(i.amount) + '</td><td><button class="btn small" type="button" data-pdoc="' + esc(i.doc) + '" data-pkind="invoice">שליחה</button></td></tr>'; }).join('') + '</table></details>';
@@ -1378,6 +1380,8 @@ function renderCard() {
   loadAi(card.tail9);
   $('sumBtn').addEventListener('click', summarize);
   $('cardBody').querySelectorAll('[data-doc]').forEach(function (b) { b.addEventListener('click', function () { openDoc(b.dataset.doc, b.dataset.so); }); });
+  /* the full account card (every movement, like the card in Priority) opens over this page */
+  $('cardBody').querySelectorAll('[data-acct]').forEach(function (b) { b.addEventListener('click', function () { if (window.ZisoAccount) ZisoAccount.open(sb, 'customer', b.dataset.acct, { name: b.dataset.name, from: 'card' }); }); });
   $('cardBody').querySelectorAll('[data-pdoc]').forEach(function (b) { b.addEventListener('click', function () { openPrioDoc(b.dataset.pkind, b.dataset.pdoc); }); });
   getPayLink().then(function (l) { if (!l && $('payBtn')) $('payBtn').classList.add('hidden'); });
   loadPays(card.tail9);
