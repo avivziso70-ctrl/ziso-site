@@ -631,9 +631,11 @@ nav.tabs .badge{top:3px;inset-inline-start:calc(50% + 6px);box-shadow:0 0 0 2px 
 (function () {
 'use strict';
 /* The system opens on the home page (home.html, 19.11.2026). This page is the customers and chats area: it is reached with a view in the
-   address (#chats, #chat/..., #today...). The wall monitor (?wall=1) stays here, in the dark look it had when the screen asks for dark. */
-if (!location.hash && !/[?&]wall=1/.test(location.search)) { location.replace('home.html'); return; }
-if (/[?&]wall=1/.test(location.search) && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.setAttribute('data-theme', 'dark');
+   address (#chats, #chat/..., #today...). Since 23.11.2026 the main office PC (?wall=1) also opens on the home page, in the same light look;
+   its window keeps a flag (zisoStation) so this page stays in wall mode there (money covered, the waiting bar) when opened from the home. */
+var STATION_FLAG = false;
+try { if (/[?&]wall=1/.test(location.search)) localStorage.setItem('zisoStation', '1'); STATION_FLAG = localStorage.getItem('zisoStation') === '1'; } catch (e) {}
+if (!location.hash) { location.replace(STATION_FLAG ? 'home.html?wall=1' : 'home.html'); return; }
 var SELF_SRC = document.currentScript ? document.currentScript.textContent : '';
 var SB_URL = 'https://ppnjosyraosrdephsksu.supabase.co';
 var SB_KEY = 'sb_publishable_yjpTHQkvH5-l4v-HCcEj4w_ofAYpQmV';
@@ -728,7 +730,6 @@ function start() {
     if (!mine) { $('loginErr').textContent = 'החשבון הזה לא מורשה. פנו לאביב.'; sb.auth.signOut(); return; }
     $('meName').textContent = mine.name;
     // the till button: on every phone, and big on any screen for whoever takes money at the showroom
-    $('deskHome').classList.toggle('hidden', WALL);
     $('kupaBar').classList.toggle('hidden', WALL); $('voiceBar').classList.toggle('hidden', WALL);
     $('quickBars').classList.toggle('big', /^zisomosh/i.test(me.email));
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
@@ -781,10 +782,10 @@ function route() {
   else setView('chats');
 }
 window.addEventListener('hashchange', route);
-document.querySelectorAll('nav.tabs button[data-view]').forEach(function (b) { b.addEventListener('click', function () { if (b.dataset.view === 'home') location.href = 'home.html'; else go(b.dataset.view); }); });
+document.querySelectorAll('nav.tabs button[data-view]').forEach(function (b) { b.addEventListener('click', function () { if (b.dataset.view === 'home') { selfReload = true; location.href = 'home.html'; } else go(b.dataset.view); }); });
 $('deskSearch').addEventListener('click', function () { go('search'); });
 $('deskToday').addEventListener('click', function () { go('today'); });
-$('deskHome').addEventListener('click', function () { location.href = 'home.html'; });
+$('deskHome').addEventListener('click', function () { selfReload = true; location.href = 'home.html'; });
 $('homeRefresh').addEventListener('click', function () { loadHome(true); });
 $('deskChats').addEventListener('click', function () { go(cur ? 'chat' : 'chats', cur); });
 $('backFromChat').addEventListener('click', function () { go('chats'); });
@@ -816,7 +817,7 @@ function updateBadge() {
 /* ---------- wall screen: open the page as /crm/?wall=1 on the office monitor ----------
    Top bar: green when nobody waits, amber when someone waits, blinking red plus a beep every minute
    once a customer has waited 15 working minutes (the SLA). Sound only in opening hours. */
-var WALL = /[?&]wall=1/.test(location.search), selfReload = false, wallCtx = null, wallLastBeep = 0, wallTop = null;
+var WALL = /[?&]wall=1/.test(location.search) || STATION_FLAG, selfReload = false, wallCtx = null, wallLastBeep = 0, wallTop = null;
 function wallOpenNow() {
   var p = {}; new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jerusalem', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date()).forEach(function (x) { p[x.type] = x.value; });
   var m = Number(p.hour) * 60 + Number(p.minute);
@@ -958,13 +959,20 @@ if (WALL) {
   setInterval(function () { if (!$('cover').classList.contains('hidden')) feedShow(); }, 12000);
   setInterval(feedLoad, 10 * 60000);
   ['pointerdown', 'keydown', 'wheel'].forEach(function (ev) { document.addEventListener(ev, function () { lastAct = Date.now(); }, { passive: true }); });
-  setInterval(function () { if (me && $('cover').classList.contains('hidden') && Date.now() - lastAct > 5 * 60000) coverSet(true, 'idle'); }, 30000);
+  /* 5 quiet minutes: back to the home screen, which shows the screensaver. A half-typed message keeps this page under its own cover. */
+  setInterval(function () {
+    if (!me || !$('cover').classList.contains('hidden') || Date.now() - lastAct <= 5 * 60000) return;
+    if ($('draft').value.trim()) { coverSet(true, 'idle'); return; }
+    selfReload = true; location.replace('home.html?wall=1&idle=1');
+  }, 30000);
   setInterval(stationLoad, 5 * 60000);
 }
 if (WALL) {
   $('wallBar').addEventListener('click', function () { try { wallCtx = wallCtx || new (window.AudioContext || window.webkitAudioContext)(); wallCtx.resume(); } catch (e) {} if (wallTop) go('chat', wallTop); });
   setInterval(wallUpdate, 15000);
   window.addEventListener('beforeunload', function (e) { if (selfReload) return; e.preventDefault(); e.returnValue = ''; });
+  /* moving to another screen of the system (home, order, till...) is not closing the station: no "leave page?" question */
+  document.addEventListener('click', function (e) { var l = e.target.closest && e.target.closest('a[href]'); if (l && !/^#/.test(l.getAttribute('href')) && l.target !== '_blank') selfReload = true; }, true);
   /* touch screen: a long press must not open the browser menu */
   document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   /* the station updates itself: whenever a cover is on (screensaver or "יש לקוחות") and nobody touched the screen for a minute,
@@ -982,7 +990,7 @@ if (WALL) {
   };
   setInterval(selfCheck, 2 * 60000);
   setTimeout(function () { selfCheck(true); }, 8000);
-  try { if (sessionStorage.getItem('crmIdleCover')) { sessionStorage.removeItem('crmIdleCover'); if ($('cover').classList.contains('hidden')) coverSet(true, 'idle'); } } catch (e) {}
+  try { if (sessionStorage.getItem('crmIdleCover')) { sessionStorage.removeItem('crmIdleCover'); if ($('cover').classList.contains('hidden')) { selfReload = true; location.replace('home.html?wall=1&idle=1'); } } } catch (e) {}
 }
 function renderConvs() {
   var list = convs.filter(function (c) {
