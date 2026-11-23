@@ -21,7 +21,7 @@
   --ground:#eceff0;--tile:#ffffff;--tile-2:#f5f7f7;--grout:#d3d8da;
   --ink:#1b1d1f;--mute:#555b60;--deep:#6f5325;
   --red:#a83422;--red-soft:#f8e4df;--green:#2a7048;--green-soft:#e2f0e6;--amber-soft:#f3e8d2;
-  --g-crm:#2c6975;--g-deal:#a8503a;--g-kupa:#47734a;--g-recv:#96691a;--g-price:#56497f;--g-shop:#94466a;--g-inv:#8a5a2b;--g-books:#3a4047;--g-money:#2f5d8a;
+  --g-crm:#2c6975;--g-deal:#a8503a;--g-kupa:#47734a;--g-recv:#96691a;--g-price:#56497f;--g-shop:#94466a;--g-inv:#8a5a2b;--g-books:#3a4047;--g-money:#2f5d8a;--g-acct:#6a6d2c;
   --display:"Bellefair","Times New Roman",serif;--body:"Assistant","Segoe UI",Arial,sans-serif;
   --pos:#2a62a6;--hair:#e3e7e9;
   --r:14px;--gut:16px;
@@ -144,6 +144,32 @@ body[data-view="money"] .hello,body[data-view="money"] .find{display:none !impor
 body[data-view="money"] .mband{display:block}
 body[data-view="money"] .band{box-shadow:inset 0 -4px 0 var(--g-money)}
 body[data-view="money"] #as{display:none}
+/* account cards: the list of every card with a balance lives here too; one card opens over it (account.js) */
+body[data-view="accounts"] .hello,body[data-view="accounts"] .find{display:none !important}
+body[data-view="accounts"] .mband{display:block}
+body[data-view="accounts"] .band{box-shadow:inset 0 -4px 0 var(--g-acct)}
+body[data-view="accounts"] #as,body[data-view="accounts"] #mHide{display:none}
+#accounts{max-width:860px}
+#accounts > .seg{margin:0 0 14px}
+#aStats{grid-template-columns:1fr 1fr}
+.afind{position:relative;margin:16px 0 12px}
+.afind .ic{position:absolute;inset-inline-start:16px;top:50%;transform:translateY(-50%);color:#62686d;pointer-events:none}
+.afind input{width:100%;min-height:52px;border-radius:999px;border:1px solid var(--grout);background:#fff;color:var(--ink);padding:0 50px 0 18px;font-size:17px}
+.afind input::placeholder{color:#62686d}
+.afind input:focus-visible{border-radius:999px}
+.arow .a{font-weight:700;white-space:nowrap;text-align:end;font-size:17px}
+.arow .a small{display:block;font-weight:600;font-size:14px;color:var(--mute);line-height:1.3}
+.arow .a small.red{color:var(--red)}
+.ahd{padding:10px 16px;background:var(--tile-2);border-top:1px solid var(--grout);color:var(--mute);font-weight:700;font-size:15px}
+.ahd:first-child{border-top:0}
+.amore{display:block;width:100%;min-height:48px;border:0;border-top:1px solid var(--grout);background:var(--tile);color:var(--deep);font-weight:600;cursor:pointer}
+.amore:hover{background:var(--tile-2)}
+.rowpair{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;border-top:1px solid var(--grout);background:var(--tile)}
+.rowpair:first-child{border-top:0}
+.rowpair .rowlink{border-top:0}
+.acctb{margin-inline-end:12px;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--grout);background:var(--tile-2);color:var(--deep);font-weight:600;font-size:15px;cursor:pointer;white-space:nowrap}
+.acctb:hover{background:#eaeeef}
+.acctb:focus-visible{border-radius:999px}
 .mnav{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .pill{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid #4a5056;background:transparent;color:var(--band-ink);font-weight:600;font-size:16px;cursor:pointer;transition:background .16s}
 .pill:hover{background:var(--band-2)}
@@ -311,6 +337,7 @@ table.t thead th{position:sticky;top:0;background:var(--tile-2);border-top:0;col
 <symbol id="i-bag" viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V7a3 3 0 0 1 6 0v1"/></symbol>
 <symbol id="i-inv" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></symbol>
 <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/></symbol>
+<symbol id="i-ledger" viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M5 9h14M10.5 9v11M14 13h2M14 16.5h2"/></symbol>
 <symbol id="i-bank" viewBox="0 0 24 24"><path d="M3 9.5 12 4l9 5.5M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/></symbol>
 </defs></svg>
 
@@ -338,9 +365,9 @@ table.t thead th{position:sticky;top:0;background:var(--tile-2);border-top:0;col
       </div>
       <form class="find hidden" id="find" role="search" autocomplete="off">
         <div class="field">
-          <label class="sr" for="q">חיפוש לקוח או הזמנה</label>
+          <label class="sr" for="q">חיפוש לקוח, ספק או הזמנה</label>
           <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
-          <input type="search" id="q" placeholder="לחפש לקוח או הזמנה" enterkeyhint="search" aria-controls="results">
+          <input type="search" id="q" placeholder="לחפש לקוח, ספק או הזמנה" enterkeyhint="search" aria-controls="results">
         </div>
         <a class="ask" href="index.html#ask"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg>לשאול את קלוד</a>
       </form>
@@ -438,6 +465,22 @@ table.t thead th{position:sticky;top:0;background:var(--tile-2);border-top:0;col
       </div>
     </div>
 
+    <div id="accounts" class="hidden">
+      <div class="seg" role="group" aria-label="כרטיסים של מי" id="aKind">
+        <button type="button" data-ak="customer" aria-pressed="true">לקוחות</button>
+        <button type="button" data-ak="supplier" aria-pressed="false">ספקים</button>
+      </div>
+      <div class="stats" id="aStats"></div>
+      <div class="afind">
+        <label class="sr" for="aQ">חיפוש כרטיס חשבון</label>
+        <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
+        <input type="search" id="aQ" placeholder="לחפש בשם, במספר כרטיס או בטלפון" enterkeyhint="search" autocomplete="off">
+      </div>
+      <div class="seg hidden" role="group" aria-label="איזה יתרות" id="aSide"></div>
+      <div class="slab" id="aList" aria-live="polite"></div>
+      <p class="src" id="aSrc"></p>
+    </div>
+
     <footer>
       <div class="as hidden" id="as"><span>לראות את הבית של</span><div class="seg" role="group" aria-label="לראות את הבית של" id="asSeg"></div></div>
       <div class="line"><span id="upd"></span><button class="lnk" type="button" id="who">יציאה מהחשבון</button></div>
@@ -446,6 +489,7 @@ table.t thead th{position:sticky;top:0;background:var(--tile-2);border-top:0;col
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+<script src="account.js?v=1911"></script>
 <script>
 (function () {
 'use strict';
@@ -466,16 +510,17 @@ var DOORS = {
   shop:  { nm: 'החנות באתר', href: 'shop.html', icon: 'bag', g: '--g-shop', ln: 'הזמנות ומוצרים באתר' },
   inv:   { nm: 'חשבוניות ספק', href: 'receive.html#invoices', icon: 'inv', g: '--g-inv', ln: 'להקליד, לצלם ולאשר' },
   money: { nm: 'כסף ובנק', href: '#money', icon: 'bank', g: '--g-money', ln: 'יתרה, צ׳קים ותשלומים לספקים' },
+  acct:  { nm: 'כרטיסי חשבון', href: '#accounts', icon: 'ledger', g: '--g-acct', ln: 'יתרה ותנועות לכל לקוח וספק' },
   books: { nm: 'ספרים', href: 'books.html', icon: 'book', g: '--g-books', ln: 'התאמות, כרטסות ומע״מ' }
 };
-/* few big choices for each person; the rest waits under "עוד מסכים". An odd number, so the first tile is laid wide on a phone. */
+/* few big choices for each person; the rest waits under "עוד מסכים". With an odd number the first tile is laid wide on a phone. */
 var SETS = {
   shir:  ['crm', 'deals', 'price', 'kupa', 'recv'],
   eilat: ['crm', 'deals', 'kupa', 'inv', 'shop'],
   moshe: ['kupa', 'recv', 'money'],
-  owner: ['crm', 'deals', 'kupa', 'recv', 'price', 'shop', 'inv', 'money', 'books']
+  owner: ['crm', 'deals', 'kupa', 'recv', 'price', 'shop', 'inv', 'money', 'acct', 'books']
 };
-var REST = { shir: ['shop'], eilat: ['recv', 'price'], moshe: ['deals', 'crm', 'price'], owner: [] };
+var REST = { shir: ['shop', 'acct'], eilat: ['recv', 'price', 'acct'], moshe: ['deals', 'crm', 'price', 'acct'], owner: [] };
 var AS = [['owner', 'אביב'], ['eilat', 'אילת'], ['moshe', 'משה'], ['shir', 'שיר']];
 
 function isOwner() { return !!(mine && mine.role === 'owner'); }
@@ -604,29 +649,41 @@ function draw() {
 }
 $('asSeg').addEventListener('click', function (e) { var b = e.target.closest('[data-as]'); if (!b) return; try { localStorage.setItem('homeAs', b.dataset.as); } catch (x) {} load().then(function () { scrollTo({ top: 0 }); $('live').textContent = 'מוצג הבית של ' + b.textContent; }); });
 
-/* ---------- one search: customers and orders ---------- */
+/* ---------- one search: customers, suppliers and orders ---------- */
 var qT = null, qSeq = 0;
 $('find').addEventListener('submit', function (e) { e.preventDefault(); search(); });
 $('q').addEventListener('input', function () { clearTimeout(qT); qT = setTimeout(search, 280); });
+function acctBtn(kind, id, name) { return '<button class="acctb" type="button" data-acct="' + kind + ':' + esc(id) + '" data-name="' + esc(name || '') + '" aria-label="כרטיס חשבון של ' + esc(name || id) + '">חשבון</button>'; }
 function search() {
   var q = $('q').value.trim(), seq = ++qSeq;
   if (q.length < 2) { $('results').classList.add('hidden'); $('cols').classList.remove('hidden'); return; }
   var like = '%' + q.replace(/[%_,()]/g, ' ') + '%';
   Promise.all([
     soft(sb.rpc('crm_search', { p_q: q, p_limit: 12 })),
-    soft(sb.from('crm_deals').select('id,deal_no,customer_name,status,updated_at').or('customer_name.ilike.' + like + ',deal_no.ilike.' + like).order('updated_at', { ascending: false }).limit(6))
+    soft(sb.from('crm_deals').select('id,deal_no,customer_name,status,updated_at').or('customer_name.ilike.' + like + ',deal_no.ilike.' + like).order('updated_at', { ascending: false }).limit(6)),
+    soft(sb.rpc('crm_account_find', { p_q: q, p_limit: 6 }))
   ]).then(function (x) {
     if (seq !== qSeq) return;
-    var seen = {}, cs = (x[0] || []).filter(function (c) { if (seen[c.tail9]) return false; seen[c.tail9] = 1; return true; }).slice(0, 8), ds = x[1] || [];
+    var seen = {}, cs = (x[0] || []).filter(function (c) { if (seen[c.tail9]) return false; seen[c.tail9] = 1; return true; }).slice(0, 8), ds = x[1] || [], af = x[2] || {};
+    var has = {}; cs.forEach(function (c) { if (c.cust_no) has[c.cust_no] = 1; });
+    var ac = (af.customers || []).filter(function (c) { return !has[c.id]; }).slice(0, 4), sp = af.suppliers || [], n = cs.length + ds.length + ac.length + sp.length;
     $('cols').classList.add('hidden'); $('results').classList.remove('hidden');
-    $('resN').textContent = cs.length + ds.length ? '' : '';
+    $('resN').textContent = '';
     $('resList').innerHTML = (ds.map(dealRow).join('') + cs.map(function (c) {
-      return '<a class="rowlink two" href="index.html#card/' + encodeURIComponent(c.tail9) + '"><span><span class="t">' + esc(c.name || localPhone(c.phone || c.tail9)) + '</span><span class="s"><span class="ltr">' + esc(localPhone(c.phone || c.tail9)) + '</span>' + (c.cust_no ? ' · לקוח <span class="ltr">' + esc(c.cust_no) + '</span>' : '') + (c.city ? ' · ' + esc(c.city) : '') + '</span></span><span class="go">' + ic('go') + '</span></a>';
-    }).join('')) || '<div class="empty">לא נמצא לקוח או הזמנה בשם הזה. אפשר לנסות טלפון או מספר הזמנה.</div>';
+      var nm = c.name || localPhone(c.phone || c.tail9);
+      var row = '<a class="rowlink two" href="index.html#card/' + encodeURIComponent(c.tail9) + '"><span><span class="t">' + esc(nm) + '</span><span class="s"><span class="ltr">' + esc(localPhone(c.phone || c.tail9)) + '</span>' + (c.cust_no ? ' · לקוח <span class="ltr">' + esc(c.cust_no) + '</span>' : '') + (c.city ? ' · ' + esc(c.city) : '') + '</span></span><span class="go">' + ic('go') + '</span></a>';
+      return c.cust_no ? '<div class="rowpair">' + row + acctBtn('customer', c.cust_no, nm) + '</div>' : row;
+    }).join('') + ac.map(function (c) {
+      return '<button class="rowlink two" type="button" data-acct="customer:' + esc(c.id) + '" data-name="' + esc(c.name || '') + '"><span><span class="t">' + esc(c.name || 'לקוח ' + c.id) + '</span><span class="s">כרטיס חשבון · לקוח <span class="ltr">' + esc(c.id) + '</span>' + (c.city ? ' · ' + esc(c.city) : '') + '</span></span><span class="go">' + ic('go') + '</span></button>';
+    }).join('') + sp.map(function (c) {
+      return '<button class="rowlink two" type="button" data-acct="supplier:' + esc(c.id) + '" data-name="' + esc(c.name || '') + '"><span><span class="t">' + esc(c.name || 'ספק ' + c.id) + '</span><span class="s">כרטיס חשבון · ספק <span class="ltr">' + esc(c.id) + '</span></span></span><span class="go">' + ic('go') + '</span></button>';
+    }).join('')) || '<div class="empty">לא נמצא לקוח, ספק או הזמנה בשם הזה. אפשר לנסות טלפון או מספר הזמנה.</div>';
     $('resList').insertAdjacentHTML('beforeend', '<a class="morelink" href="prices.html">לחפש מוצר במחירון הספקים</a>');
-    $('live').textContent = cs.length + ds.length ? (cs.length + ds.length) + ' תוצאות' : 'לא נמצא';
+    $('live').textContent = n ? n + ' תוצאות' : 'לא נמצא';
   });
 }
+function openAcct(b) { var p = b.dataset.acct.split(':'); if (window.ZisoAccount) ZisoAccount.open(sb, p[0], p[1], { name: b.dataset.name || '' }); }
+$('resList').addEventListener('click', function (e) { var b = e.target.closest('[data-acct]'); if (b) openAcct(b); });
 
 /* ---------- money and bank: one screen inside the home; every detail opens in place ---------- */
 var M = null, mAt = 0, mRange = 30, mSel = null, mW = 0, G = null, cur = 'home', homeY = 0;
@@ -646,21 +703,29 @@ function mAll() { var t = isoOf(new Date()), a = (M.days || []).filter(function 
 function mDays() { var a = mAll(); return mRange ? a.slice(0, mRange + 1) : a; }
 function limit() { return Math.abs(Number(M.credit_limit) || 0); }
 
-function wantView() { return location.hash === '#money' ? 'money' : 'home'; }
+function hashAcct() { var m = /^#acct\/(c|s)\/([^\/]+)$/.exec(location.hash); return m ? [m[1] === 's' ? 'supplier' : 'customer', decodeURIComponent(m[2])] : null; }
+function wantView() { return location.hash === '#money' ? 'money' : (location.hash === '#accounts' || hashAcct()) ? 'accounts' : 'home'; }
+var VIEW = { home: ['זיסו · בית', ''], money: ['זיסו · כסף ובנק', 'כסף ובנק'], accounts: ['זיסו · כרטיסי חשבון', 'כרטיסי חשבון'] };
 function route() {
   if (!mine) return;
-  var v = wantView(); if (v === cur) return;
-  if (v === 'money') homeY = window.scrollY;
-  cur = v;
-  var swap = function () {
-    document.body.dataset.view = v;
-    $('homeView').classList.toggle('hidden', v !== 'home'); $('money').classList.toggle('hidden', v !== 'money');
-    document.title = v === 'money' ? 'זיסו · כסף ובנק' : 'זיסו · בית';
-    window.scrollTo(0, v === 'money' ? 0 : homeY);
-    if (v === 'money') { openMoney(); $('mH').focus({ preventScroll: true }); $('live').textContent = 'נפתח המסך כסף ובנק'; }
-    else $('live').textContent = 'חזרה לבית';
-  };
-  if (document.startViewTransition && !calm()) { var vt = document.startViewTransition(swap), no = function () {}; if (vt && vt.ready) { vt.ready.catch(no); vt.finished.catch(no); } } else swap();
+  var v = wantView(), ha = hashAcct();
+  if (v !== cur) {
+    if (cur === 'home') homeY = window.scrollY;
+    cur = v;
+    var swap = function () {
+      document.body.dataset.view = v;
+      $('homeView').classList.toggle('hidden', v !== 'home'); $('money').classList.toggle('hidden', v !== 'money'); $('accounts').classList.toggle('hidden', v !== 'accounts');
+      document.title = VIEW[v][0];
+      window.scrollTo(0, v === 'home' ? homeY : 0);
+      if (v === 'home') { $('live').textContent = 'חזרה לבית'; return; }
+      $('mH').textContent = VIEW[v][1];
+      if (v === 'money') openMoney(); else { $('mAsOf').textContent = 'יתרה ותנועות לכל לקוח ולכל ספק'; openAccounts(); }
+      if (!ha) $('mH').focus({ preventScroll: true });
+      $('live').textContent = 'נפתח המסך ' + VIEW[v][1];
+    };
+    if (document.startViewTransition && !calm()) { var vt = document.startViewTransition(swap), no = function () {}; if (vt && vt.ready) { vt.ready.catch(no); vt.finished.catch(no); } } else swap();
+  }
+  if (ha && window.ZisoAccount) ZisoAccount.open(sb, ha[0], ha[1]);
 }
 window.addEventListener('hashchange', route);
 window.addEventListener('popstate', route);
@@ -670,6 +735,78 @@ $('mHide').addEventListener('click', function () {
   $('mHide').setAttribute('aria-pressed', on ? 'true' : 'false'); $('mHide').querySelector('span').textContent = on ? 'להציג סכומים' : 'להסתיר סכומים';
   $('mBody').classList.toggle('mblur', on); if (on) $('mBody').setAttribute('aria-hidden', 'true'); else $('mBody').removeAttribute('aria-hidden');
 });
+/* ---------- account cards: every card with a balance; a tap opens the card over this screen ---------- */
+var A = null, aAt = 0, aKind = 'customer', aSide = 'owe', aShown = 40, aFound = null, aT = null, aSeq = 0;
+function openAccounts() {
+  if (A && Date.now() - aAt < 300000) { drawAccounts(); return; }
+  if (!A) { $('aStats').innerHTML = ''; $('aSrc').textContent = ''; $('aList').innerHTML = '<div class="skrow"><div class="sk w1"></div><div class="sk w2"></div></div><div class="skrow"><div class="sk w1"></div><div class="sk w2"></div></div><div class="skrow"><div class="sk w1"></div><div class="sk w2"></div></div>'; }
+  Promise.resolve(sb.rpc('crm_account_list')).then(function (r) {
+    if (!r || r.error || !r.data) { if (!A) $('aList').innerHTML = '<div class="empty">הכרטיסים לא נטענו. <button class="acctb" type="button" id="aRetry">לנסות שוב</button></div>'; return; }
+    A = r.data; aAt = Date.now(); if (cur === 'accounts') drawAccounts();
+  }, function () { if (!A) $('aList').innerHTML = '<div class="empty">הכרטיסים לא נטענו. <button class="acctb" type="button" id="aRetry">לנסות שוב</button></div>'; });
+}
+function stat(lb, fig, sub, big) { return '<div class="stat' + (big ? ' big' : '') + '"><span class="lb">' + lb + '</span><span class="fig">' + fig + '</span><span class="sub">' + sub + '</span></div>'; }
+function aRow(kind, c, small, main) {
+  return '<button class="rowlink two arow" type="button" data-acct="' + kind + ':' + esc(c.id) + '" data-name="' + esc(c.name || '') + '"><span><span class="t">' + esc(c.name || (kind === 'supplier' ? 'ספק ' : 'לקוח ') + c.id) + '</span><span class="s">מספר <span class="ltr">' + esc(c.id) + '</span>' + (c.city ? ' · ' + esc(c.city) : '') + '</span></span><span class="a">' + main + small + '</span></button>';
+}
+function custRowA(c) {
+  var b = Number(c.balance) || 0, old = Number(c.old) || 0;
+  return aRow('customer', c, b < -0.5 ? '<small>שילם מראש</small>' : old > 0.5 && b > 0.5 ? '<small class="red">מזה ' + amt(old) + ' מעל 90 יום</small>' : Math.abs(b) < 0.5 ? '<small>מאוזן</small>' : '', amt(Math.abs(b)));
+}
+function supRowA(c) {
+  var late = Number(c.late) || 0, ch = Number(c.cheques) || 0;
+  return aRow('supplier', c, (late > 0.5 ? '<small class="red">עבר מועד ' + amt(late) + '</small>' : '') + (ch > 0.5 ? '<small>צ׳קים עתידיים ' + amt(ch) + '</small>' : ''), amt(c.balance));
+}
+function drawAccounts() {
+  if (!A) return;
+  var cust = aKind === 'customer', q = $('aQ').value.trim().toLowerCase(), h = '';
+  document.querySelectorAll('#aKind [data-ak]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.ak === aKind ? 'true' : 'false'); });
+  var all = (cust ? A.customers : A.suppliers) || [];
+  var hit = function (c) { return !q || String(c.name || '').toLowerCase().indexOf(q) >= 0 || String(c.id).indexOf(q) >= 0 || String(c.city || '').toLowerCase().indexOf(q) >= 0; };
+  var rows;
+  if (cust) {
+    var owe = all.filter(function (c) { return Number(c.balance) > 0; }), pre = all.filter(function (c) { return Number(c.balance) < 0; }).sort(function (a, b) { return a.balance - b.balance; });
+    var old = sum(owe, function (c) { return c.old; });
+    $('aStats').innerHTML = stat('לקוחות חייבים לנו', amt(sum(owe, function (c) { return c.balance; })), cnt(owe.length, 'לקוח אחד', 'לקוחות') + (old > 0.5 ? ' · <span class="chip red">' + ic('alert') + 'מזה ' + amt(old) + ' מעל 90 יום</span>' : ''), true) +
+      stat('לקוחות ששילמו מראש', amt(-sum(pre, function (c) { return c.balance; })), cnt(pre.length, 'לקוח אחד', 'לקוחות') + ', מקדמות על הזמנות שעוד לא יצאה להן חשבונית') +
+      stat('כרטיסים עם יתרה', String(all.length), 'כרטיס בלי יתרה מוצאים בחיפוש');
+    $('aSide').classList.toggle('hidden', !!q);
+    $('aSide').innerHTML = [['owe', 'חייבים לנו', owe.length], ['pre', 'שילמו מראש', pre.length]].map(function (t) { return '<button type="button" data-side="' + t[0] + '" aria-pressed="' + (t[0] === aSide) + '">' + t[1] + ' <span aria-hidden="true">· ' + t[2] + '</span></button>'; }).join('');
+    rows = (q ? all : aSide === 'pre' ? pre : owe).filter(hit);
+  } else {
+    var lateS = sum(all, function (c) { return c.late; }), chq = sum(all, function (c) { return c.cheques; });
+    $('aStats').innerHTML = stat('חשבוניות פתוחות לספקים', amt(sum(all, function (c) { return c.balance; })), cnt(all.filter(function (c) { return Math.abs(Number(c.balance)) > 0.5; }).length, 'ספק אחד', 'ספקים') + (lateS > 0.5 ? ' · <span class="chip red">' + ic('alert') + 'מזה ' + amt(lateS) + ' עבר המועד</span>' : ''), true) +
+      stat('צ׳קים שעוד לא נפרעו', amt(chq), 'נמסרו לספקים ויירדו מהבנק') +
+      stat('סך הכול מול ספקים', amt(sum(all, function (c) { return Number(c.balance) + Number(c.cheques); })), 'פתוח ועוד צ׳קים עתידיים');
+    $('aSide').classList.add('hidden');
+    rows = all.filter(hit);
+  }
+  var rowOf = cust ? custRowA : supRowA;
+  if (rows.length) h += rows.slice(0, aShown).map(rowOf).join('') + (rows.length > aShown ? '<button class="amore" type="button" id="aMore">להציג עוד ' + (rows.length - aShown) + '</button>' : '');
+  /* cards with no balance are not in the list; the search finds them */
+  if (q.length >= 2 && aFound && aFound.q === q) {
+    var in1 = {}; rows.forEach(function (c) { in1[c.id] = 1; });
+    var ex = ((cust ? aFound.customers : aFound.suppliers) || []).filter(function (c) { return !in1[c.id]; });
+    if (ex.length) h += '<div class="ahd">כרטיסים בלי יתרה פתוחה</div>' + ex.map(function (c) { return aRow(aKind, c, '', '<small>' + (Math.abs(Number(c.balance)) > 0.5 ? amt(c.balance) : 'מאוזן') + '</small>'); }).join('');
+  }
+  $('aList').innerHTML = h || '<div class="empty">' + (q ? 'לא נמצא כרטיס בשם או במספר הזה.' : cust ? 'אין לקוחות עם יתרה פתוחה.' : 'אין ספקים עם יתרה פתוחה.') + '</div>';
+  var sy = A.synced || {}, at = cust ? sy.aging : sy.supplier_aging;
+  $('aSrc').textContent = 'הנתונים מפריוריטי' + (at ? ', עודכנו ' + (isToday(at) ? 'היום' : 'ב-' + dm(isoOf(new Date(at)))) + ' ב-' + timeOf(at) : '') + '. ' + (cust ? 'הסכומים כוללים מע״מ.' : 'צ׳ק דחוי נחשב שם כתשלום ביום שנמסר, ולכן הוא לא בתוך הפתוח.');
+}
+$('aKind').addEventListener('click', function (e) { var b = e.target.closest('[data-ak]'); if (!b) return; aKind = b.dataset.ak; aShown = 40; drawAccounts(); findAccounts(); });
+$('aSide').addEventListener('click', function (e) { var b = e.target.closest('[data-side]'); if (!b) return; aSide = b.dataset.side; aShown = 40; drawAccounts(); var nb = $('aSide').querySelector('[data-side="' + aSide + '"]'); if (nb) nb.focus(); });
+function findAccounts() {
+  var q = $('aQ').value.trim().toLowerCase(), seq = ++aSeq;
+  if (q.length < 2) { aFound = null; return; }
+  soft(sb.rpc('crm_account_find', { p_q: q, p_limit: 12 })).then(function (r) { if (seq !== aSeq || !r) return; aFound = { q: q, customers: r.customers, suppliers: r.suppliers }; if (cur === 'accounts') drawAccounts(); });
+}
+$('aQ').addEventListener('input', function () { aShown = 40; drawAccounts(); clearTimeout(aT); aT = setTimeout(findAccounts, 280); });
+$('aList').addEventListener('click', function (e) {
+  if (e.target.closest('#aMore')) { aShown += 100; drawAccounts(); return; }
+  if (e.target.closest('#aRetry')) { openAccounts(); return; }
+  var b = e.target.closest('[data-acct]'); if (b) openAcct(b);
+});
+
 function mNote(html) { $('mNote').innerHTML = html; $('mNote').classList.toggle('hidden', !html); }
 function openMoney() {
   if (M && Date.now() - mAt < 300000) { drawMoney(); return; }
@@ -850,7 +987,7 @@ $('who').addEventListener('click', function () {
 });
 function signedOut() {
   me = null; mine = null; D = null; M = null; if (timer) clearInterval(timer);
-  cur = 'home'; document.body.dataset.view = 'home'; $('homeView').classList.remove('hidden'); $('money').classList.add('hidden');
+  cur = 'home'; document.body.dataset.view = 'home'; $('homeView').classList.remove('hidden'); $('money').classList.add('hidden'); $('accounts').classList.add('hidden'); A = null; if (window.ZisoAccount) ZisoAccount.close();
   $('app').classList.add('hidden'); $('find').classList.add('hidden'); $('login').classList.remove('hidden');
   $('greet').textContent = 'זיסו קרמיקה'; $('day').textContent = 'הכניסה לצוות בלבד';
 }
@@ -875,6 +1012,7 @@ sb.auth.onAuthStateChange(function (_e, s) {
 document.addEventListener('visibilitychange', function () {
   if (me && D && document.visibilityState === 'visible' && Date.now() - D.at > 60000) load();
   if (me && cur === 'money' && document.visibilityState === 'visible' && Date.now() - mAt > 300000) openMoney();
+  if (me && cur === 'accounts' && document.visibilityState === 'visible' && Date.now() - aAt > 300000) openAccounts();
 });
 })();
 </script>
