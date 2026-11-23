@@ -307,6 +307,19 @@ body.wall.station{padding-top:188px}
 #cover .ring{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 0 0 var(--brass);transition:box-shadow 1s linear}
 #cover.holding .ring{box-shadow:inset 0 0 0 10px var(--brass)}
 @media (max-width:900px){#station{grid-template-columns:repeat(3,minmax(0,1fr));height:auto}#station .tile:nth-child(n+4):not(.hide){display:none}body.wall.station{padding-top:200px}}
+/* 23.11.2026: the station rests on the home screen (home.html?wall=1), which has the waiting strip and the quick actions.
+   Here, in the chats, the bar is slim and the number tiles are gone, so the conversation gets the height
+   (Aviv: "הגלילה במסך השיחה עם הלקוח שבורה": with 188px of fixed bars only a strip of the chat was left to scroll).
+   "יש לקוחות" stays, as a small button at the end of the bar. */
+body.wall.station{padding-top:52px}
+body.wall #wallBar{height:52px;font-size:20px;gap:12px;padding-inline:16px 190px}
+body.wall #wallBar small{font-size:15px}
+body.wall #station{top:0;height:52px;inset-inline-start:auto;inset-inline-end:0;width:auto;display:block;grid-template-columns:none;padding:5px 8px;background:transparent;border:0;z-index:31}
+body.wall #station .tile{display:none}
+body.wall #station .hide{height:42px;padding:0 16px;font-size:16px;white-space:nowrap}
+body.wall #station .hide br{display:none}
+body.wall #station .hide small{font-weight:600;margin-inline-start:6px}
+body.wall #station.hidden{display:none}
 .toast{position:fixed;bottom:80px;inset-inline:16px;margin:auto;max-width:480px;background:var(--surface);border:1px solid var(--brass);border-radius:var(--r);padding:12px 16px;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.3)}
 .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);display:grid;place-items:center;z-index:60;cursor:zoom-out}
 .lightbox img{max-width:96vw;max-height:92vh}
