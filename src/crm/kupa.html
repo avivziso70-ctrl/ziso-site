@@ -84,7 +84,7 @@ a.go{display:flex;align-items:center;justify-content:center;text-decoration:none
 </head>
 <body>
 <div class="sr" id="live" role="status" aria-live="polite"></div>
-<header><img src="../img/logo.jpg" alt=""><h1>קופה</h1><span class="who" id="who"></span><a class="hm" href="home.html">בית</a></header>
+<header><img src="../img/logo.jpg" alt=""><h1>קופה</h1><span class="who" id="who"></span><span data-zn><a class="hm" href="home.html">בית</a></span></header>
 
 <main id="login" class="hidden">
   <form id="loginForm" class="box" autocomplete="on">
@@ -564,5 +564,6 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catc
 })();
 </script>
 <script src="station.js?v=2311"></script>
+<script src="nav.js?v=2311"></script>
 </body>
 </html>

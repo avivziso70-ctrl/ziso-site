@@ -397,6 +397,7 @@ a{color:var(--brass)}
 </style>
 <div class="z" id="ziso">
   <header class="z-head">
+    <span data-zn></span>
     <div>
       <h1 class="z-title">לוח הבקרה של זיסו</h1>
       <p class="z-take" id="take-biz">החודש נכנסו <b data-source="money_kpi" data-field="collected_mtd" data-row="0" class="dash-skeleton">—</b>, <span id="take-chg"></span> · ללקוחות חובות של <b data-source="debt_kpi" data-field="owed" data-row="0" class="dash-skeleton">—</b>, מהם <b data-source="debt_kpi" data-field="over90" data-row="0" class="dash-skeleton">—</b> מעל 90 יום.</p>
@@ -2340,5 +2341,6 @@ dash.onData(draw);
 })();
 </script>
 </div>
+<script src="../crm/nav.js?v=2311"></script>
 </body>
 </html>

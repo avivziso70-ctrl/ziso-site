@@ -63,7 +63,7 @@ details summary{cursor:pointer;min-height:44px;display:flex;align-items:center;c
 </head>
 <body>
 <header>
-  <div class="row"><h1 class="grow">קבלת סחורה</h1><a class="btn small" href="home.html">בית</a></div>
+  <div class="row"><h1 class="grow">קבלת סחורה</h1><span data-zn><a class="btn small" href="home.html">בית</a></span></div>
   <nav class="seg hidden" id="seg" aria-label="מעבר בין קבלת סחורה לחשבוניות ספק">
     <button type="button" data-view="goods" aria-pressed="true">קבלת סחורה</button>
     <button type="button" data-view="inv" aria-pressed="false">חשבוניות ספק<span id="invN" class="n hidden"></span></button>
@@ -569,5 +569,6 @@ sb.auth.getSession().then(function (r) {
 })();
 </script>
 <script src="station.js?v=2311"></script>
+<script src="nav.js?v=2311"></script>
 </body>
 </html>
