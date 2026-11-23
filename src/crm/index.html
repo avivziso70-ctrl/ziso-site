@@ -510,10 +510,10 @@ nav.tabs .badge{top:3px;inset-inline-start:calc(50% + 6px);box-shadow:0 0 0 2px 
 <div id="app" class="hidden">
   <header class="top">
     <img class="logo" src="../img/logo.jpg" alt="">
+    <span data-zn><a class="btn small" href="home.html">בית</a></span>
     <h1>זיסו צוות</h1>
     <span class="pill" id="syncPill" title="מתי עודכנו הנתונים מפריוריטי"></span>
     <nav class="desk views" aria-label="מסכים">
-      <button type="button" id="deskHome" data-nav="home">בית</button>
       <button type="button" id="deskChats" data-nav="chats">שיחות</button>
       <button type="button" id="deskSearch" data-nav="search">לקוחות</button>
       <button type="button" id="deskToday" data-nav="today">היום</button>
@@ -785,7 +785,7 @@ window.addEventListener('hashchange', route);
 document.querySelectorAll('nav.tabs button[data-view]').forEach(function (b) { b.addEventListener('click', function () { if (b.dataset.view === 'home') { selfReload = true; location.href = 'home.html'; } else go(b.dataset.view); }); });
 $('deskSearch').addEventListener('click', function () { go('search'); });
 $('deskToday').addEventListener('click', function () { go('today'); });
-$('deskHome').addEventListener('click', function () { selfReload = true; location.href = 'home.html'; });
+/* "בית" and "כל המסכים" in the header come from nav.js (one menu for every screen) */
 $('homeRefresh').addEventListener('click', function () { loadHome(true); });
 $('deskChats').addEventListener('click', function () { go(cur ? 'chat' : 'chats', cur); });
 $('backFromChat').addEventListener('click', function () { go('chats'); });
@@ -2385,5 +2385,6 @@ $('pushX').addEventListener('click', function () { $('pushBar').classList.add('h
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
 })();
 </script>
+<script src="nav.js?v=2311"></script>
 </body>
 </html>
