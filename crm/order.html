@@ -136,6 +136,19 @@ details.sec>.bd{padding:0 16px 16px}
   #bar .cost{display:none}
 }
 @media (min-width:721px){.ln .qwrap{display:contents}}
+/* cancelling: the order stays whole, marked, with who / when / why */
+.cxb{border:1px solid var(--red);border-radius:14px;background:var(--surface);padding:12px 16px;margin:14px 0}
+.cxb b{color:var(--red)}.cxb p{margin:2px 0 0}
+body.cx #newRow,body.cx #adv,body.cx #payBtn,body.cx #oStep1,body.cx #cxRow,body.cx #docGo,body.cx #docKind,body.cx #mkAll{display:none!important}
+.endrow{margin:18px 0 0;justify-content:flex-end}
+.todo{margin:8px 0 0;padding:0 18px 0 0}.todo li{margin:4px 0}
+.sheet .box h3{font:700 16px var(--body);margin:14px 0 4px}
+.sheet .box details{margin-top:12px;font-size:14.5px;color:var(--mute)}.sheet .box details summary{cursor:pointer;min-height:44px;display:flex;align-items:center;color:var(--brass);text-decoration:underline;text-underline-offset:3px}
+.sheet .box details ul{margin:0;padding:0 18px 0 0}
+.btn.solidred{background:var(--red);border-color:var(--red);color:#fff}
+.paylist .off{color:var(--mute)}.paylist .off b{text-decoration:line-through;font-weight:600}
+.tkc{border:1px solid var(--line2);border-radius:10px;padding:10px 12px;margin:6px 0 12px;background:var(--raise)}
+#v-list details.old{margin-top:18px}#v-list details.old summary{cursor:pointer;min-height:44px;display:flex;align-items:center;color:var(--mute)}
 /* deal advisor: beside the order on a wide screen, above the search box on a phone */
 .toprow{margin:12px 0 0}
 .adv{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--sh);margin:14px 0}
@@ -161,6 +174,8 @@ details.sec>.bd{padding:0 16px 16px}
   #v-deal>*{grid-column:1;min-width:0}
   #v-deal>.panel,#v-deal>details.sec{margin:0 0 14px}
   #v-deal>.toprow{margin-bottom:14px}
+  #v-deal>.cxb{margin:0 0 14px}
+  body.cx #v-deal{display:block}body.cx.deal header .in,body.cx.deal #bar .in,body.cx.deal main{max-width:980px}
   #v-deal>.adv{grid-column:2;grid-row:2/span 40;position:sticky;top:76px;margin:0;max-height:calc(100vh - 200px);overflow:auto}
 }
 </style>
@@ -184,6 +199,8 @@ details.sec>.bd{padding:0 16px 16px}
 
   <section id="v-deal" class="hidden">
     <p class="row toprow"><button class="btn small" id="back" type="button">→ כל ההזמנות</button><span class="mute" id="saved" role="status" aria-live="polite"></span></p>
+
+    <div class="cxb hidden" id="cxBanner" role="status"></div>
 
     <!-- customer -->
     <section class="panel" aria-labelledby="hCu">
@@ -292,6 +309,7 @@ details.sec>.bd{padding:0 16px 16px}
         <div class="row" style="margin-top:8px;flex-wrap:nowrap"><input id="ansT" maxlength="1000" placeholder="תשובה ללקוח, תופיע אצלו בדף" aria-label="תשובה ללקוח"><button class="btn small brass" id="ansGo" type="button">שליחה</button></div>
       </div>
     </div></details>
+    <p class="row endrow" id="cxRow"><button class="btn small red" id="cxGo" type="button">ביטול ההזמנה</button></p>
   </section>
 </main>
 
@@ -337,6 +355,32 @@ details.sec>.bd{padding:0 16px 16px}
       <a class="btn" id="pWa" target="_blank" rel="noopener" style="min-height:50px">שליחת הלינק ללקוח בוואטסאפ</a>
     </div>
     <button class="btn" id="pDoneBtn" type="button" style="width:100%;margin-top:12px">סגירה</button>
+  </div>
+</div></div>
+
+<div class="sheet hidden" id="cxSheet" role="dialog" aria-modal="true" aria-labelledby="cxTitle"><div class="box">
+  <div class="row"><h2 class="grow" id="cxTitle">ביטול ההזמנה</h2><button class="btn small icon" id="cxClose" type="button" aria-label="סגירה">✕</button></div>
+  <div id="cxForm">
+    <p class="mute" style="margin:4px 0 0">שום דבר לא נמחק. ההזמנה נשמרת עם כל הפרטים, מסומנת כמבוטלת, ואפשר לשחזר אותה.</p>
+    <h3 id="cxWhyL">למה מבטלים?</h3>
+    <div class="opts" id="cxWhy" role="group" aria-labelledby="cxWhyL"></div>
+    <input id="cxNote" maxlength="300" placeholder="פרטים (לא חובה)" aria-label="פרטים על הביטול" style="margin-top:8px">
+    <div id="cxImpact" aria-live="polite"></div>
+    <details><summary>זכות הביטול של הלקוח לפי החוק</summary><ul>
+      <li>קנייה בחנות: מוצר מעל 50 ₪ שלא נעשה בו שימוש אפשר להחזיר עד 14 יום מיום שהתקבל.</li>
+      <li>קנייה מרחוק (טלפון, אתר, לינק תשלום): עד 14 יום מקבלת המוצר או מסמך פרטי העסקה, המאוחר מביניהם.</li>
+      <li>לקוח שמתחרט: דמי ביטול עד 5% ממחיר המוצר או 100 ₪, הנמוך מביניהם. כשיש פגם או אי התאמה: בלי דמי ביטול.</li>
+      <li>מוצר שיוצר במיוחד ללקוח (מידה או גוון בהזמנה מיוחדת) לא נכלל בזכות הזו.</li>
+      <li>ההחזר באמצעי שבו הלקוח שילם.</li>
+      <li>זו תזכורת קצרה. במקרה לא ברור שואלים את אילת או אביב. <a href="../terms.html" target="_blank" rel="noopener">התנאים המלאים באתר</a></li>
+    </ul></details>
+    <p class="err" id="cxErr" role="alert" style="margin:8px 0 0"></p>
+    <div class="row" style="margin-top:10px"><button class="btn solidred grow" id="cxYes" type="button" style="min-height:50px">ביטול ההזמנה</button><button class="btn" id="cxNo" type="button" style="min-height:50px">חזרה</button></div>
+  </div>
+  <div id="cxAfter" class="hidden">
+    <p style="font-size:19px;font-weight:700;margin:10px 0 6px">ההזמנה בוטלה</p>
+    <div id="cxDone"></div>
+    <button class="btn" id="cxDoneBtn" type="button" style="width:100%;margin-top:12px;min-height:50px">סגירה</button>
   </div>
 </div></div>
 
@@ -408,16 +452,18 @@ function totals(d) {
   return { cost: r2(cost), sell: r2(sell), profit: r2(rev - cost), pct: cost > 0 ? Math.round((rev - cost) / cost * 100) : 0, unknown: unknown };
 }
 function showList() {
-  deal = null; cust = null; $('v-deal').classList.add('hidden'); $('bar').classList.add('hidden'); $('v-list').classList.remove('hidden'); $('title').textContent = 'הזמנות'; document.body.classList.remove('deal'); clearTimeout(adv.t);
+  deal = null; cust = null; $('v-deal').classList.add('hidden'); $('bar').classList.add('hidden'); $('v-list').classList.remove('hidden'); $('title').textContent = 'הזמנות'; document.body.classList.remove('deal', 'cx'); clearTimeout(adv.t);
   history.replaceState(null, '', location.pathname);
   sb.from('crm_deals').select('*').neq('status', 'closed').order('updated_at', { ascending: false }).limit(60).then(function (r) {
     if (r.error) { $('v-list').classList.add('hidden'); $('needDb').classList.remove('hidden'); return; }
-    var l = r.data || [];
-    $('dealList').innerHTML = l.length ? l.map(function (d) {
-      var t = totals(d);
-      return '<button class="dl" data-id="' + d.id + '"><b>' + esc(d.deal_no) + ' · ' + esc(d.customer_name || 'בלי לקוח עדיין') + '</b> ' + (d.status === 'ordered' ? '<span class="st green">הוזמן מהספקים</span>' : '<span class="st grey">בבנייה</span>') +
-        '<br><span class="mute">' + (d.lines || []).length + ' מוצרים · ' + money(t.sell) + ' כולל מע"מ<span class="cost"> · רווח ' + (t.unknown ? 'לא ידוע (חסרה עלות)' : money(t.profit) + ' (' + t.pct + '%)') + '</span> · עודכן ' + fmtTime(d.updated_at) + (d.by_name ? ' · ' + esc(d.by_name) : '') + '</span></button>';
-    }).join('') : '<p class="mute">אין הזמנות פתוחות.</p>';
+    var all = r.data || [], l = all.filter(function (d) { return d.status !== 'cancelled'; }), gone = all.filter(function (d) { return d.status === 'cancelled'; });
+    var row = function (d) {
+      var t = totals(d), off = d.status === 'cancelled';
+      return '<button class="dl" data-id="' + d.id + '"><b>' + esc(d.deal_no) + ' · ' + esc(d.customer_name || 'בלי לקוח עדיין') + '</b> ' + (off ? '<span class="st red">בוטלה</span>' : d.status === 'ordered' ? '<span class="st green">הוזמן מהספקים</span>' : '<span class="st grey">בבנייה</span>') +
+        '<br><span class="mute">' + (d.lines || []).length + ' מוצרים · ' + money(t.sell) + ' כולל מע"מ' + (off ? ' · בוטלה ' + fmtTime(d.cancelled_at) + (d.cancel_reason ? ' · ' + esc(d.cancel_reason) : '') : '<span class="cost"> · רווח ' + (t.unknown ? 'לא ידוע (חסרה עלות)' : money(t.profit) + ' (' + t.pct + '%)') + '</span> · עודכן ' + fmtTime(d.updated_at)) + (d.by_name ? ' · ' + esc(d.by_name) : '') + '</span></button>';
+    };
+    $('dealList').innerHTML = (l.length ? l.map(row).join('') : '<p class="mute">אין הזמנות פתוחות.</p>') +
+      (gone.length ? '<details class="old"><summary>הזמנות שבוטלו (' + gone.length + ')</summary>' + gone.map(row).join('') + '</details>' : '');
   });
 }
 $('dealList').addEventListener('click', function (e) { var b = e.target.closest('[data-id]'); if (b) openDeal(Number(b.dataset.id)); });
@@ -439,7 +485,7 @@ function setDeal(d) {
   $('title').textContent = 'הזמנה ' + d.deal_no;
   $('mk').value = d.markup == null ? 40 : d.markup; $('q').value = ''; last = []; sres = null; fsup = null; sKey = ''; drawResults();
   loadCust(); drawDv(); drawNotes(); draw(); loadPicPaths(); loadPos(); drawShare(); loadNotes(); loadCases(); loadPa(); loadPays(); loadDocs(); loadStock(deal.lines.map(function (l) { return l.sku; }));
-  advReset(); advLoad(); advSoon();
+  advReset(); advLoad(); advSoon(); drawCx();
 }
 
 /* ---------- save (debounced) ---------- */
@@ -1019,19 +1065,43 @@ function loadPos() {
 var METHOD = { card_link: 'אשראי (טרנזילה)', card_terminal: 'אשראי (מסוף)', cash: 'מזומן', cheque: 'צ׳ק', transfer: 'העברה / ביט' };
 function loadPays() {
   if (!deal) return; var id = deal.id;
-  sb.from('crm_takings').select('id,at,amount,method,payments,payer_name,doc_no,closed_at,cancelled_at,pay_pr_id,paid_at,by').eq('deal_id', id).order('at', { ascending: true }).then(function (r) {
+  sb.from('crm_takings').select('id,at,amount,method,payments,payer_name,doc_no,closed_at,cancelled_at,cancel_note,pay_pr_id,paid_at,by').eq('deal_id', id).order('at', { ascending: true }).then(function (r) {
     if (!deal || deal.id !== id || r.error) return;
     takings = r.data || []; drawPays(); drawBar();
   });
 }
+var tkOpen = null;
 function drawPays() {
-  var live = takings.filter(function (t) { return !t.cancelled_at; });
-  $('payList').innerHTML = live.length ? live.map(function (t) {
+  var live = takings.filter(function (t) { return !t.cancelled_at; }), off = takings.filter(function (t) { return t.cancelled_at; });
+  $('payList').innerHTML = (live.length ? live.map(function (t) {
+    var paidLink = t.method === 'card_link' && t.paid_at;
     var st = t.method === 'card_link' && !t.paid_at ? '<span class="st yellow">ממתין לתשלום בלינק</span>' : t.doc_no || t.closed_at ? '<span class="st green">קבלה ' + esc(t.doc_no || 'יצאה') + '</span>' : '<span class="st grey">התקבל, הקבלה אצל המשרד</span>';
-    return '<p><b class="num">' + money(t.amount) + '</b> ' + METHOD[t.method] + (t.payments > 1 ? ' · ' + t.payments + ' תשלומים' : '') + ' <span class="mute">· ' + fmtTime(t.at) + '</span> ' + st + '</p>';
-  }).join('') : '<p class="mute">עוד לא נרשם תשלום להזמנה הזו.</p>';
+    return '<p data-tk="' + t.id + '"><b class="num">' + money(t.amount) + '</b> ' + METHOD[t.method] + (t.payments > 1 ? ' · ' + t.payments + ' תשלומים' : '') + ' <span class="mute">· ' + fmtTime(t.at) + '</span> ' + st +
+      (paidLink ? ' <a class="linkb" href="kupa.html">החזר לכרטיס במסך הקופה</a>' : ' <button type="button" class="linkb" data-tk-ask="1">ביטול</button>') + '</p>' +
+      (tkOpen === t.id ? '<div class="tkc" data-tk="' + t.id + '"><b>למה מבטלים את התשלום?</b><div class="opts"><button type="button" class="opt" data-tk-why="mistake" aria-pressed="false">נרשם בטעות</button><button type="button" class="opt" data-tk-why="returned" aria-pressed="false">הכסף הוחזר ללקוח</button></div>' +
+        '<input data-tk-note="1" maxlength="200" placeholder="פרטים (לא חובה)" aria-label="פרטים" style="margin-top:8px">' +
+        (t.closed_at ? '<p class="mute small" style="margin:6px 0 0">כבר יצאה קבלה ' + esc(t.doc_no || '') + '. הביטול כאן פותח למשרד משימה לבטל אותה בפריוריטי.</p>' : '') +
+        '<p class="err small" data-tk-err="1" role="alert" style="margin:6px 0 0"></p><div class="row" style="margin-top:8px"><button type="button" class="btn small red" data-tk-yes="1">ביטול התשלום</button><button type="button" class="btn small" data-tk-no="1">חזרה</button></div></div>' : '');
+  }).join('') : '<p class="mute">עוד לא נרשם תשלום להזמנה הזו.</p>') +
+    off.map(function (t) { return '<p class="off"><b class="num">' + money(t.amount) + '</b> ' + METHOD[t.method] + ' · בוטל ' + fmtTime(t.cancelled_at) + (t.cancel_note ? ' · ' + esc(t.cancel_note) : '') + '</p>'; }).join('');
   var paid = paidSum(); $('paySum').textContent = paid > 0 ? '· שולם ' + money(paid) : '';
 }
+$('payList').addEventListener('click', function (e) {
+  var b = e.target.closest('button'), box = e.target.closest('[data-tk]'); if (!b || !box) return;
+  var id = Number(box.dataset.tk);
+  if (b.dataset.tkAsk) { tkOpen = tkOpen === id ? null : id; drawPays(); var f = $('payList').querySelector('.tkc .opt'); if (f) f.focus(); return; }
+  if (b.dataset.tkNo) { tkOpen = null; drawPays(); return; }
+  if (b.dataset.tkWhy) { box.querySelectorAll('[data-tk-why]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); box.querySelector('[data-tk-err]').textContent = ''; return; }
+  if (b.dataset.tkYes) {
+    var w = box.querySelector('[data-tk-why][aria-pressed=true]'), er = box.querySelector('[data-tk-err]');
+    if (!w) { er.textContent = 'בוחרים סיבה'; return; }
+    b.disabled = true;
+    sb.rpc('crm_taking_cancel', { p_id: id, p_why: w.dataset.tkWhy, p_note: box.querySelector('[data-tk-note]').value.trim() || null }).then(function (r) {
+      if (r.error || !r.data || !r.data.ok) { b.disabled = false; er.textContent = (r.data && r.data.error) || 'הביטול לא הצליח. נסו שוב'; return; }
+      tkOpen = null; loadPays();
+    });
+  }
+});
 var pm = null, pc = 'card_link', pp = 1, pBusy = false, pPending = null, pPoll = null;
 $('pPays').innerHTML = [1, 2, 3, 4, 5, 6, 8, 10, 12].map(function (n) { return '<button type="button" class="opt" data-p="' + n + '" aria-pressed="' + (n === 1) + '">' + n + '</button>'; }).join('');
 function press(sel, attr, val) { document.querySelectorAll(sel).forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute(attr) === val)); }); }
@@ -1371,6 +1441,77 @@ $('advBody').addEventListener('click', function (e) {
   advLog(s, 'applied', gain, detail); advMark(s.kind, s.key, 'applied', gain);
   closeAsk(); draw(); touch();
   var inp = $('lines').querySelector('[data-lid="' + focus + '"] [data-f=' + (act === 'pick' || s.kind === 'spare' ? 'qty' : 'sell') + ']'); if (inp) { inp.focus(); if (inp.select) inp.select(); }
+});
+
+/* ---------- cancelling the order ----------
+   crm_deal_cancel lists what hangs on the order and cancels it. Nothing is deleted. What is money, a legal document
+   or a message to a supplier is never done from here: it becomes one task for the office with the exact steps. */
+var CX_WHY = ['הלקוח התחרט', 'טעות בהקלדה', 'הזמנה כפולה', 'המוצר לא זמין', 'אחר'], cxWhy = null, cxBusy = false, cxArm = 0, staffNames = {};
+$('cxWhy').innerHTML = CX_WHY.map(function (w) { return '<button type="button" class="opt" data-w="' + w + '" aria-pressed="false">' + w + '</button>'; }).join('');
+function drawCx() {
+  var off = !!deal && deal.status === 'cancelled', b = $('cxBanner');
+  document.body.classList.toggle('cx', off); b.classList.toggle('hidden', !off);
+  if (!off) return;
+  if (me.email && me.name) staffNames[me.email] = me.name;
+  var who = staffNames[(deal.cancelled_by || '').toLowerCase()] || deal.cancelled_by || '';
+  b.innerHTML = '<div class="row"><div class="grow"><b>ההזמנה בוטלה</b><p>' + fmtTime(deal.cancelled_at) + (who ? ' · ' + esc(who) : '') + (deal.cancel_reason ? ' · ' + esc(deal.cancel_reason) : '') + (deal.cancel_note ? ' · ' + esc(deal.cancel_note) : '') + '</p></div><button type="button" class="btn small" id="cxBack">שחזור ההזמנה</button></div>';
+  var key = (deal.cancelled_by || '').toLowerCase();
+  if (key && !staffNames[key]) sb.from('crm_staff').select('email,name').ilike('email', key).maybeSingle().then(function (x) { if (x.data && x.data.name && !staffNames[key]) { staffNames[key] = x.data.name; drawCx(); } });
+}
+function cxSteps(j) {
+  var a = [];
+  if ((j.links || []).length) a.push('<li>' + ((j.links.length === 1 ? 'לינק תשלום אחד שלא שולם מתבטל' : j.links.length + ' לינקים לתשלום שלא שולמו מתבטלים') + ' (' + money(j.links.reduce(function (s, x) { return s + Number(x.amount); }, 0)) + ')') + '</li>');
+  if (j.shared) a.push('<li>הלקוח יראה בדף שלו שההזמנה בוטלה</li>');
+  return a.join('');
+}
+function cxOpen() {
+  if (!deal) return;
+  cxWhy = null; cxBusy = false; $('cxNote').value = ''; $('cxErr').textContent = ''; $('cxYes').disabled = false; $('cxImpact').innerHTML = '<p class="mute" style="margin:12px 0 0">בודק מה קשור להזמנה...</p>';
+  $('cxWhy').querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', 'false'); });
+  $('cxTitle').textContent = 'ביטול הזמנה ' + deal.deal_no; $('cxForm').classList.remove('hidden'); $('cxAfter').classList.add('hidden');
+  $('cxSheet').classList.remove('hidden'); $('cxWhy').querySelector('button').focus();
+  var id = deal.id;
+  flush().then(function () { return sb.rpc('crm_deal_cancel', { p_deal: id, p_reason: null, p_note: null, p_dry: true }); }).then(function (r) {
+    if (!deal || deal.id !== id) return;
+    var j = r.data;
+    if (r.error || !j || !j.ok) { $('cxImpact').innerHTML = '<p class="err" style="margin:12px 0 0">' + esc((j && j.error) || 'לא הצלחתי לבדוק מה קשור להזמנה. נסו שוב') + '</p>'; $('cxYes').disabled = true; return; }
+    var auto = cxSteps(j), st = j.steps || [];
+    $('cxImpact').innerHTML = (auto ? '<h3>מה קורה מיד</h3><ul class="todo">' + auto + '</ul>' : '') +
+      (st.length ? '<h3>מה נשאר לעשות אחרי הביטול</h3><ul class="todo">' + st.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul><p class="mute small" style="margin:6px 0 0">נפתחת על זה משימה אחת למשרד. כסף, מסמכים והודעה לספק לא זזים לבד.</p>'
+        : '<p class="mute" style="margin:12px 0 0">אין תשלומים, הזמנות מספקים או מסמכים שקשורים להזמנה. הביטול נקי.</p>');
+  });
+}
+function cxClose() { $('cxSheet').classList.add('hidden'); var b = $('cxGo'); if (b && b.offsetParent) b.focus(); }
+$('cxGo').addEventListener('click', cxOpen);
+$('cxClose').addEventListener('click', cxClose); $('cxNo').addEventListener('click', cxClose); $('cxDoneBtn').addEventListener('click', cxClose);
+$('cxSheet').addEventListener('click', function (e) { if (e.target === $('cxSheet')) cxClose(); });
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('cxSheet').classList.contains('hidden')) cxClose(); });
+$('cxWhy').addEventListener('click', function (e) { var b = e.target.closest('[data-w]'); if (!b) return; cxWhy = b.dataset.w; $('cxWhy').querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); $('cxErr').textContent = ''; if (cxWhy === 'אחר') $('cxNote').focus(); });
+$('cxYes').addEventListener('click', function () {
+  if (cxBusy || !deal) return;
+  var note = $('cxNote').value.trim();
+  if (!cxWhy) { $('cxErr').textContent = 'בוחרים סיבה'; return; }
+  if (cxWhy === 'אחר' && note.length < 3) { $('cxErr').textContent = 'כותבים בכמה מילים מה הסיבה'; $('cxNote').focus(); return; }
+  cxBusy = true; $('cxYes').disabled = true; $('cxErr').textContent = '';
+  var id = deal.id;
+  flush().then(function () { return sb.rpc('crm_deal_cancel', { p_deal: id, p_reason: cxWhy === 'אחר' ? note : cxWhy, p_note: cxWhy === 'אחר' ? null : note || null, p_dry: false }); }).then(function (r) {
+    cxBusy = false; var j = r.data;
+    if (r.error || !j || !j.ok) { $('cxYes').disabled = false; $('cxErr').textContent = (j && j.error) || 'הביטול לא הצליח. נסו שוב'; return; }
+    var st = j.steps || [], auto = cxSteps(j);
+    $('cxDone').innerHTML = (auto ? '<ul class="todo">' + auto + '</ul>' : '') +
+      (st.length ? '<h3>נפתחה משימה למשרד</h3><ul class="todo">' + st.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' + ((j.pos || []).some(function (p) { return !p.received; }) ? '<a class="btn small" href="prices.html#orders" style="margin-top:10px">ללשונית ההזמנות מהספקים</a>' : '') : '<p class="mute">לא נשאר שום דבר פתוח.</p>');
+    $('cxForm').classList.add('hidden'); $('cxAfter').classList.remove('hidden'); $('cxDoneBtn').focus();
+    dirty = false; openDeal(id);
+  });
+});
+$('cxBanner').addEventListener('click', function (e) {
+  var b = e.target.closest('#cxBack'); if (!b || !deal) return;
+  if (Date.now() - cxArm > 5000) { cxArm = Date.now(); b.textContent = 'לשחזר? לחיצה נוספת'; setTimeout(function () { if (b.isConnected) b.textContent = 'שחזור ההזמנה'; }, 5000); return; }
+  cxArm = 0; b.disabled = true; var id = deal.id;
+  flush().then(function () { return sb.rpc('crm_deal_restore', { p_deal: id }); }).then(function (r) {
+    if (r.error || !r.data || !r.data.ok) { b.disabled = false; b.textContent = (r.data && r.data.error) || 'לא הצליח. נסו שוב'; return; }
+    dirty = false; openDeal(id);
+  });
 });
 
 /* ---------- start ---------- */
