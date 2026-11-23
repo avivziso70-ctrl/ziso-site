@@ -458,6 +458,35 @@ function printStatement(id, nm, rows, a) {
   window.addEventListener('afterprint', done); window.print();
 }
 
+/* ---------- supplier statement comparison: pasted text against our open documents. Runs in the browser only. ---------- */
+function compareStatement(text, open, cheques) {
+  var key = function (v) { return String(v == null ? '' : v).replace(/\D/g, '').replace(/^0+/, ''); };
+  var theirs = {}, order = [];
+  String(text || '').split(/\r?\n/).forEach(function (line) {
+    var tk = line.replace(/[₪"]/g, ' ').split(/[\t;|]+|\s{2,}|\s(?=[-\d])/).map(function (x) { return x.trim(); }).filter(Boolean)
+      .filter(function (x) { return !/^\d{1,4}[.\/-]\d{1,2}[.\/-]\d{2,4}$/.test(x); });
+    var doc = null, di = -1, amt = null;
+    tk.forEach(function (x, i) { if (doc == null && /\d{3,}/.test(x) && !/[.,]\d{1,2}$/.test(x)) { doc = x; di = i; } });
+    for (var i = tk.length - 1; i > di && amt == null; i--) { var v = tk[i].replace(/,/g, ''); if (/^-?\(?\d+(\.\d+)?\)?-?$/.test(v)) amt = (/^\(|-/.test(v) ? -1 : 1) * Number(v.replace(/[()\-]/g, '')); }
+    var k = key(doc); if (!k || amt == null) return;
+    if (!theirs[k]) { theirs[k] = { no: doc, amt: 0 }; order.push(k); } theirs[k].amt += amt;
+  });
+  if (!order.length) return [];
+  var ours = {}, paid = {};
+  (open || []).forEach(function (r) { var k = key(r.sup_doc); if (!k) return; ours[k] = ours[k] || { no: r.sup_doc, amt: 0 }; ours[k].amt += Number(r.doc_amount != null ? r.doc_amount : r.open || 0); });
+  (cheques || []).forEach(function (c) { String(c.inv_list || '').split(/[,\s]+/).forEach(function (n) { var k = key(n); if (k) paid[k] = c; }); });
+  var out = [];
+  order.forEach(function (k) {
+    var t = theirs[k], o = ours[k], c = paid[k];
+    if (o) { var df = Math.abs(t.amt) - Math.abs(o.amt); out.push(Math.abs(df) <= 1 ? { st: 'תואם', cls: 'ok', no: t.no, theirs: t.amt, ours: o.amt, diff: null, note: '' } : { st: 'הפרש בסכום', cls: 'bad', no: t.no, theirs: t.amt, ours: o.amt, diff: df, note: '' }); }
+    else if (c) out.push({ st: 'שולם בשיק', cls: 'warn', no: t.no, theirs: t.amt, ours: null, diff: null, note: 'שיק ' + c.check_no + ' לפירעון ' + day(c.check_due) + (c.cleared ? ', נפרע' : ', טרם נפרע') });
+    else out.push({ st: 'חסר אצלנו', cls: 'bad', no: t.no, theirs: t.amt, ours: null, diff: t.amt, note: 'לא נמצא במסמכים הפתוחים ולא בשיקים' });
+  });
+  Object.keys(ours).forEach(function (k) { if (!theirs[k]) out.push({ st: 'רק אצלנו', cls: 'warn', no: ours[k].no, theirs: null, ours: ours[k].amt, diff: -ours[k].amt, note: 'פתוח אצלנו ולא מופיע בכרטסת הספק' }); });
+  var rank = { bad: 0, warn: 1, ok: 2 };
+  return out.sort(function (a, b) { return rank[a.cls] - rank[b.cls]; });
+}
+
 /* ---------- account card: one customer or one supplier ---------- */
 var DOCT = { 'חל': 'חשבונית', 'ק': 'קבלה', 'חלז': 'חשבונית זיכוי', 'הת': 'התאמה', 'בטל': 'ביטול', 'תשצ': 'תשלום', 'פ': 'פקודה', 'העב': 'העברה' };
 function running(rows, key) { var b = 0; return rows.map(function (r) { b += Number(r[key] || 0); var o = {}; for (var k in r) o[k] = r[k]; o.bal = b; return o; }); }
@@ -492,6 +521,8 @@ function card(kind, id, name) {
         tile('שיקים עתידיים', money(cq.future || 0), num(cq.future_n || 0) + ' שיקים') + tile('שולם בשיקים השנה', money(cq.paid_year || 0), 'שיקים שמועדם עבר') + '</div>';
       h += '<div class="bar"><button class="btn small" type="button" id="xOpen">כרטיס החשבון לאקסל</button></div>';
       h += '<h3>מסמכים פתוחים, עם יתרה מצטברת</h3><div id="cOpen"></div>';
+      h += '<h3>השוואה מול כרטסת הספק</h3><p class="mute small">מדביקים כאן את הכרטסת שהספק שלח (מאקסל או מהמייל), שורה לכל חשבונית עם מספר וסכום. ההשוואה היא מול המסמכים הפתוחים והשיקים שלמעלה. שום דבר לא נשמר ולא נשלח.</p>' +
+        '<label class="f" for="cmpIn">כרטסת הספק</label><textarea id="cmpIn" rows="5" dir="ltr" style="width:100%;box-sizing:border-box;font:inherit" placeholder="88123    01/09/26    40,000.00"></textarea><div class="bar"><button class="btn small" type="button" id="cmpGo">השוואה</button><button class="btn small" type="button" id="cmpX">תוצאה לאקסל</button></div><div id="cmpOut" aria-live="polite"></div>';
       h += '<h3>שיקים שניתנו לספק, מהשנה האחרונה והלאה</h3>' + table([{ k: 'check_no', t: 'מספר שיק' }, { k: 'pay_date', t: 'ניתן בתאריך', f: 'date' }, { k: 'check_due', t: 'מועד פירעון', f: 'date' }, { k: 'invoices', t: 'חשבוניות', f: 'num', n: 1 }, { k: 'inv_list', t: 'מספרי חשבוניות ספק' }, { k: 'net', t: 'סכום', f: 'money', n: 1, sum: 1 },
         { k: 'cleared', t: 'מצב', f: function (r) { return r.cleared ? '<span class="tag ok">נפרע ' + day(r.cleared) + '</span>' : r.check_due > iso(new Date()) ? '<span class="tag">עתידי</span>' : '<span class="mute small">לא זוהה בבנק</span>'; } }], d.cheques, { empty: 'אין שיקים' });
       h += '<h3>הזמנות רכש פתוחות</h3>' + table([{ k: 'po', t: 'הזמנה' }, { k: 'date', t: 'תאריך', f: 'date' }, { k: 'sku', t: 'מק"ט' }, { k: 'item', t: 'פריט' }, { k: 'due', t: 'אספקה', f: 'date' }, { k: 'qty', t: 'הוזמן', f: 'num', n: 1 }, { k: 'supplied', t: 'סופק', f: 'num', n: 1 }, { k: 'open_qty', t: 'פתוח', f: 'num', n: 1 }, { k: 'open_value_ils', t: 'שווי פתוח', f: 'money', n: 1, sum: 1 }], d.pos, { empty: 'אין הזמנות רכש פתוחות' });
@@ -502,6 +533,9 @@ function card(kind, id, name) {
       $('cOpen').innerHTML = table(sc, sopen, { empty: 'אין מסמכים פתוחים' });
       $('xOpen').onclick = function () { csv('supplier-' + id, sc, sopen); };
       $('bk').onclick = function () { show('suppliers'); };
+      var cmpRows = [], cmpCols = [{ k: 'st', t: 'מצב', f: function (x) { return '<span class="tag ' + x.cls + '">' + esc(x.st) + '</span>'; }, raw: function (x) { return x.st; } }, { k: 'no', t: 'מספר חשבונית' }, { k: 'theirs', t: 'אצל הספק', f: 'money', n: 1, sum: 1 }, { k: 'ours', t: 'אצלנו', f: 'money', n: 1, sum: 1 }, { k: 'diff', t: 'הפרש', f: 'money', n: 1 }, { k: 'note', t: 'הערה' }];
+      $('cmpGo').onclick = function () { cmpRows = compareStatement($('cmpIn').value, d.open, d.cheques); var bad = cmpRows.filter(function (x) { return x.cls !== 'ok'; }).length; $('cmpOut').innerHTML = cmpRows.length ? '<p class="small">' + num(cmpRows.length) + ' שורות, מהן ' + num(bad) + ' לבדיקה.</p>' + table(cmpCols, cmpRows) : '<p class="err">לא זוהו שורות עם מספר חשבונית וסכום.</p>'; };
+      $('cmpX').onclick = function () { if (cmpRows.length) csv('supplier-compare-' + id, cmpCols, cmpRows); };
     }
     main.querySelectorAll('[data-doc]').forEach(function (b) { b.onclick = function () { showDoc(b.dataset.doc); }; });
   });
