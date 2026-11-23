@@ -54,6 +54,17 @@ async function customerOf(session: unknown) {
   return c as Record<string, any> | null;
 }
 // verified = the address was proven by a sign-in link. A session opened by a first checkout is not; it ends the day the
+// Warranty a supplier confirmed in writing (supplier-portal/warranty-suppliers.md). Only these are stated on the shop.
+const NEW_STAR = "876c158f-5f6c-454c-a08e-49e57f658b19", TOP_BAT = "f29237da-5534-4ff4-8e1e-eec9e333b4fd";
+const warranty = (sup: string | undefined, cat: string, name: string) => {
+  if (sup === NEW_STAR) {
+    if (/חשמל|מחמם|תנור|מראה/.test(name + " " + cat)) return "אחריות יבואן שנה על החלק החשמלי";
+    if (/^ברז|בידה וברזי/.test(cat)) return "אחריות יבואן 5 שנים";
+    if (/^סדרת|קולבים|מעמדי נייר|מדפי זכוכית|ידיות אחיזה|פחים|איבזור משלים|רשתות/.test(cat)) return "אחריות יבואן 10 שנים";
+  }
+  if (sup === TOP_BAT) return "תעודת אחריות יבואן לכל מוצר";
+  return "אחריות לפי תעודת היצרן";
+};
 const hdPath = (p: string) => "hd/" + p.slice(4); // img/<upload>/<page>-<ref>.jpg -> hd/<upload>/<page>-<ref>.jpg
 // address owner signs in by link, so typing someone else's address at checkout never gives a lasting way into their account.
 async function newSession(customerId: number, verified = false) {
@@ -114,7 +125,13 @@ Deno.serve(async (req: Request) => {
       const { data: s } = await admin.storage.from("supplier-files").createSignedUrls(paths.slice(i, i + 500), 86400);
       for (const x of s || []) if (x.signedUrl && x.path) signed.set(x.path, x.signedUrl);
     }
-    const items = rows.map((r) => ({ id: r.id, code: r.code, name: r.name, size: r.size, unit: r.unit, category: r.category, price: Number(r.price), img: r.image_path ? signed.get(r.image_path) || null : null, big: parcel(String(r.name)) || undefined }));
+    const supOf = new Map<number, string>();
+    const ids = rows.map((r) => r.id);
+    for (let i = 0; i < ids.length; i += 500) {
+      const { data: sp } = await admin.from("sp_prices").select("id,supplier_id").in("id", ids.slice(i, i + 500));
+      for (const x of sp || []) supOf.set(Number(x.id), String(x.supplier_id));
+    }
+    const items = rows.map((r) => ({ id: r.id, code: r.code, name: r.name, size: r.size, unit: r.unit, category: r.category, price: Number(r.price), img: r.image_path ? signed.get(r.image_path) || null : null, big: parcel(String(r.name)) || undefined, w: warranty(supOf.get(Number(r.id)), String(r.category || ""), String(r.name || "")) }));
     const out = { ok: true, live: st.live, lead_text: st.lead_text, ship: st.ship || null, items };
     if (st.live) memo = { at: Date.now(), body: out };
     return json(req, out, 200, st.live ? { "cache-control": "public, max-age=300" } : { "cache-control": "private, no-store" });
