@@ -6,6 +6,7 @@
      Books and the control board: owner only. The data itself is guarded by the database; the menu only hides doors.
    - The main office PC (localStorage zisoStation=1, the customer-visible screen) never shows money, accounts, books or the board.
    - books.html is also used by the bookkeeper (not staff): with no zisoWho on the device nothing is drawn there.
+   - Staff and the station see only "בית"; the menu is owner only (Aviv: few buttons, technophobe staff).
    - Keys: Ctrl+K (or ⌘K) opens the menu with its search, Esc closes, Alt+Home goes home.
    Public surfaces (shop, supplier portal, pay, my) do not load this file. */
 (function () {
@@ -119,14 +120,18 @@
     '.zn-none{padding:14px;color:#555b60}.zn-hint{margin:14px 0 0;font-size:13px;color:#555b60}';
   document.head.appendChild(css);
 
+  var full = who === 'owner' && !station;
   var onHome = file === 'home.html' && !/^#(money|accounts|acct)/.test(location.hash);
   var homeUrl = base + 'home.html';
   slots.forEach(function (slot) {
     var compact = slot.hasAttribute('data-zn-menu-only');
     slot.className = (slot.className ? slot.className + ' ' : '') + 'zn';
     slot.innerHTML = (onHome || compact ? '' : '<a class="zn-b home" href="' + homeUrl + '" aria-label="בית: למסך הבית">' + svg('home') + '<span>בית</span></a>') +
-      '<button class="zn-b zn-open" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="znSheet" title="כל המסכים (Ctrl+K)">' + svg('grid') + '<span class="zn-l2">כל המסכים</span></button>';
+      (full ? '<button class="zn-b zn-open" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="znSheet" title="כל המסכים (Ctrl+K)">' + svg('grid') + '<span class="zn-l2">כל המסכים</span></button>' : '');
   });
+  /* Aviv 23.11: the staff are technophobes, as few buttons as possible. Their home screen already holds their few doors,
+     so staff and the main-PC station get ONE button only: "בית". The full menu is for the owner. */
+  if (!full) return;
 
   var sheet = document.createElement('div');
   sheet.className = 'zn-sh'; sheet.id = 'znSheet'; sheet.hidden = true;
