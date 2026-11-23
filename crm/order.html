@@ -136,6 +136,33 @@ details.sec>.bd{padding:0 16px 16px}
   #bar .cost{display:none}
 }
 @media (min-width:721px){.ln .qwrap{display:contents}}
+/* deal advisor: beside the order on a wide screen, above the search box on a phone */
+.toprow{margin:12px 0 0}
+.adv{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--sh);margin:14px 0}
+.adv>.hd{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line2)}
+.adv>.hd h2{font-size:20px;flex:1;white-space:nowrap}.adv>.hd svg{color:var(--brass);flex:none}
+.adv>.bd{padding:12px 14px}
+.adv.inlist{margin:12px 0 0;border-radius:12px;box-shadow:none}
+.adv.inlist>.hd{padding:4px 12px;min-height:52px;cursor:pointer}.adv.shut>.hd{border-bottom:0}.adv.shut>.bd{display:none}
+.adv.shut>.hd h2{font:700 16px var(--body);white-space:normal;line-height:1.3}
+#advTog{min-height:44px}#advTog svg{color:var(--mute);transition:transform .15s}#advTog[aria-expanded=true] svg{transform:rotate(180deg)}
+.sg{padding:12px 0;border-bottom:1px solid var(--line2)}.sg:first-child{padding-top:0}.sg:last-of-type{border-bottom:0;padding-bottom:0}
+.sg .t{display:flex;gap:8px;align-items:baseline}.sg h3{font:700 16px var(--body);margin:0;flex:1}
+.sg.hot h3{color:var(--red)}
+.sg p{margin:3px 0 0;font-size:15px;overflow-wrap:anywhere}
+.sg .gain{color:var(--green);font-weight:700;font-size:14px;white-space:nowrap}
+.sg .alt{display:flex;gap:10px;align-items:flex-start;margin-top:8px}.sg .alt .thumb{width:56px;height:56px}.sg .alt p{margin:0}
+.sg .acts{display:flex;gap:4px 12px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.sg .acts .btn{min-height:44px;white-space:normal;text-align:center}.sg .linkb,.adv .bd>.linkb{min-height:44px;padding:0 4px}
+.sg .pick button{padding:8px 12px;font-size:15px}
+@media (min-width:1100px){
+  body.deal header .in,body.deal #bar .in,body.deal main{max-width:1300px}
+  #v-deal{display:grid;grid-template-columns:minmax(0,1fr) 300px;column-gap:20px;align-items:start}
+  #v-deal>*{grid-column:1;min-width:0}
+  #v-deal>.panel,#v-deal>details.sec{margin:0 0 14px}
+  #v-deal>.toprow{margin-bottom:14px}
+  #v-deal>.adv{grid-column:2;grid-row:2/span 40;position:sticky;top:76px;margin:0;max-height:calc(100vh - 200px);overflow:auto}
+}
 </style>
 </head>
 <body>
@@ -156,7 +183,7 @@ details.sec>.bd{padding:0 16px 16px}
   </section>
 
   <section id="v-deal" class="hidden">
-    <p class="row" style="margin:12px 0 0"><button class="btn small" id="back" type="button">→ כל ההזמנות</button><span class="mute" id="saved" role="status" aria-live="polite"></span></p>
+    <p class="row toprow"><button class="btn small" id="back" type="button">→ כל ההזמנות</button><span class="mute" id="saved" role="status" aria-live="polite"></span></p>
 
     <!-- customer -->
     <section class="panel" aria-labelledby="hCu">
@@ -187,12 +214,12 @@ details.sec>.bd{padding:0 16px 16px}
     </section>
 
     <!-- the shopping list -->
-    <section class="panel" aria-labelledby="hList">
+    <section class="panel" id="pList" aria-labelledby="hList">
       <div class="hd"><h2 id="hList">רשימת המוצרים</h2>
         <label class="mute small cost row" style="gap:6px;flex-wrap:nowrap">רווח % <input id="mk" type="number" min="0" inputmode="decimal" style="width:76px;min-height:36px;padding:4px 8px"></label><button class="btn small cost" id="mkAll" type="button" title="מעדכן את המחיר ללקוח בכל השורות לפי האחוז">לכל השורות</button></div>
       <div class="bd">
         <div id="lines"></div>
-        <div class="newrow">
+        <div class="newrow" id="newRow">
           <label for="q" class="mute small">שורה חדשה: מחפשים מוצר, בוחרים, מקלידים כמות ו-Enter לשורה הבאה</label>
           <input id="q" type="search" placeholder="כותבים חופשי: ברז פרח שחור, מקלחון 78, מק&quot;ט או ספק" autocomplete="off" enterkeyhint="search" role="combobox" aria-expanded="false" aria-controls="results" aria-autocomplete="list">
           <div class="chips" id="chips" role="group" aria-label="סינון לפי קטגוריה"></div>
@@ -203,6 +230,11 @@ details.sec>.bd{padding:0 16px 16px}
         </div>
       </div>
     </section>
+
+    <aside class="adv" id="adv" aria-labelledby="hAdv">
+      <div class="hd" id="advHd"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg><h2 id="hAdv">יועץ העסקה</h2><span class="st grey num hidden" id="advN"></span><button type="button" class="btn small icon ghost hidden" id="advTog" aria-expanded="false" aria-controls="advBody" aria-label="יועץ העסקה: הצגת ההצעות"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></div>
+      <div class="bd" id="advBody" aria-live="polite"></div>
+    </aside>
 
     <section class="panel" aria-labelledby="hNotes">
       <div class="hd"><h2 id="hNotes">הערות</h2></div>
@@ -376,7 +408,7 @@ function totals(d) {
   return { cost: r2(cost), sell: r2(sell), profit: r2(rev - cost), pct: cost > 0 ? Math.round((rev - cost) / cost * 100) : 0, unknown: unknown };
 }
 function showList() {
-  deal = null; cust = null; $('v-deal').classList.add('hidden'); $('bar').classList.add('hidden'); $('v-list').classList.remove('hidden'); $('title').textContent = 'הזמנות';
+  deal = null; cust = null; $('v-deal').classList.add('hidden'); $('bar').classList.add('hidden'); $('v-list').classList.remove('hidden'); $('title').textContent = 'הזמנות'; document.body.classList.remove('deal'); clearTimeout(adv.t);
   history.replaceState(null, '', location.pathname);
   sb.from('crm_deals').select('*').neq('status', 'closed').order('updated_at', { ascending: false }).limit(60).then(function (r) {
     if (r.error) { $('v-list').classList.add('hidden'); $('needDb').classList.remove('hidden'); return; }
@@ -402,16 +434,17 @@ function openDeal(id) { sb.from('crm_deals').select('*').eq('id', id).single().t
 function setDeal(d) {
   deal = d; deal.lines = deal.lines || []; deal.deliver = deal.deliver || {}; cases = []; pasks = []; paOpen = null; paDraft = null; openMore = null; caseOpen = null; cust = null; takings = [];
   deal.lines.forEach(function (l) { if (!l.lid) { l.lid = newLid(); dirty = true; } if (!l.cat) { l.cat = classify((l.desc || '') + ' ' + (l.size || '')); dirty = true; } });
-  $('v-list').classList.add('hidden'); $('needDb').classList.add('hidden'); $('v-deal').classList.remove('hidden'); $('bar').classList.remove('hidden');
+  $('v-list').classList.add('hidden'); $('needDb').classList.add('hidden'); $('v-deal').classList.remove('hidden'); $('bar').classList.remove('hidden'); document.body.classList.add('deal');
   history.replaceState(null, '', '?d=' + d.id);
   $('title').textContent = 'הזמנה ' + d.deal_no;
   $('mk').value = d.markup == null ? 40 : d.markup; $('q').value = ''; last = []; sres = null; fsup = null; sKey = ''; drawResults();
   loadCust(); drawDv(); drawNotes(); draw(); loadPicPaths(); loadPos(); drawShare(); loadNotes(); loadCases(); loadPa(); loadPays(); loadDocs(); loadStock(deal.lines.map(function (l) { return l.sku; }));
+  advReset(); advLoad(); advSoon();
 }
 
 /* ---------- save (debounced) ---------- */
 var saveT = null, dirty = false;
-function touch() { dirty = true; $('saved').textContent = ''; clearTimeout(saveT); saveT = setTimeout(flush, 900); }
+function touch() { dirty = true; $('saved').textContent = ''; clearTimeout(saveT); saveT = setTimeout(flush, 900); advSoon(); }
 function flush() {
   clearTimeout(saveT);
   if (!deal || !dirty) return Promise.resolve();
@@ -1191,6 +1224,153 @@ $('ansGo').addEventListener('click', function () {
   var t = $('ansT').value.trim(), b = $('ansGo'); if (t.length < 2) { $('ansT').focus(); return; }
   b.disabled = true;
   sb.from('crm_deal_notes').insert({ deal_id: deal.id, side: 'team', text: t, by: me.email, by_name: me.name }).then(function (r) { b.disabled = false; if (!r.error) { $('ansT').value = ''; loadNotes(); } });
+});
+
+/* ---------- deal advisor ----------
+   Works in the background while the order is written and offers what to add, swap or ask the customer.
+   Rules here plus comparisons over our own data in crm_deal_advice: no paid model, and nothing about the customer is sent.
+   Cards about cost and margin show only while cost is shown (the eye): the customer may be looking at the screen. */
+var adv = { sig: '', raw: [], hid: {}, won: 0, gain: 0, all: false, open: false, t: null, shown: [] }, wideMq = window.matchMedia('(min-width:1100px)');
+var TILE = /אריח|ריצוף|חיפוי|פורצלן|גרניט|פסיפס|פרקט|\d{2,3}\s*[\/x*]\s*\d{2,3}/i, NOT_TILE = /דבק|רובה|פרופיל|פנל|שיפול|סף |ספים|סיליקון/;
+function advPlace() { var a = $('adv'); if (wideMq.matches) $('pList').after(a); else $('newRow').before(a); a.classList.toggle('inlist', !wideMq.matches); if (deal) drawAdv(); }
+if (wideMq.addEventListener) wideMq.addEventListener('change', advPlace); else wideMq.addListener(advPlace);
+advPlace();
+function advReset() { clearTimeout(adv.t); adv.sig = ''; adv.raw = []; adv.hid = {}; adv.won = 0; adv.gain = 0; adv.all = false; adv.open = false; adv.shown = []; }
+function advMark(kind, key, action, gain) {
+  if (action === 'applied') { adv.won++; adv.gain += Number(gain) || 0; }
+  if (action === 'dismissed' || (kind !== 'floor' && kind !== 'usual')) adv.hid[key] = 1;   // a price warning comes back if the price drops again
+}
+function advLoad() {
+  var id = deal.id;
+  sb.from('crm_advice_log').select('kind,key,action,gain').eq('deal_id', id).then(function (r) {
+    if (!deal || deal.id !== id || r.error) return;
+    (r.data || []).forEach(function (x) { advMark(x.kind, x.key, x.action, x.gain); });
+    drawAdv();
+  });
+}
+function advLog(s, action, gain, detail) {
+  sb.from('crm_advice_log').insert({ deal_id: deal.id, lid: s.l.lid || null, kind: s.kind, key: s.key, action: action, gain: action === 'applied' && gain != null ? r2(gain) : null, detail: detail || null }).then(function () { });
+}
+function advLines() {
+  return deal.lines.map(function (l) { return { lid: l.lid, desc: l.desc || '', size: l.size || '', sku: l.sku || '', price_id: l.price_id || null, cost: l.cost == null || l.cost === '' ? null : Number(l.cost), sell: Number(l.sell) || 0, qty: Number(l.qty) || 0, cat: l.cat || '', so: l.so || '', po_no: l.po_no || '', stock: !!l.stock }; });
+}
+function advSoon() { if (!deal) return; drawAdv(); clearTimeout(adv.t); adv.t = setTimeout(advAsk, 1100); }
+function advAsk() {
+  if (!deal) return;
+  var ls = advLines(), id = deal.id, sig = id + '|' + JSON.stringify(ls.map(function (x) { return [x.lid, x.desc, x.size, x.sku, x.price_id, x.cost, x.qty, x.cat, x.so, x.po_no, x.stock]; }));
+  if (sig === adv.sig) return; adv.sig = sig;   // a change of price alone needs no new comparison
+  if (!ls.length) { adv.raw = []; drawAdv(); return; }
+  sb.rpc('crm_deal_advice', { p_lines: ls }).then(function (r) {
+    if (!deal || deal.id !== id || adv.sig !== sig) return;
+    if (!r.error && Array.isArray(r.data)) { adv.raw = r.data; drawAdv(); }
+  });
+}
+function advBuild() {
+  var out = [], by = {}, K = { floor: 0, usual: 1, add: 2, alt: 3, stock: 4, spare: 5 }, top = {};
+  deal.lines.forEach(function (l) {
+    by[l.lid] = l;
+    var c = Number(l.cost), s = Number(l.sell) || 0, q = Number(l.qty) || 0;
+    if (!l.so && c > 0 && s > 0 && q > 0 && pctOf(l) < PCT_LOW) { var fl = Math.ceil(c * (1 + PCT_LOW / 100) * VAT); out.push({ kind: 'floor', key: 'floor:' + l.lid, l: l, staff: true, to: fl, gain: (fl - s) / VAT * q }); }
+    if (l.cat === 'tiles' && !l.so && !l.po_no && q >= 5 && TILE.test((l.desc || '') + ' ' + (l.size || '')) && !NOT_TILE.test(l.desc || '')) {
+      var nq = q % 1 ? Math.round(q * 110) / 100 : Math.ceil(Math.round(q * 110) / 100);
+      out.push({ kind: 'spare', key: 'spare:' + l.lid, l: l, to: nq, gain: c > 0 && s > 0 ? (nq - q) * (s / VAT - c) : null });
+    }
+  });
+  adv.raw.forEach(function (f) {
+    var l = by[f.lid]; if (!l) return;
+    var c = Number(l.cost), s = Number(l.sell) || 0, q = Number(l.qty) || 0, u = Number(f.usual), ac = Number(f.cost);
+    if (f.kind === 'usual') { if (!l.so && s > 0 && q > 0 && u > 0 && s < u * 0.93) { top[l.lid] = u; out.push({ kind: 'usual', key: 'usual:' + l.lid, l: l, staff: true, to: u, n: f.n, gain: (u - s) / VAT * q }); } }
+    else if (f.kind === 'alt') { if (c > 0 && ac > 0 && l.price_id && String(l.price_id) !== String(f.price_id) && !l.po_no && !l.so && (c - ac) * Math.max(q, 1) >= 20) out.push({ kind: 'alt', key: 'alt:' + l.lid + ':' + f.price_id, l: l, staff: true, f: f, gain: (c - ac) * Math.max(q, 1) }); }
+    else if (f.kind === 'stock') { if (!l.stock && !l.po_no && !l.so) out.push({ kind: 'stock', key: 'stock:' + l.lid + ':' + f.part_no, l: l, f: f, gain: null }); }
+    else if (f.kind === 'add') out.push({ kind: 'add', key: f.key, l: l, f: f, gain: null });
+  });
+  out = out.filter(function (s) { return !adv.hid[s.key] && !(s.kind === 'floor' && top[s.l.lid] >= s.to); });   // the usual price already lifts the line above the floor
+  out.sort(function (a, b) { return K[a.kind] - K[b.kind] || (b.gain || 0) - (a.gain || 0); });
+  return out;
+}
+function advShort(t, n) { t = String(t || '').replace(/\s+/g, ' ').trim(); n = n || 46; return t.length > n ? t.slice(0, n - 1).trim() + '…' : t; }
+var ADV_T = { floor: 'המחיר מתחת לרצפה', usual: 'נמוך מהמחיר הרגיל שלנו', spare: 'לשאול: הכמות כוללת פחת?', alt: 'מוצר דומה בעלות נמוכה יותר', stock: 'יש במלאי מוצר מאותו סוג' };
+function advTitle(s) { return ADV_T[s.kind] || 'אולי חסר: ' + ((s.f || {}).label || ''); }
+function advCard(s) {
+  var l = s.l, f = s.f || {}, nm = esc(advShort((l.desc || '') + (l.size ? ' ' + l.size : ''))), h = esc(advTitle(s)), p, body = '', x = '', no = 'לא מתאים';
+  var B = function (act, label) { return '<button type="button" class="btn small" data-do="' + act + '">' + label + '</button>'; };
+  if (s.kind === 'floor') { p = nm + ': רווח ' + pctOf(l) + '% על העלות. הרצפה שלנו ' + PCT_LOW + '%, כלומר ' + money(s.to) + ' ליחידה.'; x = B('apply', 'להעלות ל-' + money(s.to)); }
+  else if (s.kind === 'usual') { p = nm + ': בדרך כלל נמכר ב-' + money(s.to) + ' (' + esc(s.n) + ' מכירות בשנה האחרונה). כאן ' + money(l.sell) + '.'; x = B('apply', 'לעדכן ל-' + money(s.to)); }
+  else if (s.kind === 'spare') { p = nm + ': מקובל להוסיף כ-10% לחיתוכים ולשברים. ' + esc(l.qty) + ' ← ' + s.to + (l.unit ? ' ' + esc(l.unit) : '') + '.'; x = B('apply', 'להוסיף 10%'); no = 'כבר כולל'; }
+  else if (s.kind === 'alt') {
+    p = 'במקום ' + nm + ':';
+    body = '<div class="alt">' + (f.image_path ? '<button type="button" class="thumb" data-p="' + esc(f.image_path) + '" data-t="' + esc(f.desc) + '" data-m="' + esc([f.sku, f.size, (suppliers[f.supplier_id] || {}).name].filter(Boolean).join(' · ')) + '" aria-label="הגדלת התמונה"><img alt="" loading="lazy"></button>' : '') +
+      '<p><b>' + esc(advShort((f.desc || '') + (f.size ? ' ' + f.size : ''), 70)) + '</b><br><span class="mute small">' + esc((suppliers[f.supplier_id] || {}).name || '') + ' · עלות ' + money(f.cost) + ' במקום ' + money(l.cost) + '</span></p></div>' +
+      '<p class="mute small">אותו סוג, צבע ומידה לפי התיאור. לפני שמחליפים, לוודא מול הלקוח שהדגם מתאים.</p>';
+    x = B('apply', 'להחליף בשורה');
+  }
+  else if (s.kind === 'stock') {
+    p = 'במקום ' + nm + ', שצריך להזמין: <b>' + esc(advShort(f.desc, 70)) + '</b>. ' + Number(f.stock).toLocaleString('he-IL') + ' במלאי, מחירון ' + money(f.price) + ' ליחידה כולל מע"מ.' + (f.slow ? ' עומד במלאי בלי מכירה חצי שנה.' : '');
+    x = B('apply', 'להחליף בשורה');
+  }
+  else {
+    var pk = f.picks || [];
+    p = 'ליד ' + nm + '. כדאי לשאול את הלקוח.';
+    body = pk.length ? '<ul class="pick">' + pk.map(function (k, i) { return '<li><button type="button" data-do="pick" data-i="' + i + '"><b>' + esc(advShort(k.desc, 64)) + '</b><br><span class="mute small">' + money(k.price) + ' כולל מע"מ' + (Number(k.stock) > 0 ? ' · <span class="ok">במלאי ' + Number(k.stock).toLocaleString('he-IL') + '</span>' : '') + (k.cost != null ? '<span class="cost"> · עלות ' + money(k.cost) + '</span>' : '') + '</span></button></li>'; }).join('') + '</ul>' : '';
+    x = pk.length ? '<button type="button" class="linkb" data-do="find">חיפוש אחר</button>' : B('find', 'חיפוש במחירונים');
+  }
+  return '<div class="sg' + (s.kind === 'floor' ? ' hot' : '') + '" data-key="' + esc(s.key) + '"><div class="t"><h3>' + h + '</h3>' + (s.gain != null && s.gain >= 1 ? '<span class="gain cost">+' + money(Math.round(s.gain)) + ' רווח</span>' : '') + '</div><p>' + p + '</p>' + body +
+    '<div class="acts">' + x + '<button type="button" class="linkb" data-do="no">' + no + '</button></div></div>';
+}
+function drawAdv() {
+  if (!deal) return;
+  var all = advBuild(), vis = all.filter(function (s) { return !(shy && s.staff); }), staffN = all.length - vis.length, wide = wideMq.matches, base = wide ? 2 : 1;
+  var show = vis.slice(0, adv.all ? 99 : base), more = vis.length - show.length;
+  adv.shown = show;
+  $('adv').classList.toggle('hidden', !wide && !all.length && !adv.won);
+  $('advN').textContent = vis.length || ''; $('advN').classList.toggle('hidden', !vis.length);
+  var shut = !wide && !adv.open && vis.length > 0;   // on a phone the strip is one line, the leading suggestion, until it is opened
+  $('adv').classList.toggle('shut', shut); $('hAdv').textContent = shut ? advTitle(vis[0]) : 'יועץ העסקה';
+  $('advTog').classList.toggle('hidden', wide || !vis.length); $('advTog').setAttribute('aria-expanded', String(!shut));
+  $('advBody').innerHTML = show.map(advCard).join('') +
+    (more > 0 ? '<button type="button" class="linkb" data-do="more">' + (more === 1 ? 'עוד הצעה אחת' : 'עוד ' + more + ' הצעות') + '</button>' : adv.all && vis.length > base ? '<button type="button" class="linkb" data-do="less">להציג פחות</button>' : '') +
+    (staffN ? '<p class="mute small" style="margin:8px 0 0">' + (staffN === 1 ? 'עוד הצעה אחת לצוות מופיעה' : 'עוד ' + staffN + ' הצעות לצוות מופיעות') + ' כשמציגים עלות (העין למעלה).</p>' : '') +
+    (!all.length ? '<p class="mute" style="margin:0">' + (deal.lines.length ? 'אין הצעות כרגע. הבדיקה ממשיכה תוך כדי כתיבה.' : 'מוסיפים מוצרים, והיועץ מציע מה כדאי להוסיף, להחליף או לשאול את הלקוח.') + '</p>' : '') +
+    (adv.won ? '<p class="mute small cost" style="margin:8px 0 0">' + (adv.won === 1 ? 'התקבלה הצעה אחת' : 'התקבלו ' + adv.won + ' הצעות') + ' בהזמנה הזו' + (adv.gain >= 1 ? ' · תוספת רווח ' + money(Math.round(adv.gain)) : '') + '</p>' : '');
+  loadPics($('advBody'));
+}
+$('shy').addEventListener('click', function () { if (deal) drawAdv(); });
+$('advHd').addEventListener('click', function () { if (!deal || wideMq.matches || $('advTog').classList.contains('hidden')) return; adv.open = !adv.open; drawAdv(); });
+$('advBody').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-do]'); if (!b || !deal) return;
+  var act = b.dataset.do;
+  if (act === 'more' || act === 'less') { adv.all = act === 'more'; drawAdv(); return; }
+  var card = b.closest('[data-key]'), s = card && adv.shown.filter(function (x) { return x.key === card.dataset.key; })[0]; if (!s) return;
+  var l = s.l, f = s.f || {}, gain = s.gain, detail = null, focus = l.lid;
+  if (act === 'no') { advLog(s, 'dismissed'); advMark(s.kind, s.key, 'dismissed'); drawAdv(); return; }
+  if (act === 'find') { $('q').value = f.word || ''; lim = 40; fsup = null; search(); $('q').focus(); $('q').scrollIntoView({ block: 'center' }); return; }
+  if (act === 'pick') {
+    var k = (f.picks || [])[Number(b.dataset.i)]; if (!k) return;
+    var nl = { desc: k.desc, sku: k.part_no, qty: 1, cost: k.cost == null ? null : Number(k.cost), sell: Number(k.price) || 0, stock: Number(k.stock) >= 1, lid: newLid(), cat: classify(k.desc), src: 'מחירון פריוריטי, לפי יועץ העסקה' };
+    if (nl.cost == null) nl.free = true;   // cost is not known: the line lets the team type it
+    deal.lines.push(nl); loadStock([nl.sku]); focus = nl.lid;
+    gain = nl.cost != null ? nl.sell / VAT - nl.cost : null; detail = { part_no: k.part_no, sell: nl.sell };
+  }
+  else if (s.kind === 'floor' || s.kind === 'usual') { detail = { from: Number(l.sell), to: s.to }; l.sell = s.to; }
+  else if (s.kind === 'spare') { detail = { from: Number(l.qty), to: s.to }; l.qty = s.to; }
+  else if (s.kind === 'alt') {
+    detail = { from: l.price_id, to: f.price_id, cost_from: Number(l.cost), cost_to: Number(f.cost) };
+    l.price_id = f.price_id; l.supplier_id = f.supplier_id; l.sku = f.sku || ''; l.desc = f.desc; if (f.size) l.size = f.size; else delete l.size; if (f.unit) l.unit = f.unit;
+    l.cost = Number(f.cost); delete l.est; delete l.free; l.src = 'הוחלף לפי יועץ העסקה'; l.stock = stock[l.sku] >= 1;
+    if (f.image_path) picPath[f.price_id] = f.image_path;
+    loadStock([l.sku]);
+  }
+  else if (s.kind === 'stock') {
+    detail = { from: l.sku || l.desc, to: f.part_no, sell_from: Number(l.sell), sell_to: Number(f.price) };
+    l.desc = f.desc; l.sku = f.part_no; delete l.price_id; delete l.supplier_id; delete l.size; delete l.est;
+    l.cost = f.cost == null ? null : Number(f.cost); l.sell = Number(f.price) || l.sell; l.stock = true; l.src = 'מהמלאי, לפי יועץ העסקה';
+    if (l.cost == null) l.free = true; else delete l.free;
+    loadStock([l.sku]);
+  }
+  if (s.kind === 'alt' || s.kind === 'stock') adv.raw = adv.raw.filter(function (x) { return x.lid !== l.lid || x.kind === 'add'; });   // the line is a different product now
+  advLog(s, 'applied', gain, detail); advMark(s.kind, s.key, 'applied', gain);
+  closeAsk(); draw(); touch();
+  var inp = $('lines').querySelector('[data-lid="' + focus + '"] [data-f=' + (act === 'pick' || s.kind === 'spare' ? 'qty' : 'sell') + ']'); if (inp) { inp.focus(); if (inp.select) inp.select(); }
 });
 
 /* ---------- start ---------- */
