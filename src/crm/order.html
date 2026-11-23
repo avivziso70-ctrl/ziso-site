@@ -8,7 +8,7 @@
 <title>הזמנה | זיסו צוות</title>
 <link rel="icon" href="../img/logo.jpg">
 <link rel="stylesheet" href="../fonts.css">
-<script>try { var t = localStorage.getItem('ziso-theme'); if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); } catch (e) { }</script>
+<script>document.documentElement.setAttribute('data-theme', 'light');</script>
 <style>
 :root{--wall:#0f1113;--surface:#1a1d21;--raise:#22262b;--line:#33383e;--line2:#2a2e33;--ink:#f2efe8;--mute:#aaa498;--brass:#cfae74;--brass-ink:#1a1610;--brass-soft:#2d271d;
   --red:#e8826f;--green:#8fc9a0;--amber:#e3b86a;--sh:0 1px 0 rgba(0,0,0,.25);--display:"Bellefair","Times New Roman",serif;--body:"Assistant","Segoe UI",Arial,sans-serif;
@@ -183,8 +183,6 @@ body.cx #newRow,body.cx #adv,body.cx #payBtn,body.cx #oStep1,body.cx #cxRow,body
 <body>
 <header><div class="in">
   <h1 class="grow" id="title">הזמנה</h1>
-  <button class="btn small icon" id="theme" type="button" aria-label="מצב תצוגה"></button>
-  <button class="btn small icon ghost peek" id="shy" type="button" aria-pressed="true"></button>
   <span data-zn><a class="btn small" href="home.html">בית</a></span>
 </div></header>
 <main>
@@ -403,25 +401,26 @@ function fmtTime(d) { return d ? new Date(d).toLocaleString('he-IL', { day: 'num
 function canOrder(sid) { var s = suppliers[sid]; return !!(s && !s.order_paused && (s.order_email || s.order_wa_phone)); }
 function how(sid) { var s = suppliers[sid] || {}; var c = s.order_contact || s.name || 'הספק'; return s.order_wa_phone && s.order_email ? 'וואטסאפ ומייל ל' + c : s.order_wa_phone ? 'וואטסאפ ל' + c : 'מייל ל' + c; }
 
-/* ---------- light / dark ---------- */
+/* ---------- light only (23.11.2026, Aviv: as few buttons as possible): the display-mode button was removed ---------- */
 var SVG = function (d) { return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>'; };
-var THEMES = ['auto', 'light', 'dark'], TICON = { auto: SVG('<circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>'), light: SVG('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'), dark: SVG('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>') }, TNAME = { auto: 'אוטומטי לפי המכשיר', light: 'מואר', dark: 'חשוך' };
-var theme = 'auto'; try { theme = localStorage.getItem('ziso-theme') || 'auto'; } catch (e) { }
-function drawTheme() {
-  if (theme === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', theme);
-  $('theme').innerHTML = TICON[theme]; $('theme').setAttribute('aria-label', 'מצב תצוגה: ' + TNAME[theme] + '. לחיצה מחליפה'); $('theme').title = 'מצב תצוגה: ' + TNAME[theme];
-  var dark = theme === 'dark';
-  document.querySelector('meta[name=theme-color]').setAttribute('content', dark ? '#0f1113' : '#eceff0');
-}
-$('theme').addEventListener('click', function () { theme = THEMES[(THEMES.indexOf(theme) + 1) % 3]; try { localStorage.setItem('ziso-theme', theme); } catch (e) { } drawTheme(); });
-drawTheme();
+document.documentElement.setAttribute('data-theme', 'light');
+try { localStorage.removeItem('ziso-theme'); } catch (e) { }
 
 /* hide cost and profit when the customer looks at the screen */
 /* cost and profit are hidden by default; a small faint eye shows them to staff only (never on the customer's page) */
 var shy = true; try { shy = localStorage.getItem('ziso-order-cost') !== 'show'; } catch (e) { }
-var EYE = SVG('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'), EYE_OFF = SVG('<path d="M2 12s3.6-7 10-7c2 0 3.8.7 5.2 1.6M22 12s-3.6 7-10 7c-2 0-3.8-.7-5.2-1.6"/><path d="M3 3l18 18"/>');
-function drawShy() { document.body.classList.toggle('shy', shy); $('shy').setAttribute('aria-pressed', String(!shy)); $('shy').innerHTML = shy ? EYE_OFF : EYE; $('shy').setAttribute('aria-label', shy ? 'הצגת עלות ורווח' : 'הסתרת עלות ורווח'); $('shy').title = shy ? 'עלות מוסתרת' : 'עלות מוצגת'; }
-$('shy').addEventListener('click', function () { shy = !shy; try { localStorage.setItem('ziso-order-cost', shy ? 'hide' : 'show'); } catch (e) { } drawShy(); });
+/* No button for it any more (Aviv 23.11: fewest buttons). Cost and profit stay hidden; staff who need them press and hold
+   the page title "הזמנה" for one second (or Alt+C on a keyboard) to show or hide them. Never on the main-PC station. */
+var STATION_ON = false; try { STATION_ON = localStorage.getItem('zisoStation') === '1'; } catch (e) { }
+if (STATION_ON) shy = true;
+function drawShy() { document.body.classList.toggle('shy', shy); }
+function toggleShy() { if (STATION_ON) return; shy = !shy; try { localStorage.setItem('ziso-order-cost', shy ? 'hide' : 'show'); } catch (e) { } drawShy(); if (deal) drawAdv(); }
+(function () {
+  var t = null, el = $('title');
+  el.addEventListener('pointerdown', function () { t = setTimeout(function () { t = null; toggleShy(); if (navigator.vibrate) navigator.vibrate(30); }, 1000); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { el.addEventListener(ev, function () { if (t) { clearTimeout(t); t = null; } }); });
+  document.addEventListener('keydown', function (e) { if (e.altKey && (e.key === 'c' || e.key === 'C' || e.key === 'ב')) { e.preventDefault(); toggleShy(); } });
+})();
 drawShy();
 
 /* ---------- categories ---------- */
@@ -1404,7 +1403,7 @@ function drawAdv() {
     (adv.won ? '<p class="mute small cost" style="margin:8px 0 0">' + (adv.won === 1 ? 'התקבלה הצעה אחת' : 'התקבלו ' + adv.won + ' הצעות') + ' בהזמנה הזו' + (adv.gain >= 1 ? ' · תוספת רווח ' + money(Math.round(adv.gain)) : '') + '</p>' : '');
   loadPics($('advBody'));
 }
-$('shy').addEventListener('click', function () { if (deal) drawAdv(); });
+
 $('advHd').addEventListener('click', function () { if (!deal || wideMq.matches || $('advTog').classList.contains('hidden')) return; adv.open = !adv.open; drawAdv(); });
 $('advBody').addEventListener('click', function (e) {
   var b = e.target.closest('[data-do]'); if (!b || !deal) return;
