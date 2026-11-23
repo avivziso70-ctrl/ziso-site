@@ -316,6 +316,54 @@ table.t thead th{position:sticky;top:0;background:var(--tile-2);border-top:0;col
   .mband h1{font-size:44px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none !important}.sk{animation:none}}
+
+/* ---------- the office station (main PC, opened as home.html?wall=1): one home for every system ----------
+   A strip that says who waits, big quick actions, "יש לקוחות" to cover the screen, a calm screensaver. No sums of money. */
+.wbar,.quick,.cvbtn,.clock{display:none}
+body.station .wbar{display:flex;align-items:center;justify-content:center;gap:14px;width:100%;min-height:58px;padding:8px 16px;border:0;font:inherit;font-size:21px;font-weight:700;cursor:pointer;background:var(--green-soft);color:var(--green);text-align:center}
+.wbar small{font-size:16px;font-weight:600;opacity:.9}
+.wbar .ic{width:26px;height:26px}
+body.station .wbar.wait{background:var(--amber-soft);color:var(--deep)}
+body.station .wbar.late{background:var(--red);color:#fff;animation:wblink 1.2s steps(2,jump-none) infinite}
+@keyframes wblink{50%{background:#6e1f13}}
+body.station .cvbtn{display:inline-flex;margin-inline-start:auto}
+body.station .clock{display:block;font-family:var(--display);font-size:30px;line-height:1;color:var(--band-ink);font-variant-numeric:tabular-nums}
+body.station .brand{gap:14px}
+body.station .hello h1{font-size:32px}
+body.station .quick{display:block;margin:0 0 28px}
+.qgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.qa{display:flex;align-items:center;gap:12px;min-height:84px;padding:12px 14px;border-radius:var(--r);border:1px solid var(--grout);background:var(--tile);font-weight:700;font-size:19px;line-height:1.2;transition:background .16s,transform .1s;text-align:start;cursor:pointer}
+.qa:hover{background:var(--tile-2)}
+.qa:active{transform:scale(.98);background:#eaeeef}
+.qa:focus-visible{outline-offset:2px;border-radius:var(--r)}
+.qa .glaze{width:52px;height:52px}
+.qa.ask2{background:var(--band);border-color:var(--band);color:var(--band-ink)}
+.qa.ask2 .glaze{background:var(--brass);color:var(--brass-ink)}
+.qa.ask2:hover{background:var(--band-2)}
+body.station .acctb{display:none}
+/* cover: customers in the room ("יש לקוחות", hold a second to come back) or the screensaver after 5 quiet minutes (a touch brings it back) */
+#cover{position:fixed;inset:0;z-index:90;background:var(--band);color:var(--band-ink);display:grid;place-items:center;text-align:center;padding:24px;user-select:none;-webkit-user-select:none;touch-action:none}
+#cover .lg{display:flex;align-items:center;justify-content:center;gap:16px}
+#cover .lg img{width:72px;height:72px;border-radius:50%;object-fit:cover}
+#cover .lg b{font-family:var(--display);font-weight:400;font-size:clamp(44px,6vw,80px);letter-spacing:.05em;color:var(--brass)}
+#cover .ck{font-family:var(--display);font-size:clamp(34px,4.5vw,64px);font-variant-numeric:tabular-nums;margin-top:10px}
+#cover .dy{color:var(--band-mute);font-size:19px;margin-top:4px}
+#cover .feed{margin:40px auto 0;max-width:min(900px,90vw);min-height:140px;transition:opacity .6s}
+#cover .feed.fade{opacity:0}
+#cover .feed .d{color:var(--brass);font-weight:700;font-size:clamp(16px,1.6vw,21px)}
+#cover .feed .l{font-size:clamp(22px,2.5vw,34px);line-height:1.35;margin-top:8px}
+#cover .cw{margin-top:22px;font-size:clamp(18px,1.8vw,24px);font-weight:700;color:var(--brass)}
+#cover .hint{margin-top:34px;color:var(--band-mute);font-size:16px}
+#cover .ring{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 0 0 var(--brass);transition:box-shadow 1s linear}
+#cover.holding .ring{box-shadow:inset 0 0 0 12px var(--brass)}
+@media (min-width:700px){.qgrid{grid-template-columns:repeat(3,1fr)}}
+@media (min-width:1024px){
+  body.station .band{padding-bottom:22px}
+  body.station main.wrap{padding-top:26px}
+  .qgrid{grid-template-columns:repeat(6,1fr)}
+  .qa{flex-direction:column;align-items:flex-start;justify-content:space-between;min-height:118px;padding:14px 16px}
+}
+@media (prefers-reduced-motion:reduce){body.station .wbar.late{animation:none}#cover .feed{transition:none}}
 </style>
 </head>
 <body>
@@ -338,17 +386,22 @@ table.t thead th{position:sticky;top:0;background:var(--tile-2);border-top:0;col
 <symbol id="i-inv" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></symbol>
 <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/></symbol>
 <symbol id="i-ledger" viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M5 9h14M10.5 9v11M14 13h2M14 16.5h2"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.5 5 6v6c0 4.2 3 7.4 7 8.5 4-1.1 7-4.3 7-8.5V6z"/><path d="M9 12.5l2 2 4-4"/></symbol>
 <symbol id="i-bank" viewBox="0 0 24 24"><path d="M3 9.5 12 4l9 5.5M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/></symbol>
 </defs></svg>
 
 <a class="skip" href="#main">דילוג לתוכן</a>
 <div class="sr" id="live" role="status" aria-live="polite"></div>
 
+<button class="wbar" type="button" id="wbar" aria-live="polite"></button>
 <header class="band">
   <div class="wrap">
     <div class="brand">
       <img src="../img/logo.jpg" alt="">
       <b>זיסו</b>
+      <span class="clock" id="clock" aria-hidden="true"></span>
+      <button class="pill cvbtn" type="button" id="cvBtn"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>יש לקוחות · להסתיר</button>
     </div>
       <div class="mband" id="mband">
         <div class="mnav">
@@ -388,6 +441,18 @@ table.t thead th{position:sticky;top:0;background:var(--tile-2);border-top:0;col
     <section id="results" class="hidden" aria-live="polite">
       <div class="h"><h2>תוצאות</h2><span class="n" id="resN"></span></div>
       <div class="slab" id="resList"></div>
+    </section>
+
+    <section class="quick" id="quick" aria-labelledby="hQuick">
+      <div class="h"><h2 id="hQuick">פעולות מהירות</h2></div>
+      <nav class="qgrid" aria-labelledby="hQuick">
+        <a class="qa" href="kupa.html"><span class="glaze" style="--g:var(--g-kupa)"><svg class="ic" aria-hidden="true"><use href="#i-cash"/></svg></span>קופה</a>
+        <a class="qa" href="order.html?new=1"><span class="glaze" style="--g:var(--g-deal)"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></span>הזמנה חדשה</a>
+        <a class="qa" href="prices.html"><span class="glaze" style="--g:var(--g-price)"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg></span>מחירון ספקים</a>
+        <a class="qa" href="receive.html"><span class="glaze" style="--g:var(--g-recv)"><svg class="ic" aria-hidden="true"><use href="#i-box"/></svg></span>הגיעה סחורה</a>
+        <a class="qa" href="index.html?wall=1#chats"><span class="glaze" style="--g:var(--g-crm)"><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg></span>וואטסאפ ולקוחות</a>
+        <a class="qa ask2" href="index.html?wall=1#ask"><span class="glaze"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg></span>לשאול את קלוד</a>
+      </nav>
     </section>
 
     <div class="cols" id="cols">
@@ -488,6 +553,8 @@ table.t thead th{position:sticky;top:0;background:var(--tile-2);border-top:0;col
   </div>
 </main>
 
+<div id="cover" class="hidden" role="dialog" aria-modal="true" aria-label="מסך מכוסה" tabindex="-1"><div><div class="lg"><img src="../img/logo.jpg" alt=""><b>זיסו קרמיקה</b></div><div class="ck" id="cvClock"></div><div class="dy" id="cvDay"></div><div class="feed" id="cvFeed" aria-live="polite"></div><div class="cw" id="cvWait"></div><div class="hint" id="cvHint"></div></div><span class="ring"></span></div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
 <script src="account.js?v=1911"></script>
 <script>
@@ -499,6 +566,14 @@ var $ = function (id) { return document.getElementById(id); };
 var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
 var ic = function (n) { return '<svg class="ic" aria-hidden="true"><use href="#i-' + n + '"/></svg>'; };
 var me = null, mine = null, D = null, rec = 'deals', timer = null;
+/* The main office PC (DESKTOP-93RUU4G) opens this page as home.html?wall=1 in its own Chrome window (task ZisoCrmWall).
+   That window has its own profile, so the flag below marks the whole profile as "the station": every page opened from it
+   keeps money covered and comes back here after 5 quiet minutes (station.js). ?wall=0 removes the flag. */
+var STATION = /[?&]wall=1/.test(location.search);
+try { if (/[?&]wall=0/.test(location.search)) localStorage.removeItem('zisoStation'); else if (STATION) localStorage.setItem('zisoStation', '1'); else STATION = localStorage.getItem('zisoStation') === '1'; } catch (e) {}
+var SELF = document.currentScript ? document.currentScript.textContent : '';
+if (STATION) document.body.classList.add('station');
+var NOMONEY = { money: 1, acct: 1, books: 1 };
 
 /* every screen of the system: one name, one glaze colour, one line that says what happens there */
 var DOORS = {
@@ -614,7 +689,7 @@ function liveLine(k) {
   return [DOORS[k].ln, 0];
 }
 function drawDoors() {
-  var r = role(), set = SETS[r], rest = REST[r], n = set.length;
+  var r = role(), keep = function (k) { return !STATION || !NOMONEY[k]; }, set = SETS[r].filter(keep), rest = REST[r].filter(keep), n = set.length;
   $('doors').dataset.odd = n % 2 ? '1' : '0'; $('doors').dataset.r3 = String(n % 3);
   $('doors').innerHTML = set.map(function (k) {
     var d = DOORS[k], l = liveLine(k);
@@ -644,8 +719,9 @@ function draw() {
   $('greet').textContent = greet() + (name ? ', ' + name : ''); $('day').textContent = dayLine();
   drawNeed(); drawDoors(); drawRecent();
   $('upd').textContent = 'מתעדכן לבד כל דקה. עודכן ב-' + timeOf(D.at);
-  $('as').classList.toggle('hidden', !isOwner());
-  if (isOwner()) $('asSeg').innerHTML = AS.map(function (a) { return '<button type="button" data-as="' + a[0] + '" aria-pressed="' + (a[0] === r) + '">' + a[1] + '</button>'; }).join('');
+  $('as').classList.toggle('hidden', !isOwner() || STATION);
+  if (STATION) stationDraw();
+  if (isOwner() && !STATION) $('asSeg').innerHTML = AS.map(function (a) { return '<button type="button" data-as="' + a[0] + '" aria-pressed="' + (a[0] === r) + '">' + a[1] + '</button>'; }).join('');
 }
 $('asSeg').addEventListener('click', function (e) { var b = e.target.closest('[data-as]'); if (!b) return; try { localStorage.setItem('homeAs', b.dataset.as); } catch (x) {} load().then(function () { scrollTo({ top: 0 }); $('live').textContent = 'מוצג הבית של ' + b.textContent; }); });
 
@@ -666,7 +742,7 @@ function search() {
     if (seq !== qSeq) return;
     var seen = {}, cs = (x[0] || []).filter(function (c) { if (seen[c.tail9]) return false; seen[c.tail9] = 1; return true; }).slice(0, 8), ds = x[1] || [], af = x[2] || {};
     var has = {}; cs.forEach(function (c) { if (c.cust_no) has[c.cust_no] = 1; });
-    var ac = (af.customers || []).filter(function (c) { return !has[c.id]; }).slice(0, 4), sp = af.suppliers || [], n = cs.length + ds.length + ac.length + sp.length;
+    var ac = STATION ? [] : (af.customers || []).filter(function (c) { return !has[c.id]; }).slice(0, 4), sp = STATION ? [] : af.suppliers || [], n = cs.length + ds.length + ac.length + sp.length;
     $('cols').classList.add('hidden'); $('results').classList.remove('hidden');
     $('resN').textContent = '';
     $('resList').innerHTML = (ds.map(dealRow).join('') + cs.map(function (c) {
@@ -704,7 +780,7 @@ function mDays() { var a = mAll(); return mRange ? a.slice(0, mRange + 1) : a; }
 function limit() { return Math.abs(Number(M.credit_limit) || 0); }
 
 function hashAcct() { var m = /^#acct\/(c|s)\/([^\/]+)$/.exec(location.hash); return m ? [m[1] === 's' ? 'supplier' : 'customer', decodeURIComponent(m[2])] : null; }
-function wantView() { return location.hash === '#money' ? 'money' : (location.hash === '#accounts' || hashAcct()) ? 'accounts' : 'home'; }
+function wantView() { if (STATION) return 'home'; return location.hash === '#money' ? 'money' : (location.hash === '#accounts' || hashAcct()) ? 'accounts' : 'home'; }
 var VIEW = { home: ['זיסו · בית', ''], money: ['זיסו · כסף ובנק', 'כסף ובנק'], accounts: ['זיסו · כרטיסי חשבון', 'כרטיסי חשבון'] };
 function route() {
   if (!mine) return;
@@ -1002,9 +1078,104 @@ function start(user) {
     $('greet').textContent = greet() + ', ' + (mine.name || ''); $('day').textContent = dayLine();
     load(); route();
     if (timer) clearInterval(timer);
-    timer = setInterval(function () { if (document.visibilityState === 'visible' && $('q').value.trim().length < 2) load(); }, 60000);
+    timer = setInterval(function () { if ((STATION || document.visibilityState === 'visible') && $('q').value.trim().length < 2) load(); }, STATION ? 30000 : 60000);
+    if (STATION) feedLoad();
   });
 }
+/* ---------- the station: who waits, the quiet alarm, the cover and the screensaver ---------- */
+var wCtx = null, wBeepAt = 0, wTop = null, cvMode = '', cvHold = null, feed = [], feedI = 0, lastAct = Date.now(), reloading = false;
+function openNow() {
+  var p = {}; new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jerusalem', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date()).forEach(function (x) { p[x.type] = x.value; });
+  var m = Number(p.hour) * 60 + Number(p.minute);
+  return p.weekday === 'Sat' ? false : p.weekday === 'Fri' ? m >= 480 && m < 810 : m >= 480 && m < 1080;
+}
+/* three short beeps once a minute, only when a customer has waited 15 working minutes, only in opening hours, never under "יש לקוחות" */
+function beep() {
+  try {
+    wCtx = wCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (wCtx.state === 'suspended') wCtx.resume();
+    [0, 0.28, 0.56].forEach(function (d) {
+      var o = wCtx.createOscillator(), g = wCtx.createGain(), t = wCtx.currentTime + d;
+      o.frequency.value = 880; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.35, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+      o.connect(g); g.connect(wCtx.destination); o.start(t); o.stop(t + 0.22);
+    });
+  } catch (e) {}
+}
+function bizWord(m) { m = Math.max(1, Math.round(m)); if (m < 60) return m === 1 ? 'דקה' : m + ' דקות'; var h = Math.round(m / 60); return h === 1 ? 'שעה' : h === 2 ? 'שעתיים' : h + ' שעות'; }
+function stationDraw() {
+  if (!STATION || !D) return;
+  var w = D.convs.filter(needsHuman).sort(function (a, b) { return Number(b.wait_biz_min || 0) - Number(a.wait_biz_min || 0); });
+  var max = w.length ? Number(w[0].wait_biz_min || 0) : 0, late = w.filter(function (c) { return Number(c.wait_biz_min || 0) >= 15; }).length, bar = $('wbar');
+  wTop = w.length ? w[0].phone : null;
+  bar.className = 'wbar' + (late ? ' late' : w.length ? ' wait' : '');
+  bar.innerHTML = !w.length ? ic('check') + '<span>אין לקוחות שמחכים לתשובה</span>' :
+    '<span>' + (w.length === 1 ? 'לקוח אחד מחכה' : w.length + ' לקוחות מחכים') + ' לתשובה</span><small>הכי הרבה: ' + esc(bizWord(max)) + (late ? ' · ' + cnt(late, 'אחד מעל 15 דקות', 'מעל 15 דקות') : '') + ' · לגעת כדי לענות</small>';
+  if (late && openNow() && cvMode !== 'manual' && Date.now() - wBeepAt > 58000) { wBeepAt = Date.now(); beep(); }
+  $('cvWait').textContent = cvMode === 'idle' && w.length ? (w.length === 1 ? 'לקוח אחד מחכה לתשובה' : w.length + ' לקוחות מחכים לתשובה') : '';
+}
+function tickClock() {
+  var t = new Date().toLocaleTimeString('he-IL', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit' });
+  $('clock').textContent = t; $('cvClock').textContent = t; $('cvDay').textContent = dayLine();
+}
+function coverOn() { return !$('cover').classList.contains('hidden'); }
+/* manual = "יש לקוחות" (silent, hold a second to come back); idle = screensaver after 5 quiet minutes (a touch brings it back) */
+function coverSet(on, mode) {
+  cvMode = on ? (mode || 'manual') : '';
+  $('cover').classList.toggle('hidden', !on);
+  $('cvHint').textContent = cvMode === 'idle' ? 'לחזרה: לגעת במסך' : 'להחזרת המסך: ללחוץ ולהחזיק שנייה';
+  try { localStorage.setItem('crmCover', on && cvMode === 'manual' ? '1' : ''); } catch (e) {}
+  if (on) { tickClock(); feedShow(); stationDraw(); $('cover').focus(); }
+  else { lastAct = Date.now(); if (D) load(); $('cvBtn').focus(); }
+}
+/* screensaver lines: one customer-safe line per department, written by the agents into public.agent_feed */
+function feedLoad() { soft(sb.from('agent_feed').select('dept,line,updated_at,ord').order('ord')).then(function (x) { if (x) feed = x; }); }
+function feedShow() {
+  var el = $('cvFeed'); if (!feed.length) { el.innerHTML = ''; return; }
+  el.classList.add('fade');
+  setTimeout(function () {
+    var f = feed[feedI++ % feed.length];
+    el.innerHTML = '<div class="d">' + esc(f.dept) + '</div><div class="l">' + esc(f.line) + '</div>';
+    el.classList.remove('fade');
+  }, 600);
+}
+/* the station updates itself: while a cover is on and nobody touched the screen for a minute, it looks for a newer page and loads it */
+function selfCheck() {
+  if (!SELF || !coverOn() || Date.now() - lastAct < 60000) return;
+  fetch(location.pathname + '?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
+    if (t.length < 30000 || t.indexOf('</html>') < 0 || t.indexOf(SELF) >= 0 || !coverOn()) return;
+    var sig = t.length + ':' + t.slice(-4000).split('').reduce(function (a, c) { return (a * 31 + c.charCodeAt(0)) | 0; }, 7);
+    try { if (sessionStorage.getItem('homeSelfSig') === sig) return; sessionStorage.setItem('homeSelfSig', sig); if (cvMode === 'idle') sessionStorage.setItem('homeIdle', '1'); } catch (e) { return; }
+    reloading = true; location.reload();
+  }).catch(function () {});
+}
+if (STATION) {
+  var cv = $('cover');
+  cv.addEventListener('pointerdown', function (e) { e.preventDefault(); if (cvMode === 'idle') return; cv.classList.add('holding'); cvHold = setTimeout(function () { cv.classList.remove('holding'); coverSet(false); }, 1000); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { cv.addEventListener(ev, function () { cv.classList.remove('holding'); clearTimeout(cvHold); }); });
+  cv.addEventListener('click', function () { if (cvMode === 'idle') coverSet(false); });
+  cv.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') { e.preventDefault(); coverSet(false); } });
+  $('cvBtn').addEventListener('click', function () { coverSet(true); });
+  $('wbar').addEventListener('click', function () { try { wCtx = wCtx || new (window.AudioContext || window.webkitAudioContext)(); wCtx.resume(); } catch (e) {} location.href = 'index.html?wall=1' + (wTop ? '#chat/' + encodeURIComponent(wTop) : '#chats'); });
+  ['pointerdown', 'keydown', 'wheel'].forEach(function (ev) { document.addEventListener(ev, function () { lastAct = Date.now(); }, { passive: true }); });
+  /* 5 quiet minutes: the search is cleared, the page goes back to the top and the screensaver comes on */
+  setInterval(function () {
+    if (!me || coverOn() || Date.now() - lastAct < 5 * 60000) return;
+    if ($('q').value) { $('q').value = ''; search(); }
+    scrollTo({ top: 0 }); coverSet(true, 'idle');
+  }, 30000);
+  setInterval(function () { tickClock(); if (coverOn()) feedShow(); }, 15000);
+  setInterval(stationDraw, 15000);
+  setInterval(feedLoad, 10 * 60000);
+  setInterval(selfCheck, 2 * 60000);
+  /* touch screen: a long press must not open the browser menu */
+  document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  tickClock();
+  var idleBoot = /[?&]idle=1/.test(location.search);
+  try { if (sessionStorage.getItem('homeIdle')) { sessionStorage.removeItem('homeIdle'); idleBoot = true; } } catch (e) {}
+  if (idleBoot) history.replaceState(null, '', location.pathname + '?wall=1');
+  try { if (localStorage.getItem('crmCover')) coverSet(true); else if (idleBoot) coverSet(true, 'idle'); } catch (e) { if (idleBoot) coverSet(true, 'idle'); }
+}
+
 sb.auth.onAuthStateChange(function (_e, s) {
   if (s && s.user) { if (!me || me.email !== (s.user.email || '').toLowerCase()) start(s.user); }
   else signedOut();
