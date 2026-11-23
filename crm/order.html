@@ -185,7 +185,7 @@ body.cx #newRow,body.cx #adv,body.cx #payBtn,body.cx #oStep1,body.cx #cxRow,body
   <h1 class="grow" id="title">הזמנה</h1>
   <button class="btn small icon" id="theme" type="button" aria-label="מצב תצוגה"></button>
   <button class="btn small icon ghost peek" id="shy" type="button" aria-pressed="true"></button>
-  <a class="btn small" href="home.html">בית</a>
+  <span data-zn><a class="btn small" href="home.html">בית</a></span>
 </div></header>
 <main>
   <p id="needLogin" class="panel hidden" style="padding:14px">צריך להתחבר קודם ב<a href="home.html">מסך הבית</a>.</p>
@@ -1534,5 +1534,6 @@ sb.auth.getSession().then(function (r) {
 })();
 </script>
 <script src="station.js?v=2311"></script>
+<script src="nav.js?v=2311"></script>
 </body>
 </html>

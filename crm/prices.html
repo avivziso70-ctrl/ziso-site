@@ -102,7 +102,7 @@ ul.pick{list-style:none;margin:6px 0 0;padding:0;border:1px solid var(--line);bo
 </head>
 <body>
 <header>
-  <div class="row"><h1 class="grow">מחירון ספקים</h1><a class="btn small" href="home.html">בית</a></div>
+  <div class="row"><h1 class="grow">מחירון ספקים</h1><span data-zn><a class="btn small" href="home.html">בית</a></span></div>
   <nav class="seg" aria-label="מה להציג">
     <button data-v="search" aria-pressed="true">חיפוש מחיר</button>
     <button data-v="pending" aria-pressed="false">לאישור <span id="pendN"></span></button>
@@ -794,5 +794,6 @@ sb.auth.getSession().then(function (r) {
 })();
 </script>
 <script src="station.js?v=2311"></script>
+<script src="nav.js?v=2311"></script>
 </body>
 </html>

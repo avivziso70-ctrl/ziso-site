@@ -400,6 +400,7 @@ body.station .acctb{display:none}
     <div class="brand">
       <img src="../img/logo.jpg" alt="">
       <b>זיסו</b>
+      <span data-zn data-zn-menu-only></span>
       <span class="clock" id="clock" aria-hidden="true"></span>
       <button class="pill cvbtn" type="button" id="cvBtn"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg>יש לקוחות · להסתיר</button>
     </div>
@@ -1062,6 +1063,7 @@ $('who').addEventListener('click', function () {
   $('who').dataset.sure = '1'; $('who').textContent = 'ללחוץ שוב כדי לצאת'; setTimeout(function () { delete $('who').dataset.sure; $('who').textContent = 'יציאה מהחשבון'; }, 4000);
 });
 function signedOut() {
+  try { localStorage.removeItem('zisoWho'); } catch (e) {}
   me = null; mine = null; D = null; M = null; if (timer) clearInterval(timer);
   cur = 'home'; document.body.dataset.view = 'home'; $('homeView').classList.remove('hidden'); $('money').classList.add('hidden'); $('accounts').classList.add('hidden'); A = null; if (window.ZisoAccount) ZisoAccount.close();
   $('app').classList.add('hidden'); $('find').classList.add('hidden'); $('login').classList.remove('hidden');
@@ -1073,6 +1075,9 @@ function start(user) {
   if (!(me.user_metadata && me.user_metadata.pw_changed_at)) { location.replace('index.html#chats'); return; }
   soft(sb.from('crm_staff').select('email,name,role')).then(function (st) {
     mine = (st || []).filter(function (x) { return String(x.email).toLowerCase() === me.email; })[0];
+    /* the shared menu (nav.js) shows each person their doors; money stays for owner and Moshe, books for the owner */
+    try { if (mine) localStorage.setItem('zisoWho', mine.role === 'owner' ? 'owner' : role()); else localStorage.removeItem('zisoWho'); } catch (e) {}
+    if (window.zisoNav) window.zisoNav.refresh();
     if (!mine) { signedOut(); $('loginErr').textContent = 'החשבון הזה לא מורשה למסך הזה. פנו לאביב.'; sb.auth.signOut(); return; }
     $('login').classList.add('hidden'); $('app').classList.remove('hidden'); $('find').classList.remove('hidden');
     $('greet').textContent = greet() + ', ' + (mine.name || ''); $('day').textContent = dayLine();
@@ -1187,5 +1192,6 @@ document.addEventListener('visibilitychange', function () {
 });
 })();
 </script>
+<script src="nav.js?v=2311"></script>
 </body>
 </html>
