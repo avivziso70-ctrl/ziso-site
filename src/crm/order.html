@@ -1525,10 +1525,14 @@ sb.auth.getSession().then(function (r) {
     sb.from('crm_staff').select('email,name').ilike('email', me.email).maybeSingle().then(function (x) { me.name = (x.data || {}).name || me.email; })
   ]).then(function () {
     var id = Number(new URLSearchParams(location.search).get('d'));
-    if (id) openDeal(id); else showList();
+    if (id) openDeal(id);
+    /* order.html?new=1 (the "הזמנה חדשה" quick action on the home screen) opens a new order right away */
+    else if (/[?&]new=1/.test(location.search)) { showList(); history.replaceState(null, '', 'order.html'); $('newDeal').click(); }
+    else showList();
   });
 });
 })();
 </script>
+<script src="station.js?v=2311"></script>
 </body>
 </html>
