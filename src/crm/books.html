@@ -168,7 +168,7 @@ var SCREENS = [
   ['overview', 'סקירה וסגירת חודש'], ['find', 'חיפוש כללי'], ['bank', 'התאמת בנק'], ['match', 'בנק מול מסמכים'], ['cards', 'התאמת כרטיסי אשראי'], ['cardtx', 'סליקה: עסקה מול קבלה'], null,
   ['customers', 'לקוחות'], ['collect', 'גבייה'], ['suppliers', 'ספקים'], ['payplan', 'תשלומים לספקים'], ['cheques', 'שיקים לפירעון'], ['docs', 'חשבוניות וקבלות'], ['supinv', 'חשבוניות ספק'], null,
   ['vat', 'מע"מ ומוסדות'], ['owners', 'חו"ז בעלים'], ['missing', 'תנועות שדורשות מסמך'], null,
-  ['journal', 'יומן ומאזן בוחן'], ['accounts', 'אינדקס חשבונות'], null, ['sandbox', 'תרגול (לא משפיע על הספרים)'], ['readers', 'הרשאות ורישום גישה', true]
+  ['ledger', 'כרטסת מיומן פריוריטי'], ['journal', 'יומן ומאזן בוחן'], ['accounts', 'אינדקס חשבונות'], null, ['sandbox', 'תרגול (לא משפיע על הספרים)'], ['readers', 'הרשאות ורישום גישה', true]
 ];
 
 /* ---------- table helper ---------- */
@@ -397,6 +397,46 @@ V.suppliers = function (sub) {
       '<div class="bar"><label class="f">חיפוש<input type="search" id="q" placeholder="שם ספק או מספר כרטיס"></label><button class="btn small" type="button" id="x">הורדה לאקסל</button></div><div id="t"></div>';
     var rows, view = function () { rows = filt(d.rows, $('q').value, ['name', 'sup']); $('t').innerHTML = table(cols, rows, { click: 1 }); onRow(rows, function (r) { show('suppliers', r); }); };
     view(); $('q').oninput = view; $('x').onclick = function () { csv('suppliers', cols, rows); };
+  });
+};
+
+/* ---------- ledger from the Priority journal 2026 (history data, loaded nightly) ---------- */
+function ledCover(c) {
+  c = c || {}; if (!c.lines) return '<div class="note">היומן מפריוריטי עוד לא נטען.</div>';
+  return '<div class="note">נטענו עד עכשיו ' + num(c.entries) + ' פקודות יומן (' + num(c.lines) + ' שורות), מתאריך ' + day(c.from) + ' עד ' + day(c.to) + '. שאר השנה ויתרות הפתיחה נטענות בלילות הקרובים, ולכן היתרות כאן חלקיות עד שהטעינה תסתיים. עודכן ' + esc(when(c.loaded_at)) + '.</div>';
+}
+function ledEntry(no) {
+  var dlg = $('dlg'); dlg.innerHTML = '<div class="empty" role="status">טוען…</div>'; if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+  var close = function () { dlg.close ? dlg.close() : dlg.removeAttribute('open'); };
+  sb.rpc('books_ledger', { p_entry: no }).then(function (r) {
+    if (r.error) throw r.error; var L = r.data.lines || [], f = L[0] || {};
+    dlg.innerHTML = '<div class="bar" style="justify-content:space-between"><h3 style="margin:0">פקודת יומן <span dir="ltr">' + esc(no) + '</span></h3><button class="btn small" type="button" id="dX">סגירה</button></div>' +
+      '<p class="mute small">' + day(f.bal_date) + (f.type_name ? ' · ' + esc(f.type_name) : '') + (f.ref1 ? ' · <span dir="ltr">' + esc(f.ref1) + '</span>' : '') + '</p>' +
+      table([{ k: 'account', t: 'חשבון', f: function (x) { return x.account === 'PAYROLL' ? '' : esc(x.account); } }, { k: 'account_name', t: 'שם החשבון' }, { k: 'details', t: 'פרטים' }, { k: 'debit', t: 'חובה', f: function (x) { return Number(x.debit) ? money(x.debit) : ''; }, n: 1 }, { k: 'credit', t: 'זכות', f: function (x) { return Number(x.credit) ? money(x.credit) : ''; }, n: 1 }], L);
+    $('dX').onclick = close; $('dX').focus();
+  }).catch(function () { dlg.innerHTML = '<div class="note" role="alert">הפקודה לא נטענה.</div><button class="btn small" type="button" id="dX">סגירה</button>'; $('dX').onclick = close; });
+}
+V.ledger = function (sub) {
+  if (sub) return sb.rpc('books_ledger', { p_account: sub.account }).then(function (r) {
+    if (r.error) throw r.error; var d = r.data, b = 0, rows = (d.rows || []).map(function (x) { b += Number(x.debit || 0) - Number(x.credit || 0); x.bal = b; return x; });
+    var cols = [{ k: 'bal_date', t: 'תאריך', f: 'date' }, { k: 'entry_no', t: 'פקודה', f: function (x) { return '<button class="lnk" type="button" data-je="' + esc(x.entry_no) + '">' + esc(x.entry_no) + '</button>'; }, raw: function (x) { return x.entry_no; } }, { k: 'type_name', t: 'סוג תנועה' }, { k: 'ref1', t: 'אסמכתא' }, { k: 'details', t: 'פרטים' },
+      { k: 'contra', t: 'חשבון נגדי', f: function (x) { return x.contra === 'PAYROLL' ? 'שכר ועובדים' : esc(x.contra); }, raw: function (x) { return x.contra === 'PAYROLL' ? 'שכר ועובדים' : x.contra; } }, { k: 'debit', t: 'חובה', f: function (x) { return Number(x.debit) ? money(x.debit) : ''; }, raw: function (x) { return x.debit; }, n: 1 }, { k: 'credit', t: 'זכות', f: function (x) { return Number(x.credit) ? money(x.credit) : ''; }, raw: function (x) { return x.credit; }, n: 1 }, { k: 'bal', t: 'יתרה', f: 'money', n: 1 }];
+    var dt = rows.reduce(function (a, x) { return a + Number(x.debit || 0); }, 0), ct = rows.reduce(function (a, x) { return a + Number(x.credit || 0); }, 0);
+    main.innerHTML = '<button class="btn small back" type="button" id="bk">חזרה לרשימת החשבונות</button><h2>כרטסת · ' + esc(d.name || sub.name || '') + (d.account === 'PAYROLL' ? '' : ' · <span dir="ltr">' + esc(d.account) + '</span>') + '</h2>' +
+      '<p class="lead">כל התנועות בחשבון כפי שנרשמו ביומן של פריוריטי, עם יתרה מצטברת. יתרה בפלוס היא יתרת חובה. לחיצה על מספר פקודה פותחת את הפקודה המלאה.' + (d.account === 'PAYROLL' ? ' חשבונות השכר והעובדים מוצגים כסכום אחד לכל פקודה, בלי פירוט.' : '') + '</p>' + ledCover(d.coverage) +
+      '<div class="tiles">' + tile('סה"כ חובה', money(dt), num(rows.length) + ' תנועות') + tile('סה"כ זכות', money(ct)) + tile('יתרה', money(dt - ct), dt - ct >= 0 ? 'יתרת חובה' : 'יתרת זכות') + '</div>' +
+      '<div class="bar"><label class="f">חיפוש<input type="search" id="q" placeholder="אסמכתא, פרטים או סכום"></label><button class="btn small" type="button" id="x">הורדה לאקסל</button></div><div id="t"></div>';
+    var view, cur2, draw = function () { cur2 = filt(rows, $('q').value, ['ref1', 'details', 'entry_no', 'type_name', 'debit', 'credit']); $('t').innerHTML = table(cols, cur2, { empty: 'אין תנועות בחשבון' }); main.querySelectorAll('[data-je]').forEach(function (b2) { b2.onclick = function () { ledEntry(b2.dataset.je); }; }); };
+    draw(); $('q').oninput = draw; $('x').onclick = function () { csv('ledger-' + d.account, cols, cur2); }; $('bk').onclick = function () { show('ledger'); };
+  });
+  return sb.rpc('books_ledger').then(function (r) {
+    if (r.error) throw r.error; var d = r.data, all = d.rows || [];
+    var cols = [{ k: 'account', t: 'חשבון', f: function (x) { return x.account === 'PAYROLL' ? '' : esc(x.account); }, raw: function (x) { return x.account === 'PAYROLL' ? '' : x.account; } }, { k: 'name', t: 'שם החשבון' }, { k: 'section', t: 'סעיף מאזן בוחן' }, { k: 'n', t: 'תנועות', f: 'num', n: 1 }, { k: 'debit', t: 'חובה', f: 'money', n: 1, sum: 1 }, { k: 'credit', t: 'זכות', f: 'money', n: 1, sum: 1 }, { k: 'balance', t: 'יתרה', f: 'money', n: 1, sum: 1 }];
+    main.innerHTML = head('כרטסת מיומן פריוריטי', 'מאזן בוחן וכרטסת לכל חשבון, לקוח וספק, מתוך יומן 2026 שמועתק מפריוריטי. אלה נתוני היסטוריה לקריאה בלבד, שום דבר לא נרשם מכאן. לחיצה על שורה פותחת את הכרטסת.') + ledCover(d.coverage) +
+      '<div class="bar"><label class="f">חיפוש<input type="search" id="q" placeholder="מספר או שם חשבון"></label><span role="group" aria-label="סינון">' + [['all', 'הכול'], ['gl', 'חשבונות ראשיים'], ['party', 'לקוחות וספקים']].map(function (c) { return '<button class="chip" type="button" data-lf="' + c[0] + '" aria-pressed="' + (c[0] === 'all') + '">' + c[1] + '</button>'; }).join('') + '</span><button class="btn small" type="button" id="x">הורדה לאקסל</button></div><div id="t"></div>';
+    var rows, f = 'all', view = function () { rows = filt(all.filter(function (x) { return f === 'all' || (f === 'party') === !!x.party; }), $('q').value, ['account', 'name']); $('t').innerHTML = table(cols, rows, { click: 1, empty: 'אין חשבונות להצגה' }); onRow(rows, function (x) { show('ledger', x); }); };
+    view(); $('q').oninput = view; $('x').onclick = function () { csv('trial-balance-priority', cols, rows); };
+    main.querySelectorAll('[data-lf]').forEach(function (b) { b.onclick = function () { f = b.dataset.lf; main.querySelectorAll('[data-lf]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); view(); }; });
   });
 };
 
