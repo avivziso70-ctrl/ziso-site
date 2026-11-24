@@ -132,3 +132,7 @@ HOME_FAQ = [
 ]
 PORTAL_FAQ = ("איך עוקבים אחרי הזמנה?", "באזור הלקוחות באתר נכנסים עם מספר הנייד ומספר ההזמנה, ורואים את סטטוס כל פריט, יתרה לתשלום וחשבוניות.")
 if PORTAL_ON: HOME_FAQ.append(PORTAL_FAQ)
+
+# Trade partners shown on meatzvim.html. Add a person ONLY after their written consent.
+# {"name": "", "role": "מעצבת פנים", "city": "חיפה", "url": "https://"}
+PARTNERS = []
