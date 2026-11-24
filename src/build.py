@@ -225,7 +225,7 @@ FOOTER = '''<footer><div class="wrap">
 <div class="legal"><strong style="color:var(--wall-ink)">זיסו קרמיקה</strong>
 <span>%s · <span class="ltr">ZISO CERAMICS LTD</span> · ח.פ. <span class="ltr">%s</span> · עוצמה 5, טירת כרמל</span>
 <span><span class="ltr">%s</span> · <span class="ltr">%s</span></span></div>
-<nav class="social" aria-label="מוצרים ורשתות">%s<a href="https://www.instagram.com/ziso_ceramics/" target="_blank" rel="noopener">Instagram</a><a href="https://www.facebook.com/zisoceramics" target="_blank" rel="noopener">Facebook</a>%s%s</nav>%s
+<nav class="social" aria-label="מוצרים ורשתות">%s<a href="meatzvim.html">למעצבים ואדריכלים</a><a href="https://www.instagram.com/ziso_ceramics/" target="_blank" rel="noopener">Instagram</a><a href="https://www.facebook.com/zisoceramics" target="_blank" rel="noopener">Facebook</a>%s%s</nav>%s
 <nav class="legal-links" aria-label="מידע משפטי"><a href="accessibility.html">הצהרת נגישות</a><a href="privacy.html">מדיניות פרטיות ועוגיות</a><a href="terms.html">תנאי שימוש</a><a href="data-deletion.html">מחיקת מידע</a><button type="button" class="linkbtn" data-cookie-settings>הגדרות עוגיות</button></nav>
 </div></footer>
 <aside class="floating" aria-label="כלים צפים">%s
@@ -789,6 +789,34 @@ go.addEventListener('click',function(e){{if(go.getAttribute('aria-disabled')!=='
            "author": {"@type": "Organization", "name": "זיסו קרמיקה", "url": SITE}, "publisher": {"@id": SITE + "#business"},
            "mainEntityOfPage": SITE + g["slug"] + ".html", **({"abstract": re.sub(r"[*\[\]]", "", g["answer"])} if g.get("answer") else {}), "datePublished": g.get("date", TODAY), "dateModified": g.get("updated", g.get("date", TODAY))}
     write(g["slug"] + ".html", g["title"], g["description"], body, [art, crumbs_schema(g["h1"], g["slug"])] + ([faq_schema(g["faq"])] if g["faq"] else []))
+
+  # Trade page: interior designers, architects, contractors. PARTNERS (content.py) lists only people who agreed in writing.
+  wa_pro = "https://wa.me/%s?text=%s" % (WA, urllib.parse.quote("שלום, אני מעצב/ת או איש מקצוע ואשמח לשמוע על עבודה משותפת עם זיסו (D1)"))
+  partner_cards = "".join('<li><a href="%s" target="_blank" rel="noopener"><strong>%s</strong></a><span>%s · %s</span></li>' % (html.escape(x["url"]), html.escape(x["name"]), html.escape(x["role"]), html.escape(x["city"])) for x in PARTNERS)
+  partners_block = ('<h2>אנשי המקצוע שעובדים איתנו</h2><ul class="partners">%s</ul>' % partner_cards) if PARTNERS else ""
+  pro = header() + """
+<div class="wall"><div class="wrap hero inner" style="grid-template-columns:1fr">
+<div><ol class="crumbs"><li><a href="./">זיסו קרמיקה</a></li><li aria-current="page">למעצבים ואדריכלים</li></ol>
+<h1>האולם שלכם בטירת כרמל</h1><p>למעצבות פנים, אדריכלים וקבלני שיפוצים מחיפה, הקריות וחוף הכרמל: מקום לשבת עם הלקוח בין הדוגמאות, ותוכן מקצועי מהפרויקט שלכם.</p>
+<p><a class="btn brass" href="%s" target="_blank" rel="noopener">דברו איתנו בוואטסאפ</a></p></div></div></div>
+<main id="main"><section><div class="wrap article"><article class="prose">
+<h2>מה מקבלים אצלנו</h2>
+<ul>
+<li><b>הלקוח שלכם נשאר שלכם.</b> אילת ושיר, מעצבות פנים בעצמן, מייעצות לו רק על המוצרים.</li>
+<li><b>שולחן עבודה באולם.</b> יושבים עם הלקוח מול לוחות בגודל מלא, לא מול קטלוג.</li>
+<li><b>הצעת מחיר תוך 24 שעות</b> לכל הפרויקט, עם מועד אספקה לכל פריט.</li>
+<li><b>עמוד תיק עבודות באתר שלנו</b> עם קישור לאתר ולאינסטגרם שלכם.</li>
+<li><b>סרטון מהפרויקט שלכם.</b> שולחים לנו תמונות או צילומים מהבית הגמור, ואנחנו עורכים רילס שמתפרסם אצלכם ואצלנו, עם קרדיט מלא.</li>
+<li><b>תנאים לאנשי מקצוע.</b> נפרט בפגישה.</li>
+</ul>
+<h2>איך מתחילים</h2>
+<ol><li>כותבים לנו בוואטסאפ או קופצים לקפה באולם.</li><li>מביאים לקוח אחד ורואים איך זה עובד.</li><li>כשהפרויקט גמור, שולחים תמונות ואנחנו מכינים את העמוד והסרטון.</li></ol>
+<p>תמונות של בתים מתפרסמות רק באישור בעל הבית.</p>
+%s
+<p><a class="btn brass" href="%s" target="_blank" rel="noopener">לוואטסאפ של האולם</a> <a class="btn ghost" href="pegisha.html">קביעת ביקור</a></p>
+</article>%s</div></section></main>
+""" % (wa_pro, partners_block, wa_pro, sidebar("כל המוצרים")) + FOOTER
+  write("meatzvim.html", "למעצבים, אדריכלים וקבלנים | זיסו קרמיקה, טירת כרמל", "אולם תצוגה לריצוף ואמבטיה שעובד עם מעצבות פנים, אדריכלים וקבלני שיפוצים מחיפה והצפון: שולחן עבודה באולם, הצעת מחיר תוך 24 שעות ועמוד תיק עבודות באתר.", pro, [crumbs_schema("למעצבים ואדריכלים", "meatzvim")])
   for name, title, desc, h1, lede, body in LEGAL_PAGES:
     if not PORTAL_ON: body = re.sub(r'<li><b>אזור הלקוחות\.</b>.*?</li>\n?', '', body)
     write(name, title + " | זיסו קרמיקה", desc, header() + '''
@@ -802,7 +830,7 @@ go.addEventListener('click',function(e){{if(go.getAttribute('aria-disabled')!=='
   write("showroom.html", "זיסו קרמיקה | פגישת עיצוב חינם עם מעצבת פנים באולם בטירת כרמל",
     "חדר רחצה שנבחר עם מעצבת פנים מוסמכת, לא עם איש מכירות. אולם תצוגה לריצוף ואמבטיה בטירת כרמל מאז 1985. פגישת ייעוץ ועיצוב באולם בחינם.",
     header() + landing_body(WA_VISIT, PHONE, PHONE_INTL, HOURS_HTML, ADDR_Q, GALLERY) + FOOTER, [BUSINESS])
-  urls = ["", "shop/", "pegisha.html", "about.html", "contact.html", "calculator.html", "tik-lakoach.html", "accessibility.html", "privacy.html", "terms.html", "data-deletion.html"] + [a["slug"] + ".html" for a in AREA_PAGES] + [g["slug"] + ".html" for g in GUIDE_PAGES] + (["gallery.html"] if GALLERY else []) + [c["slug"] + ".html" for c in CATS]
+  urls = ["", "shop/", "pegisha.html", "about.html", "contact.html", "calculator.html", "meatzvim.html", "tik-lakoach.html", "accessibility.html", "privacy.html", "terms.html", "data-deletion.html"] + [a["slug"] + ".html" for a in AREA_PAGES] + [g["slug"] + ".html" for g in GUIDE_PAGES] + (["gallery.html"] if GALLERY else []) + [c["slug"] + ".html" for c in CATS]
   open(os.path.join(DIST, "sitemap.xml"), "w").write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n%s</urlset>\n' %
     "".join("  <url><loc>%s%s</loc><lastmod>%s</lastmod></url>\n" % (SITE, u, TODAY) for u in urls))
   open(os.path.join(DIST, "robots.txt"), "w").write("User-agent: *\nAllow: /\nDisallow: /toda\nDisallow: /crm\nDisallow: /supplier\nDisallow: /dashboard\nDisallow: /my\nSitemap: %ssitemap.xml\n" % SITE)
