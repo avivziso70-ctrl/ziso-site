@@ -640,17 +640,18 @@ function load() {
   var sees = function (who) { return who.indexOf(r) >= 0; };
   return Promise.all([
     soft(sb.rpc('crm_inbox', { p_search: null, p_limit: 300 })),
-    soft(sb.from('crm_tasks').select('id,text,due,by').is('done_at', null).lt('due', new Date().toISOString()).order('due').limit(60)),
+    soft(sb.from('crm_tasks').select('id,text,due,by').is('done_at', null).is('grp', null).lt('due', new Date().toISOString()).order('due').limit(60)),
     soft(sb.rpc('crm_open_loops')),
     soft(sb.from('crm_deals').select('id,deal_no,customer_name,status,updated_at').neq('status', 'closed').order('updated_at', { ascending: false }).limit(60)),
     sees(['eilat', 'owner']) ? soft(sb.from('crm_takings').select('id,method,pay_pr_id').is('closed_at', null).is('cancelled_at', null).limit(50)) : null,
     sees(['eilat', 'owner']) ? soft(sb.from('shop_orders').select('id,status,test').eq('status', 'paid').limit(50)) : null,
     sees(['eilat', 'owner']) ? soft(sb.from('acc_supplier_invoices').select('id').eq('status', 'draft').limit(50)) : null,
     sees(['shir', 'eilat', 'owner']) ? soft(sb.from('crm_visits').select('id,name,at,attended').is('cancelled_at', null).gte('at', sod).lte('at', eod).order('at').limit(20)) : null,
-    sees(['moshe']) ? soft(sb.rpc('crm_home_money')) : null
+    sees(['moshe']) ? soft(sb.rpc('crm_home_money')) : null,
+    soft(sb.from('crm_tasks').select('id').is('done_at', null).not('grp', 'is', null).lte('due', eod).limit(99))
   ]).then(function (x) {
     D = { convs: x[0] || [], late: (x[1] || []).filter(function (t) { return t.by !== 'תמלול שיחה'; }), loops: x[2] || [], deals: x[3] || [], takes: x[4] || [],
-      shop: (x[5] || []).filter(function (o) { return !o.test; }), supinv: x[6] || [], visits: x[7] || [], money: x[8] || null, at: Date.now() };
+      shop: (x[5] || []).filter(function (o) { return !o.test; }), supinv: x[6] || [], visits: x[7] || [], money: x[8] || null, morn: x[9] || [], at: Date.now() };
     draw();
   });
 }
@@ -672,6 +673,8 @@ function needRows() {
     var soon = D.money.cheques.filter(function (c) { var a = new Date(); a.setHours(0, 0, 0, 0); return (new Date(c.due) - a) / 86400000 <= 1; });
     add(soon.length, 'late', 'צ׳ק לספק יורד היום או מחר', 'צ׳קים לספקים יורדים היום ומחר', 'הפירוט במסך כסף ובנק', '#money', 95);
   }
+  /* the morning list: a count only, never names or sums on this screen */
+  if (r !== 'moshe') add(D.morn.length, '', 'פעולה ברשימת הבוקר', 'פעולות ברשימת הבוקר', 'למי להתקשר ומה להגיד. הכול מוכן', 'index.html#today', 97);
   if (r !== 'moshe') add(D.late.length, '', 'משימה באיחור', 'משימות באיחור', D.late.length ? String(D.late[0].text || '').replace(/\s*\(מתוך שיחה[^)]*\)\s*$/, '').slice(0, 70) : '', 'index.html#today', 50);
   return rows.sort(function (a, b) { return b.w - a.w; });
 }
