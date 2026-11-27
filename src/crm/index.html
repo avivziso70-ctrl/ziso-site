@@ -227,6 +227,19 @@ details.sect:not([open]){gap:0}
 .asklog .who{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .asklog .empty{color:var(--mute);text-align:center;margin:auto;max-width:420px;line-height:1.5}
 .askchips{display:flex;gap:8px;overflow-x:auto;padding:0 16px 10px}
+.asklog .act{align-self:flex-start;width:min(92%,620px);border:1.5px solid var(--brass);border-radius:16px;padding:14px 16px;background:var(--surface);line-height:1.5}
+.asklog .act b{display:block;font-size:17px}
+.asklog .act ul{margin:8px 0 0;padding:0;list-style:none}
+.asklog .act li{padding:3px 0;overflow-wrap:anywhere}
+.asklog .act .warn{color:var(--amber);margin:8px 0 0}
+.asklog .act .done{color:var(--green);margin:10px 0 0;font-weight:600}
+.asklog .act .acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.asklog .act .acts .btn{min-height:52px;flex:1;min-width:120px}
+.asklog .act .hint{color:var(--mute);font-size:14px;margin:10px 0 0}
+.asklog .act.off{border-color:var(--line);opacity:.7}.asklog .act.done{border-color:var(--green)}
+.asklog .who a.btn{color:inherit;text-decoration:none}
+#askCamLbl{flex:none;min-width:52px;padding:0 14px}#askCamLbl:focus-within{outline:2px solid var(--brass);outline-offset:2px}
+#askCam{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 #askSheet form{width:auto;background:none;border:0;border-top:1px solid var(--line);border-radius:0;padding:12px 16px;display:flex;gap:8px;align-items:flex-end}
 #askQ{flex:1;max-height:140px}
 .askbox > p{padding:0 16px 12px}
@@ -496,8 +509,8 @@ nav.tabs .badge{top:3px;inset-inline-start:calc(50% + 6px);box-shadow:0 0 0 2px 
     <div class="asklog" id="askLog" aria-live="polite"></div>
     <div class="askchips" id="askChips"></div>
     <div id="askHear" class="hidden" role="status"></div>
-    <form id="askForm" autocomplete="off"><button class="btn hidden" type="button" id="askMic" aria-label="לשאול בקול" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg></button><textarea id="askQ" rows="1" placeholder="למשל: מה קבענו עם דני כהן?" aria-label="שאלה לקלוד"></textarea><button class="btn brass" type="submit" id="askSend">שליחה</button></form>
-    <p class="small muted">קלוד עונה רק ממה שרשום במערכת: וואטסאפ, הזמנות, הצעות מחיר, פגישות, שיחות טלפון, וגם בנק, תזרים, שיקים וספקים. הוא לא שולח שום דבר ללקוחות. כדאי לוודא פרט חשוב לפני שמבטיחים ללקוח. השאלות נשמרות ביומן המערכת.</p>
+    <form id="askForm" autocomplete="off"><button class="btn hidden" type="button" id="askMic" aria-label="לשאול בקול" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg></button><label class="btn" id="askCamLbl" aria-label="לצלם חשבונית או תעודת משלוח של ספק"><svg class="ic" aria-hidden="true"><use href="#i-cam"/></svg><input type="file" id="askCam" accept="image/*,application/pdf" capture="environment"></label><textarea id="askQ" rows="1" placeholder="לשאול או לבקש" aria-label="שאלה או בקשה לקלוד"></textarea><button class="btn brass" type="submit" id="askSend">שליחה</button></form>
+    <p class="small muted">שום דבר לא נוצר לפני שלוחצים "אשר". קלוד לא שולח כלום ללקוחות. הכל נשמר ביומן המערכת.</p>
   </div>
 </div>
 <div id="docSheet" class="sheet hidden" role="dialog" aria-modal="true" aria-labelledby="docTitle">
@@ -1754,30 +1767,122 @@ function aiFn(body, fn) {
     return fetch(FN + (fn || 'crm-ai-triage'), { method: 'POST', headers: { authorization: 'Bearer ' + s.data.session.access_token, 'content-type': 'application/json' }, body: JSON.stringify(body) });
   }).then(function (r) { return r.json(); });
 }
-/* ---------- "תשאלו את קלוד": free questions about the business. crm-ask only reads (WhatsApp, orders, quotes,
-   visits, calls) and answers staff; it writes nothing and sends nothing to a customer. The conversation lives in
-   memory only and is gone on reload or "שיחה חדשה". ---------- */
-var askHist = [], askBusy = false;
-var ASK_EX = ['מה קבענו עם ', 'מתי האספקה ל', 'מה פתוח אצל ', 'מי מחכה לסחורה השבוע?', 'אילו פגישות יש היום?', 'אילו שיקים יורדים השבוע?', 'מה המצב בבנק?'];
+/* ---------- "תשאלו את קלוד": free questions about the business, and since 27.11.2026 small actions too. crm-ask
+   itself only reads and answers; it writes nothing and sends nothing to a customer. When staff ask for an action
+   (a task, a note, a payment link, an invoice for Eilat to issue) the answer carries actions[], each shown as a card.
+   Only a press on "אשר" creates it, here, with the signed-in person's own session and the same tables and functions
+   the regular screens use. The camera button sends a supplier's invoice or delivery note to crm-receive, exactly as
+   the "הגיעה סחורה" screen does. The conversation lives in memory only and is gone on reload or "שיחה חדשה". ---------- */
+var askHist = [], askBusy = false, askWait = '';
+var ASK_EX = ['מה קבענו עם ', 'תזכיר לי מחר ב-10 ', 'תכין חשבונית ל', 'מתי האספקה ל', 'מי מחכה לסחורה השבוע?', 'אילו פגישות יש היום?', 'מה המצב בבנק?'];
+var ASK_ACT_DONE = { task: 'אושר ובוצע', doc: 'אושר ועבר לאילת', note: 'אושר ונשמר', pay: 'אושר והקישור נוצר' };
+function askActHtml(a, mi, ai) {
+  var st = a.state || 'new', k = mi + ':' + ai;
+  var h = '<div class="act ' + (st === 'done' ? 'done' : st === 'off' ? 'off' : '') + '"><b>' + esc(a.title) + '</b><ul>' + (a.lines || []).map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>' + (a.warn && st !== 'done' && st !== 'off' ? '<p class="warn">שימו לב: ' + esc(a.warn) + '</p>' : '');
+  if (st === 'new') h += '<div class="acts"><button class="btn brass" type="button" data-ok="' + k + '">אשר</button><button class="btn" type="button" data-no="' + k + '">בטל</button></div><p class="hint">צריך לתקן משהו? כותבים למטה מה לשנות.</p>';
+  else if (st === 'busy') h += '<p class="hint">רגע, מבצע…</p>';
+  else if (st === 'done') h += '<p class="done">' + esc(a.msg || 'בוצע.') + '</p>' + (a.phone || a.link ? '<div class="acts">' + (a.phone ? '<button class="btn brass" type="button" data-chat="' + esc(a.phone) + '">לפתוח את השיחה</button>' : '') + (a.link ? '<button class="btn" type="button" data-copy="' + k + '">העתקת הקישור</button>' : '') + '</div>' : '');
+  else if (st === 'fail') h += '<p class="warn">לא הצליח: ' + esc(a.msg || 'שגיאה') + '</p><div class="acts"><button class="btn brass" type="button" data-ok="' + k + '">לנסות שוב</button><button class="btn" type="button" data-no="' + k + '">בטל</button></div>';
+  else h += '<p class="hint">בוטל. לא נוצר כלום.</p>';
+  return h + '</div>';
+}
+function askEnsureCust(d) {
+  if (!d.tail9) return Promise.resolve();
+  return sb.from('crm_customers').insert({ tail9: d.tail9, name: d.cust_name || null, priority_cust_no: d.cust_no || null, created_by: me.email, updated_by: me.email }).then(function (r) { if (r.error && r.error.code !== '23505') throw r.error; });
+}
+/* The one place where a prepared action becomes real. Runs only from a press on "אשר". */
+function askDo(a) {
+  var d = a['do'] || {};
+  if (a.kind === 'task' || a.kind === 'doc') return askEnsureCust(d).then(function () {
+    return sb.from('crm_tasks').insert({ tail9: d.tail9 || null, text: d.text, due: d.due || null, by: me.email, assigned_to: d.assigned_to || me.email });
+  }).then(function (r) {
+    if (r.error) throw r.error;
+    sb.rpc('crm_log', { p_action: a.kind === 'doc' ? 'bot_doc_prep' : 'bot_task', p_tail9: d.tail9 || null, p_detail: { text: d.text, due: d.due || null, doc_kind: d.doc_kind || null, total: d.total == null ? null : d.total } });
+    return a.kind === 'doc' ? 'עבר לאילת להפקה בפריוריטי. המשימה מופיעה אצלה עכשיו.' : 'המשימה נרשמה.';
+  });
+  if (a.kind === 'note') return askEnsureCust(d).then(function () {
+    return sb.from('crm_notes').insert({ tail9: d.tail9, text: d.text, by: me.email });
+  }).then(function (r) { if (r.error) throw r.error; sb.rpc('crm_log', { p_action: 'bot_note', p_tail9: d.tail9, p_detail: {} }); return 'ההערה נשמרה בתיק.'; });
+  if (a.kind === 'pay') return payFn({ action: 'create', tail9: d.tail9, amount: d.amount, description: d.description || undefined, payments: d.payments || 1 }).then(function (j) {
+    if (!j || !j.ok) throw new Error((j && j.error) || 'הקישור לא נוצר');
+    var link = j.page_link || j.pr_link, txt = payText(j.amount || d.amount, link);
+    a.link = link; a.linkText = txt;
+    sb.rpc('crm_log', { p_action: 'bot_pay_link', p_tail9: d.tail9, p_detail: { amount: d.amount, payments: j.payments || d.payments || 1 } });
+    var c = convs.filter(function (x) { return String(x.phone || '').slice(-9) === d.tail9; })[0];
+    if (!c) return 'הקישור מוכן. אין שיחת וואטסאפ עם הלקוח, אפשר להעתיק אותו מכאן.';
+    drafts[c.phone] = (drafts[c.phone] ? drafts[c.phone] + '\n' : '') + txt; storeDrafts(); a.phone = c.phone;
+    if (cur === c.phone) { $('draft').value = drafts[c.phone]; autosize(); }
+    return 'הקישור מוכן ומחכה בטיוטה בשיחה עם הלקוח. נשאר לפתוח את השיחה ולשלוח.';
+  });
+  return Promise.reject(new Error('פעולה לא מוכרת'));
+}
+function askActAt(k) { var p = String(k || '').split(':'), m = askHist[Number(p[0])]; return m && m.actions ? m.actions[Number(p[1])] : null; }
+function askApprove(k) {
+  var a = askActAt(k); if (!a || a.state === 'busy' || a.state === 'done' || a.state === 'off') return;
+  a.state = 'busy'; askRender();
+  askDo(a).then(function (msg) { a.state = 'done'; a.msg = msg; }, function (e) { a.state = 'fail'; a.msg = (e && e.message) || 'שגיאה'; }).then(askRender);
+}
+/* A supplier's invoice or delivery note, photographed from here: same storage and same reader as receive.html. */
+function askShrink(file) {
+  return new Promise(function (ok, bad) {
+    var url = URL.createObjectURL(file), img = new Image();
+    img.onload = function () {
+      var k = Math.min(1, 2200 / Math.max(img.naturalWidth, img.naturalHeight)), c = document.createElement('canvas');
+      c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(function (b) { URL.revokeObjectURL(url); b ? ok(b) : bad(new Error('img')); }, 'image/jpeg', 0.85);
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); bad(new Error('img')); };
+    img.src = url;
+  });
+}
+function askPhoto(file) {
+  if (!file || askBusy) return;
+  var pdf = file.type === 'application/pdf';
+  if (!pdf && String(file.type).indexOf('image/') !== 0) { toast('אפשר לצלם תמונה או לבחור PDF'); return; }
+  if (file.size > 24 * 1024 * 1024) { toast('הקובץ גדול מדי'); return; }
+  askHist.push({ role: 'user', content: 'צילמתי מסמך של ספק' }); askBusy = true; askWait = 'מעלה את הצילום…'; askRender();
+  var EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic', 'image/heif': 'heif', 'application/pdf': 'pdf' };
+  var dt = new Date(), month = dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0');
+  var id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'x' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12);
+  var orig = 'orig/' + month + '/' + id + '.' + (EXT[file.type] || 'jpg'), read = pdf ? orig : 'read/' + month + '/' + id + '.jpg', st = sb.storage.from('goods-receipts');
+  var keep = st.upload(orig, file, { contentType: file.type || 'image/jpeg', upsert: false }).then(function (r) { if (r.error) throw r.error; });
+  var light = pdf ? Promise.resolve() : askShrink(file).then(function (b) { return st.upload(read, b, { contentType: 'image/jpeg', upsert: false }); }).then(function (r) { if (r.error) throw r.error; });
+  Promise.all([keep, light]).then(function () {
+    askWait = 'קורא את המסמך ובודק מול ההזמנה. זה לוקח עד דקה, לא לסגור.'; askRender();
+    return aiFn({ action: 'read', files: [{ orig: orig, read: read, mime: pdf ? 'application/pdf' : (file.type || 'image/jpeg'), size: file.size }] }, 'crm-receive');
+  }).then(function (j) {
+    var r = j && j.receipt;
+    if (!r) { askHist.push({ role: 'assistant', content: ((j && j.error) || 'לא הצלחתי לקרוא את המסמך') + '. הצילום נשמר, אפשר לנסות שוב במסך "הגיעה סחורה".', err: true, recv: true }); return; }
+    var res = r.result || {};
+    askHist.push({ role: 'assistant', recv: true, content: (r.supplier_name || 'ספק לא מזוהה') + (res.po_no ? ' · הזמנה ' + res.po_no : '') + '\n' + (r.summary || 'המסמך נקרא.') + '\nנשמר בקליטת סחורה' + (r.rc_no ? ' (' + r.rc_no + ')' : '') + '.' });
+  }, function (e) {
+    askHist.push({ role: 'assistant', content: e && e.message === 'img' ? 'לא הצלחתי לפתוח את התמונה. לצלם שוב.' : 'ההעלאה לא הצליחה. לבדוק חיבור לאינטרנט ולנסות שוב.', err: true });
+  }).then(function () { askBusy = false; askWait = ''; askRender(); });
+}
 function askOpen(voice) { lastFocus = document.activeElement; $('askSheet').classList.remove('hidden'); askRender(); if (voice === true) askListen(); else setTimeout(function () { $('askQ').focus(); }, 50); }
 function askClose() { askQuiet(); $('askSheet').classList.add('hidden'); if (lastFocus && lastFocus.focus) lastFocus.focus(); }
 function askRender() {
   var log = $('askLog');
-  log.innerHTML = askHist.length ? askHist.map(function (m) {
+  log.innerHTML = askHist.length ? askHist.map(function (m, mi) {
     if (m.role === 'user') return '<div class="msg q">' + esc(m.content) + '</div>';
-    return '<div class="msg a' + (m.err ? ' err' : '') + '">' + esc(m.content) + (m.people && m.people.length ? '<div class="who">' + m.people.map(function (p) { return '<button class="btn small" type="button" data-t9="' + esc(p.tail9) + '">כרטיס: ' + esc(p.name) + '</button>'; }).join('') + '</div>' : '') + '</div>';
-  }).join('') + (askBusy ? '<div class="msg a wait">קלוד בודק במערכת…</div>' : '') : '<div class="empty">אפשר לשאול כל דבר על העסק: מה סוכם עם לקוח, מתי אספקה, מה הוזמן, מי מחכה לסחורה, אילו פגישות יש.</div>';
+    return '<div class="msg a' + (m.err ? ' err' : '') + '">' + esc(m.content) + (m.people && m.people.length ? '<div class="who">' + m.people.map(function (p) { return '<button class="btn small" type="button" data-t9="' + esc(p.tail9) + '">כרטיס: ' + esc(p.name) + '</button>'; }).join('') + '</div>' : '') + (m.recv ? '<div class="who"><a class="btn small" href="receive.html">לפתוח בקליטת סחורה</a></div>' : '') + '</div>' +
+      (m.actions || []).map(function (a, ai) { return askActHtml(a, mi, ai); }).join('');
+  }).join('') + (askBusy ? '<div class="msg a wait">' + esc(askWait || 'קלוד בודק במערכת…') + '</div>' : '') : '<div class="empty">אפשר לשאול כל דבר על העסק, לבקש משימה, הערה, קישור לתשלום או חשבונית, ולצלם חשבונית או תעודת משלוח של ספק.</div>';
   log.scrollTop = log.scrollHeight;
   $('askChips').classList.toggle('hidden', askHist.length > 0);
-  $('askSend').disabled = askBusy;
+  $('askSend').disabled = askBusy; $('askCam').disabled = askBusy;
 }
 function askSend(q, spoken) {
   q = String(q || '').trim(); if (!q || askBusy) return;
   var hist = [];
-  for (var i = 0; i < askHist.length - 1; i++) if (askHist[i].role === 'user' && askHist[i + 1].role === 'assistant' && !askHist[i + 1].err) hist.push({ role: 'user', content: askHist[i].content }, { role: 'assistant', content: askHist[i + 1].content });
-  askHist.push({ role: 'user', content: q }); askBusy = true; $('askQ').value = ''; askRender();
+  /* a card that was not approved before the next message is closed, so a corrected card never leaves two live ones */
+  askHist.forEach(function (m) { (m.actions || []).forEach(function (a) { if (!a.state || a.state === 'new' || a.state === 'fail') a.state = 'off'; }); });
+  var rec = function (m) { return m.content + (m.actions || []).map(function (a) { return '\n[' + (a.state === 'done' ? (ASK_ACT_DONE[a.kind] || 'אושר ובוצע') : 'לא אושר, לא נוצר') + ': ' + a.title + ': ' + (a.lines || []).slice(0, 6).join(' · ') + ']'; }).join(''); };
+  for (var i = 0; i < askHist.length - 1; i++) if (askHist[i].role === 'user' && askHist[i + 1].role === 'assistant' && !askHist[i + 1].err) hist.push({ role: 'user', content: askHist[i].content }, { role: 'assistant', content: rec(askHist[i + 1]) });
+  askHist.push({ role: 'user', content: q }); askBusy = true; askWait = ''; $('askQ').value = ''; askRender();
   aiFn({ q: q, history: hist.slice(-8) }, 'crm-ask').then(function (j) {
-    askHist.push(j && j.ok ? { role: 'assistant', content: j.answer, people: j.people || [] } : { role: 'assistant', content: (j && j.error) || 'לא הצלחתי לענות, נסו שוב', err: true });
+    askHist.push(j && j.ok ? { role: 'assistant', content: j.answer, people: j.people || [], actions: (j.actions || []).slice(0, 3) } : { role: 'assistant', content: (j && j.error) || 'לא הצלחתי לענות, נסו שוב', err: true });
   }).catch(function () { askHist.push({ role: 'assistant', content: 'אין חיבור כרגע, נסו שוב', err: true }); }).then(function () {
     askBusy = false; askRender();
     if (spoken) askSay(askHist[askHist.length - 1].content); else $('askQ').focus();
@@ -1825,7 +1930,15 @@ $('askChips').addEventListener('click', function (e) {
   var t = ASK_EX[Array.prototype.indexOf.call($('askChips').children, b)];
   if (/\?$/.test(t)) askSend(t); else { $('askQ').value = t; $('askQ').focus(); }
 });
-$('askLog').addEventListener('click', function (e) { var b = e.target.closest('button[data-t9]'); if (b) { askClose(); go('card', b.dataset.t9); } });
+$('askLog').addEventListener('click', function (e) {
+  var b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.t9) { askClose(); go('card', b.dataset.t9); }
+  else if (b.dataset.ok) askApprove(b.dataset.ok);
+  else if (b.dataset.no) { var a = askActAt(b.dataset.no); if (a && a.state !== 'busy' && a.state !== 'done') { a.state = 'off'; askRender(); } }
+  else if (b.dataset.chat) { askClose(); go('chat', b.dataset.chat); }
+  else if (b.dataset.copy) { var c = askActAt(b.dataset.copy); if (c && c.link && navigator.clipboard) navigator.clipboard.writeText(c.linkText || c.link).then(function () { toast('הועתק'); }, function () { toast('לא הצלחתי להעתיק'); }); }
+});
+$('askCam').addEventListener('change', function () { var f = this.files && this.files[0]; this.value = ''; askPhoto(f); });
 $('askForm').addEventListener('submit', function (e) { e.preventDefault(); askSend($('askQ').value); });
 $('askQ').addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && deskKeys()) { e.preventDefault(); askSend($('askQ').value); } });
 $('askNew').addEventListener('click', function () { if (askBusy) return; askQuiet(); askHist = []; askRender(); $('askQ').focus(); });

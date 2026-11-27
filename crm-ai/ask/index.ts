@@ -2,6 +2,13 @@
 // a customer, what was agreed, an order, a delivery date, goods on order. The model answers only from what
 // it reads through the read-only tools below (WhatsApp, CRM notes/tasks/visits, Priority orders, quotes,
 // documents, supplier orders, phone calls). It writes nothing and sends nothing to customers.
+// Actions (Aviv 27.11.2026: "בוט אקטיבי לצוות ... כל צרכי העסק בתחנה אחת", phase 1 approved the same day): the model may
+// PREPARE four things with the suggest_* tools: a task, a note in a customer file, a card payment link, and the
+// details of an invoice or quote that Eilat then issues in Priority (tax documents keep coming from Priority until
+// the move on 1.1.2027). A suggest_* tool writes nothing. It checks the request, and the answer carries
+// actions:[{id, kind, title, lines, warn?, do}]. The page shows each one as a card ("זה מה שהבנתי") and only a
+// press on "אשר" by the signed-in staff member creates it, with that person's own session and the same tables and
+// functions the regular screens use (crm_tasks, crm_notes, crm-pay). Every press is written to crm_audit (bot_*).
 // Money data too (Aviv 12.11.2026: "תן לו גישה לכל הנתונים", the station is used by the family that runs
 // the business): cash snapshot and forecast, bank lines, supplier cheques and debt, the till, customer debts,
 // visitor counts and the weekly brief. These tables stay owner-only for direct reads from the CRM page;
@@ -599,6 +606,98 @@ async function weeklyBrief() {
   return b ? `סיכום שבועי לתקופה ${day(b.period_start)} עד ${day(b.period_end)}:\n${cut(b.body, 3500)}` : "עוד אין סיכום שבועי.";
 }
 
+// ---------- actions the model may prepare (nothing here writes) ----------
+type Act = { id: string; kind: "task" | "note" | "pay" | "doc"; title: string; lines: string[]; warn?: string; do: Record<string, unknown> };
+type Ctx = { acts: Act[]; staff: { email: string; name: string }[]; who: string };
+const PRICE_LIST = 'בסיס כולל מע"מ', DOC_ISSUER = "אילת", MAX_ACTS = 3;
+const clean = (s: unknown, n: number) => String(s ?? "").replace(/\s+/g, " ").trim().slice(0, n);
+const nis2 = (n: unknown) => "₪" + Number(n).toLocaleString("en-US", { maximumFractionDigits: 2 });
+// "YYYY-MM-DD HH:MM" on the Israeli clock -> ISO instant (the offset is taken from the calendar, summer or winter).
+const ilOffsetMin = (t: number) => {
+  const p: any = {}; for (const x of new Intl.DateTimeFormat("en-CA", { timeZone: IL, hour12: false, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(new Date(t))) p[x.type] = x.value;
+  return (Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute) - t) / 60000;
+};
+export const ilToISO = (s: string) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2}))?/.exec(String(s).trim()); if (!m) return null;
+  const guess = Date.UTC(+m[1], +m[2] - 1, +m[3], m[4] ? +m[4] : 9, m[5] ? +m[5] : 0);
+  if (isNaN(guess)) return null;
+  return new Date(guess - ilOffsetMin(guess) * 60000).toISOString();
+};
+function addAct(C: Ctx, a: Omit<Act, "id">) {
+  if (C.acts.length >= MAX_ACTS) return `אפשר להכין עד ${MAX_ACTS} פעולות בבקשה אחת. לבקש את השאר בנפרד.`;
+  C.acts.push({ id: "a" + (C.acts.length + 1), ...a });
+  return `הוכן לאישור, עוד לא בוצע. כך זה יוצג לאיש הצוות: ${a.title}: ${a.lines.join(" · ")}${a.warn ? " · שימו לב: " + a.warn : ""}. לענות בשורה אחת מה הוכן, ושצריך ללחוץ "אשר" כדי שזה ייווצר.`;
+}
+const asker = (C: Ctx) => C.staff.find((s) => s.email === C.who);
+const staffNames = (C: Ctx) => C.staff.map((s) => s.name).filter(Boolean).join(", ");
+
+function suggestTask(R: Refs, a: any, C: Ctx) {
+  const text = clean(a.text, 300); if (text.length < 3) return "חסר תוכן למשימה.";
+  let due: string | null = null;
+  if (a.due) {
+    due = ilToISO(String(a.due)); if (!due) return "התאריך לא ברור. צריך בצורה YYYY-MM-DD HH:MM לפי לוח הימים.";
+    const t = Date.parse(due); if (t < Date.now() - 3600e3 || t > Date.now() + 400 * 864e5) return "התאריך כבר עבר או רחוק מדי. לבדוק מול לוח הימים ולהכין שוב.";
+  }
+  let p: Person | undefined; if (a.ref) { p = R.look(a.ref); if (!p) return "ה-ref לא מוכר. קודם find_customer."; }
+  let to = asker(C);
+  if (a.for) { const f = clean(a.for, 30); to = C.staff.find((s) => s.name === f) || C.staff.find((s) => s.name && f.includes(s.name)); if (!to) return `אין איש צוות בשם "${f}". אנשי הצוות: ${staffNames(C)}.`; }
+  const lines = [text]; if (due) lines.push("מתי: " + fmt(due)); if (to?.name) lines.push("למי: " + to.name); if (p?.name) lines.push("לקוח: " + cut(p.name, 40));
+  return addAct(C, { kind: "task", title: "משימה", lines, do: { tail9: p?.tail9 || null, cust_name: p?.name || null, cust_no: p?.cust || null, text, due, assigned_to: to?.email || null } });
+}
+function suggestNote(R: Refs, a: any, C: Ctx) {
+  const text = clean(a.text, 600); if (text.length < 3) return "חסר תוכן להערה.";
+  const p = R.look(a.ref); if (!p) return "חסר לקוח. קודם find_customer ואז להעביר את ה-ref.";
+  if (!p.tail9) return "ללקוח הזה אין מספר טלפון במערכת, אז אין לו תיק שאפשר לכתוב בו הערה. להציע משימה במקום.";
+  return addAct(C, { kind: "note", title: "הערה בתיק של " + cut(p.name || "הלקוח", 40), lines: [text], do: { tail9: p.tail9, cust_name: p.name || null, cust_no: p.cust || null, text } });
+}
+function suggestPay(R: Refs, a: any, C: Ctx) {
+  const p = R.look(a.ref); if (!p) return "חסר לקוח. קודם find_customer ואז להעביר את ה-ref.";
+  if (!p.tail9) return "ללקוח הזה אין מספר טלפון במערכת, אז אי אפשר להכין לו קישור מכאן. עושים את זה במסך הקופה.";
+  const amount = Math.round(Number(a.amount) * 100) / 100; if (!(amount >= 1 && amount <= 100000)) return "חסר סכום תקין בשקלים (כולל מע״מ).";
+  const payments = Math.min(Math.max(Math.round(Number(a.payments) || 1), 1), 12), description = clean(a.description, 80);
+  const lines = ["סכום: " + nis2(amount) + " כולל מע״מ"]; if (description) lines.push("עבור: " + description); if (payments > 1) lines.push("תשלומים: " + payments);
+  lines.push("אחרי האישור הקישור נכנס לטיוטה בשיחה עם הלקוח, ואתם שולחים.");
+  return addAct(C, { kind: "pay", title: "קישור לתשלום באשראי ל" + cut(p.name || "לקוח", 40), lines, do: { tail9: p.tail9, cust_name: p.name || null, amount, description, payments } });
+}
+async function suggestDoc(R: Refs, a: any, C: Ctx) {
+  const kind = a.kind === "quote" ? "quote" : "invoice", kindName = kind === "quote" ? "הצעת מחיר" : "חשבונית מס";
+  const p = R.look(a.ref); if (!p) return "חסר לקוח. קודם find_customer ואז להעביר את ה-ref.";
+  const raw: any[] = Array.isArray(a.lines) ? a.lines.slice(0, 12) : []; if (!raw.length) return "חסרות שורות: פריט, כמות ומחיר.";
+  const nos = raw.map((l) => clean(l?.part_no, 40)).filter(Boolean), list = new Map<string, any>();
+  if (nos.length) { const { data, error } = await admin.from("priority_part_prices").select("part_no,part_desc,price").eq("price_list", PRICE_LIST).in("part_no", nos); if (error) throw error; for (const r of data || []) list.set(r.part_no, r); }
+  const out: { no: string; desc: string; qty: number; price: number | null }[] = [], warns: string[] = [];
+  let total = 0, known = true;
+  for (const l of raw) {
+    const qty = Number(l?.qty); if (!(qty > 0 && qty <= 10000)) return "כמות לא תקינה באחת השורות.";
+    const no = clean(l?.part_no, 40), lp = no ? list.get(no) : null, desc = clean(lp?.part_desc || l?.desc, 90);
+    if (!desc) return "חסר תיאור פריט באחת השורות.";
+    if (no && !lp) warns.push(`מק״ט ${no} לא נמצא במחירון`);
+    let price: number | null = l?.unit_price == null || l.unit_price === "" ? null : Number(l.unit_price);
+    if (price != null && !(price >= 0 && price < 1e6)) return "מחיר לא תקין באחת השורות.";
+    if (price == null && lp && Number(lp.price) > 0) price = Number(lp.price);
+    if (price == null) { known = false; warns.push(`אין מחיר ל"${desc}", אילת תשלים`); }
+    else { total += price * qty; if (lp && Math.abs(price - Number(lp.price)) > 0.5) warns.push(`"${desc}": המחיר שנאמר ${nis2(price)}, במחירון ${nis2(lp.price)}`); }
+    out.push({ no, desc, qty, price });
+  }
+  const issuer = C.staff.find((s) => s.name === DOC_ISSUER), by = asker(C)?.name || "הצוות", name = cut(p.name || "לקוח", 50), note = clean(a.note, 160);
+  const rows = out.map((l) => `${l.qty} × ${l.desc}${l.no ? " (מק״ט " + l.no + ")" : ""}${l.price != null ? " ב-" + nis2(l.price) + " ליחידה" : " (מחיר להשלים)"}`);
+  const text = (`להפיק ${kindName} בפריוריטי ל${name}${p.cust ? " (לקוח " + p.cust + ")" : ""}: ${rows.join("; ")}.` + (known ? ` סה״כ ${nis2(total)} כולל מע״מ.` : "") + (note ? ` הערה: ${note}.` : "") + ` הוכן בקלוד לבקשת ${by}.`).slice(0, 900);
+  const lines = [...rows]; if (known) lines.push("סה״כ " + nis2(total) + " כולל מע״מ"); if (note) lines.push("הערה: " + note);
+  lines.push(`אחרי האישור: משימה ל${DOC_ISSUER} להפיק את המסמך בפריוריטי. המסמך עצמו עוד לא יוצא מכאן.`);
+  return addAct(C, { kind: "doc", title: `הכנת ${kindName} ל${name}`, lines, ...(warns.length ? { warn: warns.slice(0, 4).join(" · ") } : {}),
+    do: { tail9: p.tail9 || null, cust_name: p.name || null, cust_no: p.cust || null, text, due: new Date().toISOString(), assigned_to: issuer?.email || null, doc_kind: kind, total: known ? Math.round(total * 100) / 100 : null } });
+}
+async function priceList(a: any) {
+  const ws = words(a.text); if (!ws.length) return "חסר שם פריט או מק״ט.";
+  let x: any = admin.from("priority_part_prices").select("part_no,part_desc,family,price,unit").eq("price_list", PRICE_LIST).gt("price", 0);
+  for (const w of ws) x = x.or(`part_desc.ilike.%${w}%,part_no.ilike.%${w}%`);
+  const { data, error } = await x.order("part_desc").limit(16);
+  if (error) throw error;
+  const rows = data || [];
+  if (!rows.length) return `לא נמצא במחירון פריט שמתאים ל"${ws.join(" ")}". לנסות מילה אחרת או מק״ט, או לשאול את איש הצוות מה המחיר.`;
+  return ["מחירון ללקוח מפריוריטי (מחיר ליחידה, כולל מע״מ):", ...rows.map((r: any) => `- ${cut(r.part_desc, 70)} · מק״ט ${r.part_no} · ${nis2(r.price)}${r.unit ? " ל" + r.unit : ""}${r.family ? " · " + cut(r.family, 24) : ""}`), rows.length === 16 ? "יש עוד תוצאות. אם לא ברור איזה פריט, לשאול את איש הצוות." : ""].filter(Boolean).join("\n");
+}
+
 const str = (d: string) => ({ type: "string", description: d });
 const TOOLS = [
   { name: "find_customer", description: "חיפוש לקוח, ליד או איש קשר לפי שם (או חלק ממנו) או מספר טלפון. מחזיר רשימה עם ref קצר (L1, L2...) לכל תוצאה. תמיד הצעד הראשון כשהשאלה על אדם מסוים.", input_schema: { type: "object", properties: { query: str("שם, חלק משם, או ספרות של טלפון") }, required: ["query"] } },
@@ -628,9 +727,14 @@ const TOOLS = [
   { name: "print_document", description: "הדפסה במדפסת המשרד של קבלה או חשבונית מפריוריטי. להשתמש מיד כשמבקשים להדפיס, בלי שאלות הבהרה: 'קבלה אחרונה' = kind receipt בלי מספר ובלי לקוח (הקבלה האחרונה שהופקה). 'הקבלה של X' = customer X (המסמך האחרון שלו). אם יש מספר מסמך, doc. הכלי מוצא את המסמך בעצמו.", input_schema: { type: "object", properties: { doc: str("מספר המסמך בפריוריטי, אם נאמר"), customer: str("שם הלקוח או חלק ממנו, אם נאמר"), kind: { type: "string", enum: ["receipt", "invoice"], description: "קבלה או חשבונית, אם נאמר" }, copies: { type: "integer", description: "כמה עותקים, 1 עד 3 (ברירת מחדל 1)" } } } },
   { name: "print_status", description: "מה מצב בקשות ההדפסה האחרונות (בתור, הודפס, נכשל).", input_schema: { type: "object", properties: {} } },
   { name: "weekly_brief", description: "הסיכום השבועי האחרון של העסק (מכירות, לידים, מה דורש טיפול).", input_schema: { type: "object", properties: {} } },
+  { name: "price_list", description: "מחירון ללקוח מפריוריטי: מחיר מכירה ליחידה כולל מע״מ לפי שם פריט או מק״ט. משמש לפני הכנת חשבונית או הצעת מחיר, ולשאלות 'כמה עולה ללקוח'.", input_schema: { type: "object", properties: { text: str("שם פריט, חלק ממנו, או מק״ט") }, required: ["text"] } },
+  { name: "suggest_task", description: "להכין משימה או תזכורת לאישור של איש הצוות. לא יוצר כלום עד שלוחצים אשר. להשתמש כשמבקשים 'תזכיר לי', 'תרשום משימה', 'שמישהו יתקשר ל'.", input_schema: { type: "object", properties: { text: str("מה צריך לעשות, במשפט קצר וברור"), due: str("מתי להזכיר, בצורה YYYY-MM-DD HH:MM לפי לוח הימים. בלי שעה = 09:00. להשאיר ריק אם לא נאמר מתי"), ref: str("ref של הלקוח שהמשימה נוגעת אליו, אם יש"), for: str("שם איש הצוות שהמשימה בשבילו, אם נאמר. בלי זה, המשימה של מי שביקש") }, required: ["text"] } },
+  { name: "suggest_note", description: "להכין הערה בתיק של לקוח, לאישור של איש הצוות. לא נשמר עד שלוחצים אשר.", input_schema: { type: "object", properties: { ref: str("ref של הלקוח מ-find_customer"), text: str("ההערה, כפי שאיש הצוות אמר אותה") }, required: ["ref", "text"] } },
+  { name: "suggest_pay_link", description: "להכין קישור לתשלום באשראי ללקוח, לאישור של איש הצוות. אחרי האישור הקישור נכנס לטיוטה בשיחה עם הלקוח ואיש הצוות שולח בעצמו. הסכום רק כפי שאיש הצוות אמר.", input_schema: { type: "object", properties: { ref: str("ref של הלקוח מ-find_customer"), amount: { type: "number", description: "סכום בשקלים כולל מע״מ" }, description: str("עבור מה התשלום, בכמה מילים"), payments: { type: "integer", description: "מספר תשלומים, 1 עד 12 (ברירת מחדל 1)" } }, required: ["ref", "amount"] } },
+  { name: "suggest_customer_doc", description: "להכין חשבונית מס או הצעת מחיר ללקוח: לקוח, פריטים, כמויות ומחירים, לאישור של איש הצוות. אחרי האישור נוצרת משימה לאילת שמפיקה את המסמך בפריוריטי. הכלי לא מפיק מסמך. קודם find_customer ללקוח ו-price_list לכל פריט.", input_schema: { type: "object", properties: { ref: str("ref של הלקוח מ-find_customer"), kind: { type: "string", enum: ["invoice", "quote"], description: "invoice = חשבונית מס, quote = הצעת מחיר" }, lines: { type: "array", description: "שורות המסמך, עד 12", items: { type: "object", properties: { part_no: str("מק״ט מהמחירון, אם נמצא"), desc: str("תיאור הפריט"), qty: { type: "number", description: "כמות" }, unit_price: { type: "number", description: "מחיר ליחידה כולל מע״מ, רק אם איש הצוות אמר מחיר. להשאיר ריק כדי לקחת מהמחירון" } }, required: ["desc", "qty"] } }, note: str("הערה קצרה לאילת, אם נאמרה (למשל הנחה שסוכמה או אמצעי תשלום)") }, required: ["ref", "kind", "lines"] } },
 ];
 
-async function runTool(R: Refs, name: string, a: any, who = ""): Promise<string> {
+async function runTool(R: Refs, name: string, a: any, who = "", C: Ctx = { acts: [], staff: [], who: "" }): Promise<string> {
   try {
     let out = "";
     if (name === "find_customer") out = await findCustomer(R, String(a.query || ""));
@@ -660,6 +764,11 @@ async function runTool(R: Refs, name: string, a: any, who = ""): Promise<string>
     else if (name === "weekly_brief") out = await weeklyBrief();
     else if (name === "print_document") out = await printDocument(a || {}, who);
     else if (name === "print_status") out = await printStatus();
+    else if (name === "price_list") out = await priceList(a || {});
+    else if (name === "suggest_task") out = suggestTask(R, a || {}, C);
+    else if (name === "suggest_note") out = suggestNote(R, a || {}, C);
+    else if (name === "suggest_pay_link") out = suggestPay(R, a || {}, C);
+    else if (name === "suggest_customer_doc") out = await suggestDoc(R, a || {}, C);
     else out = "כלי לא מוכר.";
     return out.length > TOOL_CHARS ? out.slice(0, TOOL_CHARS) + "\n…(נחתך, אפשר לצמצם את הבקשה)" : out;
   } catch (e) { return "שגיאה בקריאת הנתונים: " + String((e as any)?.message || e).slice(0, 160); }
@@ -688,6 +797,12 @@ const SYSTEM = () => `את/ה "קלוד", העוזר הפנימי של צוות 
 - המסך נמצא באולם התצוגה: בשאלות על כסף לענות בעד שלוש שורות, במספרים שנשאלו בלבד. אם יש התראה דחופה שנוגעת ישירות לשאלה, להוסיף עליה שורה אחת. פירוט נוסף רק אם מבקשים.
 - כל אנשי הצוות הם הנהלה ורואים הכל, כולל בנק, הלוואות ומשכורות. משכורות מופיעות כתנועות בבנק מסוג משכורות (money_summary או bank_movements); אם אין שם פירוט לפי עובד, לומר זאת.
 - הדפסה: כשמבקשים להדפיס קבלה או חשבונית, לקרוא מיד ל-print_document (הוא מוצא את המסמך לבד) ולענות בשורה אחת מה נשלח. לא לשאול שאלות ולא להסביר מגבלות אם הכלי הצליח. להדפיס רק כשביקשו במפורש.
+- פעולות: אפשר להכין (לא לבצע) ארבעה דברים, וכל אחד מוצג לאיש הצוות ככרטיס עם כפתור "אשר". שום דבר לא נוצר לפני שלוחצים אשר. משימה או תזכורת = suggest_task. הערה בתיק לקוח = suggest_note. קישור לתשלום באשראי = suggest_pay_link. "תוציא חשבונית" או "תכין הצעת מחיר" ללקוח על פריט = קודם find_customer, אחר כך price_list לכל פריט, ואז suggest_customer_doc.
+- חשבונית והצעת מחיר: המסמך עצמו מופק בפריוריטי על ידי אילת אחרי האישור. לא לומר שהחשבונית הופקה או נשלחה. לומר: הכנתי, ואחרי "אשר" זה עובר לאילת להפקה.
+- בפעולות לא להמציא ולא לנחש: מחיר רק ממה שאיש הצוות אמר או מהמחירון, סכום לתשלום רק ממה שנאמר. אם יש כמה לקוחות או כמה פריטים דומים ולא ברור למי או למה הכוונה, לשאול לפני שמכינים, ולהציג את האפשרויות.
+- אחרי שהוכנה פעולה, לענות בשורה אחת: מה הכנתי, ושצריך ללחוץ "אשר". לא לכתוב "בוצע", "נשמר" או "נשלח". אם איש הצוות מתקן ("לא, מחר", "שתי יחידות"), להכין את הפעולה מחדש עם התיקון.
+- שורה בשיחה שמתחילה ב"[" (למשל "[הוכן לאישור: ...]" או "[אושר ובוצע: ...]") היא רישום של המערכת על מה שקרה לכרטיס, לא דברים שלך.
+- מה שעוד אין לו כלי (לשלוח הודעה ללקוח או לספק, זיכוי, החזר כספי, קבלה, שינוי מחיר, הזמנה מספק): לומר בפשטות שאת זה עדיין עושים במסך הרגיל, ולא להכין במקומו משהו אחר.
 - אם שואלים משהו שלא קשור לעסק, לענות בקצרה ולהחזיר לעניין.`;
 
 // Repeated next to every question and every batch of data: a rule only in the system prompt was not enough.
@@ -724,6 +839,20 @@ Deno.serve(async (req: Request) => {
   }
 
   const R = mkRefs();
+  const { data: staffRows } = await admin.from("crm_staff").select("email,name").eq("active", true);
+  const C: Ctx = { acts: [], who, staff: (staffRows || []).map((s: any) => ({ email: String(s.email || "").toLowerCase(), name: String(s.name || "") })) };
+  // Server-side check of the tools themselves, with no model call: { steps: [{ tool, input }] } run in order and share
+  // the customer refs, so a suggest_* tool can be checked right after find_customer. Hook token only.
+  if (hook && Array.isArray(body.steps)) {
+    const outs: string[] = [];
+    for (const st of body.steps.slice(0, 6)) outs.push(await runTool(R, String(st?.tool || ""), st?.input || {}, who, C));
+    // The hash lets a deploy be compared with the repo file (tool texts and the fixed part of the instructions).
+    const dg = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(TOOLS) + "\u0001" + SYSTEM().split("\n").slice(3).join("\n"))));
+    // Where the runtime lets the function read its own file, the whole source is fingerprinted as well.
+    let src: string | null = null;
+    try { const raw = await Deno.readFile(new URL(import.meta.url)); src = [...new Uint8Array(await crypto.subtle.digest("SHA-256", raw))].map((x) => x.toString(16).padStart(2, "0")).join(""); } catch (_) { src = null; }
+    return json(req, { ok: true, sha256: [...dg].map((x) => x.toString(16).padStart(2, "0")).join(""), src_sha256: src, outs, actions: C.acts.map((a) => ({ ...a, do: { ...a.do, tail9: a.do.tail9 ? "(יש)" : null, assigned_to: a.do.assigned_to ? "(יש)" : null } })) });
+  }
   // A phone number typed in the question becomes a customer ref, so the number itself never reaches the model.
   const withRefs = (s: unknown) => String(s ?? "").replace(PHONE, (m) => "[לקוח " + R.get(m.replace(/\D/g, "").slice(-9), null, null) + "]").replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, "[אימייל]");
   const q = withRefs(String(body.q || "").trim().slice(0, 1200));
@@ -755,7 +884,7 @@ Deno.serve(async (req: Request) => {
       if (res.stop_reason === "tool_use") {
         messages.push({ role: "assistant", content: res.content });
         const calls = res.content.filter((b: any) => b.type === "tool_use");
-        const results = await Promise.all(calls.map(async (c: any) => { used.push(c.name); const content = await runTool(R, c.name, c.input || {}, who); for (const w of content.match(LATIN) || []) known.add(w.toLowerCase()); return { type: "tool_result", tool_use_id: c.id, content }; }));
+        const results = await Promise.all(calls.map(async (c: any) => { used.push(c.name); const content = await runTool(R, c.name, c.input || {}, who, C); for (const w of content.match(LATIN) || []) known.add(w.toLowerCase()); return { type: "tool_result", tool_use_id: c.id, content }; }));
         messages.push({ role: "user", content: [...results, { type: "text", text: HE }] });
         continue;
       }
@@ -779,11 +908,12 @@ Deno.serve(async (req: Request) => {
       if (fix.stop_reason === "refusal" || !t) break;
       answer = t;
     }
-    await admin.from("crm_audit").insert({ who, action: "ai_ask", detail: { q: scrub(q).slice(0, 300), model: MODEL, in: tin, out: tout, steps: steps + 1, tools: used, ...(fixed.length ? { hebrew_fix: fixed } : {}) } });
+    await admin.from("crm_audit").insert({ who, action: "ai_ask", detail: { q: scrub(q).slice(0, 300), model: MODEL, in: tin, out: tout, steps: steps + 1, tools: used, ...(fixed.length ? { hebrew_fix: fixed } : {}), ...(C.acts.length ? { proposed: C.acts.map((a) => ({ kind: a.kind, title: a.title })) } : {}) } });
+    if (!answer && stop !== "refusal" && C.acts.length) answer = 'הכנתי. נשאר ללחוץ "אשר".';
     if (stop === "refusal" || !answer) return json(req, { ok: false, error: "לא הצלחתי לענות על זה, נסו לנסח אחרת" }, 502);
     // Refs are internal: strip any that slipped into the text.
     answer = scrub(answer).replace(/\s*[\[(]?\bL\d{1,3}\b[\])]?:?/g, "").replace(/\*\*/g, "").replace(/^#+\s*/gm, "").replace(/[ \t]+\n/g, "\n").trim();
-    return json(req, { ok: true, answer, people: R.people().slice(0, 6) });
+    return json(req, { ok: true, answer, people: R.people().slice(0, 6), actions: C.acts });
   } catch (e) {
     return json(req, { ok: false, error: "שגיאת מודל: " + String((e as any)?.message || e).slice(0, 200) }, 502);
   }
