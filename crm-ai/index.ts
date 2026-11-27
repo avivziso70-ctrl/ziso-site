@@ -1,6 +1,6 @@
 // crm-ai-triage: the CRM's automatic AI analyst (8.11.2026).
 // For every customer with fresh activity it reads the WhatsApp chat, leads, Priority orders/quotes/debt and staff notes,
-// asks Claude (BOT_MODEL, default claude-sonnet-5-5) for a structured verdict and stores it in public.crm_ai:
+// asks Claude (TRIAGE_MODEL, default claude-haiku-5-5; Aviv 27.11.2026: the cheap model for sorting leads) for a structured verdict and stores it in public.crm_ai:
 // temperature (hot/warm/cold), score 0-100, what the customer wants, likely deal stage, next action + due date, risk, reason,
 // and a short summary (also copied to crm_customers.summary so the card's "סיכום חכם" stays fresh by itself).
 // Nothing is ever sent to a customer. No phone numbers or bank data go to the model.
@@ -15,7 +15,9 @@ import webpush from "npm:web-push@3.6.7";
 
 const url = Deno.env.get("SUPABASE_URL")!, service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const admin = createClient(url, service, { auth: { autoRefreshToken: false, persistSession: false } });
+// MODEL writes text people read (quote follow-up drafts, the weekly summary). TRIAGE_MODEL only sorts and scores.
 const MODEL = Deno.env.get("BOT_MODEL") || "claude-sonnet-5-5";
+const TRIAGE_MODEL = Deno.env.get("TRIAGE_MODEL") || "claude-haiku-5-5";
 const ORIGINS = ["https://www.zisoceramics.com", "https://zisoceramics.com", "http://localhost:8000"];
 function cors(req: Request) {
   const o = req.headers.get("origin") || "";
@@ -106,8 +108,9 @@ async function analyse(client: Anthropic, tail9: string, srcTs: string | null, w
   const m = await material(tail9);
   if (!m.enough) return { tail9, ok: false, error: "אין חומר" };
   const res = await client.messages.create({
-    model: MODEL, max_tokens: 2048, system: SYSTEM,
-    output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
+    // thinking stays on (it is what makes the cheap model judge well) and counts inside max_tokens, so leave it room
+    model: TRIAGE_MODEL, max_tokens: 8000, system: SYSTEM,
+    output_config: { effort: "medium", format: { type: "json_schema", schema: SCHEMA } },
     messages: [{ role: "user", content: "החומר על הלקוח:\n\n" + m.text + "\n\nהחזר/י את הניתוח." }],
   } as any);
   if (res.stop_reason === "refusal") return { tail9, ok: false, error: "refusal" };
@@ -117,7 +120,7 @@ async function analyse(client: Anthropic, tail9: string, srcTs: string | null, w
   const score = Math.max(0, Math.min(100, Math.round(Number(v.score) || 0)));
   const due = /^\d{4}-\d{2}-\d{2}$/.test(v.next_due || "") ? v.next_due : null;
   const now = new Date().toISOString();
-  const row = { tail9, temp: v.temp, score, intent: v.intent, stage_guess: v.stage_guess, next_action: v.next_action, next_due: due, risk: v.risk || null, reason: v.reason, summary: v.summary, src_ts: srcTs || now, model: MODEL, at: now, done_at: null, done_by: null };
+  const row = { tail9, temp: v.temp, score, intent: v.intent, stage_guess: v.stage_guess, next_action: v.next_action, next_due: due, risk: v.risk || null, reason: v.reason, summary: v.summary, src_ts: srcTs || now, model: TRIAGE_MODEL, at: now, done_at: null, done_by: null };
   const { error } = await admin.from("crm_ai").upsert(row, { onConflict: "tail9" });
   if (error) return { tail9, ok: false, error: error.message };
   // keep the card's smart summary fresh without anyone pressing a button
@@ -125,7 +128,7 @@ async function analyse(client: Anthropic, tail9: string, srcTs: string | null, w
   const sumRow: Record<string, unknown> = { tail9, summary: v.summary, summary_at: now, summary_msg_count: m.msgCount, updated_by: "agent:crm-ai", updated_at: now };
   if (!c) Object.assign(sumRow, { created_by: "agent:crm-ai", created_at: now });
   await admin.from("crm_customers").upsert(sumRow, { onConflict: "tail9" });
-  await admin.from("crm_audit").insert({ who, action: "ai_triage", tail9, detail: { model: MODEL, temp: v.temp, score, in: res.usage?.input_tokens, out: res.usage?.output_tokens } });
+  await admin.from("crm_audit").insert({ who, action: "ai_triage", tail9, detail: { model: TRIAGE_MODEL, temp: v.temp, score, in: res.usage?.input_tokens, out: res.usage?.output_tokens } });
   return { tail9, ok: true, temp: v.temp, score, in: res.usage?.input_tokens, out: res.usage?.output_tokens };
 }
 
@@ -357,10 +360,15 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json(req, { ok: false, error: "POST only" }, 405);
   if (!Deno.env.get("ANTHROPIC_API_KEY")) return json(req, { ok: false, error: "אין מפתח API בסביבה" }, 503);
   const body = await req.json().catch(() => ({}));
-  if (body.mode === "alerts") {
+  if (body.mode === "alerts" || body.mode === "selfcheck") {
     const hook = req.headers.get("x-hook-token");
     const { data: k } = await admin.from("crm_push_keys").select("hook_token").eq("id", 1).maybeSingle();
     if (!hook || !k?.hook_token || k.hook_token !== hook) return json(req, { ok: false, error: "bad token" }, 401);
+    // selfcheck: which models run, and a fingerprint of the three prompts, to compare a deploy with the repo (no model call)
+    if (body.mode === "selfcheck") {
+      const d = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode([SYSTEM, QUOTE_SYSTEM, WEEKLY_SYSTEM, JSON.stringify(SCHEMA)].join("\u0001"))));
+      return json(req, { ok: true, triage_model: TRIAGE_MODEL, text_model: MODEL, prompts_sha256: [...d].map((x) => x.toString(16).padStart(2, "0")).join("") });
+    }
     try { return json(req, await alerts({ dry: !!body.dry })); }
     catch (e) { return json(req, { ok: false, error: String((e as any)?.message || e).slice(0, 300) }, 500); }
   }
